@@ -1,0 +1,251 @@
+# Workflow Presets per NormaAI
+# ---
+# Pattern preso da Mike OSS (workflows/presets per tabular review).
+# Riadattato per il vertical EU compliance NormaAI: ogni preset è un
+# "framework wizard" pre-configurato per uno specifico use case ICP.
+#
+# Struttura YAML:
+#   presets:
+#     - id: slug-univoco
+#       name: titolo human-readable
+#       icp: H1 | H2 | H3
+#       framework: CSRD | CSDDD | AI_Act | DORA | NIS2 | EU_Taxonomy | GDPR | MULTI
+#       description: 1-2 frasi su cosa fa il preset
+#       system_prompt_addendum: aggiunge al system prompt base
+#       suggested_inputs: lista di esempi di input da mostrare in UI
+#       output_format: free_text | structured_json | gap_analysis | self_assessment
+#       max_questions: int (per gap analysis multi-step)
+#       references_required: ["EUR-Lex", "Normattiva", "Comunicazioni_BdI"]
+#
+# Versioning: incrementa version quando si aggiungono preset.
+# Compatibilità: backward-compatible — aggiungere campi opzionali, MAI rimuovere id.
+#
+# Generato 2026-05-15 in iter 6 /loop, ispirato a Mike OSS workflow concept.
+
+version: 1.0
+last_updated: 2026-05-15
+
+presets:
+
+  # ─────────────────── H1: Compliance officer mid-market ───────────────────
+
+  - id: csrd-scope-check-post-omnibus
+    name: "CSRD: siamo ancora in scope post-Omnibus I?"
+    icp: H1
+    framework: CSRD
+    description: >
+      Scope-check rapido: data dimensione azienda (dipendenti + turnover + bilancio),
+      determina se l'azienda è in scope CSRD post-Omnibus I (soglie 1.000 dip + €450M
+      AND), con citazione Direttiva (UE) 2022/2464 art. 19a aggiornato.
+    system_prompt_addendum: |
+      Sei in modalità "CSRD scope check". L'utente ti fornisce dimensione azienda.
+      RISPONDI:
+      1. In scope mandatory? (SÌ / NO / SUBJECT_TO_REVIEW)
+      2. Citazione articolo specifica (Direttiva (UE) 2022/2464 + emendamento Omnibus I)
+      3. Se NO: è in scope indirettamente per supply chain di un cliente CSRD-obbligato?
+      4. VSME volontario è consigliato?
+      Output strutturato JSON.
+    suggested_inputs:
+      - "Manifatturiero 800 dipendenti, €60M ricavi, €25M bilancio, IT"
+      - "Energetico 1.200 dipendenti, €600M ricavi, €450M bilancio, FY2026"
+      - "Studio professionale 80 dipendenti, fornitore di Eni S.p.A."
+    output_format: structured_json
+    max_questions: 1
+    references_required: ["EUR-Lex"]
+
+  - id: ai-act-classification
+    name: "AI Act: classificazione del nostro sistema AI (Annex III)"
+    icp: H1
+    framework: AI_Act
+    description: >
+      Classifica un sistema AI usato in azienda per determinare se è prohibited,
+      high-risk (Annex III), limited-risk o minimal-risk. Output con citazione
+      Reg. (UE) 2024/1689 + Annex III pertinente.
+    system_prompt_addendum: |
+      Sei in modalità "AI Act classification". L'utente descrive un sistema AI usato
+      in azienda. Classifica:
+      - prohibited (Reg. 2024/1689 art. 5)
+      - high-risk Annex III (lavoro, credito, asylum, ecc.)
+      - limited-risk (transparency obblighi)
+      - minimal-risk (no specific obligations)
+      Cita articolo + Allegato specifico per ogni decisione.
+    suggested_inputs:
+      - "Sistema di CV screening per recruiting interno"
+      - "Chatbot customer support con Claude API"
+      - "Predizione manutenzione macchinari produzione"
+    output_format: structured_json
+    references_required: ["EUR-Lex"]
+
+  - id: gdpr-dpia-trigger-check
+    name: "GDPR: dobbiamo fare una DPIA per questo trattamento?"
+    icp: H1
+    framework: GDPR
+    description: >
+      Determina se un nuovo trattamento richiede DPIA (Art. 35 GDPR) sulla base
+      dei criteri EDPB Guidelines + linee guida Garante italiano. Output con
+      lista criteri matchati + riferimenti.
+    system_prompt_addendum: |
+      Sei in modalità "GDPR DPIA trigger check". L'utente descrive un trattamento.
+      Verifica i 9 criteri EDPB Guidelines 4/2017 + linee guida Garante it. Se
+      ≥2 criteri matched → DPIA obbligatoria. Cita ogni criterio match con
+      riferimento al testo Garante o EDPB.
+    suggested_inputs:
+      - "Implementiamo riconoscimento facciale per accesso uffici"
+      - "Profilazione utenti web per pubblicità targeted"
+      - "Trasferimento dati HR a controllata in USA via SCC"
+    output_format: structured_json
+    references_required: ["EUR-Lex", "Garante_IT"]
+
+  # ─────────────────── H2: Studi legali generalisti ───────────────────
+
+  - id: client-csrd-scope-advisor
+    name: "Consulenza cliente: il vostro cliente è in scope CSRD?"
+    icp: H2
+    framework: CSRD
+    description: >
+      Workflow per studi legali generalisti: input = profilo cliente aziendale.
+      Output = parere CSRD scope post-Omnibus + raccomandazione operativa
+      (volontario VSME? supply chain disclosure?) + citazioni primary source
+      EUR-Lex pronte da incollare nel parere.
+    system_prompt_addendum: |
+      Sei in modalità "advisory studio legale". L'output deve avere TONO consulenziale
+      pronto da incollare in un parere al cliente:
+      1. Scope finding (con citazione articolo)
+      2. Implicazioni operative
+      3. Raccomandazione (in scope / VSME / supply-chain-only / fuori-scope)
+      4. Riferimenti normativi formattati per parere
+      Stile: paragrafi articolati, non bullet point. Italiano formale legale.
+    suggested_inputs:
+      - "Cliente: gruppo manifatturiero 850 dip, €450M ricavi, controllata 100 dip in Germania"
+      - "Cliente: SpA quotata STAR, 600 dipendenti, capitale flottante"
+      - "Cliente: cooperativa agricola, 400 soci, fatturato €80M"
+    output_format: free_text
+    references_required: ["EUR-Lex", "Normattiva"]
+
+  - id: multi-framework-due-diligence
+    name: "Cliente M&A: due diligence compliance UE su target"
+    icp: H2
+    framework: MULTI
+    description: >
+      Per studi che fanno M&A: lista checklist due diligence multi-framework UE
+      (CSRD, DORA se finanziario, AI Act, NIS2, GDPR) per target acquisizione.
+      Output strutturato come sezione "Compliance Risk" di un memo DD.
+    system_prompt_addendum: |
+      Sei in modalità "M&A due diligence advisor". Input = target acquisizione
+      (settore, dimensione, geografie). Genera:
+      1. Mapping framework UE applicabili al target
+      2. Per ogni framework: 5-8 domande DD da porre al target
+      3. Red flags tipici per quel settore
+      4. Riferimenti primary source per ogni framework
+    suggested_inputs:
+      - "Target: SaaS HR tech 200 dip Italia, attiva in Germania e Francia"
+      - "Target: BCC veneta 80 dip, asset €600M"
+      - "Target: gruppo automotive 1.500 dip, plant Italia + Polonia"
+    output_format: structured_json
+    references_required: ["EUR-Lex"]
+
+  # ─────────────────── H3: CFO/Risk Manager banche-assicurazioni piccole ───────────────────
+
+  - id: dora-small-entity-self-assessment
+    name: "DORA self-assessment: siamo 'significant' o 'small entity'?"
+    icp: H3
+    framework: DORA
+    description: >
+      Workflow critico per intermediari piccoli: classificazione formale ai sensi
+      Reg. delegato 2024/1773 art. 4-5 con quantitative thresholds. Output =
+      self-assessment documento citabile in audit Banca d'Italia / IVASS.
+    system_prompt_addendum: |
+      Sei in modalità "DORA classification". Input = tipo entità + asset/AUM/premi.
+      Output:
+      1. Classificazione formale (small entity / regime ordinario / significant)
+      2. Criteri quantitativi matched (con citazione Reg. 2024/1773 art. 4-5)
+      3. Obblighi applicabili in base alla classificazione
+      4. TLPT triennale richiesto? (citazione Reg. 2024/2957 art. 4)
+      Output formattato come self-assessment documento legale-difendibile.
+    suggested_inputs:
+      - "BCC Veneto, asset €1.8B, parte gruppo Iccrea"
+      - "SGR fondi alternativi, AUM €4.5B, indipendente"
+      - "Mutua assicuratrice, gross premiums €120M/anno, Trentino"
+    output_format: structured_json
+    max_questions: 1
+    references_required: ["EUR-Lex"]
+
+  - id: dora-incident-classification
+    name: "DORA: classificare un ICT incident come 'major' o 'significant'"
+    icp: H3
+    framework: DORA
+    description: >
+      Workflow operativo: l'utente descrive un incident appena occorso. Output =
+      classificazione ai sensi Reg. (UE) 2024/1774 (definizioni major incident +
+      criteri tematici) + timeline reporting obbligatorio (4h initial / 72h
+      intermediate / 1 month final) + canale autorità (BdI INFOSTAT / IVASS).
+    system_prompt_addendum: |
+      Sei in modalità "DORA incident classification". URGENT use case — l'utente
+      sta gestendo un incident reale e ha 4 ore per fare il primo reporting.
+      Output:
+      1. Major / Significant cyber threat / Non-reportable
+      2. Per ogni criterio classificazione: SÌ/NO + Reg. 2024/1774 art. ref
+      3. Timeline reporting (4h initial, 72h intermediate, 1 month final)
+      4. Canale autorità Italia (BdI INFOSTAT per banche/SIM/SGR, IVASS per assicurazioni)
+      5. Template testo notifica iniziale pronta da copy-paste
+    suggested_inputs:
+      - "Mobile banking down per 6 ore, 5.000 clienti impattati, no perdite dati"
+      - "Ransomware su back-office, recovery in 2h, no dati cliente compromessi"
+      - "Provider cloud unavailable 30 min, servizio degradato ma non interrotto"
+    output_format: structured_json
+    max_questions: 1
+    references_required: ["EUR-Lex", "Comunicazioni_BdI"]
+
+  - id: dora-third-party-register-builder
+    name: "DORA: costruire il Register of Information ICT third-party"
+    icp: H3
+    framework: DORA
+    description: >
+      Workflow guidato per popolare il register of information (Reg. (UE)
+      2024/2956 art. 30). L'utente fornisce lista fornitori ICT; il preset
+      guida classificazione critical/non-critical, sub-contracting, exit
+      strategy, concentration risk.
+    system_prompt_addendum: |
+      Sei in modalità "DORA register builder". L'utente fornisce fornitori ICT.
+      Per ogni fornitore:
+      1. Classificazione critical / non-critical (8 criteri art. 28-29)
+      2. Campi obbligatori register (Reg. 2024/2956 art. 30)
+      3. Concentration risk flag (>30% IT spend)
+      4. Sub-contracting tier 2/3 prompt
+      5. Exit strategy required? (se critical)
+      Output template register row pronto per Excel/CMDB.
+    suggested_inputs:
+      - "AWS, Microsoft 365, Oracle DB, MongoDB Atlas, Cloudflare CDN, Twilio"
+      - "Provider unico (XYZ) per core banking + 8 fornitori minori"
+      - "SaaS treasury management, custodian, fund admin, NAV calculator"
+    output_format: structured_json
+    references_required: ["EUR-Lex"]
+
+# ─────────────────── Metadati per UI ───────────────────
+
+ui_grouping:
+  H1:
+    label: "Per il compliance officer interno"
+    color: "#5b8cff"
+    icon: "shield-check"
+  H2:
+    label: "Per lo studio legale generalista"
+    color: "#b08bff"
+    icon: "scale"
+  H3:
+    label: "Per CFO / Risk Manager banca-assicurazione piccola"
+    color: "#ff8c5a"
+    icon: "bank"
+
+# ─────────────────── TODO future ───────────────────
+#
+# Q3 2026 (post-G+45 se pilot firmato):
+#   - Aggiungere 3-5 preset per CSDDD (supply chain mapping, transposition italiana)
+#   - Aggiungere preset per ESRS Set 1 disclosure assistant (post -61% datapoint)
+#   - Aggiungere preset NIS2 essential vs important entity check
+#   - Add EU Taxonomy alignment calculator preset (Reg. (UE) 2020/852 art. 8)
+#
+# Implementation note per dev:
+#   - Loader Python: src/agents/workflow_presets_loader.py (TBD)
+#   - UI: dashboard route /workflows con dropdown ICP → preset list
+#   - Integration con chat: preset selezionato injecta system_prompt_addendum nel turno

@@ -1,0 +1,29 @@
+# Local dev override - forza replace della lista ports (non append).
+# Tag !override richiede compose-spec 1.28+ (Docker Desktop 4.x in poi).
+#
+# Mappa:
+#   Postgres host 5433 -> container 5432
+#   Redis    host 6380 -> container 6379
+#   Qdrant   host 6335/6336 -> container 6333/6334
+#
+# Allinea .env:
+#   DATABASE_URL=postgresql+asyncpg://normaai:${POSTGRES_PASSWORD}@localhost:5433/normaai
+#   REDIS_URL=redis://localhost:6380/0
+#   QDRANT_PORT=6335
+#
+# Per disabilitare l'override:
+#   docker compose -f docker-compose.yml up -d   (ignora override)
+
+services:
+  postgres:
+    ports: !override
+      - "127.0.0.1:5433:5432"
+
+  redis:
+    ports: !override
+      - "127.0.0.1:6380:6379"
+
+  qdrant:
+    ports: !override
+      - "127.0.0.1:6335:6333"
+      - "127.0.0.1:6336:6334"

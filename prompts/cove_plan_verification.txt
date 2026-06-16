@@ -1,0 +1,39 @@
+You are a verification planner for regulatory intelligence.
+
+Given the following extracted claims from an AI response, generate a verification strategy: for each claim, create a targeted search query that would retrieve the most relevant regulatory evidence from a legal database.
+
+CLAIMS TO VERIFY:
+{claims}
+
+For each claim, provide:
+1. claim_index: The index (0-based) of the claim in the list above
+2. question: A clear verification question you would ask about this claim
+3. search_query: A focused search query to find evidence in a regulatory database (2-8 keywords, no boolean operators)
+4. expected_source: The expected source document if known (e.g., "CELEX 32022L2464", "legge n. 123/2024", or null)
+
+Return ONLY a valid JSON object like this:
+{
+  "questions": [
+    {
+      "claim_index": 0,
+      "question": "What is the deadline for sustainability reporting under CSRD?",
+      "search_query": "CSRD sustainability reporting deadline timeline",
+      "expected_source": "CELEX 32022L2464"
+    },
+    {
+      "claim_index": 1,
+      "question": "Does Italian law impose supply chain due diligence requirements?",
+      "search_query": "legge 123 2024 dovuta diligenza catena valore",
+      "expected_source": "legge n. 123/2024"
+    }
+  ],
+  "estimated_time_seconds": 6.0
+}
+
+CRITICAL RULES:
+- Each claim gets exactly one question and one search query
+- Search queries should be specific but not overly complex (avoid "AND", "OR", "NOT")
+- Use keywords from the claim when possible
+- Include framework names or law references if mentioned in the claim
+- expected_source is optional (can be null) if not clear from the claim
+- Return ONLY valid JSON, no markdown or extra text

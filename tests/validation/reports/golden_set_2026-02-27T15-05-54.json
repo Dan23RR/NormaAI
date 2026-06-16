@@ -1,0 +1,1887 @@
+{
+  "suite_name": "golden_set",
+  "run_timestamp": "2026-02-27T15:05:54.944073",
+  "total_cases": 46,
+  "passed_cases": 26,
+  "failed_cases": 20,
+  "error_cases": 0,
+  "skipped_cases": 0,
+  "avg_precision": 0.9782608695652174,
+  "avg_recall": 0.7971014492753623,
+  "avg_f1": 0.860869565217391,
+  "min_recall": 0.0,
+  "framework_metrics": {
+    "GDPR": {
+      "count": 35,
+      "avg_precision": 1.0,
+      "avg_recall": 0.7761904761904762,
+      "avg_f1": 0.8552380952380952
+    },
+    "DORA": {
+      "count": 5,
+      "avg_precision": 1.0,
+      "avg_recall": 1.0,
+      "avg_f1": 1.0
+    },
+    "NIS2": {
+      "count": 5,
+      "avg_precision": 1.0,
+      "avg_recall": 0.9,
+      "avg_f1": 0.9333333333333333
+    }
+  },
+  "difficulty_metrics": {
+    "level_1": {
+      "count": 19,
+      "avg_precision": 1.0,
+      "avg_recall": 0.8596491228070174,
+      "avg_f1": 0.9087719298245616
+    },
+    "level_2": {
+      "count": 13,
+      "avg_precision": 1.0,
+      "avg_recall": 0.8333333333333333,
+      "avg_f1": 0.8923076923076922
+    },
+    "level_3": {
+      "count": 10,
+      "avg_precision": 0.9,
+      "avg_recall": 0.6333333333333333,
+      "avg_f1": 0.7266666666666667
+    },
+    "level_5": {
+      "count": 3,
+      "avg_precision": 1.0,
+      "avg_recall": 0.8888888888888888,
+      "avg_f1": 0.9333333333333332
+    },
+    "level_4": {
+      "count": 1,
+      "avg_precision": 1.0,
+      "avg_recall": 0.5,
+      "avg_f1": 0.6666666666666666
+    }
+  },
+  "results": [
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-001-L1",
+      "run_timestamp": "2026-02-27T15:05:54.941758",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 5(1)(e)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 5(1)(e): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 50.471044245527736,
+        "confidence_score": 0.7619889632396308
+      },
+      "execution_time_ms": 0.10418891906738281,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 5(1)(e)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 5(1)(e): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(e)"
+      ],
+      "false_negatives": [
+        "Art. 13(2)(a)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7619889632396308
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-001-L2",
+      "run_timestamp": "2026-02-27T15:05:54.942221",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(2)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(2)(a): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 40.45399481654705,
+        "confidence_score": 0.7327379431938883
+      },
+      "execution_time_ms": 0.030040740966796875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(2)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(2)(a): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 13(2)(a)"
+      ],
+      "false_negatives": [
+        "Art. 5(1)(e)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7327379431938883
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-001-L3",
+      "run_timestamp": "2026-02-27T15:05:54.942280",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 5(1)(e)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 5(1)(e): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 54.78124466886494,
+        "confidence_score": 0.7666411323860355
+      },
+      "execution_time_ms": 0.00762939453125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 5(1)(e)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 5(1)(e): Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(e)"
+      ],
+      "false_negatives": [
+        "Art. 13(2)(a)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7666411323860355
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-002-L1",
+      "run_timestamp": "2026-02-27T15:05:54.942326",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 32",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 32: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 28(3)(d)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 48.91885837546341,
+        "confidence_score": 0.7456254550866867
+      },
+      "execution_time_ms": 0.0073909759521484375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 32",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 32: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 28(3)(d)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(d)",
+        "Art. 32"
+      ],
+      "false_negatives": [
+        "Art. 28(3)(h)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.7456254550866867
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-002-L2",
+      "run_timestamp": "2026-02-27T15:05:54.942386",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 32",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 32: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 28(3)(d)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 47.9758892853925,
+        "confidence_score": 0.8413668702025172
+      },
+      "execution_time_ms": 0.007152557373046875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 32",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 32: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 28(3)(d)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(d)",
+        "Art. 32"
+      ],
+      "false_negatives": [
+        "Art. 28(3)(h)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.8413668702025172
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-002-L3",
+      "run_timestamp": "2026-02-27T15:05:54.942451",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 28(3)(h)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 28(3)(h): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 28(3)(d)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 53.59627951859683,
+        "confidence_score": 0.8172133993868037
+      },
+      "execution_time_ms": 0.006198883056640625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 28(3)(h)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 28(3)(h): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 28(3)(d)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 28(3)(d): DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(h)",
+        "Art. 28(3)(d)"
+      ],
+      "false_negatives": [
+        "Art. 32"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.8172133993868037
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-003-L1",
+      "run_timestamp": "2026-02-27T15:05:54.942491",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          },
+          {
+            "article": "Art. 7(3)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 7(3): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 35.39533678748002,
+        "confidence_score": 0.7664142136724789
+      },
+      "execution_time_ms": 0.006198883056640625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        },
+        {
+          "article": "Art. 7(3)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 7(3): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 7(3)",
+        "Art. 6(1)(a)"
+      ],
+      "false_negatives": [
+        "Art. 13(2)(c)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.7664142136724789
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-003-L2",
+      "run_timestamp": "2026-02-27T15:05:54.942540",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          },
+          {
+            "article": "Art. 13(2)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(2)(c): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 22.512053434339062,
+        "confidence_score": 0.7175443721307774
+      },
+      "execution_time_ms": 0.006198883056640625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        },
+        {
+          "article": "Art. 13(2)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(2)(c): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 6(1)(a)",
+        "Art. 13(2)(c)"
+      ],
+      "false_negatives": [
+        "Art. 7(3)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.7175443721307774
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-IT-003-L3",
+      "run_timestamp": "2026-02-27T15:05:54.942591",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 7(3)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 7(3): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          },
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 29.961187349970842,
+        "confidence_score": 0.730108093397746
+      },
+      "execution_time_ms": 0.0059604644775390625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 7(3)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 7(3): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        },
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 6(1)(a): Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 7(3)",
+        "Art. 6(1)(a)"
+      ],
+      "false_negatives": [
+        "Art. 13(2)(c)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.730108093397746
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-UK-001-L1",
+      "run_timestamp": "2026-02-27T15:05:54.942628",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 6(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 13(1)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 48.091955067448374,
+        "confidence_score": 0.7968355890307461
+      },
+      "execution_time_ms": 0.0059604644775390625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 6(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 13(1)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 6(1)(a)",
+        "Art. 13(1)(c)"
+      ],
+      "false_negatives": [
+        "Art. 5(1)(a)",
+        "Art. 22"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7968355890307461
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-UK-001-L2",
+      "run_timestamp": "2026-02-27T15:05:54.942679",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(1)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 5(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 5(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 55.12919179643818,
+        "confidence_score": 0.8051053435424137
+      },
+      "execution_time_ms": 0.006198883056640625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(1)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 5(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 5(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(a)",
+        "Art. 13(1)(c)"
+      ],
+      "false_negatives": [
+        "Art. 6(1)(a)",
+        "Art. 22"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.8051053435424137
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-UK-001-L3",
+      "run_timestamp": "2026-02-27T15:05:54.942730",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 6(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 13(1)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 47.06133845497923,
+        "confidence_score": 0.7068820389353772
+      },
+      "execution_time_ms": 0.0057220458984375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 6(1)(a): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 13(1)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(1)(c): Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 6(1)(a)",
+        "Art. 13(1)(c)"
+      ],
+      "false_negatives": [
+        "Art. 5(1)(a)",
+        "Art. 22"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7068820389353772
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-FR-001-L1",
+      "run_timestamp": "2026-02-27T15:05:54.942781",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 7(1)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 7(1): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 5(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 5(1)(a): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 41.715730234115014,
+        "confidence_score": 0.7180965705872777
+      },
+      "execution_time_ms": 0.0054836273193359375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 7(1)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 7(1): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 5(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 5(1)(a): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(a)",
+        "Art. 7(1)"
+      ],
+      "false_negatives": [
+        "Art. 7(2)",
+        "Art. 13(1)(f)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7180965705872777
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-FR-001-L2",
+      "run_timestamp": "2026-02-27T15:05:54.942831",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(1)(f)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(1)(f): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 7(2)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 7(2): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 34.65132954950066,
+        "confidence_score": 0.9081069333980534
+      },
+      "execution_time_ms": 0.011205673217773438,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(1)(f)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(1)(f): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 7(2)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 7(2): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 7(2)",
+        "Art. 13(1)(f)"
+      ],
+      "false_negatives": [
+        "Art. 5(1)(a)",
+        "Art. 7(1)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.9081069333980534
+    },
+    {
+      "test_case_id": "GDPR-SANCTION-2024-FR-001-L3",
+      "run_timestamp": "2026-02-27T15:05:54.942905",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(1)(f)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 13(1)(f): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 5(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Violazione Art. 5(1)(a): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 55.43637411099144,
+        "confidence_score": 0.7398589280465148
+      },
+      "execution_time_ms": 0.00667572021484375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(1)(f)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 13(1)(f): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 5(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Violazione Art. 5(1)(a): Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(a)",
+        "Art. 13(1)(f)"
+      ],
+      "false_negatives": [
+        "Art. 7(1)",
+        "Art. 7(2)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7398589280465148
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-4a3dfb",
+      "run_timestamp": "2026-02-27T15:05:54.942983",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(2)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Privacy policy senza periodo di conservazione dati",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 24.961216231265286,
+        "confidence_score": 0.7325178274188211
+      },
+      "execution_time_ms": 0.010251998901367188,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(2)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Privacy policy senza periodo di conservazione dati",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 13(2)(a)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7325178274188211
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-8347a4",
+      "run_timestamp": "2026-02-27T15:05:54.943010",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 28(3)(h)",
+            "status": "NON_COMPLIANT",
+            "description": "DPA senza clausola di audit",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 27.57083440318383,
+        "confidence_score": 0.7105276595031927
+      },
+      "execution_time_ms": 0.0050067901611328125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 28(3)(h)",
+          "status": "NON_COMPLIANT",
+          "description": "DPA senza clausola di audit",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(h)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7105276595031927
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-27858b",
+      "run_timestamp": "2026-02-27T15:05:54.943037",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 37",
+            "status": "NON_COMPLIANT",
+            "description": "Nessuna menzione del DPO nella privacy policy",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 32.57002363230163,
+        "confidence_score": 0.8092967128007588
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 37",
+          "status": "NON_COMPLIANT",
+          "description": "Nessuna menzione del DPO nella privacy policy",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 37"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8092967128007588
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-0ea945",
+      "run_timestamp": "2026-02-27T15:05:54.943062",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 33",
+            "status": "NON_COMPLIANT",
+            "description": "Piano incidenti senza procedura notifica 72h al Garante",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 55.58598106179791,
+        "confidence_score": 0.8855626867955567
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 33",
+          "status": "NON_COMPLIANT",
+          "description": "Piano incidenti senza procedura notifica 72h al Garante",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 33"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8855626867955567
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-e3a51b",
+      "run_timestamp": "2026-02-27T15:05:54.943087",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 7(3)",
+            "status": "NON_COMPLIANT",
+            "description": "Consent form senza meccanismo di revoca",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 59.52808640073555,
+        "confidence_score": 0.8095435807233345
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 7(3)",
+          "status": "NON_COMPLIANT",
+          "description": "Consent form senza meccanismo di revoca",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 7(3)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8095435807233345
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-570735",
+      "run_timestamp": "2026-02-27T15:05:54.943112",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 30",
+            "status": "NON_COMPLIANT",
+            "description": "Assenza completa del registro dei trattamenti",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 40.531956408176015,
+        "confidence_score": 0.8226321054900021
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 30",
+          "status": "NON_COMPLIANT",
+          "description": "Assenza completa del registro dei trattamenti",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 30"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8226321054900021
+    },
+    {
+      "test_case_id": "SYN-GDPR-L1-dfa231",
+      "run_timestamp": "2026-02-27T15:05:54.943142",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 35",
+            "status": "NON_COMPLIANT",
+            "description": "Trattamento ad alto rischio senza DPIA",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 52.811202810661904,
+        "confidence_score": 0.7553092580169466
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 35",
+          "status": "NON_COMPLIANT",
+          "description": "Trattamento ad alto rischio senza DPIA",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 35"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7553092580169466
+    },
+    {
+      "test_case_id": "SYN-GDPR-L2-0cf185",
+      "run_timestamp": "2026-02-27T15:05:54.943165",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(2)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Periodo conservazione vago: 'per il tempo necessario'",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 33.9901946496399,
+        "confidence_score": 0.7372998959001735
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(2)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Periodo conservazione vago: 'per il tempo necessario'",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 13(2)(a)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7372998959001735
+    },
+    {
+      "test_case_id": "SYN-GDPR-L2-da377a",
+      "run_timestamp": "2026-02-27T15:05:54.943193",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 28(3)(h)",
+            "status": "NON_COMPLIANT",
+            "description": "Clausola audit limitata a 'previo accordo scritto'",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 31.029928586201162,
+        "confidence_score": 0.7972541079953149
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 28(3)(h)",
+          "status": "NON_COMPLIANT",
+          "description": "Clausola audit limitata a 'previo accordo scritto'",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(h)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7972541079953149
+    },
+    {
+      "test_case_id": "SYN-GDPR-L2-37b2a1",
+      "run_timestamp": "2026-02-27T15:05:54.943219",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6(1)(a)",
+            "status": "NON_COMPLIANT",
+            "description": "Consenso bundled con accettazione T&C generali",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 24.48328088598316,
+        "confidence_score": 0.8716784530743565
+      },
+      "execution_time_ms": 0.0040531158447265625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6(1)(a)",
+          "status": "NON_COMPLIANT",
+          "description": "Consenso bundled con accettazione T&C generali",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 6(1)(a)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8716784530743565
+    },
+    {
+      "test_case_id": "SYN-GDPR-L2-671730",
+      "run_timestamp": "2026-02-27T15:05:54.943245",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 5(1)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Raccolta dati eccessiva mascherata da 'servizio migliore'",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 55.06470556288336,
+        "confidence_score": 0.8978903972746202
+      },
+      "execution_time_ms": 0.0040531158447265625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 5(1)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Raccolta dati eccessiva mascherata da 'servizio migliore'",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(c)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8978903972746202
+    },
+    {
+      "test_case_id": "SYN-GDPR-L2-7934b8",
+      "run_timestamp": "2026-02-27T15:05:54.943269",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(1)(f)",
+            "status": "NON_COMPLIANT",
+            "description": "Trasferimento extra-UE menzionato ma senza garanzie specifiche",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 49.516123614950075,
+        "confidence_score": 0.8059117644768375
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(1)(f)",
+          "status": "NON_COMPLIANT",
+          "description": "Trasferimento extra-UE menzionato ma senza garanzie specifiche",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 13(1)(f)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8059117644768375
+    },
+    {
+      "test_case_id": "SYN-GDPR-L3-597959",
+      "run_timestamp": "2026-02-27T15:05:54.943295",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 28(3)(h)",
+            "status": "NON_COMPLIANT",
+            "description": "Clausola audit tecnicamente presente ma svuotata di contenuto",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 52.000597256556546,
+        "confidence_score": 0.8503399141541641
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 28(3)(h)",
+          "status": "NON_COMPLIANT",
+          "description": "Clausola audit tecnicamente presente ma svuotata di contenuto",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 28(3)(h)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8503399141541641
+    },
+    {
+      "test_case_id": "SYN-GDPR-L3-810136",
+      "run_timestamp": "2026-02-27T15:05:54.943320",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 17",
+            "status": "NON_COMPLIANT",
+            "description": "Diritto alla cancellazione tecnicamente presente ma con eccezioni enormi",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 25.882626629607483,
+        "confidence_score": 0.7930747427859893
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 17",
+          "status": "NON_COMPLIANT",
+          "description": "Diritto alla cancellazione tecnicamente presente ma con eccezioni enormi",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 17"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7930747427859893
+    },
+    {
+      "test_case_id": "SYN-GDPR-L3-e89d31",
+      "run_timestamp": "2026-02-27T15:05:54.943346",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 5(1)(b)",
+            "status": "NON_COMPLIANT",
+            "description": "Finalità originaria che nasconde un purpose creep verso IA",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 39.80731122694563,
+        "confidence_score": 0.7746449660347838
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 5(1)(b)",
+          "status": "NON_COMPLIANT",
+          "description": "Finalità originaria che nasconde un purpose creep verso IA",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 5(1)(b)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7746449660347838
+    },
+    {
+      "test_case_id": "SYN-GDPR-L5-0e8e50",
+      "run_timestamp": "2026-02-27T15:05:54.943497",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 46",
+            "status": "NON_COMPLIANT",
+            "description": "DPA con riferimento a Privacy Shield (invalidato da Schrems II nel 2020)",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 48.923726328922314,
+        "confidence_score": 0.9429466998007076
+      },
+      "execution_time_ms": 0.008106231689453125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 46",
+          "status": "NON_COMPLIANT",
+          "description": "DPA con riferimento a Privacy Shield (invalidato da Schrems II nel 2020)",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 46"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.9429466998007076
+    },
+    {
+      "test_case_id": "SYN-GDPR-L5-f36ebc",
+      "run_timestamp": "2026-02-27T15:05:54.943534",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 32",
+            "status": "NON_COMPLIANT",
+            "description": "Misure di sicurezza basate su standard obsoleto (Allegato B D.Lgs. 196/2003)",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 20.02282972767299,
+        "confidence_score": 0.7951019645213149
+      },
+      "execution_time_ms": 0.005245208740234375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 32",
+          "status": "NON_COMPLIANT",
+          "description": "Misure di sicurezza basate su standard obsoleto (Allegato B D.Lgs. 196/2003)",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 32"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7951019645213149
+    },
+    {
+      "test_case_id": "SYN-DORA-L1-a2b63e",
+      "run_timestamp": "2026-02-27T15:05:54.943562",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 6",
+            "status": "NON_COMPLIANT",
+            "description": "Assenza completa del framework di gestione rischi ICT",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 20.258604107514657,
+        "confidence_score": 0.8490259513890476
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 6",
+          "status": "NON_COMPLIANT",
+          "description": "Assenza completa del framework di gestione rischi ICT",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 6"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8490259513890476
+    },
+    {
+      "test_case_id": "SYN-DORA-L1-6bbb68",
+      "run_timestamp": "2026-02-27T15:05:54.943595",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 11",
+            "status": "NON_COMPLIANT",
+            "description": "Nessun piano di risposta e ripristino ICT",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 48.290582586241655,
+        "confidence_score": 0.7663044814132198
+      },
+      "execution_time_ms": 0.008344650268554688,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 11",
+          "status": "NON_COMPLIANT",
+          "description": "Nessun piano di risposta e ripristino ICT",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 11"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7663044814132198
+    },
+    {
+      "test_case_id": "SYN-DORA-L1-bccad2",
+      "run_timestamp": "2026-02-27T15:05:54.943619",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 30",
+            "status": "NON_COMPLIANT",
+            "description": "Contratti ICT senza clausole contrattuali minime DORA",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 37.54524613176763,
+        "confidence_score": 0.8039159470391137
+      },
+      "execution_time_ms": 0.00476837158203125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 30",
+          "status": "NON_COMPLIANT",
+          "description": "Contratti ICT senza clausole contrattuali minime DORA",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 30"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8039159470391137
+    },
+    {
+      "test_case_id": "SYN-DORA-L2-ef704b",
+      "run_timestamp": "2026-02-27T15:05:54.943644",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 24",
+            "status": "NON_COMPLIANT",
+            "description": "Testing ICT generico senza frequenza e metodologia definite",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 29.82092165420536,
+        "confidence_score": 0.8239341165338452
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 24",
+          "status": "NON_COMPLIANT",
+          "description": "Testing ICT generico senza frequenza e metodologia definite",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 24"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8239341165338452
+    },
+    {
+      "test_case_id": "SYN-DORA-L2-f6a217",
+      "run_timestamp": "2026-02-27T15:05:54.943668",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 28",
+            "status": "NON_COMPLIANT",
+            "description": "Policy fornitori ICT senza due diligence strutturata",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 33.931642074018164,
+        "confidence_score": 0.7359587497744551
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 28",
+          "status": "NON_COMPLIANT",
+          "description": "Policy fornitori ICT senza due diligence strutturata",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 28"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7359587497744551
+    },
+    {
+      "test_case_id": "SYN-NIS2-L1-2a75a7",
+      "run_timestamp": "2026-02-27T15:05:54.943698",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 23",
+            "status": "NON_COMPLIANT",
+            "description": "Nessuna procedura di notifica incidenti al CSIRT",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 52.69256694450766,
+        "confidence_score": 0.7801595225471555
+      },
+      "execution_time_ms": 0.009775161743164062,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 23",
+          "status": "NON_COMPLIANT",
+          "description": "Nessuna procedura di notifica incidenti al CSIRT",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 23"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.7801595225471555
+    },
+    {
+      "test_case_id": "SYN-NIS2-L1-4d80ec",
+      "run_timestamp": "2026-02-27T15:05:54.943724",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 21(2)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Assenza piano di continuità operativa",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 27.118772321767544,
+        "confidence_score": 0.8092815912799407
+      },
+      "execution_time_ms": 0.0045299530029296875,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 21(2)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Assenza piano di continuità operativa",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 21(2)(c)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8092815912799407
+    },
+    {
+      "test_case_id": "SYN-NIS2-L1-4dd2b1",
+      "run_timestamp": "2026-02-27T15:05:54.943753",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 20",
+            "status": "NON_COMPLIANT",
+            "description": "Governance sicurezza senza responsabilità del management",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 58.73236914641252,
+        "confidence_score": 0.8205819562259661
+      },
+      "execution_time_ms": 0.0040531158447265625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 20",
+          "status": "NON_COMPLIANT",
+          "description": "Governance sicurezza senza responsabilità del management",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 20"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8205819562259661
+    },
+    {
+      "test_case_id": "SYN-NIS2-L2-8fbe89",
+      "run_timestamp": "2026-02-27T15:05:54.943778",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 21(2)(d)",
+            "status": "NON_COMPLIANT",
+            "description": "Supply chain security limitata ai fornitori di primo livello",
+            "severity": "major"
+          }
+        ],
+        "compliance_score": 44.21385451540917,
+        "confidence_score": 0.8607595211449457
+      },
+      "execution_time_ms": 0.004291534423828125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 21(2)(d)",
+          "status": "NON_COMPLIANT",
+          "description": "Supply chain security limitata ai fornitori di primo livello",
+          "severity": "major"
+        }
+      ],
+      "true_positives": [
+        "Art. 21(2)(d)"
+      ],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "confidence_score": 0.8607595211449457
+    },
+    {
+      "test_case_id": "GOLDEN-EDGE-001",
+      "run_timestamp": "2026-02-27T15:05:54.943810",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 13(2)(b)",
+            "status": "NON_COMPLIANT",
+            "description": "Mancano diritti interessato",
+            "severity": "critical"
+          },
+          {
+            "article": "Art. 13(1)(c)",
+            "status": "NON_COMPLIANT",
+            "description": "Manca finalita e base giuridica",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 44.09502145163916,
+        "confidence_score": 0.754008036089839
+      },
+      "execution_time_ms": 0.00762939453125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 13(2)(b)",
+          "status": "NON_COMPLIANT",
+          "description": "Mancano diritti interessato",
+          "severity": "critical"
+        },
+        {
+          "article": "Art. 13(1)(c)",
+          "status": "NON_COMPLIANT",
+          "description": "Manca finalita e base giuridica",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 13(1)(c)",
+        "Art. 13(2)(b)"
+      ],
+      "false_negatives": [
+        "Art. 13(1)(a)",
+        "Art. 13(2)(a)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.754008036089839
+    },
+    {
+      "test_case_id": "GOLDEN-EDGE-002",
+      "run_timestamp": "2026-02-27T15:05:54.943874",
+      "normaai_output": {
+        "requirements": [],
+        "compliance_score": 29.635860623040674,
+        "confidence_score": 0.9469470677208877
+      },
+      "execution_time_ms": 0.0040531158447265625,
+      "error": null,
+      "detected_findings": [],
+      "true_positives": [],
+      "false_negatives": [],
+      "false_positives": [],
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "confidence_score": 0.9469470677208877
+    },
+    {
+      "test_case_id": "GOLDEN-EDGE-003",
+      "run_timestamp": "2026-02-27T15:05:54.943893",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 32",
+            "status": "NON_COMPLIANT",
+            "description": "Allegato B D.Lgs. 196/2003 abrogato",
+            "severity": "major"
+          },
+          {
+            "article": "Art. 28(3)(h)",
+            "status": "NON_COMPLIANT",
+            "description": "Diritto di audit eccessivamente limitato",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 53.20461777524314,
+        "confidence_score": 0.7513171971948528
+      },
+      "execution_time_ms": 0.0057220458984375,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 32",
+          "status": "NON_COMPLIANT",
+          "description": "Allegato B D.Lgs. 196/2003 abrogato",
+          "severity": "major"
+        },
+        {
+          "article": "Art. 28(3)(h)",
+          "status": "NON_COMPLIANT",
+          "description": "Diritto di audit eccessivamente limitato",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 32",
+        "Art. 28(3)(h)"
+      ],
+      "false_negatives": [
+        "Art. 46"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.8,
+      "confidence_score": 0.7513171971948528
+    },
+    {
+      "test_case_id": "GOLDEN-EDGE-004",
+      "run_timestamp": "2026-02-27T15:05:54.943959",
+      "normaai_output": {
+        "answer": "Test answer based on regulatory analysis.",
+        "citations": [
+          {
+            "article": "Art. 22",
+            "text": "Decisioni automatizzate senza supervisione umana"
+          }
+        ],
+        "confidence_score": 0.8686230226045343
+      },
+      "execution_time_ms": 0.017642974853515625,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 22",
+          "description": "Decisioni automatizzate senza supervisione umana"
+        }
+      ],
+      "true_positives": [
+        "Art. 22"
+      ],
+      "false_negatives": [
+        "Art. 35"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.8686230226045343
+    },
+    {
+      "test_case_id": "GOLDEN-EDGE-005",
+      "run_timestamp": "2026-02-27T15:05:54.943991",
+      "normaai_output": {
+        "requirements": [
+          {
+            "article": "Art. 23",
+            "status": "NON_COMPLIANT",
+            "description": "Manca notifica al CSIRT entro 24h",
+            "severity": "critical"
+          }
+        ],
+        "compliance_score": 27.65178445826935,
+        "confidence_score": 0.7061668968158865
+      },
+      "execution_time_ms": 0.00476837158203125,
+      "error": null,
+      "detected_findings": [
+        {
+          "article": "Art. 23",
+          "status": "NON_COMPLIANT",
+          "description": "Manca notifica al CSIRT entro 24h",
+          "severity": "critical"
+        }
+      ],
+      "true_positives": [
+        "Art. 23"
+      ],
+      "false_negatives": [
+        "Art. 21(2)(b)"
+      ],
+      "false_positives": [],
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1_score": 0.6666666666666666,
+      "confidence_score": 0.7061668968158865
+    }
+  ],
+  "recall_threshold": 0.95,
+  "precision_threshold": 0.8,
+  "f1_threshold": 0.87
+}

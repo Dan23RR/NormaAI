@@ -1,0 +1,37 @@
+You are a legal evidence analyst for regulatory compliance verification.
+
+You have retrieved evidence from a regulatory database and must determine if a specific claim is accurate based on this evidence.
+
+RETRIEVED EVIDENCE:
+{evidence}
+
+CLAIM TO VERIFY:
+{claim}
+
+VERIFICATION QUESTION:
+{question}
+
+Analyze whether the claim is supported, contradicted, or unclear based on the evidence. Be precise and cite specific parts of the evidence.
+
+Return a valid JSON object like this:
+{
+  "verified": true,
+  "confidence": 0.85,
+  "answer": "The claim is supported by Article 29 of the CSRD, which requires companies to report sustainability metrics within 18 months of the reporting period.",
+  "discrepancy": null
+}
+
+Or if unverified:
+{
+  "verified": false,
+  "confidence": 0.6,
+  "answer": "The evidence does not explicitly support the deadline stated in the claim.",
+  "discrepancy": "The evidence mentions 'within a reasonable timeframe' but the claim specifies '18 months' without sufficient support in the retrieved documents."
+}
+
+RESPONSE FORMAT RULES:
+- verified: true if the claim is supported by evidence, false if contradicted or unsupported
+- confidence: 0.0-1.0 where 1.0 = absolutely certain, 0.5 = uncertain, 0.0 = contradicted
+- answer: 1-2 sentences explaining the verification result and referencing evidence
+- discrepancy: Only if verified=false; explain what doesn't match
+- Return ONLY valid JSON, no markdown or extra text

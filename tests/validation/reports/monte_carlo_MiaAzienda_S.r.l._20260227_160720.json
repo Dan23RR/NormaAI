@@ -1,0 +1,131 @@
+{
+  "company_name": "MiaAzienda S.r.l.",
+  "revenue_eur": 10000000.0,
+  "sector": "technology",
+  "country": "IT",
+  "timestamp": "2026-02-27T16:07:19.615090",
+  "total_violations": 6,
+  "violations_by_framework": {
+    "GDPR": 3,
+    "DORA": 2,
+    "NIS2": 1
+  },
+  "violations_by_severity": {
+    "critical": 4,
+    "major": 2
+  },
+  "n_iterations": 10000,
+  "time_horizon_months": 24,
+  "expected_fine": 349378.33970903145,
+  "fine_var_95": 654367.61235314,
+  "fine_var_99": 783938.4286595056,
+  "expected_total_loss": 1210957.7189841,
+  "total_var_95": 2316813.4632296255,
+  "total_var_99": 2801581.406177931,
+  "total_remediation_cost": 140000.0,
+  "remediation_roi": 8.649697992743572,
+  "framework_risks": {
+    "GDPR": {
+      "violation_count": 3,
+      "expected_fine": 174264.6206817866,
+      "max_exposure": 1200000.0,
+      "remediation_cost": 96000.0
+    },
+    "DORA": {
+      "violation_count": 2,
+      "expected_fine": 51189.35185829678,
+      "max_exposure": 200000.0,
+      "remediation_cost": 24000.0
+    },
+    "NIS2": {
+      "violation_count": 1,
+      "expected_fine": 35091.90240124084,
+      "max_exposure": 200000.0,
+      "remediation_cost": 20000.0
+    }
+  },
+  "distribution_percentiles": {
+    "p5": 237550.1488432389,
+    "p10": 390816.6653776814,
+    "p25": 741482.9477071725,
+    "p50": 1176240.4011060665,
+    "p75": 1637708.6370417862,
+    "p90": 2046202.2985176507,
+    "p95": 2316813.4632296255,
+    "p99": 2801581.406177931
+  },
+  "violation_details": [
+    {
+      "framework": "GDPR",
+      "article": "Art. 13(2)(a)",
+      "severity": "critical",
+      "description": "Missing retention period",
+      "enforcement_probability": 0.5020829407398413,
+      "fine_min_eur": 0,
+      "fine_max_eur": 400000.0,
+      "fine_expected_eur": 64015.57494432977,
+      "remediation_cost_eur": 32000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "GDPR",
+      "article": "Art. 28(3)(h)",
+      "severity": "critical",
+      "description": "No audit rights in DPA",
+      "enforcement_probability": 0.5020829407398413,
+      "fine_min_eur": 0,
+      "fine_max_eur": 400000.0,
+      "fine_expected_eur": 64015.57494432977,
+      "remediation_cost_eur": 32000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "GDPR",
+      "article": "Art. 32",
+      "severity": "major",
+      "description": "Insufficient security measures",
+      "enforcement_probability": 0.3626154572009964,
+      "fine_min_eur": 0,
+      "fine_max_eur": 400000.0,
+      "fine_expected_eur": 46233.470793127046,
+      "remediation_cost_eur": 32000.0,
+      "reputation_cost_multiplier": 2.0
+    },
+    {
+      "framework": "DORA",
+      "article": "Art. 6",
+      "severity": "critical",
+      "description": "No ICT risk framework",
+      "enforcement_probability": 0.6605077659135068,
+      "fine_min_eur": 0,
+      "fine_max_eur": 100000.0,
+      "fine_expected_eur": 29722.84946610781,
+      "remediation_cost_eur": 12000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "DORA",
+      "article": "Art. 30",
+      "severity": "major",
+      "description": "Missing vendor contract clauses",
+      "enforcement_probability": 0.4770333864930882,
+      "fine_min_eur": 0,
+      "fine_max_eur": 100000.0,
+      "fine_expected_eur": 21466.502392188973,
+      "remediation_cost_eur": 12000.0,
+      "reputation_cost_multiplier": 2.0
+    },
+    {
+      "framework": "NIS2",
+      "article": "Art. 23",
+      "severity": "critical",
+      "description": "No incident reporting procedure",
+      "enforcement_probability": 0.4386487800155105,
+      "fine_min_eur": 0,
+      "fine_max_eur": 200000.0,
+      "fine_expected_eur": 35091.90240124084,
+      "remediation_cost_eur": 20000.0,
+      "reputation_cost_multiplier": 3.0
+    }
+  ]
+}

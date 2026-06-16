@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NormaAI — Codex Post-Omnibus 2025-2029</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror dashboard/styles.css) ──────────────── */
+  :root{
+    --bg:#0a0d12; --bg-2:#0e1218;
+    --surface:#11161e; --surface-2:#161c26; --surface-3:#1d2531;
+    --border:rgba(255,255,255,0.08); --border-2:rgba(255,255,255,0.14);
+    --ink:#e6ebf2; --ink-2:#aab3c0; --ink-3:#6f7a8a; --ink-4:#4b5566;
+    --accent:#5b8cff; --accent-2:#3a6cff; --accent-soft:rgba(91,140,255,0.10);
+    --good:#34d399; --warn:#f4b740; --bad:#ef4f63;
+    --fw-csrd:#34d399; --fw-csddd:#5fbcff; --fw-ai_act:#b08bff;
+    --fw-dora:#ff8c5a; --fw-nis2:#f4b740; --fw-taxonomy:#4ad6c2; --fw-gdpr:#ef4f63;
+  }
+
+  /* ─── Print page setup ─────────────────────────────────────────── */
+  @page { size: A4; margin: 12mm 12mm 12mm 12mm; }
+  @page :first { margin: 0; }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:9.5pt; line-height:1.4;
+    font-feature-settings:'cv11','ss01','ss03';
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  body{
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(91,140,255,0.06), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(176,139,255,0.04), transparent 60%),
+      var(--bg);
+    min-height:100vh;
+  }
+
+  /* Each chapter section owns a fresh page. Forcing the break on the
+     <section> instead of the inner <h1.chapter> keeps the page-header
+     attached to the chapter title (no orphans on previous page). */
+  .page{
+    max-width:180mm; margin:0 auto; padding:6mm 0 6mm;
+    page-break-before:always; break-before:page;
+  }
+  .page.toc-page{
+    page-break-before:auto; break-before:auto;
+  }
+
+  /* ─── Cover ─────────────────────────────────────────────────────── */
+  .cover{
+    width:210mm; height:297mm; margin:0 auto;
+    padding:28mm 22mm 22mm;
+    display:flex; flex-direction:column; justify-content:space-between;
+    background:
+      radial-gradient(800px 500px at 80% 0%, rgba(91,140,255,0.18), transparent 60%),
+      radial-gradient(600px 600px at 0% 100%, rgba(176,139,255,0.12), transparent 60%),
+      var(--bg);
+    page-break-after:always;
+    break-after:page;
+  }
+  .cover .brand{ display:flex; align-items:center; gap:10px; }
+  .cover .brand .mark{
+    width:38px; height:38px; border-radius:9px;
+    background:linear-gradient(135deg, var(--accent), #b08bff);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:18pt;
+  }
+  .cover .brand-name{ font-weight:700; font-size:14pt; letter-spacing:-0.01em; }
+  .cover h1{
+    font-size:42pt; font-weight:800; letter-spacing:-0.025em;
+    line-height:1.02; margin:0 0 12pt;
+  }
+  .cover h1 .accent{
+    background:linear-gradient(90deg,var(--accent),#b08bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .cover .subtitle{
+    font-size:13pt; font-weight:400; color:var(--ink-2); max-width:140mm;
+    margin:0 0 18pt; line-height:1.45;
+  }
+  .cover .meta{
+    border-top:1px solid var(--border-2);
+    padding-top:14pt; color:var(--ink-3);
+    font-family:'Geist Mono',monospace; font-size:9pt;
+  }
+  .cover .meta div{ margin:2pt 0; }
+  .cover .badge{
+    display:inline-block; margin-top:6pt;
+    border:1px solid var(--accent); color:var(--accent);
+    font-size:8.5pt; padding:4pt 9pt; border-radius:999px;
+    font-family:'Geist Mono',monospace; font-weight:500;
+  }
+
+  /* ─── Headings ──────────────────────────────────────────────────── */
+  h1.chapter{
+    font-size:20pt; font-weight:800; letter-spacing:-0.02em;
+    margin:0 0 6pt; color:var(--ink);
+    page-break-after:avoid; break-after:avoid;
+  }
+  h1.chapter .num{
+    font-family:'Geist Mono',monospace; font-size:10pt; font-weight:500;
+    color:var(--accent); display:block; margin-bottom:2pt;
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
+  h2{
+    font-size:13pt; font-weight:700; letter-spacing:-0.01em;
+    margin:14pt 0 5pt; color:var(--ink);
+    border-left:3px solid var(--accent); padding-left:9pt;
+    page-break-after:avoid; break-after:avoid;
+  }
+  h3{
+    font-size:11.5pt; font-weight:600;
+    margin:14pt 0 4pt; color:var(--ink);
+  }
+  h4{
+    font-size:10pt; font-weight:600; color:var(--ink-2);
+    margin:10pt 0 4pt; text-transform:uppercase; letter-spacing:0.05em;
+  }
+  p{ margin:6pt 0; color:var(--ink); }
+  p strong{ color:#fff; font-weight:600; }
+  ul,ol{ margin:6pt 0 6pt 18pt; padding:0; }
+  li{ margin:3pt 0; color:var(--ink); }
+
+  /* ─── Tables ───────────────────────────────────────────────────── */
+  table{
+    width:100%; border-collapse:collapse; margin:8pt 0;
+    font-size:9pt;
+    page-break-inside:avoid; break-inside:avoid;
+  }
+  thead th{
+    text-align:left; padding:5pt 7pt;
+    background:var(--surface-2); color:var(--ink-2);
+    font-weight:600; text-transform:uppercase; letter-spacing:0.04em;
+    font-size:8pt; border-bottom:1px solid var(--border-2);
+  }
+  tbody td{
+    padding:5pt 7pt; border-bottom:1px solid var(--border);
+    color:var(--ink); vertical-align:top;
+  }
+  tbody tr:hover td{ background:var(--surface); }
+
+  /* ─── Box (Punto operativo, Trap commerciale, Note) ────────────── */
+  .box{
+    background:var(--surface); border-left:3px solid var(--accent);
+    padding:8pt 12pt; margin:9pt 0; border-radius:0 5px 5px 0;
+    color:var(--ink-2); font-size:9pt;
+    page-break-inside:avoid; break-inside:avoid;
+  }
+  .box.warn{ border-color:var(--warn); background:rgba(244,183,64,0.05); }
+  .box.bad{ border-color:var(--bad); background:rgba(239,79,99,0.05); }
+  .box.good{ border-color:var(--good); background:rgba(52,211,153,0.05); }
+  .box .label{
+    display:block; font-size:8pt; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--accent); margin-bottom:4pt;
+  }
+  .box.warn .label{ color:var(--warn); }
+  .box.bad .label{ color:var(--bad); }
+  .box.good .label{ color:var(--good); }
+  .box p{ margin:4pt 0; color:var(--ink-2); }
+  .box strong{ color:var(--ink); }
+
+  /* ─── Framework chips ──────────────────────────────────────────── */
+  .fw-tag{
+    display:inline-block; font-family:'Geist Mono',monospace;
+    font-size:8pt; font-weight:600; padding:1pt 6pt;
+    border:1px solid var(--border-2); border-radius:4px;
+    background:rgba(255,255,255,0.03); margin-right:3pt;
+  }
+  .fw-csrd{ color:var(--fw-csrd); border-color:rgba(52,211,153,0.4); }
+  .fw-csddd{ color:var(--fw-csddd); border-color:rgba(95,188,255,0.4); }
+  .fw-ai_act{ color:var(--fw-ai_act); border-color:rgba(176,139,255,0.4); }
+  .fw-dora{ color:var(--fw-dora); border-color:rgba(255,140,90,0.4); }
+  .fw-nis2{ color:var(--fw-nis2); border-color:rgba(244,183,64,0.4); }
+  .fw-taxonomy{ color:var(--fw-taxonomy); border-color:rgba(74,214,194,0.4); }
+  .fw-gdpr{ color:var(--fw-gdpr); border-color:rgba(239,79,99,0.4); }
+
+  /* ─── Code / mono blocks ─────────────────────────────────────────── */
+  pre, code{ font-family:'Geist Mono',monospace; font-size:9pt; }
+  pre{
+    background:var(--surface-2); border:1px solid var(--border);
+    padding:10pt; border-radius:6px;
+    color:var(--ink-2); white-space:pre-wrap; line-height:1.4;
+    overflow-x:auto;
+  }
+
+  /* ─── TOC ─────────────────────────────────────────────────────── */
+  .toc{ margin:24pt 0; }
+  .toc h2{ border-left:none; padding-left:0; }
+  .toc-entry{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:6pt 0; border-bottom:1px dashed var(--border);
+    font-size:11pt;
+  }
+  .toc-entry .title{ color:var(--ink); font-weight:500; }
+  .toc-entry .num{ color:var(--accent); font-family:'Geist Mono',monospace; font-size:9pt; min-width:24pt; }
+  .toc-entry .page-num{ color:var(--ink-3); font-family:'Geist Mono',monospace; font-size:9pt; }
+
+  /* ─── Footer / footnotes / citations ───────────────────────────── */
+  .footnote-ref, sup{ font-size:0.7em; color:var(--accent); vertical-align:super; }
+  .citations{ margin-top:24pt; font-size:8.5pt; color:var(--ink-2); }
+  .citations h2{ font-size:11pt; }
+  .citations a{ color:var(--accent); word-break:break-all; }
+
+  /* ─── Page header ──────────────────────────────────────────────── */
+  .page-header{
+    display:flex; align-items:center; gap:8pt;
+    border-bottom:1px solid var(--border); padding-bottom:6pt; margin-bottom:14pt;
+    font-size:8.5pt; color:var(--ink-3); font-family:'Geist Mono',monospace;
+  }
+  .page-header .mark{
+    width:18px; height:18px; border-radius:4px;
+    background:linear-gradient(135deg,var(--accent),#b08bff);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:9pt;
+  }
+
+  /* ─── Print refinements ────────────────────────────────────────── */
+  @media print{
+    body{ background:var(--bg)!important; }
+    .page{ padding:0; }
+    a{ color:var(--accent); text-decoration:none; }
+    .no-print{ display:none; }
+    h2{ page-break-after:avoid; }
+    table{ page-break-inside:avoid; }
+    .box{ page-break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═════════════ COVER ═════════════ -->
+<section class="cover">
+  <div class="brand">
+    <div class="mark">N</div>
+    <div class="brand-name">NormaAI</div>
+  </div>
+  <div>
+    <span class="badge">v1.0 · aprile 2026</span>
+    <h1>Codex<br><span class="accent">Post-Omnibus</span><br>2025–2029</h1>
+    <p class="subtitle">La guida operativa per consulenti ESG italiani dopo il riassetto del pacchetto Omnibus I. Soglie, calendario, errori da evitare, glossario.</p>
+  </div>
+  <div class="meta">
+    <div>Editor: NormaAI · info@normaai.org</div>
+    <div>Verifica fonti: 28 aprile 2026 · 11 fonti primarie EU/IT</div>
+    <div>Disclaimer: guida operativa, non parere legale</div>
+  </div>
+</section>
+
+<!-- ═════════════ TOC ═════════════ -->
+<section class="page toc-page">
+  <div class="page-header">
+    <div class="mark">N</div>
+    <span>NormaAI · Codex Post-Omnibus 2025–2029 · Indice</span>
+  </div>
+  <h1 class="chapter"><span class="num">Indice</span>Cosa troverai in questa guida</h1>
+  <div class="toc">
+    <div class="toc-entry"><span class="num">01</span><span class="title">Cosa è cambiato col pacchetto Omnibus I</span><span class="page-num">p. 3</span></div>
+    <div class="toc-entry"><span class="num">02</span><span class="title">Flowchart "Sono in scope?"</span><span class="page-num">p. 7</span></div>
+    <div class="toc-entry"><span class="num">03</span><span class="title">ESRS Set 1: cosa resta dopo la riduzione</span><span class="page-num">p. 9</span></div>
+    <div class="toc-entry"><span class="num">04</span><span class="title">VSME Standard: la scialuppa volontaria operativa</span><span class="page-num">p. 11</span></div>
+    <div class="toc-entry"><span class="num">05</span><span class="title">Calendario adempimenti 2026–2029</span><span class="page-num">p. 13</span></div>
+    <div class="toc-entry"><span class="num">06</span><span class="title">I 10 errori più comuni nelle prime disclosure CSRD</span><span class="page-num">p. 15</span></div>
+    <div class="toc-entry"><span class="num">07</span><span class="title">Glossario operativo</span><span class="page-num">p. 18</span></div>
+    <div class="toc-entry"><span class="num">★</span><span class="title">Note e fonti</span><span class="page-num">p. 21</span></div>
+  </div>
+</section>
+
+<!-- ═════════════ CAP 1 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 01 · Cosa è cambiato col pacchetto Omnibus I</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 01</span>Cosa è cambiato col pacchetto Omnibus I</h1>
+
+  <h2>1.1 Il contesto politico: Letta + Draghi → semplificazione</h2>
+  <p>Tra la primavera e l'autunno 2024, due rapporti hanno spostato l'agenda regolatoria europea sulla <strong>competitività</strong>:</p>
+  <ul>
+    <li><strong>Rapporto Letta</strong> — <em>"Much more than a market"</em> — presentato da Enrico Letta al Consiglio Europeo del <strong>18 aprile 2024</strong>.<sup>1</sup></li>
+    <li><strong>Rapporto Draghi</strong> — <em>"The future of European competitiveness"</em> — consegnato il <strong>9 settembre 2024</strong>, presentato al Parlamento UE il 17 settembre.<sup>2</sup></li>
+  </ul>
+  <p>Il Consiglio Europeo di ottobre 2024 ha invitato istituzioni e Stati membri a portare avanti il lavoro. La <strong>Dichiarazione di Budapest dell'8 novembre 2024</strong> ha richiesto formalmente di "lanciare una rivoluzione di semplificazione".<sup>3</sup></p>
+  <p>Da qui nascono i pacchetti <strong>Omnibus</strong>. Il primo è stato proposto dalla Commissione il <strong>26 febbraio 2025</strong> come <em>Omnibus I — Sustainability Simplification Package</em> (COM(2025) 80 + 81 final).<sup>4</sup></p>
+
+  <h3>Cronologia di adozione (verificata fonte per fonte)</h3>
+  <table>
+    <thead><tr><th>Data</th><th>Evento</th></tr></thead>
+    <tbody>
+      <tr><td>26 feb 2025</td><td>Proposta Commissione (COM(2025) 80 + 81)</td></tr>
+      <tr><td>14 apr 2025</td><td>Council adotta "Stop-the-clock"</td></tr>
+      <tr><td>23 giu 2025</td><td>Council position</td></tr>
+      <tr><td>31 lug – 29 set 2025</td><td>Public consultation EFRAG ESRS Set 1</td></tr>
+      <tr><td>9 dic 2025</td><td>Provisional agreement Council + Parlamento</td></tr>
+      <tr><td>16 dic 2025</td><td>Parlamento UE approvazione plenaria (428–218–17)</td></tr>
+      <tr><td>24 feb 2026</td><td>Council final sign-off</td></tr>
+      <tr><td>fine feb 2026</td><td>Pubblicazione Gazzetta Ufficiale UE</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">Punto operativo</span>
+    <p>Omnibus I non è un atto unico ma un <strong>pacchetto</strong> che modifica almeno tre atti pre-esistenti: CSRD (Dir. 2022/2464), CSDDD (Dir. 2024/1760), ESRS Set 1 (Reg. 2023/2772). Per ogni claim normativo che fai oggi a un cliente, devi sapere <strong>quale versione consolidata</strong> stai citando — pre- o post-Omnibus.</p>
+  </div>
+
+  <h2>1.2 CSRD: il riassetto dello scope</h2>
+  <p>La modifica più strutturale riguarda la <span class="fw-tag fw-csrd">CSRD</span> Direttiva (UE) 2022/2464. Le nuove soglie sono <strong>cumulative AND</strong>, non più "2 su 3" come pre-Omnibus.<sup>5,6</sup></p>
+
+  <table>
+    <thead><tr><th>Aspetto</th><th>Pre-Omnibus</th><th>Post-Omnibus I</th></tr></thead>
+    <tbody>
+      <tr><td>Numero medio dipendenti</td><td>&gt; 250</td><td><strong>&gt; 1.000</strong></td></tr>
+      <tr><td>Net annual turnover</td><td>(≥ 1 di) ricavi &gt; €50M <em>o</em> bilancio &gt; €25M</td><td><strong>&gt; €450 milioni</strong></td></tr>
+      <tr><td>Logica soglie</td><td>2 di 3 condizioni</td><td><strong>AND cumulativa</strong></td></tr>
+      <tr><td>Listed SMEs</td><td>In scope</td><td><strong>Escluse</strong></td></tr>
+      <tr><td>Aziende terze (non-EU)</td><td>Soglie eq.</td><td>parent &gt; €450M EU + sussidiaria &gt; €200M EU</td></tr>
+      <tr><td>Wave 1 (FY2024 reporters)</td><td>Reporting continua</td><td><strong>Esenzione FY2025–2026</strong></td></tr>
+      <tr><td>Financial holding undertakings</td><td>In scope</td><td><strong>Esenti</strong> consolidated reporting</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Effetto pratico:</strong> circa <strong>80% delle aziende</strong> uscirà dal perimetro CSRD obbligatorio rispetto al testo pre-Omnibus (dato Commissione, confermato in trilogue).<sup>7</sup></p>
+
+  <div class="box warn">
+    <span class="label">Aggiornamento clausola di revisione</span>
+    <p>Omnibus I introduce una <strong>review clause</strong> esplicita per una possibile estensione futura dello scope di CSRD/CSDDD. Il consulente deve preparare il cliente a un possibile re-allargamento del perimetro tra qualche anno.</p>
+  </div>
+
+  <h2>1.3 ESRS Set 1: il taglio dei datapoint</h2>
+  <p>Il Set 1 (Implementing Reg. UE 2023/2772) era organizzato in 12 standard: cross-cutting (ESRS 1, ESRS 2), topical environmental (E1–E5), social (S1–S4), governance (G1).</p>
+  <p>EFRAG ha consegnato l'<em>Amended ESRS Final</em> il 3 dicembre 2025.<sup>8</sup> Numeri ufficiali:</p>
+  <table>
+    <thead><tr><th>Misura</th><th>Riduzione</th></tr></thead>
+    <tbody>
+      <tr><td>Mandatory datapoint (da riportare se materiali)</td><td><strong>−57%</strong></td></tr>
+      <tr><td>Mandatory datapoint (final technical advice EFRAG)</td><td><strong>−61%</strong></td></tr>
+      <tr><td>Set completo (mandatory + voluntary)</td><td><strong>−68%</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Le riduzioni sono concentrate su: (1) datapoint quantitativi catena del valore Tier 2/3 → subject to materiality; (2) disclosure descrittive ridondanti rispetto a ESRS 2; (3) sector-specific reporting → diventa <strong>volontario</strong>.</p>
+
+  <div class="box good">
+    <span class="label">Cosa NON è cambiato</span>
+    <p>La <strong>doppia materialità</strong> resta il fulcro metodologico. Il datapoint ridotto non semplifica il lavoro intellettuale di assessment.</p>
+  </div>
+
+  <h2>1.4 CSDDD: scope ristretto + delay + obblighi rimossi</h2>
+  <p><span class="fw-tag fw-csddd">CSDDD</span> Direttiva (UE) 2024/1760 — modifiche strutturali, non solo calendario.<sup>6</sup></p>
+
+  <h3>Scope ristretto</h3>
+  <table>
+    <thead><tr><th>Aspetto</th><th>Pre-Omnibus</th><th>Post-Omnibus I</th></tr></thead>
+    <tbody>
+      <tr><td>Numero dipendenti</td><td>Soglia inferiore</td><td><strong>&gt; 5.000</strong></td></tr>
+      <tr><td>Net annual turnover</td><td>Soglia inferiore</td><td><strong>&gt; €1,5 miliardi</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Calendario rivisto</h3>
+  <table>
+    <thead><tr><th>Aspetto</th><th>Originale</th><th>Post-Omnibus I</th></tr></thead>
+    <tbody>
+      <tr><td>Transposition nazionale</td><td>luglio 2026</td><td><strong>26 luglio 2028</strong></td></tr>
+      <tr><td>Prima compliance</td><td>luglio 2027</td><td><strong>luglio 2029</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Obblighi rimossi o modificati</h3>
+  <ul>
+    <li><strong>Climate transition plan obligation:</strong> rimossa</li>
+    <li><strong>EU harmonised liability regime:</strong> rimosso (resta a livello nazionale)</li>
+    <li><strong>Mandatory comprehensive value chain mapping:</strong> sostituito da <em>general scoping exercise</em></li>
+    <li><strong>Penalties cap:</strong> max 3% del net worldwide turnover</li>
+  </ul>
+
+  <h2>1.5 EU Taxonomy: scope reporting allineato</h2>
+  <p><span class="fw-tag fw-taxonomy">EU TAX</span> Reg. (UE) 2020/852 + Reg. delegato 2021/2178 — perimetro reporting allineato a CSRD post-Omnibus. I <strong>6 obiettivi ambientali</strong> restano invariati (Art. 9): climate mitigation, climate adaptation, water/marine, circular economy, pollution prevention, biodiversity.<sup>9</sup></p>
+  <div class="box bad">
+    <span class="label">Trap commerciale frequente</span>
+    <p>Clienti PMI escludono la Taxonomy perché non in scope CSRD post-Omnibus. <strong>Sbagliato.</strong> Se accedono a finanziamento bancario, la banca è obbligata a riportare la propria GAR — e per farlo richiede disclosure Taxonomy-eligible/aligned dalle aziende finanziate.</p>
+  </div>
+
+  <h2>1.6 VSME Standard: la scialuppa volontaria</h2>
+  <p>EFRAG ha consegnato il <strong>Voluntary Sustainability Reporting Standard for non-listed SMEs</strong> il <strong>12 dicembre 2024</strong>. Commission Recommendation 30 luglio 2025.<sup>10</sup></p>
+  <ul>
+    <li><strong>Basic Module:</strong> 11 disclosures (target principalmente micro-imprese, utilizzabile da tutte le PMI)</li>
+    <li><strong>Comprehensive Module:</strong> 9 disclosures aggiuntive (target richieste banche/investitori)</li>
+    <li><strong>Caratteristica chiave:</strong> nessuna materiality assessment richiesta — logica "if applicable"</li>
+  </ul>
+</section>
+
+<!-- ═════════════ CAP 2 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 02 · Flowchart "Sono in scope?"</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 02</span>Flowchart "Sono in scope?"</h1>
+
+  <h2>2.1 CSRD — Soglie post-Omnibus</h2>
+  <pre>
+                  ┌────────────────────────────────────┐
+                  │   Cliente è azienda EU domiciled?  │
+                  └────────────────────────────────────┘
+                          │              │
+                         SÌ              NO
+                          ▼              ▼
+            ┌──────────────────┐   ┌─────────────────────────┐
+            │ Dipendenti medi  │   │ Net turnover EU > €450M?│
+            │ annui > 1.000?   │   └─────────────────────────┘
+            └──────────────────┘            │
+                  │                         ▼
+                 SÌ → AND turnover           IN SCOPE non-EU
+                       > €450M?                 reporting
+                       │
+                      SÌ → IN SCOPE CSRD
+                      (verifica esenzioni
+                       Wave1 / Listed SME)
+  </pre>
+
+  <h3>Esempi pratici</h3>
+  <table>
+    <thead><tr><th>Cliente</th><th>Dip.</th><th>Turnover</th><th>Esito</th></tr></thead>
+    <tbody>
+      <tr><td>Studio Fashion S.r.l. (PMI Veneto)</td><td>600</td><td>€120M</td><td><span style="color:var(--ink-3)">FUORI SCOPE</span> — pressione indiretta via VSME</td></tr>
+      <tr><td>Manufacturing Co. S.p.A.</td><td>1.200</td><td>€380M</td><td><span style="color:var(--ink-3)">FUORI SCOPE</span> — manca soglia turnover</td></tr>
+      <tr><td>Industrial Group S.p.A.</td><td>1.500</td><td>€620M</td><td><span style="color:var(--good)"><strong>IN SCOPE</strong></span> — entrambe soglie OK</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2.2 CSDDD — Decisione di scope</h2>
+  <pre>
+   ┌─────────────────────────────────┐
+   │ Dipendenti medi annui > 5.000?  │
+   └─────────────────────────────────┘
+           │
+          SÌ → AND turnover > €1,5 mld?
+                │
+               SÌ → IN SCOPE CSDDD (compliance da luglio 2029)
+  </pre>
+  <div class="box">
+    <span class="label">Nota</span>
+    <p>Una boutique di consulenza ESG italiana avrà tipicamente <strong>zero clienti diretti</strong> in scope CSDDD. Il valore commerciale è <strong>indiretto</strong>: clienti che sono fornitori di gruppi CSDDD-obbligati e ricevono richieste di disclosure in catena.</p>
+  </div>
+
+  <h2>2.3 EU Taxonomy — Decisione di scope</h2>
+  <pre>
+   In scope CSRD post-Omnibus?
+       SÌ → OBBLIGATO TAXONOMY REPORTING DIRETTO
+       NO → Cliente di banca/investitore in scope?
+              SÌ → DISCLOSURE INDIRETTA (per GAR del finanziatore)
+              NO → FUORI SCOPE
+  </pre>
+
+  <h2>2.4 Anti-pattern: quando il flowchart NON basta</h2>
+  <p>Il flowchart è un primo filtro. Tre situazioni richiedono <strong>analisi caso-per-caso</strong> prima di concludere "fuori scope":</p>
+
+  <h3>Caso 1 — Gruppi consolidati a perimetro variabile</h3>
+  <p>Una holding con perimetro di consolidamento "in evoluzione" (es: acquisizioni recenti o cessioni in corso) può oscillare sopra/sotto le soglie nell'arco di un esercizio. Il scope CSRD si valuta sul <strong>perimetro a fine esercizio</strong> (data di chiusura del bilancio civile), ma l'audit della disclosure prossima richiede dati di gestione di tutto l'anno.</p>
+  <div class="box warn">
+    <span class="label">Operativo</span>
+    <p>Per gruppi a perimetro variabile, il consulente deve impostare la <strong>raccolta dati ESG su perimetro pro-forma</strong> sin da inizio esercizio, anche se la decisione finale di scope arriva solo a chiusura. Costo aggiuntivo, ma evita il rischio di trovarsi a marzo dell'anno successivo senza dati per la disclosure.</p>
+  </div>
+
+  <h3>Caso 2 — Branch e succursali italiane di gruppi extra-UE</h3>
+  <p>Una società di diritto italiano controllata da un gruppo non-EU oltre la soglia €450M EU turnover può ricadere nello scope come <em>EU subsidiary</em> separatamente dall'obbligo del parent extra-UE. La verifica richiede di leggere il consolidato del gruppo non-EU e tracciarne il turnover EU per Stato membro.</p>
+
+  <h3>Caso 3 — Joint Venture e partecipazioni rilevanti</h3>
+  <p>Una JV 50/50 tra due gruppi può essere consolidata diversamente nei due bilanci civili (es: equity method per uno, integrale per l'altro). L'inclusione nello scope CSRD dipende dal trattamento contabile <strong>nel bilancio del gruppo che invoca la JV come parte del proprio perimetro di reporting</strong>.</p>
+
+  <div class="box">
+    <span class="label">Diagnostica della prima call con il cliente</span>
+    <p>Tre domande da fare nei primi 15 minuti per capire se il flowchart standard si applica o servono approfondimenti:</p>
+    <ol>
+      <li>"Quanti dipendenti aveva il gruppo a fine esercizio scorso? E quale numero medio annuo?"</li>
+      <li>"Il consolidamento include sussidiarie estere? Quante e in quali paesi?"</li>
+      <li>"Avete in corso M&amp;A o ristrutturazioni del perimetro?"</li>
+    </ol>
+    <p>Se la terza risposta è "sì", il flowchart non è sufficiente — l'analisi diventa multi-scenario.</p>
+  </div>
+</section>
+
+<!-- ═════════════ CAP 3 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 03 · ESRS Set 1: cosa resta</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 03</span>ESRS Set 1: cosa resta dopo la riduzione</h1>
+
+  <h2>3.1 I 12 standard del Set 1</h2>
+
+  <h3>Cross-cutting (mandatori, sempre applicabili)</h3>
+  <table>
+    <thead><tr><th>Standard</th><th>Nome</th><th>Contenuto</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ESRS 1</strong></td><td>General requirements</td><td>Principi generali, doppia materialità, value chain, time horizon</td></tr>
+      <tr><td><strong>ESRS 2</strong></td><td>General disclosures</td><td>Strategy &amp; business model, governance, materiality assessment process</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Topical Environmental (E1-E5)</h3>
+  <table>
+    <thead><tr><th>Standard</th><th>Tema</th><th>Status post-revisione</th></tr></thead>
+    <tbody>
+      <tr><td><strong>E1</strong></td><td>Climate change</td><td>Subject to materiality</td></tr>
+      <tr><td><strong>E2</strong></td><td>Pollution</td><td>Subject to materiality</td></tr>
+      <tr><td><strong>E3</strong></td><td>Water and marine resources</td><td>Subject to materiality</td></tr>
+      <tr><td><strong>E4</strong></td><td>Biodiversity and ecosystems</td><td>Subject to materiality</td></tr>
+      <tr><td><strong>E5</strong></td><td>Resource use and circular economy</td><td>Subject to materiality</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Topical Social (S1-S4) e Governance (G1)</h3>
+  <table>
+    <thead><tr><th>Standard</th><th>Tema</th></tr></thead>
+    <tbody>
+      <tr><td><strong>S1</strong></td><td>Own workforce</td></tr>
+      <tr><td><strong>S2</strong></td><td>Workers in the value chain</td></tr>
+      <tr><td><strong>S3</strong></td><td>Affected communities</td></tr>
+      <tr><td><strong>S4</strong></td><td>Consumers and end-users</td></tr>
+      <tr><td><strong>G1</strong></td><td>Business conduct (anti-corruption, supplier relationships, lobbying)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3.2 Le tre direzioni del taglio</h2>
+  <ol>
+    <li><strong>Datapoint quantitativi su catena del valore Tier 2/3:</strong> da mandatory a subject to materiality.</li>
+    <li><strong>Disclosure descrittive ridondanti</strong> rispetto a ESRS 2 (general disclosures).</li>
+    <li><strong>Sector-specific reporting:</strong> volontario (era previsto come futuro standard mandatorio).</li>
+  </ol>
+
+  <h2>3.3 I 4 invarianti metodologici</h2>
+  <ul>
+    <li><strong>Doppia materialità</strong> (impact + financial): resta il fulcro</li>
+    <li><strong>Time horizon multipli:</strong> short (≤1y), medium (1–5y), long (&gt;5y)</li>
+    <li><strong>Value chain reporting</strong> (con flessibilità su profondità)</li>
+    <li><strong>Targets science-based</strong> richiesti per E1 climate (SBTi-aligned) e progressivamente per altri E-standard</li>
+  </ul>
+
+  <div class="box">
+    <span class="label">Materiality assessment: il vero collo di bottiglia 2026</span>
+    <p>Il datapoint ridotto non semplifica il lavoro intellettuale. Una materiality assessment ben strutturata richiede: stakeholder mapping documentato, impact assessment qualitativo + quantitativo (severity, scope, irremediability), financial materiality (probability × magnitude su 5–10 anni), threshold definition esplicita, documentazione del processo decisionale.</p>
+  </div>
+
+  <h2>3.4 Workflow Materiality Assessment in 5 step</h2>
+  <p>Lo schema operativo che il consulente esperto applica a ogni cliente CSRD. Ogni step ha output documentale verificabile.</p>
+
+  <table>
+    <thead><tr><th>Step</th><th>Attività</th><th>Output documentale</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Stakeholder mapping</strong></td><td>Identificare gli stakeholder rilevanti (interni + esterni). Usare matrice power-interest per prioritizzare.</td><td>Lista stakeholder con criterio di selezione + tracking del processo decisionale</td></tr>
+      <tr><td><strong>2. Topic universe</strong></td><td>Costruire la lista dei topic ESRS potenzialmente material per settore/business model. Include benchmark settoriale.</td><td>Topic universe documentato, mappato sui 10 topical standard E1–E5/S1–S4/G1</td></tr>
+      <tr><td><strong>3. Impact materiality</strong></td><td>Per ogni topic: assessment di severity, scope (n. persone/aree affette), irremediability. Score 1–5 su ciascuna dimensione.</td><td>Matrice impact con score, evidenza di consultazione stakeholder</td></tr>
+      <tr><td><strong>4. Financial materiality</strong></td><td>Per ogni topic: probability × magnitude su orizzonte 5–10 anni. Quantificazione monetaria dove possibile (es: €/MtCO2 carbon price scenario).</td><td>Matrice financial con assumptions documentate</td></tr>
+      <tr><td><strong>5. Threshold &amp; sign-off</strong></td><td>Definizione esplicita del threshold ("score &gt; 3 su almeno una dimensione = material"). Approvazione governance documentata (CdA o Comitato Sostenibilità).</td><td>Verbale governance + matrice finale con flag material/non-material</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Esempio di stakeholder mapping per settore</h3>
+  <table>
+    <thead><tr><th>Settore</th><th>Stakeholder ad alta priorità</th><th>Topic ESRS prevalentemente material</th></tr></thead>
+    <tbody>
+      <tr><td>Manufacturing pesante</td><td>Comunità locali, lavoratori operai, autorità ambientali, clienti B2B</td><td>E1 climate, E2 pollution, E5 circular economy, S1 own workforce</td></tr>
+      <tr><td>Financial services</td><td>Investitori, clienti retail, regolatori (BCE/Banca d'Italia), portfolio companies</td><td>E1 climate (financed emissions), G1 business conduct, S4 consumers</td></tr>
+      <tr><td>Retail / consumer goods</td><td>Consumatori finali, fornitori value chain, ONG, media</td><td>S2 value chain workers, S4 consumers, E5 circular economy</td></tr>
+      <tr><td>Tech / SaaS</td><td>Dipendenti tech, partner cloud, regolatori privacy/AI</td><td>S1 own workforce (D&amp;I), G1 (data governance), E1 (datacenter footprint)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box bad">
+    <span class="label">Errore osservabile in 8/10 prime disclosure</span>
+    <p>Il consulente che salta lo step 1 (stakeholder mapping) e si limita a "elencare topic standard" produce una matrice che <strong>non regge un audit serio</strong>. La domanda dell'auditor sarà: <em>"perché avete escluso questo topic dalla materiality? Chi lo ha deciso?"</em> Senza tracciamento documentale, la risposta è zoppa.</p>
+  </div>
+</section>
+
+<!-- ═════════════ CAP 4 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 04 · VSME operativo</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 04</span>VSME Standard: la scialuppa volontaria operativa</h1>
+
+  <h2>4.1 Quattro casi d'uso primari</h2>
+  <ol>
+    <li><strong>Pressione contrattuale</strong> da clienti CSRD-obbligati (PMI fornitrici Tier 1/2)</li>
+    <li><strong>Pressione bancaria</strong> (banche in scope EU Taxonomy/GAR richiedono disclosure ai finanziati)</li>
+    <li><strong>Gare appalto ESG-criterio</strong> (sempre più gare pubbliche europee includono criteri ESG)</li>
+    <li><strong>Posizionamento volontario di mercato</strong> (differenziazione B2B/retail)</li>
+  </ol>
+
+  <h2>4.2 Le 11 disclosures del Basic Module</h2>
+  <table>
+    <thead><tr><th>#</th><th>Tema</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>Basis for preparation</td></tr>
+      <tr><td>B2</td><td>Practices, policies and future initiatives</td></tr>
+      <tr><td>B3</td><td>Energy and GHG emissions (Scope 1 + 2)</td></tr>
+      <tr><td>B4</td><td>Pollution of air, water and soil</td></tr>
+      <tr><td>B5</td><td>Biodiversity</td></tr>
+      <tr><td>B6</td><td>Water</td></tr>
+      <tr><td>B7</td><td>Resource use, circular economy and waste</td></tr>
+      <tr><td>B8</td><td>Workforce — General characteristics</td></tr>
+      <tr><td>B9</td><td>Workforce — Health and safety</td></tr>
+      <tr><td>B10</td><td>Workforce — Remuneration, collective bargaining, training</td></tr>
+      <tr><td>B11</td><td>Convictions and fines for corruption and bribery</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4.3 Le 9 disclosures del Comprehensive Module</h2>
+  <table>
+    <thead><tr><th>#</th><th>Tema</th></tr></thead>
+    <tbody>
+      <tr><td>C1</td><td>Strategy: business model and sustainability initiatives</td></tr>
+      <tr><td>C2</td><td>Practices/policies extended</td></tr>
+      <tr><td>C3</td><td>GHG reduction targets and climate transition plan</td></tr>
+      <tr><td>C4</td><td>Climate risks (physical + transition)</td></tr>
+      <tr><td>C5</td><td>Additional workforce characteristics (diversity, training, turnover)</td></tr>
+      <tr><td>C6</td><td>Human rights policies and processes (own workforce)</td></tr>
+      <tr><td>C7</td><td>Severe negative human rights incidents</td></tr>
+      <tr><td>C8</td><td>Revenues from sectors excluded from EU benchmarks</td></tr>
+      <tr><td>C9</td><td>Gender diversity ratio in governance body</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box good">
+    <span class="label">Caratteristica chiave</span>
+    <p>Il VSME <strong>non richiede materiality assessment</strong>. Adotta logica "if applicable" — ogni datapoint si applica solo se rilevante per l'attività. È la differenza operativa fondamentale rispetto a CSRD/ESRS.</p>
+  </div>
+
+  <h2>4.4 Struttura tipica progetto VSME (4 settimane)</h2>
+  <table>
+    <thead><tr><th>Settimana</th><th>Attività</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Kick-off, scope definition, perimetro consolidamento, Basic vs Comprehensive choice</td></tr>
+      <tr><td>2</td><td>Data collection (questionario 11 datapoint Basic), interviste HR/Operations</td></tr>
+      <tr><td>3</td><td>Drafting B1–B11 con calcoli GHG (fattori MITE/DEFRA/EPA), workforce metrics</td></tr>
+      <tr><td>4</td><td>Review interna, cross-check materiality "if applicable", consegna report</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═════════════ CAP 5 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 05 · Calendario adempimenti 2026–2029</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 05</span>Calendario adempimenti 2026–2029</h1>
+
+  <h2>5.1 I 7 framework — stato attuale + prossima milestone</h2>
+  <table>
+    <thead><tr><th>Framework</th><th>Stato (apr 2026)</th><th>Prossima milestone</th></tr></thead>
+    <tbody>
+      <tr><td><span class="fw-tag fw-csrd">CSRD</span> post-Omnibus</td><td>OJ pubblicato fine feb 2026</td><td>Reporting FY2027 nuove soglie</td></tr>
+      <tr><td><span class="fw-tag fw-csddd">CSDDD</span> post-Omnibus</td><td>Entrato in vigore</td><td>Transposition: 26 lug 2028 · Compliance: lug 2029</td></tr>
+      <tr><td>ESRS Set 1 revisione</td><td>EFRAG final 3 dic 2025</td><td>Implementing Reg. aggiornata in pubblicazione</td></tr>
+      <tr><td><span class="fw-tag fw-taxonomy">EU TAX</span></td><td>In vigore</td><td>Allineamento scope CSRD post-Omnibus</td></tr>
+      <tr><td><span class="fw-tag fw-dora">DORA</span></td><td><strong>In applicazione dal 17 gen 2025</strong></td><td>Implementing acts ESMA/EBA/EIOPA</td></tr>
+      <tr><td><span class="fw-tag fw-nis2">NIS2</span></td><td><strong>In applicazione dal 18 ott 2024</strong></td><td>Trasposizione completa SM</td></tr>
+      <tr><td><span class="fw-tag fw-ai_act">AI Act</span></td><td>Phased entry</td><td><strong>General application 2 ago 2026</strong> · High-risk in regulated products: 2 ago 2027</td></tr>
+      <tr><td><span class="fw-tag fw-gdpr">GDPR</span></td><td>In vigore dal 2018</td><td>EDPB guidelines ongoing</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5.2 Calendario annuale</h2>
+
+  <h3>2026</h3>
+  <ul>
+    <li><strong>Q1:</strong> OJ pubblicazione Omnibus I + entrata in vigore. EFRAG ESRS Set 1 implementing act revisionato.</li>
+    <li><strong>Q3:</strong> 2 ago 2026 — AI Act general application. 31 dic 2026 — preparazione FY2027 CSRD per gruppi ancora in scope.</li>
+  </ul>
+
+  <h3>2027</h3>
+  <ul>
+    <li><strong>Q1:</strong> Prima reportistica CSRD post-Omnibus per FY2026 (nuovo perimetro)</li>
+    <li><strong>Q2:</strong> Review clause CSRD/CSDDD avviata (estensione scope possibile)</li>
+    <li><strong>Q3:</strong> 2 ago 2027 — AI Act high-risk in regulated products application</li>
+  </ul>
+
+  <h3>2028</h3>
+  <ul>
+    <li><strong>Q2:</strong> Prima reportistica CSRD FY2027 per Wave 1 reporters (post transition exemption)</li>
+    <li><strong>Q3:</strong> 26 lug 2028 — deadline transposition CSDDD per tutti gli SM</li>
+  </ul>
+
+  <h3>2029</h3>
+  <ul>
+    <li><strong>Q3:</strong> luglio 2029 — prima compliance CSDDD per aziende &gt; 5.000 dip + €1,5B turnover</li>
+  </ul>
+
+  <h2>5.3 Italia — recepimento CSRD</h2>
+  <p>Il <strong>D.Lgs. 6 settembre 2024, n. 125</strong> (GU n. 212 del 10/9/2024, in vigore 25/9/2024) recepisce la <span class="fw-tag fw-csrd">CSRD pre-Omnibus</span>.</p>
+  <div class="box warn">
+    <span class="label">Punto operativo</span>
+    <p>Il post-Omnibus richiederà un <strong>decreto modificativo</strong>. L'Italia deve allinearsi al testo OJ Omnibus entro un anno dall'entrata in vigore. Il consulente deve verificare se il D.Lgs. di modifica è già stato pubblicato prima di consigliare il cliente sulle nuove soglie.</p>
+  </div>
+
+  <h2>5.4 Matrice priorità per il consulente</h2>
+  <table>
+    <thead><tr><th>Tipo cliente</th><th>P1</th><th>P2</th><th>P3</th></tr></thead>
+    <tbody>
+      <tr><td>PMI &lt; 1.000 dip in catena CSRD</td><td>VSME Basic</td><td>EU Tax indiretta</td><td>NIS2 (se essenziale)</td></tr>
+      <tr><td>Gruppo &gt; 1.000 dip + €450M</td><td>CSRD FY2027</td><td>ESRS materiality</td><td>AI Act se prodotti AI</td></tr>
+      <tr><td>Gruppo &gt; 5.000 dip + €1,5B</td><td>CSDDD scoping</td><td>CSRD FY2027</td><td>DORA se finanziario</td></tr>
+      <tr><td>Banca / istituto finanz.</td><td>DORA</td><td>GAR EU Tax</td><td>CSRD se in scope</td></tr>
+      <tr><td>Industria prodotti regolati</td><td>AI Act high-risk 2027</td><td>CSRD se in scope</td><td>Settore-specific</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═════════════ CAP 6 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 06 · I 10 errori più comuni</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 06</span>I 10 errori più comuni nelle prime disclosure CSRD</h1>
+
+  <p><em>Premessa: questi errori sono espressione di expertise di settore, non di norma regolamentare. Sono pattern osservabili nel mercato consulting ESG italiano 2024–2026.</em></p>
+
+  <h2>1. Citare ESRS senza materiality assessment documentato</h2>
+  <p>Il datapoint senza un'assessment documentata è zoppo. Auditor e regolatori chiederanno di vedere il processo decisionale.</p>
+  <p><strong>Fix:</strong> sezione "Materiality assessment process" di 1–2 pp che descriva stakeholder consultati, framework (es. AA1000), threshold definition, governance approval.</p>
+
+  <h2>2. Confondere "double materiality" con "doppia rilevanza"</h2>
+  <p>L'ESRS richiede <strong>due assessment paralleli e indipendenti</strong>: impact materiality + financial materiality. Tradurre come "doppia rilevanza" perde l'asse impact-outward.</p>
+  <p><strong>Fix:</strong> il glossario aziendale deve chiamare i due assessment con i nomi inglesi.</p>
+
+  <h2>3. Disclosure value chain incompleta (Tier 2/3 mancanti)</h2>
+  <p>Post-Omnibus i datapoint Tier 2/3 sono "subject to materiality" — ma se hai dichiarato material l'impatto value chain, devi descrivere come hai mappato la catena.</p>
+  <p><strong>Fix:</strong> documentare il processo di mapping con i suoi limiti — <em>"abbiamo richiesto dati a [N] fornitori Tier 1, ottenuto risposta da [M], stimato il resto con [metodo]"</em>.</p>
+
+  <h2>4. Targets senza baseline year + science-based</h2>
+  <p>I targets dichiarati devono avere: anno baseline esplicito, methodology citation (es. SBTi), trajectory cumulato annuale.</p>
+  <p><strong>Fix:</strong> meglio "target in via di definizione, baseline FY2024 in calcolo" che un numero traballante.</p>
+
+  <h2>5. Scope 3 senza giustificazione del metodo</h2>
+  <p>Il numero senza il metodo è inutile. Auditor chiede sempre: <em>quale metodo?</em></p>
+  <p><strong>Fix:</strong> specificare quale standard (PCAF / GHG Protocol Categories 1–15), activity data, fattore di emissione, livello di precisione (proxy / industry / supplier-specific).</p>
+
+  <h2>6. Confondere "in evolution" e "non material"</h2>
+  <p><strong>Not material:</strong> niente disclosure. <strong>In evolution:</strong> material, ma processo ancora in costruzione.</p>
+  <p><strong>Fix:</strong> matrice di materiality che distingua i due stati. "In evolution" deve avere timeline interna verso piena disclosure.</p>
+
+  <h2>7. Citare D.Lgs. 125/2024 come se fosse esaustivo</h2>
+  <p>Il D.Lgs. italiano recepisce la <strong>CSRD pre-Omnibus</strong>. Citarlo per claim sulle nuove soglie post-Omnibus è un anacronismo.</p>
+  <p><strong>Fix:</strong> citazione corretta a tre layer: (1) atto Omnibus I 2026; (2) ESRS Set 1 revisionato; (3) D.Lgs. 125/2024 + decreto modificativo italiano.</p>
+
+  <h2>8. Dimenticare digital tagging XBRL</h2>
+  <p>Il reporting CSRD deve essere machine-readable via iXBRL (taxonomy ESEF). Un PDF "bello" senza tagging è non-compliant per il deposito al registro delle imprese italiano.</p>
+  <p><strong>Fix:</strong> output finale in <strong>XHTML con iXBRL embedded</strong>. Tools dedicati (ParsePort, Workiva, AMANA) o partnership con servizio esterno.</p>
+
+  <h2>9. Cross-references EU Taxonomy non riconciliate con CSRD</h2>
+  <p>Aziende in scope sia CSRD sia EU Taxonomy hanno due reporting paralleli su revenue/capex/opex. I numeri devono essere coerenti.</p>
+  <p><strong>Fix:</strong> reconciliation table dedicata che spieghi differenze metodologiche e converga sui numeri.</p>
+
+  <h2>10. Reporting period misallineato a esercizio fiscale</h2>
+  <p>Il reporting CSRD deve essere allineato al financial year del bilancio civile. Non riportare gennaio–dicembre se il bilancio è luglio–giugno.</p>
+  <p><strong>Fix:</strong> verifica al kick-off del progetto: <em>quale è il financial year del cliente?</em></p>
+
+  <div class="box bad">
+    <span class="label">Pattern comune</span>
+    <p>Questi 10 errori condividono un pattern: <strong>il consulente prende per scontato qualcosa che l'auditor o il regolatore guarderà con lente di ingrandimento</strong>. La professionalità in compliance ESG nel 2026 è la stessa che caratterizza un buon avvocato fiscalista: rigore documentale + tracciabilità del processo decisionale.</p>
+  </div>
+</section>
+
+<!-- ═════════════ CAP 7 ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Cap. 07 · Glossario operativo</span></div>
+  <h1 class="chapter"><span class="num">Capitolo 07</span>Glossario operativo</h1>
+
+  <table>
+    <thead><tr><th>Termine</th><th>Forma estesa</th><th>Riferimento</th></tr></thead>
+    <tbody>
+      <tr><td><strong>AI Act</strong></td><td>EU Artificial Intelligence Act</td><td>Reg. (UE) 2024/1689</td></tr>
+      <tr><td><strong>CELEX</strong></td><td>Identificatore univoco atti EU su EUR-Lex</td><td>EUR-Lex naming convention</td></tr>
+      <tr><td><strong>CSRD</strong></td><td>Corporate Sustainability Reporting Directive</td><td>Dir. (UE) 2022/2464 + Omnibus I</td></tr>
+      <tr><td><strong>CSDDD / CS3D</strong></td><td>Corporate Sustainability Due Diligence Directive</td><td>Dir. (UE) 2024/1760 + Omnibus I</td></tr>
+      <tr><td><strong>D.Lgs. 125/2024</strong></td><td>Decreto legislativo italiano recepimento CSRD</td><td>GU n. 212 del 10/9/2024</td></tr>
+      <tr><td><strong>DORA</strong></td><td>Digital Operational Resilience Act</td><td>Reg. (UE) 2022/2554</td></tr>
+      <tr><td><strong>Doppia materialità</strong></td><td>Impact materiality + financial materiality</td><td>ESRS 1, ESRS 2</td></tr>
+      <tr><td><strong>EDPB</strong></td><td>European Data Protection Board</td><td>Reg. (UE) 2016/679 (GDPR)</td></tr>
+      <tr><td><strong>EFRAG</strong></td><td>European Financial Reporting Advisory Group</td><td>Decisione UE C(2014) 4090</td></tr>
+      <tr><td><strong>ESEF</strong></td><td>European Single Electronic Format (XBRL tagging)</td><td>Reg. delegato (UE) 2018/815</td></tr>
+      <tr><td><strong>ESMA</strong></td><td>European Securities and Markets Authority</td><td>Reg. (UE) 1095/2010</td></tr>
+      <tr><td><strong>ESRS</strong></td><td>European Sustainability Reporting Standards (Set 1 = primo blocco)</td><td>Reg. delegato (UE) 2023/2772</td></tr>
+      <tr><td><strong>EU Taxonomy</strong></td><td>Classificazione attività economiche sostenibili</td><td>Reg. (UE) 2020/852</td></tr>
+      <tr><td><strong>EUR-Lex</strong></td><td>Database ufficiale del diritto UE</td><td>publications.europa.eu</td></tr>
+      <tr><td><strong>GAR</strong></td><td>Green Asset Ratio (KPI banche EU Tax)</td><td>Reg. delegato (UE) 2021/2178</td></tr>
+      <tr><td><strong>GDPR</strong></td><td>General Data Protection Regulation</td><td>Reg. (UE) 2016/679</td></tr>
+      <tr><td><strong>GHG Protocol</strong></td><td>Greenhouse Gas Protocol (Scope 1/2/3)</td><td>WRI/WBCSD</td></tr>
+      <tr><td><strong>GPAI</strong></td><td>General-Purpose AI</td><td>AI Act, Art. 51</td></tr>
+      <tr><td><strong>iXBRL</strong></td><td>Inline eXtensible Business Reporting Language</td><td>Reg. delegato (UE) 2018/815</td></tr>
+      <tr><td><strong>Listed SME</strong></td><td>PMI quotata su mercati regolamentati EU</td><td>Dir. Transparency 2004/109/CE</td></tr>
+      <tr><td><strong>NIS2</strong></td><td>Network and Information Systems Directive 2</td><td>Dir. (UE) 2022/2555</td></tr>
+      <tr><td><strong>Normattiva</strong></td><td>Database ufficiale del diritto italiano</td><td>normattiva.it</td></tr>
+      <tr><td><strong>OJ</strong></td><td>Official Journal of the EU</td><td>—</td></tr>
+      <tr><td><strong>Omnibus I</strong></td><td>Sustainability Simplification Package 2025–2026</td><td>COM(2025) 80+81 → adopted 24 feb 2026</td></tr>
+      <tr><td><strong>PCAF</strong></td><td>Partnership for Carbon Accounting Financials</td><td>PCAF Global</td></tr>
+      <tr><td><strong>SBTi</strong></td><td>Science Based Targets initiative</td><td>SBTi Global</td></tr>
+      <tr><td><strong>Scope 1/2/3</strong></td><td>Categorizzazione emissioni GHG</td><td>GHG Protocol</td></tr>
+      <tr><td><strong>Stop-the-clock</strong></td><td>Meccanismo Omnibus che ha postponed CSRD/CSDDD</td><td>Adottato 14 apr 2025</td></tr>
+      <tr><td><strong>VSME</strong></td><td>Voluntary Sustainability Reporting Standard for non-listed SMEs</td><td>EFRAG dic 2024 + Comm. Recomm. 30/7/2025</td></tr>
+      <tr><td><strong>Wave 1 reporters</strong></td><td>Aziende con CSRD reporting da FY2024 (prima ondata)</td><td>Concetto operativo CSRD</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═════════════ CITAZIONI ═════════════ -->
+<section class="page">
+  <div class="page-header"><div class="mark">N</div><span>Note e fonti · Disclaimer</span></div>
+  <h1 class="chapter"><span class="num">Fonti</span>Note, citazioni, disclaimer</h1>
+
+  <div class="citations">
+    <h2>Fonti primarie verificate</h2>
+    <ol>
+      <li>Letta Report — "Much more than a market", aprile 2024. <a href="https://www.consilium.europa.eu/media/ny3j24sm/much-more-than-a-market-report-by-enrico-letta.pdf">consilium.europa.eu/media/ny3j24sm</a></li>
+      <li>Draghi Report — "The future of European competitiveness", 9 settembre 2024. <a href="https://commission.europa.eu/topics/competitiveness/draghi-report_en">commission.europa.eu</a></li>
+      <li>Budapest Declaration on the New European Competitiveness Deal, 8 novembre 2024. <a href="https://www.consilium.europa.eu/en/press/press-releases/2024/11/08/the-budapest-declaration/">consilium.europa.eu</a></li>
+      <li>Commission proposal Omnibus I, 26 febbraio 2025 — COM(2025) 80 final (Stop-the-clock) e COM(2025) 81 final (riforma sostanziale). <a href="https://commission.europa.eu/document/download/0affa9a8-2ac5-46a9-98f8-19205bf61eb5_en">COM(2025) 80 PDF</a></li>
+      <li>Council provisional agreement, 9 dicembre 2025 — soglie €450M turnover. <a href="https://www.consilium.europa.eu/en/press/press-releases/2025/12/09/council-and-parliament-strike-a-deal-to-simplify-sustainability-reporting-and-due-diligence-requirements-and-boost-eu-competitiveness/">consilium.europa.eu</a></li>
+      <li>Council final sign-off, 24 febbraio 2026 — testo definitivo del pacchetto. <a href="https://www.consilium.europa.eu/en/press/press-releases/2026/02/24/council-signs-off-simplification-of-sustainability-reporting-and-due-diligence-requirements-to-boost-eu-competitiveness/">consilium.europa.eu</a></li>
+      <li>European Parliament press release, 16 dicembre 2025 — voto plenaria 428–218–17. <a href="https://www.europarl.europa.eu/news/en/press-room/20251211IPR32164/simplified-sustainability-reporting-and-due-diligence-rules-for-businesses">europarl.europa.eu</a></li>
+      <li>EFRAG Cover Letter to the Amended ESRS Final, 3 dicembre 2025 — riduzioni −57% / −61% / −68%. <a href="https://www.efrag.org/sites/default/files/media/document/2025-12/EFRAG's%20Cover%20Letter%20to%20the%20Amended%20ESRS%20Final%203%20December%202025%20(3).pdf">efrag.org</a></li>
+      <li>Regulation (EU) 2020/852, Art. 9 — sei obiettivi ambientali. <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=celex:32020R0852">eur-lex.europa.eu</a></li>
+      <li>EFRAG releases VSME, 12 dicembre 2024. <a href="https://www.efrag.org/en/news-and-calendar/news/efrag-releases-the-voluntary-sustainability-reporting-standard-for-nonlisted-smes">efrag.org</a> + Commission Recommendation on VSME, 30 luglio 2025. <a href="https://ec.europa.eu/finance/docs/law/250730-recommendation-vsme_en.pdf">ec.europa.eu</a></li>
+      <li>D.Lgs. 6 settembre 2024, n. 125 — Gazzetta Ufficiale n. 212 del 10/9/2024. <a href="https://www.gazzettaufficiale.it/eli/id/2024/09/10/24G00145/sg">gazzettaufficiale.it</a></li>
+    </ol>
+
+    <h2>Fonti aggiuntive (Capitoli 5)</h2>
+    <ul>
+      <li>DORA — Reg. (UE) 2022/2554 in applicazione dal 17 gennaio 2025. <a href="https://eur-lex.europa.eu/eli/reg/2022/2554/oj/eng">EUR-Lex CELEX 32022R2554</a></li>
+      <li>NIS2 — Dir. (UE) 2022/2555 in applicazione dal 18 ottobre 2024. <a href="https://eur-lex.europa.eu/eli/dir/2022/2555/oj/eng">EUR-Lex CELEX 32022L2555</a></li>
+      <li>AI Act — Reg. (UE) 2024/1689, entry 1 agosto 2024, general application 2 agosto 2026. <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202401689">EUR-Lex</a></li>
+    </ul>
+
+    <h2>Disclaimer professionale</h2>
+    <p>Il presente Codex è una guida operativa generale per consulenti ESG. <strong>Non costituisce parere legale, fiscale o di compliance.</strong> Per applicazioni concrete a clienti, verificare sempre il testo consolidato sulla Gazzetta Ufficiale UE e/o italiana e — quando opportuno — consultare un avvocato specializzato in diritto societario o un revisore legale abilitato.</p>
+
+    <p><strong>Affidabilità delle informazioni:</strong> tutti i claim normativi citati hanno fonte primaria EU/IT verificata al 28 aprile 2026. Per ogni claim numerico (soglie, date, percentuali) la fonte è linkata in nota o nel testo. I pattern operativi (Cap 6 errori, Cap 4 struttura progetto) sono basati su expertise di settore osservata nel mercato consulting ESG italiano 2024–2026.</p>
+
+    <h2>Crediti</h2>
+    <p>
+      <strong>NormaAI</strong> — Copilota normativo per consulenti ESG italiani.<br>
+      Editor: Daniel Culotta · info@normaai.org<br>
+      Versione: v1.0 · 28 aprile 2026
+    </p>
+    <p>Per richiedere una demo di NormaAI su un caso reale del vostro studio, scrivete a info@normaai.org con oggetto "NormaAI demo call".</p>
+  </div>
+</section>
+
+</body>
+</html>

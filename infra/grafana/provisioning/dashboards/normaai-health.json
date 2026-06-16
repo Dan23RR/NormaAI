@@ -1,0 +1,161 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Request rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "sum(rate(normaai_http_requests_total[5m]))",
+          "legendFormat": "all"
+        },
+        {
+          "expr": "sum(rate(normaai_http_requests_total{status_code=~\"5..\"}[5m]))",
+          "legendFormat": "5xx"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "title": "Latency p50 / p95 / p99 (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(normaai_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(normaai_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(normaai_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "title": "Circuit breakers (0=closed 1=half 2=open)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "normaai_circuit_breaker_state",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "title": "LLM calls by status (calls/min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "sum(rate(normaai_llm_calls_total[5m])) by (status) * 60",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "cpm" }, "overrides": [] }
+    },
+    {
+      "title": "LLM tokens/min (cost driver)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "sum(rate(normaai_llm_tokens_total[5m])) by (direction) * 60",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "title": "Cache hit ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "sum(rate(normaai_cache_hits_total[10m])) / clamp_min(sum(rate(normaai_cache_hits_total[10m])) + sum(rate(normaai_cache_misses_total[10m])), 0.001)",
+          "legendFormat": "hit ratio"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 }, "overrides": [] }
+    },
+    {
+      "title": "Qdrant query latency p95 (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(normaai_qdrant_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] }
+    },
+    {
+      "title": "Active requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "normaai_active_requests",
+          "legendFormat": "in flight"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
+    },
+    {
+      "title": "Local LLM routing (complexity gate, decisions/min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "" },
+      "targets": [
+        {
+          "expr": "sum(rate(normaai_complexity_gate_total[5m])) by (tier) * 60",
+          "legendFormat": "{{tier}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "cpm" }, "overrides": [] }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["normaai", "health"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "NormaAI — Health",
+  "uid": "normaai-health",
+  "version": 1
+}

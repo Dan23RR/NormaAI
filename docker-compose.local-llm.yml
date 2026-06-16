@@ -1,0 +1,52 @@
+# Docker Compose override for local LLM (Ollama + Qwen 3.5 4B)
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.local-llm.yml up
+#
+# This adds an Ollama service running Qwen 3.5 4B for local inference.
+# Works on CPU (slower ~200ms) and GPU (fast ~50ms with NVIDIA GPU).
+# No API keys or cloud dependencies required.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: normaai-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    entrypoint: >
+      /bin/sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull qwen3.5:4b &&
+        wait
+      "
+    restart: unless-stopped
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  app:
+    environment:
+      - LOCAL_LLM_ENABLED=true
+      - LOCAL_LLM_BASE_URL=http://ollama:11434
+      - LOCAL_LLM_MODEL=qwen3.5:4b
+      - LOCAL_LLM_TIMEOUT_SECONDS=10
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama_models:

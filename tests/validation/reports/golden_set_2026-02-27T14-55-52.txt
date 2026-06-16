@@ -1,0 +1,43 @@
+╔══════════════════════════════════════════════════════════╗
+║  NormaAI Validation Report: golden_set                  ║
+╠══════════════════════════════════════════════════════════╣
+║  Run: 2026-02-27T14:55:52.904247                        ║
+╠══════════════════════════════════════════════════════════╣
+║  OVERALL RESULTS                                        ║
+║  Total:  46                                             ║
+║  Passed: 26                                             ║
+║  Failed: 20                                             ║
+║  Errors: 0                                              ║
+╠══════════════════════════════════════════════════════════╣
+║  AGGREGATE METRICS                                      ║
+║  Precision:  0.9783  (target: ≥0.8)          ║
+║  Recall:     0.8007  (target: ≥0.95)          ║
+║  F1 Score:   0.8638  (target: ≥0.87)          ║
+║  Min Recall: 0.0000                                  ║
+║  Suite Pass: ❌ NO                                              ║
+╠══════════════════════════════════════════════════════════╣
+║  PER-FRAMEWORK BREAKDOWN                                ║
+║  DORA         P=1.000 R=1.000 F1=1.000 (n=5)       ║
+║  GDPR         P=1.000 R=0.776 F1=0.855 (n=35)       ║
+║  NIS2         P=1.000 R=0.933 F1=0.960 (n=5)       ║
+╠══════════════════════════════════════════════════════════╣
+║  PER-DIFFICULTY BREAKDOWN                               ║
+║  level_1      P=1.000 R=0.860 F1=0.909 (n=19)       ║
+║  level_2      P=1.000 R=0.833 F1=0.892 (n=13)       ║
+║  level_3      P=0.900 R=0.650 F1=0.740 (n=10)       ║
+║  level_4      P=1.000 R=0.500 F1=0.667 (n=1)       ║
+║  level_5      P=1.000 R=0.889 F1=0.933 (n=3)       ║
+╠══════════════════════════════════════════════════════════╣
+║  MISSED FINDINGS (False Negatives)                      ║
+║  GDPR-SANCTION-2024-IT-001-L1: missed ['Art. 13(2)(a)']  ║
+║  GDPR-SANCTION-2024-IT-001-L2: missed ['Art. 13(2)(a)']  ║
+║  GDPR-SANCTION-2024-IT-001-L3: missed ['Art. 5(1)(e)']  ║
+║  GDPR-SANCTION-2024-IT-002-L1: missed ['Art. 32']  ║
+║  GDPR-SANCTION-2024-IT-002-L2: missed ['Art. 28(3)(d)']  ║
+║  GDPR-SANCTION-2024-IT-002-L3: missed ['Art. 32']  ║
+║  GDPR-SANCTION-2024-IT-003-L1: missed ['Art. 13(2)(c)']  ║
+║  GDPR-SANCTION-2024-IT-003-L2: missed ['Art. 13(2)(c)']  ║
+║  GDPR-SANCTION-2024-IT-003-L3: missed ['Art. 13(2)(c)']  ║
+║  GDPR-SANCTION-2024-UK-001-L1: missed ['Art. 6(1)(a)', 'Art. 22']  ║
+║  ... and 9 more                    ║
+╚══════════════════════════════════════════════════════════╝

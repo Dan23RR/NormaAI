@@ -1,0 +1,48 @@
+╔══════════════════════════════════════════════════════════════╗
+║  NORMAAI — REGULATORY RISK QUANTIFICATION REPORT           ║
+║  Monte Carlo Simulation Analysis                            ║
+╠══════════════════════════════════════════════════════════════╣
+║  Company:    TargetCo Fashion S.r.l.                       ║
+║  Revenue:    €50.0M                                        ║
+║  Sector:     retail                                        ║
+║  Country:    IT                                            ║
+║  Horizon:    24 months                                       ║
+║  Iterations: 10,000                                           ║
+╠══════════════════════════════════════════════════════════════╣
+║  VIOLATIONS DETECTED: 6                                    ║
+║    DORA        : 2                                        ║
+║    GDPR        : 3                                        ║
+║    NIS2        : 1                                        ║
+║    critical    : 4                                        ║
+║    major       : 2                                        ║
+╠══════════════════════════════════════════════════════════════╣
+║  DIRECT FINE RISK                                           ║
+║  Expected (mean):  €1.4M                                   ║
+║  VaR 95%:          €2.9M                                   ║
+║  VaR 99%:          €3.6M                                   ║
+╠══════════════════════════════════════════════════════════════╣
+║  TOTAL RISK (fines + reputation + legal + interruption)     ║
+║  Expected Loss:    €3.6M                                   ║
+║  VaR 95%:          €7.9M                                   ║
+║  VaR 99%:          €9.8M                                   ║
+╠══════════════════════════════════════════════════════════════╣
+║  REMEDIATION ANALYSIS                                       ║
+║  Remediation Cost: €700K                                   ║
+║  ROI of Compliance: 5.2x                                      ║
+║  (ogni €1 investito evita €5.2 di rischio)      ║
+╠══════════════════════════════════════════════════════════════╣
+║  PER-FRAMEWORK RISK BREAKDOWN                              ║
+║  DORA      : E[fine]=€197K    MaxExp=€1.0M    Fix=€120K   ║
+║  GDPR      : E[fine]=€670K    MaxExp=€6.0M    Fix=€480K   ║
+║  NIS2      : E[fine]=€135K    MaxExp=€1.0M    Fix=€100K   ║
+╠══════════════════════════════════════════════════════════════╣
+║  RISK DISTRIBUTION                                         ║
+║    p5: €0                                                ║
+║   p10: €685K        ██                                   ║
+║   p25: €1.8M        █████                                ║
+║   p50: €3.4M        ██████████                           ║
+║   p75: €5.2M        ███████████████                      ║
+║   p90: €6.9M        █████████████████████                ║
+║   p95: €7.9M        ████████████████████████             ║
+║   p99: €9.8M        ██████████████████████████████       ║
+╚══════════════════════════════════════════════════════════════╝

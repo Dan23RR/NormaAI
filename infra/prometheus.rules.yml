@@ -1,0 +1,83 @@
+# NormaAI alerting rules.
+# Metric names and labels match src/observability.py exactly:
+#   normaai_http_requests_total{method,endpoint,status_code}
+#   normaai_http_request_duration_seconds{method,endpoint}
+#   normaai_llm_calls_total{provider,model,status}
+#   normaai_circuit_breaker_state{service}  (0=closed, 1=half_open, 2=open)
+# Alerts fire in Prometheus UI (http://localhost:9090/alerts); wire an
+# Alertmanager receiver (Telegram/email) when deploying to production.
+
+groups:
+  - name: normaai-availability
+    rules:
+      - alert: AppDown
+        expr: up{job="normaai"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NormaAI app is down"
+          description: "Prometheus cannot scrape the app target for more than 1 minute."
+
+      - alert: HighHttp5xxRate
+        expr: sum(rate(normaai_http_requests_total{status_code=~"5.."}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Elevated HTTP 5xx rate"
+          description: "More than ~6 server errors/min sustained for 5 minutes."
+
+      - alert: HighRequestLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(normaai_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 request latency above 2s"
+          description: "Non-LLM endpoints should respond well under 2s at p95. Investigate DB/Qdrant/Redis."
+
+  - name: normaai-llm
+    rules:
+      - alert: LLMCircuitOpen
+        expr: normaai_circuit_breaker_state{service="llm"} == 2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM circuit breaker is OPEN"
+          description: "Calls to the LLM provider are failing fast. Check provider status/API key/quota."
+
+      - alert: LLMErrorRateHigh
+        expr: |
+          sum(rate(normaai_llm_calls_total{status="error"}[10m]))
+            / clamp_min(sum(rate(normaai_llm_calls_total[10m])), 0.001) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM error rate above 20%"
+          description: "One in five LLM calls is failing over the last 10 minutes."
+
+  - name: normaai-dependencies
+    rules:
+      - alert: RedisCircuitOpen
+        expr: normaai_circuit_breaker_state{service="redis"} == 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis circuit breaker is OPEN"
+          description: "Cache and brute-force lockout degraded. NOTE: token blacklist is fail-closed in production — logins with revoked tokens are denied, this is expected."
+
+      - alert: QdrantCircuitOpen
+        expr: normaai_circuit_breaker_state{service="qdrant"} == 2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Qdrant circuit breaker is OPEN"
+          description: "Retrieval is down — Q&A/gap-analysis answers will degrade or fail."

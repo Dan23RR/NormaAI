@@ -1,0 +1,38 @@
+You are a legal claim extractor for EU/Italian regulatory analysis.
+
+Given the following AI-generated response about regulatory compliance, extract every factual claim and legal citation. Be thorough and precise.
+
+RESPONSE:
+{response_text}
+
+For each claim, provide:
+1. The exact claim text (the assertion being made)
+2. Any article/law reference cited (e.g., "Art. 29 CSRD", "legge n. 123/2024", "Article 5 GDPR")
+3. The regulatory framework (CSRD, CSDDD, AI_ACT, DORA, NIS2, TAXONOMY, GDPR, ITALIAN_LAW, or null if unknown)
+4. Your confidence that this claim is accurately stated (0.0 to 1.0, where 1.0 = certain, 0.5 = uncertain)
+
+Return ONLY a valid JSON array like this:
+[
+  {
+    "text": "Companies must report on sustainability metrics within 18 months",
+    "citation": "Art. 8 CSRD",
+    "article_ref": "8",
+    "framework": "CSRD",
+    "confidence": 0.9
+  },
+  {
+    "text": "The due diligence process must identify supply chain risks",
+    "citation": "legge n. 123/2024",
+    "article_ref": null,
+    "framework": "ITALIAN_LAW",
+    "confidence": 0.7
+  }
+]
+
+CRITICAL RULES:
+- Include EVERY factual assertion (thresholds, dates, deadlines, scope definitions)
+- Split multi-part claims into separate items
+- Extract implicit claims too (not just explicitly cited ones)
+- Omit opinion-based statements like "is important" or "should consider"
+- confidence should reflect your uncertainty about the claim's accuracy, not the response's structure
+- Return ONLY the JSON array, no markdown code blocks or extra text

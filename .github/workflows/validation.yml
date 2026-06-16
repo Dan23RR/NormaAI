@@ -1,0 +1,223 @@
+name: NormaAI Validation Suite
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'prompts/**'
+      - 'tests/**'
+  push:
+    branches: [main]
+  schedule:
+    # Weekly full regression on Sundays at 02:00 UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'golden_set'
+        type: choice
+        options:
+          - golden_set
+          - sanctions
+          - synthetic
+          - all
+      framework:
+        description: 'Framework filter (optional)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  PYTHON_VERSION: '3.11'
+  NORMAAI_TEST_MODE: 'true'
+
+jobs:
+  # ─── Fast Check: Golden Set (runs on every PR) ──────────────
+  golden-set:
+    name: "Golden Set (~50 cases)"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install pydantic pydantic-settings
+          pip install pytest pytest-asyncio
+
+      - name: Run Golden Set (Demo Mode)
+        run: |
+          python -m tests.validation.runner \
+            --suite golden_set \
+            --demo \
+            --verbose
+        continue-on-error: false
+
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-set-results
+          path: tests/validation/reports/
+          retention-days: 30
+
+  # ─── Full Regression: All Suites (runs on merge to main) ────
+  full-regression:
+    name: "Full Regression (~500 cases)"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.suite == 'all')
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: normaai
+          POSTGRES_PASSWORD: test_ci_password
+          POSTGRES_DB: normaai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install pydantic pydantic-settings
+          pip install pytest pytest-asyncio httpx
+
+      - name: Generate Test Cases (if needed)
+        run: |
+          # Generate sanctions-based test cases
+          python -m tests.validation.sanctions_harvester \
+            --difficulty 1 2 3 \
+            --output sanctions_generated.json
+
+          # Generate synthetic test cases
+          python -m tests.validation.synthetic_generator \
+            --framework GDPR \
+            --level 1 2 3 5 \
+            --output synthetic_gdpr.json
+
+          python -m tests.validation.synthetic_generator \
+            --framework DORA \
+            --level 1 2 \
+            --output synthetic_dora.json
+
+          python -m tests.validation.synthetic_generator \
+            --framework NIS2 \
+            --level 1 2 \
+            --output synthetic_nis2.json
+
+      - name: Run Full Regression (Demo Mode)
+        run: |
+          python -m tests.validation.runner \
+            --suite all \
+            --demo \
+            --verbose
+        env:
+          DATABASE_URL: postgresql+asyncpg://normaai:test_ci_password@localhost:5432/normaai
+          QDRANT_HOST: localhost
+          QDRANT_PORT: 6333
+
+      - name: Run Monte Carlo Demo
+        run: |
+          python -m tests.validation.monte_carlo --demo \
+            --company "Test Company" \
+            --revenue 50000000 \
+            --sector technology \
+            --country IT \
+            --iterations 5000
+
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-regression-results
+          path: tests/validation/reports/
+          retention-days: 90
+
+      - name: Check Thresholds
+        run: |
+          # Parse latest result and check thresholds
+          python -c "
+          import json, glob, sys
+          files = sorted(glob.glob('tests/validation/reports/*.json'))
+          if not files:
+              print('No results found')
+              sys.exit(1)
+          
+          data = json.load(open(files[-1]))
+          recall = data.get('avg_recall', 0)
+          precision = data.get('avg_precision', 0)
+          f1 = data.get('avg_f1', 0)
+          
+          print(f'Recall: {recall:.4f} (target: ≥0.95)')
+          print(f'Precision: {precision:.4f} (target: ≥0.80)')
+          print(f'F1: {f1:.4f} (target: ≥0.87)')
+          
+          if recall < 0.95 or precision < 0.80 or f1 < 0.87:
+              print('❌ THRESHOLDS NOT MET')
+              sys.exit(1)
+          else:
+              print('✅ ALL THRESHOLDS PASSED')
+          "
+
+  # ─── Adversarial Red Team (weekly) ──────────────────────────
+  red-team:
+    name: "Adversarial Red Team"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: full-regression
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run Red Team Suite
+        run: |
+          cd tests/validation
+          promptfoo eval -c promptfoo_config.yaml --output report.json
+        env:
+          NORMAAI_TOKEN: ${{ secrets.NORMAAI_TEST_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload Red Team Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: red-team-results
+          path: tests/validation/report.json
+          retention-days: 90

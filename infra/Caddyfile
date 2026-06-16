@@ -1,0 +1,21 @@
+# Caddy — TLS termination for the NormaAI API.
+# Domain and ACME email come from the environment (docker-compose.prod.yml).
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$API_DOMAIN} {
+	encode gzip
+
+	# SSE endpoints must not be buffered.
+	reverse_proxy app:8000 {
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+}

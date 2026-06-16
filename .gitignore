@@ -1,0 +1,135 @@
+# ─── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+*.egg
+
+# ─── Environment variables and secrets ──────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+.env.backup*
+*.pem
+jwt_private.pem
+jwt_public.pem
+
+# ─── IDE and Editors ────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+*.iml
+
+# ─── Node / Frontend ───────────────────────────────────────────
+node_modules/
+.next/
+.turbo/
+frontend/node_modules/
+frontend/.next/
+
+# ─── Data ───────────────────────────────────────────────────────
+data/raw/
+data/processed/
+
+# ─── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.desktop
+
+# ─── Testing and caching ───────────────────────────────────────
+pytest-cache-files-*
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+
+# ─── Development artifacts ──────────────────────────────────────
+*.jpeg
+*.jpg
+*.png
+screen.jpeg
+# Frontend public assets MUST ship (og-image, favicon): un-ignore them,
+# or Vercel builds from git without social preview images.
+!frontend/public/*.png
+!frontend/public/*.jpg
+!frontend/src/app/**/*.png
+
+# ─── Virtual environments ──────────────────────────────────────
+venv/
+env/
+ENV/
+.venv
+
+# ─── Build / Export artifacts ──────────────────────────────────
+*.log
+.cache/
+.tmp/
+normaai_codebase.txt
+
+# ─── Local databases ──────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+ruvector.db
+
+# ─── Dev scratch artifacts (PowerShell, ad-hoc reports) ───────
+*.ps1
+# Documented operational scripts ARE versioned (referenced by README/docs):
+!run_tests.ps1
+!bootstrap_git.ps1
+!generate_codex_pdf.ps1
+!smoke_codex_flow.ps1
+!scripts/backup_postgres.ps1
+!scripts/verify_live_site.ps1
+
+# ─── Database backups (local dumps — never commit) ─────────────
+backups/
+g1_*.txt
+g2_*.txt
+g3_*.txt
+g3_smoke_*.txt
+zi2m4eub
+
+# ─── Marketing drafts (prospect PII — NEVER commit) ────────────
+# Personalized cold drafts + ICP pending lists contain prospect personal
+# data. They were assumed ignored but weren't — a `git add -A` would have
+# staged them. Keep the whole drafts/ subtree out of git.
+marketing/drafts/
+
+# ─── Attic (historical artifacts moved out of the root) ────────
+_attic/
+
+# ─── Claude / AI assistant ─────────────────────────────────────
+# Subagents (.claude/agents/) and slash commands (.claude/commands/)
+# ARE committed (versioned operations playbook).
+# Keep personal/local settings out:
+.claude/settings.local.json
+.claude/cache/
+.claude/logs/
+
+# Excluded from public release (internal / sales-ops / strategy)
+marketing/
+snc_qwen_runtime/
+.planning/
+.claude/
+docs/SETUP_OPERATIONS.md
+docs/SNC_INTEGRATION.md
+src/bizdev/
+scripts/wave2_kpi_queries.sql
+scripts/ingest_prospects.py
+scripts/cron_daily_2pm.sh
+scripts/cron_daily_9am.sh
+scripts/cron_friday_4pm.sh
+scripts/cron_imap_poll.sh
+bootstrap_git.ps1

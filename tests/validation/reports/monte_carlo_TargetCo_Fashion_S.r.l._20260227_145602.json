@@ -1,0 +1,131 @@
+{
+  "company_name": "TargetCo Fashion S.r.l.",
+  "revenue_eur": 50000000.0,
+  "sector": "retail",
+  "country": "IT",
+  "timestamp": "2026-02-27T14:56:02.428194",
+  "total_violations": 6,
+  "violations_by_framework": {
+    "GDPR": 3,
+    "DORA": 2,
+    "NIS2": 1
+  },
+  "violations_by_severity": {
+    "critical": 4,
+    "major": 2
+  },
+  "n_iterations": 10000,
+  "time_horizon_months": 24,
+  "expected_fine": 1352084.051715916,
+  "fine_var_95": 2867153.284921999,
+  "fine_var_99": 3550421.146296745,
+  "expected_total_loss": 3645360.818961072,
+  "total_var_95": 7876141.282892703,
+  "total_var_99": 9801618.036755938,
+  "total_remediation_cost": 700000.0,
+  "remediation_roi": 5.207658312801531,
+  "framework_risks": {
+    "GDPR": {
+      "violation_count": 3,
+      "expected_fine": 670248.5410837946,
+      "max_exposure": 6000000.0,
+      "remediation_cost": 480000.0
+    },
+    "DORA": {
+      "violation_count": 2,
+      "expected_fine": 196882.12253191072,
+      "max_exposure": 1000000.0,
+      "remediation_cost": 120000.0
+    },
+    "NIS2": {
+      "violation_count": 1,
+      "expected_fine": 134968.85538938784,
+      "max_exposure": 1000000.0,
+      "remediation_cost": 100000.0
+    }
+  },
+  "distribution_percentiles": {
+    "p5": 0.0,
+    "p10": 684775.0474554736,
+    "p25": 1783988.1548358446,
+    "p50": 3415921.061729406,
+    "p75": 5192833.196944818,
+    "p90": 6885906.337851094,
+    "p95": 7876141.282892703,
+    "p99": 9801618.036755938
+  },
+  "violation_details": [
+    {
+      "framework": "GDPR",
+      "article": "Art. 13(2)(a)",
+      "severity": "critical",
+      "description": "Missing retention period",
+      "enforcement_probability": 0.38621764672295483,
+      "fine_min_eur": 0,
+      "fine_max_eur": 2000000.0,
+      "fine_expected_eur": 246213.7497858837,
+      "remediation_cost_eur": 160000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "GDPR",
+      "article": "Art. 28(3)(h)",
+      "severity": "critical",
+      "description": "No audit rights in DPA",
+      "enforcement_probability": 0.38621764672295483,
+      "fine_min_eur": 0,
+      "fine_max_eur": 2000000.0,
+      "fine_expected_eur": 246213.7497858837,
+      "remediation_cost_eur": 160000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "GDPR",
+      "article": "Art. 32",
+      "severity": "major",
+      "description": "Insufficient security measures",
+      "enforcement_probability": 0.27893496707768956,
+      "fine_min_eur": 0,
+      "fine_max_eur": 2000000.0,
+      "fine_expected_eur": 177821.0415120271,
+      "remediation_cost_eur": 160000.0,
+      "reputation_cost_multiplier": 2.0
+    },
+    {
+      "framework": "DORA",
+      "article": "Art. 6",
+      "severity": "critical",
+      "description": "No ICT risk framework",
+      "enforcement_probability": 0.5080828968565437,
+      "fine_min_eur": 0,
+      "fine_max_eur": 500000.0,
+      "fine_expected_eur": 114318.65179272236,
+      "remediation_cost_eur": 60000.0,
+      "reputation_cost_multiplier": 3.0
+    },
+    {
+      "framework": "DORA",
+      "article": "Art. 30",
+      "severity": "major",
+      "description": "Missing vendor contract clauses",
+      "enforcement_probability": 0.3669487588408371,
+      "fine_min_eur": 0,
+      "fine_max_eur": 500000.0,
+      "fine_expected_eur": 82563.47073918836,
+      "remediation_cost_eur": 60000.0,
+      "reputation_cost_multiplier": 2.0
+    },
+    {
+      "framework": "NIS2",
+      "article": "Art. 23",
+      "severity": "critical",
+      "description": "No incident reporting procedure",
+      "enforcement_probability": 0.3374221384734696,
+      "fine_min_eur": 0,
+      "fine_max_eur": 1000000.0,
+      "fine_expected_eur": 134968.85538938784,
+      "remediation_cost_eur": 100000.0,
+      "reputation_cost_multiplier": 3.0
+    }
+  ]
+}

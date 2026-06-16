@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Fonts (mirror dashboard/Dashboard.html) ────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+
+html, body {
+  margin: 0;
+  background: #0a0d12;
+  color: #e6ebf2;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Warm paper theme (public pages: landing, legali, codex) ─────────
+   Editorial look on warm ivory, inspired by Anthropic's visual grammar.
+   Public pages opt in by adding .paper-bg to <body>; the dashboard keeps
+   the dark defaults above. */
+body.paper-bg {
+  background: #FAF9F5;
+  color: #141413;
+  font-size: 15px;
+  line-height: 1.6;
+}
+body.paper-bg ::selection {
+  background: rgba(217, 119, 87, 0.22);
+  color: #141413;
+}
+body.paper-bg ::-webkit-scrollbar-track {
+  background: #F0EEE6;
+}
+body.paper-bg ::-webkit-scrollbar-thumb {
+  background: #D2CCBC;
+}
+body.paper-bg ::-webkit-scrollbar-thumb:hover {
+  background: #B9B2A0;
+}
+/* Visible, brand-coherent keyboard focus on paper */
+body.paper-bg :focus-visible {
+  outline: 2px solid #D97757;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Scrollbar (coerent with surface scale) ─────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0e1218;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3140;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3d4659;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Selection (subtle brand) ───────────────────────────────────────── */
+
+::selection {
+  background: rgba(91, 140, 255, 0.25);
+  color: #ffffff;
+}

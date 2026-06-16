@@ -1,0 +1,158 @@
+[tool.poetry]
+name = "normaai"
+version = "0.3.0"
+description = "EU Regulatory Intelligence Monitor - Multi-framework compliance AI"
+authors = ["Daniel <info@normaai.org>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+
+# Web framework
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+
+# LLM & Agents
+langchain = "^0.3.12"
+langchain-google-genai = "^2.1.0"
+langchain-anthropic = {version = "^0.3.2", optional = true}
+langchain-ollama = {version = "^0.3.0", optional = true}
+langchain-openai = {version = "^0.3.0", optional = true}
+langgraph = "^0.2.60"
+
+# Vector DB
+qdrant-client = "^1.12.1"
+fastembed = "^0.4.2"
+
+# Document processing
+beautifulsoup4 = "^4.12.3"
+lxml = "^5.3.0"
+httpx = "^0.28.0"
+SPARQLWrapper = "^2.0.0"
+docling = "^2.31.0"
+
+# Utils
+pydantic = {extras = ["email"], version = "^2.10.3"}
+pydantic-settings = "^2.7.0"
+python-dotenv = "^1.0.1"
+structlog = "^24.4.0"
+tenacity = "^9.0.0"
+
+# Background jobs (used in future Celery tasks)
+redis = "^5.2.0"
+
+# Auth
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+
+# Database ORM
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+asyncpg = "^0.30.0"
+alembic = "^1.14.0"
+
+# File upload support
+python-multipart = "^0.0.12"
+
+# Rate limiting
+slowapi = "^0.1.9"
+
+# Report generation
+fpdf2 = "^2.8.0"
+
+# Bizdev operations (Wave 2 outreach agents)
+resend = "^2.4.0"
+
+# Observability
+arize-phoenix = {version = "^8.0.0", optional = true}
+opentelemetry-api = {version = "^1.28.0", optional = true}
+opentelemetry-sdk = {version = "^1.28.0", optional = true}
+opentelemetry-instrumentation-fastapi = {version = "^0.49b0", optional = true}
+opentelemetry-exporter-otlp-proto-grpc = {version = "^1.28.0", optional = true}
+prometheus-client = {version = "^0.21.0", optional = true}
+sentry-sdk = {extras = ["fastapi"], version = "^2.19.0", optional = true}
+
+[tool.poetry.extras]
+observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi", "opentelemetry-exporter-otlp-proto-grpc", "prometheus-client", "sentry-sdk"]
+local-llm = ["langchain-ollama"]
+openrouter = ["langchain-openai"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+ruff = "^0.8.4"
+mypy = "^1.13.0"
+httpx = "^0.28.0"
+pytest-cov = "^6.0.0"
+factory-boy = "^3.3.1"
+# Marketing PDF generator (G6.12): reportlab for native PDF construction.
+# Installed in dev group because the PDF is a build artifact, not a runtime asset.
+reportlab = "^4.4.0"
+pypdf = "^5.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "TCH"]
+ignore = [
+    # Line length is enforced by `ruff format`; E501 leftovers are long
+    # URLs / SQL / log strings that cannot be split meaningfully.
+    "E501",
+    # 29 legacy `raise` sites without `from err`. Real but non-blocking;
+    # fix incrementally when touching those files.
+    "B904",
+    # Collapsible-if / needless-bool / suppressible-exception: pure style,
+    # several hits sit in security-critical paths (auth fail-closed returns,
+    # circuit breaker) where "clever" rewrites hurt auditability.
+    "SIM102",
+    "SIM103",
+    "SIM105",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency-injection callables are designed to live in defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Header",
+    "fastapi.Body",
+    "fastapi.Path",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Security",
+    # Dependency factory (returns a Depends-able checker) — same contract.
+    "src.auth.dependencies.require_role",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Model-validation tests intentionally assert "any pydantic error".
+"tests/**" = ["B017"]
+# Optional-dependency availability probes (import in try/except) and
+# lazy imports after environment setup.
+"src/nlp/processing/*.py" = ["E402", "F401"]
+"src/api/main.py" = ["E402"]
+"src/api/routers/*.py" = ["E402"]
+# Mathematical notation (H = entropy, H_max) in the SNC trust layer.
+"src/agents/snc_layer.py" = ["N806"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+markers = [
+    "skipif: skip test if condition is true",
+]

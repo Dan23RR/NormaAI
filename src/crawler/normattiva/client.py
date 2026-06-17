@@ -433,8 +433,9 @@ class NormattivaOpenDataClient:
 
                     response = await self._request_with_retry("GET", "/api/bulk", params=params)
 
-                    # Parse XML content
-                    root = ET.fromstring(response.content)
+                    # Parse XML content. Source is the official Normattiva
+                    # opendata API over HTTPS (trusted government endpoint).
+                    root = ET.fromstring(response.content)  # nosec B314
                     acts = root.findall(".//atto")
 
                     for act in acts:

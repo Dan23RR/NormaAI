@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  poweredByHeader: false, // don't advertise the framework
   async redirects() {
     return [
       {
@@ -45,6 +46,11 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=()',
+          },
+          {
+            // Vercel serves HTTPS; safe to assert HSTS.
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
           },
         ],
       },

@@ -187,7 +187,7 @@ export default function Home() {
             <p className="mt-5 leading-relaxed text-night-2">
               Tre profili. Tre pitch diversi. Una piattaforma sotto il cofano: Q&A su 7 framework UE
               con citazione primary source EUR-Lex in 30 secondi, pipeline anti-hallucination 5 fasi,
-              312/312 test citazioni passing.
+              327/327 test citazioni passing.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
@@ -312,8 +312,8 @@ export default function Home() {
             />
             <ProofRow
               icon={<CircuitBoard className="h-5 w-5" />}
-              title="312/312 test passati al G1 verificato"
-              body="Test suite real-run: 38 unit, 57 DB/auth, 30 cache, 13 retrieval, 60 agent, 30 integration esterne, 36 API integration, 48 monte-carlo. 99% pass-rate empirico."
+              title="327/327 test passati, suite completa verde"
+              body="Test suite eseguita davvero (real-run), non solo dichiarata: unit, DB/auth, cache, retrieval, agent, integrazioni esterne, API integration, monte-carlo. Verde in CI a ogni push."
             />
             <ProofRow
               icon={<Zap className="h-5 w-5" />}

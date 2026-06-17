@@ -7,10 +7,11 @@ on:
       - 'src/**'
       - 'prompts/**'
       - 'tests/**'
-  push:
-    branches: [main]
   schedule:
-    # Weekly full regression on Sundays at 02:00 UTC
+    # Weekly full regression on Sundays at 02:00 UTC. (Not run per-push:
+    # the suite needs real LLM/services to produce meaningful metrics, so
+    # running it on every commit only produced noise. Use workflow_dispatch
+    # for on-demand runs.)
     - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:

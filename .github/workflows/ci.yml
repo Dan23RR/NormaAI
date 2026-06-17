@@ -211,11 +211,14 @@ jobs:
       - name: Check for secrets in source code (regex fallback)
         run: |
           FOUND=0
-          if git ls-files | xargs grep -lE 'AIzaSy[A-Za-z0-9_-]{30,}|sk-ant-api[A-Za-z0-9_-]{30,}|re_[A-Za-z0-9]{20,}' 2>/dev/null; then
+          # Exclude this workflow itself: it contains the detection patterns
+          # as literals, which would otherwise self-match and fail the gate.
+          SCAN_FILES=$(git ls-files | grep -vE '^\.github/workflows/')
+          if echo "$SCAN_FILES" | xargs grep -lE 'AIzaSy[A-Za-z0-9_-]{30,}|sk-ant-api[A-Za-z0-9_-]{30,}|re_[A-Za-z0-9]{20,}' 2>/dev/null; then
             echo "::error::Real API keys detected in tracked files!"
             FOUND=1
           fi
-          if git ls-files | xargs grep -l 'BEGIN RSA PRIVATE KEY\|BEGIN PRIVATE KEY' 2>/dev/null; then
+          if echo "$SCAN_FILES" | xargs grep -l 'BEGIN RSA PRIVATE KEY\|BEGIN PRIVATE KEY' 2>/dev/null; then
             echo "::error::Private keys detected in tracked files!"
             FOUND=1
           fi

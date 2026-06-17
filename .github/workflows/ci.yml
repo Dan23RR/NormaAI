@@ -69,11 +69,10 @@ jobs:
         image: qdrant/qdrant:v1.16.2
         ports:
           - 6333:6333
-        options: >-
-          --health-cmd "curl -f http://localhost:6333/healthz"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        # The qdrant image ships without curl/wget, so a container-level
+        # --health-cmd cannot probe the HTTP API (it fails with "command not
+        # found" and GitHub marks the service as failed to start). Readiness is
+        # polled from the runner instead - see the "Wait for Qdrant" step below.
       redis:
         image: redis:7-alpine
         ports:
@@ -97,6 +96,15 @@ jobs:
         run: |
           pip install poetry
           poetry install --no-interaction
+      - name: Wait for Qdrant to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:6333/healthz >/dev/null 2>&1; then
+              echo "Qdrant is ready"; exit 0
+            fi
+            echo "Waiting for Qdrant... ($i/30)"; sleep 2
+          done
+          echo "Qdrant did not become ready in time" >&2; exit 1
       - name: Run tests with coverage
         run: |
           poetry run pytest tests/ -v --tb=short \

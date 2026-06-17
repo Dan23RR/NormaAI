@@ -2,7 +2,7 @@
 
 > AI-powered compliance monitoring across 7 EU regulatory frameworks with real-time EUR-Lex integration, anti-hallucination verification, and Italian legislation support.
 
-[![CI](https://github.com/danielculotta/normaai/actions/workflows/ci.yml/badge.svg)](https://github.com/danielculotta/normaai/actions)
+[![CI](https://github.com/Dan23RR/NormaAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Dan23RR/NormaAI/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -25,7 +25,7 @@ NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-p
 - **Regulatory Q&A** — Ask questions about EU regulations, get cited answers grounded in official texts
 - **Gap Analysis** — Compliance assessment with per-requirement scoring and remediation plans
 - **Impact Monitor** — Real-time analysis of regulatory changes on your company
-- **EUR-Lex Crawler** — Automated SPARQL-based ingestion from official EU legislative database
+- **EUR-Lex Crawler** — Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text)
 - **Normattiva Crawler** — Italian implementing legislation via Open Data API (D.Lgs., Leggi)
 - **CoVe Anti-Hallucination** — 5-phase Chain-of-Verification pipeline for citation accuracy
 - **SSE Streaming** — Real-time streamed responses with verification progress events
@@ -44,10 +44,10 @@ NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-p
 │        Router → Retrieve → Agent → Confidence Check          │
 ├─────────────────────────────────────────────────────────────┤
 │  Qdrant (Hybrid Search)  │  PostgreSQL  │  Redis (Cache)    │
-│  BGE-base + BM25 + RRF   │  SQLAlchemy  │                   │
+│  mpnet-ML + BM25 + RRF   │  SQLAlchemy  │                   │
 ├─────────────────────────────────────────────────────────────┤
 │              Document Processing Pipeline                    │
-│        dots.ocr · Docling · BeautifulSoup (fallback)         │
+│        Docling · BeautifulSoup · dots.ocr (optional)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,8 +62,8 @@ NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-p
 ### 1. Clone & Configure
 
 ```bash
-git clone https://github.com/danielculotta/normaai.git
-cd normaai
+git clone https://github.com/Dan23RR/NormaAI.git
+cd NormaAI
 cp .env.example .env
 # Edit .env with your API keys and settings
 ```
@@ -113,7 +113,7 @@ alembic upgrade head
 ### 7. Seed Regulatory Data
 
 ```bash
-python -m src.pipeline seed
+python -m src.pipeline --action seed
 ```
 
 ### 8. Run the Server
@@ -230,13 +230,13 @@ normaai/
 | **API Framework** | FastAPI 0.115+ with async/await |
 | **Agent Orchestration** | LangGraph (StateGraph) |
 | **LLM Providers** | Google Gemini 2.5 Flash / Anthropic Claude Sonnet 4.5 |
-| **Vector Database** | Qdrant 1.12 (hybrid: BGE-base dense + BM25 sparse + RRF) |
+| **Vector Database** | Qdrant 1.16 (hybrid: multilingual-mpnet dense + BM25 sparse + RRF) |
 | **Relational Database** | PostgreSQL 16 with SQLAlchemy 2.0 async |
 | **Cache** | Redis 7 |
 | **Authentication** | JWT RS256 + bcrypt password hashing |
-| **Document Processing** | dots.ocr + IBM Docling + BeautifulSoup |
-| **Embedding Model** | BAAI/bge-base-en-v1.5 (768d) |
-| **Regulatory Data** | EUR-Lex SPARQL endpoint |
+| **Document Processing** | IBM Docling + BeautifulSoup (dots.ocr optional) |
+| **Embedding Model** | paraphrase-multilingual-mpnet-base-v2 (768d) |
+| **Regulatory Data** | EUR-Lex (SPARQL + CELLAR) + Normattiva Open Data |
 | **Frontend** | Next.js 14, TypeScript, Tailwind CSS, Recharts |
 | **Observability** | OpenTelemetry + Sentry (optional) |
 | **CI/CD** | GitHub Actions |
@@ -324,7 +324,7 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 ## Project Status
 
 **Current release:** MVP / Pre-Production (v0.3.0 — see `pyproject.toml`)
-**Last verified end-to-end:** 2026-04-28 — **312/312 tests passing** (99% empirical pass rate)
+**Last verified end-to-end:** 2026-06-12 — **327 tests passing** (full suite green; CI runs the suite on every push)
 
 ### Shipped (verified empirically, G1)
 
@@ -338,12 +338,12 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 | SSE Streaming | ✅ Connected | `src/api/streaming/sse.py` |
 | EUR-Lex Crawler | ✅ Complete | `src/crawler/eurlex/client.py` (18 tests) |
 | Normattiva Crawler | ✅ Integrated | `src/crawler/normattiva/` (15 tests) |
-| Frontend Dashboard (Next.js 14) | ✅ Complete | 31 pages under `frontend/src/app/dashboard/` |
+| Frontend Dashboard (Next.js 14) | ✅ Complete | 17 pages under `frontend/src/app/dashboard/` |
 | **Public Landing Page (IT)** | ✅ Complete (G2) | `frontend/src/app/page.tsx` |
 | Alembic Migrations | ✅ Complete | 4 revisions: 001 schema, 002 RLS, 003 temporal, 004 normattiva+CoVe |
-| Test suite | ✅ **312/312 PASS** | 17 files, run tier-by-tier via `run_tests.ps1` |
+| Test suite | ✅ **Full suite green** | 21 files; CI-enforced (`run_tests.ps1` for local tier-by-tier) |
 
-### Test pass rate per tier (2026-04-28)
+### Test pass rate per tier — baseline 2026-04-28 (current suite: 327 tests / 21 files, enforced in CI)
 
 ```
 TIER 1 - Pure unit (no infra)    38/38   100%

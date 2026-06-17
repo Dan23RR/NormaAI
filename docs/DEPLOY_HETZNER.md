@@ -37,7 +37,7 @@ dpkg-reconfigure -f noninteractive unattended-upgrades
 
 # Codice
 mkdir -p /opt && cd /opt
-git clone https://github.com/danielculotta/normaai.git normaai
+git clone https://github.com/Dan23RR/NormaAI.git normaai
 cd normaai
 ```
 
@@ -60,7 +60,7 @@ Valori da impostare (gli altri default vanno bene):
 | `GOOGLE_API_KEY` (o `ANTHROPIC_API_KEY`) | chiave di produzione |
 | `CORS_ORIGINS` | `https://normaai-psi.vercel.app,https://normaai.org,https://www.normaai.org` |
 | `NORMAAI_PUBLIC_URL` | `https://normaai-psi.vercel.app` (poi `https://normaai.org` quando il dominio è live) |
-| `RESEND_API_KEY`, `IMAP_*`, `TELEGRAM_*` | valori reali (come nel `.env` locale) |
+| `RESEND_API_KEY` | chiave Resend (email transazionali: consegna del Codex) |
 | `GRAFANA_PASSWORD`, `PROMETHEUS_BEARER_TOKEN` | nuovi |
 | `API_DOMAIN` | `api.normaai.org` |
 | `ACME_EMAIL` | `info@normaai.org` |
@@ -94,7 +94,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 # Migrazioni + seed knowledge base (il seed scarica da EUR-Lex: minuti)
 docker compose exec app alembic upgrade head
-docker compose exec app python -m src.pipeline seed
+docker compose exec app python -m src.pipeline --action seed
 ```
 
 Verifica:
@@ -111,8 +111,6 @@ Su Vercel → Project → Settings → Environment Variables:
 
 Da quel momento il form lead usa il backend completo (HMAC, Postgres,
 suppression list); la route serverless `/api/leads` resta come fallback.
-Importa i lead raccolti nel frattempo dalle notifiche email con
-`scripts/ingest_prospects.py`.
 
 ## 7. Backup + cron (5 min)
 

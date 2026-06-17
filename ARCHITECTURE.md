@@ -50,7 +50,7 @@
 **Context:** Legal documents contain both exact terms (article numbers, CELEX identifiers, thresholds) and semantic concepts (sustainability, due diligence). Pure dense search misses exact matches; pure keyword search misses paraphrases.
 
 **Decision:** Use hybrid search with:
-- **Dense vectors:** BAAI/bge-base-en-v1.5 (768-dim) via SentenceTransformer
+- **Dense vectors:** paraphrase-multilingual-mpnet-base-v2 (768-dim) via fastembed
 - **Sparse vectors:** Hash-based BM25 (30K vocab, MD5 → index mapping)
 - **Fusion:** Reciprocal Rank Fusion with k=60
 
@@ -154,7 +154,7 @@ User Question → Sanitize → Retrieve (Qdrant hybrid) → Route → QA Agent (
 ### Ingestion Pipeline Flow
 
 ```
-EUR-Lex SPARQL → Metadata → Download HTML → Legal Chunker → Contextual Enrichment
+EUR-Lex SPARQL → Metadata → CELLAR XHTML full text → Legal Chunker → Contextual Enrichment
     → Hybrid Embedding (Dense + Sparse) → Qdrant Indexing
 
 Normattiva API → Search → Download Text → Chunk → Enrich → Index
@@ -178,7 +178,7 @@ Request → Agent Graph → Draft PhaseChangeEvent
 | `src/agents/` | LangGraph orchestration, LLM calls, CoVe | LangGraph, LLM providers |
 | `src/auth/` | JWT, RBAC, brute-force protection | Redis, cryptography |
 | `src/crawler/` | EUR-Lex SPARQL, Normattiva API | httpx, SPARQLWrapper |
-| `src/nlp/` | Chunking, embedding, indexing | SentenceTransformers, Qdrant |
+| `src/nlp/` | Chunking, embedding, indexing | fastembed, Qdrant |
 | `src/db/` | SQLAlchemy models, async engine, RLS | SQLAlchemy, asyncpg |
 | `src/` | Config, cache, resilience, observability | Pydantic, Redis, OTel |
 
@@ -201,7 +201,7 @@ Request → Agent Graph → Draft PhaseChangeEvent
                              │
                     ┌────────▼────────────────┐
                     │  RBAC Role Check         │
-                    │  (admin/member)          │
+                    │  (admin/member/viewer)   │
                     └────────┬────────────────┘
                              │
                     ┌────────▼────────────────┐

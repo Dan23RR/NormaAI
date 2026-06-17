@@ -292,7 +292,7 @@ export default function Home() {
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             <ProofRow
               icon={<Database className="h-5 w-5" />}
-              title="Hybrid retrieval BGE-base + BM25 + RRF"
+              title="Hybrid retrieval multilingual-mpnet + BM25 + RRF"
               body="Recupero semantico denso (768d) e lessicale sparse, fusione Reciprocal Rank Fusion. Multi-tenant via Qdrant filter su org_id."
             />
             <ProofRow

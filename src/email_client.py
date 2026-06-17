@@ -262,8 +262,7 @@ def send_outreach_email(
         body_html = body_html + "<br/><br/>" + footer.strip().replace("\n", "<br/>")
 
     headers: dict[str, str] = {
-        # RFC 2369 one-click unsubscribe. Opt-out replies are detected by
-        # imap_poller and pushed to suppression_list. Lifts deliverability and
+        # RFC 2369 one-click unsubscribe. Lifts deliverability and
         # reinforces the Art. 6.1.f legitimate-interest opt-out.
         "List-Unsubscribe": f"<mailto:{cfg['from_email']}?subject=unsubscribe>",
     }

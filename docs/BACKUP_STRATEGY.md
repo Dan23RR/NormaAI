@@ -9,7 +9,7 @@
 | Dato | Dove | Criticità | Strategia |
 |---|---|---|---|
 | PostgreSQL (org, utenti, leads, assessments, conversations, audit) | volume `postgres_data` | **CRITICA — unica fonte non ricostruibile** | `pg_dump` giornaliero + retention 30gg |
-| Qdrant (vettori normativi) | volume `qdrant_data` | Bassa — ricostruibile con `python -m src.pipeline seed` (~min/ore) | snapshot settimanale opzionale, oppure nulla |
+| Qdrant (vettori normativi) | volume `qdrant_data` | Bassa — ricostruibile con `python -m src.pipeline --action seed` (~min/ore) | snapshot settimanale opzionale, oppure nulla |
 | Redis (cache, blacklist, lockout) | volume `redis_data` | Nessuna — effimero by design | nessun backup |
 | Chiavi JWT + `.env` | filesystem | Alta (segreti) | copia manuale cifrata offline (password manager / disco cifrato), MAI nel repo |
 | Codice | GitHub remoto | — | già versionato |
@@ -49,7 +49,7 @@ docker compose up -d app
 curl http://localhost:8000/readyz
 ```
 
-Qdrant dopo un disastro totale: `python -m src.pipeline seed` (ricostruisce dai crawler).
+Qdrant dopo un disastro totale: `python -m src.pipeline --action seed` (ricostruisce dai crawler).
 
 ## Test di restore (mensile — obbligatorio)
 

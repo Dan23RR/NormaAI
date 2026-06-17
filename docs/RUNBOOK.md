@@ -56,7 +56,7 @@ docker compose restart qdrant
 ```
 
 - Il circuit breaker qdrant si richiude da solo (recovery 30s) dopo che il servizio torna su.
-- Collection corrotta/persa → re-seed: `python -m src.pipeline seed` (~minuti, usa EUR-Lex).
+- Collection corrotta/persa → re-seed: `python -m src.pipeline --action seed` (~minuti, usa EUR-Lex).
 - I dati Qdrant sono **ricostruibili** dal crawl: non è una perdita dati permanente.
 
 ## 4. LLM provider down (Gemini/Anthropic)
@@ -100,13 +100,13 @@ Comportamento by design (non panicare):
 docker compose restart redis   # recovery cache: immediato; nessun dato critico in Redis
 ```
 
-## 7. Deliverability email (Resend/IMAP)
+## 7. Deliverability email (Resend)
 
-- Bounce/spam rate su → controlla dashboard Resend, sospendi i cron di invio
-  (`AGENT_OUTREACH_DAILY_SEND_LIMIT=0` + restart) finché non è chiaro il motivo.
-- IMAP poller fermo → verifica app password Gmail (scade se cambia la password account).
-- Ogni invio cold DEVE avere footer Art. 14 + List-Unsubscribe (iniettati da
-  `email_client.send_outreach_email` — se mancano nei log, NON inviare).
+- Le email transazionali (consegna del Codex ai lead) passano da Resend.
+- Bounce/spam rate su → controlla la dashboard Resend e la configurazione
+  DKIM/SPF del dominio mittente.
+- Ogni email DEVE avere footer privacy + List-Unsubscribe (iniettati da
+  `email_client` — se mancano nei log, indaga prima di inviare).
 
 ## 8. Incidente di sicurezza
 
@@ -146,7 +146,7 @@ poetry run alembic downgrade -1          # rollback ultima (ATTENZIONE: vedi not
 |---|---|
 | Giornaliera (auto) | Backup Postgres (`scripts/backup_postgres.ps1`, task scheduler) |
 | Settimanale | Controlla Dependabot PR + alert CodeQL/Trivy in GitHub Security tab |
-| Settimanale (auto) | Crawl EUR-Lex update (`python -m src.pipeline update --days-back 7`) |
+| Settimanale (auto) | Crawl EUR-Lex update (`python -m src.pipeline --action update --days-back 7`) |
 | Mensile | Test di RESTORE del backup (un backup non testato non è un backup) |
 | Trimestrale | Rotazione chiavi (SECURITY.md § Key Rotation) + review accessi |
 

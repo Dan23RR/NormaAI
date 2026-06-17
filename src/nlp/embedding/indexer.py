@@ -187,7 +187,7 @@ class HybridIndexer:
         Index a list of LegalChunk objects into Qdrant.
 
         Processes embeddings in small batches to avoid OOM errors.
-        With BGE-base (768-dim), batch_size=32 uses ~200MB RAM.
+        At 768-dim, batch_size=32 uses ~200MB RAM.
 
         Args:
             chunks: List of LegalChunk objects

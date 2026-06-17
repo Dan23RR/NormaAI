@@ -125,8 +125,8 @@ export async function POST(req: NextRequest) {
         `LeadRef: ${leadRef || '— (traffico organico)'}`,
         `Source:  ${source}`,
         '',
-        'NB: backend non ancora live — lead NON in Postgres. Importalo con',
-        'scripts/ingest_prospects.py quando il backend è deployato.',
+        'NB: se il backend non è ancora live, il lead NON è in Postgres',
+        'e va importato quando il backend viene deployato.',
       ].join('\n'),
       replyTo: email,
     })

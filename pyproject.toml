@@ -4,6 +4,9 @@ version = "0.3.0"
 description = "EU Regulatory Intelligence Monitor - Multi-framework compliance AI"
 authors = ["Daniel <info@normaai.org>"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/Dan23RR/NormaAI"
+repository = "https://github.com/Dan23RR/NormaAI"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
@@ -60,7 +63,7 @@ slowapi = "^0.1.9"
 # Report generation
 fpdf2 = "^2.8.0"
 
-# Bizdev operations (Wave 2 outreach agents)
+# Transactional email (Resend — Codex/lead delivery)
 resend = "^2.4.0"
 
 # Observability

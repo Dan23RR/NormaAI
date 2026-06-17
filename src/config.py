@@ -131,6 +131,16 @@ class Settings(BaseSettings):
     jwt_private_key: str = ""  # PEM content directly (alternative to path)
     jwt_public_key: str = ""  # PEM content directly (alternative to path)
 
+    # ─── JWT issuer / audience claims ────────────────────────
+    # Set on every minted token and verified (required) on decode. Defaults
+    # match the single-service deployment; override if you split the API behind
+    # a gateway or issue tokens for multiple audiences.
+    jwt_issuer: str = "normaai"
+    jwt_audience: str = "normaai-api"
+    # Set False only during a migration window where legacy tokens (minted
+    # before aud/iss existed) must still be accepted until they expire.
+    jwt_require_aud_iss: bool = True
+
     # ─── CORS ───────────────────────────────────────────────
     cors_origins: str = "http://localhost:3000"  # comma-separated
     cors_allow_methods: str = "GET,POST,PUT,DELETE,OPTIONS"

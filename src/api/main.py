@@ -146,8 +146,45 @@ except ImportError:
 # ─── Router Registration ─────────────────────────────────────────
 
 
-def _safe_include(router_module: str, router_attr: str = "router", prefix: str = "", **kwargs):
-    """Safely import and register a router."""
+# Security/compliance-critical routers. A failed import of any of these must
+# ABORT startup rather than silently degrade: a missing auth router would ship
+# an API with no login/token surface; a missing GDPR router would drop a
+# compliance-mandated surface. Membership here is the SOURCE OF TRUTH for
+# fail-fast: a registered router aborts startup even if a call site omits
+# `critical=True` (the flag stays as an explicit, self-documenting marker).
+CRITICAL_ROUTERS: frozenset[str] = frozenset(
+    {
+        "src.auth.router",
+        "src.api.routers.gdpr",
+    }
+)
+
+
+def _safe_include(
+    router_module: str,
+    router_attr: str = "router",
+    prefix: str = "",
+    *,
+    critical: bool = False,
+    **kwargs,
+):
+    """Import and register a router.
+
+    Optional routers (``critical=False``) degrade gracefully: an ImportError is
+    logged and swallowed so the app can boot without a non-essential surface.
+    Security/compliance-critical routers (members of ``CRITICAL_ROUTERS`` -- or
+    explicitly ``critical=True``) are fail-fast: ANY import-time failure
+    (ImportError, SyntaxError, a broken dependency, a missing ``router``
+    attribute) aborts startup loudly instead of shipping an API with a missing
+    authentication/compliance surface.
+    """
+    # Registry membership drives fail-fast so a future edit dropping the
+    # `critical=True` kwarg from an auth/gdpr call site cannot silently regress
+    # to shipping without that surface. The flag is still sanity-checked against
+    # the registry (forward direction) to catch a mis-flagged optional router.
+    is_critical = critical or router_module in CRITICAL_ROUTERS
+    if critical and router_module not in CRITICAL_ROUTERS:
+        raise AssertionError(f"{router_module} flagged critical but not in CRITICAL_ROUTERS")
     try:
         import importlib
 
@@ -155,15 +192,26 @@ def _safe_include(router_module: str, router_attr: str = "router", prefix: str =
         r = getattr(mod, router_attr)
         app.include_router(r, prefix=prefix, **kwargs)
         logger.info("router_loaded", module=router_module)
-    except ImportError as e:
-        logger.warning("router_not_available", module=router_module, error=str(e))
+    except Exception as e:  # noqa: BLE001
+        if is_critical:
+            logger.error("critical_router_failed", module=router_module, error=str(e))
+            raise RuntimeError(
+                f"Critical router '{router_module}' failed to load: {e}. "
+                "Refusing to start with a missing security/compliance surface."
+            ) from e
+        if isinstance(e, ImportError):
+            logger.warning("router_not_available", module=router_module, error=str(e))
+        else:
+            # An optional router that imports but is internally broken (e.g. a
+            # missing `router` attribute) is a real bug -> do not swallow it.
+            raise
 
 
 # Landing page
 _safe_include("src.api.landing")
 
-# Auth
-_safe_include("src.auth.router", prefix="/api/v1")
+# Auth (CRITICAL: never ship without authentication endpoints)
+_safe_include("src.auth.router", prefix="/api/v1", critical=True)
 
 # API routers
 _safe_include("src.api.routers.intelligence")
@@ -174,4 +222,5 @@ _safe_include("src.api.routers.reports")
 _safe_include("src.api.routers.clients")
 _safe_include("src.api.routers.conversations")
 _safe_include("src.api.routers.leads")
-_safe_include("src.api.routers.gdpr")
+# GDPR (CRITICAL: data-subject-rights endpoints are compliance-mandated)
+_safe_include("src.api.routers.gdpr", critical=True)

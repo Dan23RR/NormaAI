@@ -100,7 +100,7 @@
 
 **Consequences:**
 - 2-5x increase in latency for verified responses (mitigated by SSE streaming)
-- Near-zero hallucinated citations in production
+- Every CELEX/URN citation is validated against the live EUR-Lex/Normattiva APIs at generation time, so a hallucinated identifier is caught before it reaches the user (engineered and unit-tested at MVP scale; not yet measured against a production-volume benchmark)
 - Only triggered when confidence < 0.85 (configurable threshold)
 
 ### ADR-6: SNC Trust Layer (Behavioral Trust Clustering)
@@ -231,6 +231,8 @@ pytest tests/test_hybrid_search.py -v
 pytest tests/test_normattiva_client.py -v
 pytest tests/test_api_integration.py -v
 
-# With coverage threshold
-pytest tests/ --cov=src --cov-fail-under=60
+# Coverage gate. CI enforces a floor of 30% today (real coverage is ~37%),
+# ratcheting toward a 60% target as coverage grows. See .github/workflows/ci.yml
+# for the authoritative, CI-enforced value.
+pytest tests/ --cov=src --cov-fail-under=30   # 60 is the target, not yet the gate
 ```

@@ -328,13 +328,13 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 ## Project Status
 
 **Current release:** MVP / Pre-Production (v0.3.0 - see `pyproject.toml`)
-**Last verified end-to-end:** 2026-06-12 - **327 tests passing** (full suite green; CI runs the suite on every push)
+**Last verified end-to-end:** 2026-06-12 - **full suite green in CI** (CI runs every test on every push; run `pytest --collect-only` for the live count). 3 network-dependent tests are skipped offline.
 
 ### Shipped (verified empirically, G1)
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
-| Backend API | ✅ Production-ready | 8 routers, 33+ endpoints across `src/api/routers/` + `src/auth/router.py` |
+| Backend API | ✅ Feature-complete (MVP) | 8 routers, 33+ endpoints across `src/api/routers/` + `src/auth/router.py` |
 | LangGraph Orchestration | ✅ Complete | `src/agents/graph.py`, `nodes.py`, `router.py` |
 | Hybrid Search (RRF) | ✅ Complete | `tests/test_hybrid_search.py` (13 tests, 100% pass) |
 | JWT Auth + RLS | ✅ Complete | `alembic/versions/002_enable_rls_policies.py` |
@@ -347,7 +347,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 | Alembic Migrations | ✅ Complete | 4 revisions: 001 schema, 002 RLS, 003 temporal, 004 normattiva+CoVe |
 | Test suite | ✅ **Full suite green** | 21 files; CI-enforced (`run_tests.ps1` for local tier-by-tier) |
 
-### Test pass rate per tier - baseline 2026-04-28 (current suite: 327 tests / 21 files, enforced in CI)
+### Test pass rate per tier - dated baseline 2026-04-28 (the per-tier counts below are a historical snapshot; the live suite has since grown - CI runs the authoritative current suite on every push)
 
 ```
 TIER 1 - Pure unit (no infra)    38/38   100%

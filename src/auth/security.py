@@ -16,6 +16,7 @@ from pathlib import Path
 
 import bcrypt
 from jose import JWTError, jwt
+from jose.exceptions import JOSEError
 from pydantic import BaseModel
 
 from src.config import get_settings
@@ -30,6 +31,18 @@ def _get_access_token_expire_minutes() -> int:
 
 def _get_refresh_token_expire_days() -> int:
     return get_settings().refresh_token_expire_days
+
+
+def _get_jwt_issuer() -> str:
+    return get_settings().jwt_issuer
+
+
+def _get_jwt_audience() -> str:
+    return get_settings().jwt_audience
+
+
+def _get_require_aud_iss() -> bool:
+    return get_settings().jwt_require_aud_iss
 
 
 # Algorithm selection: RS256 preferred, HS256 fallback for dev
@@ -262,6 +275,8 @@ def create_access_token(
         "type": "access",
         "jti": jti,
         "iat": datetime.now(UTC),
+        "iss": _get_jwt_issuer(),
+        "aud": _get_jwt_audience(),
     }
     return jwt.encode(payload, _get_signing_key(), algorithm=_algorithm)
 
@@ -284,6 +299,8 @@ def create_refresh_token(
         "jti": jti,
         "family": token_family,
         "iat": datetime.now(UTC),
+        "iss": _get_jwt_issuer(),
+        "aud": _get_jwt_audience(),
     }
     return jwt.encode(payload, _get_signing_key(), algorithm=_algorithm)
 
@@ -306,10 +323,42 @@ def create_token_pair(
 
 def decode_token(token: str) -> TokenPayload:
     try:
-        payload = jwt.decode(token, _get_verification_key(), algorithms=[_algorithm])
+        if _get_require_aud_iss():
+            # Strict: signature, audience and issuer must all be PRESENT and
+            # match. python-jose validates aud/iss only when present unless you
+            # also REQUIRE their presence via the require_* flags (NOT a
+            # `require` list, which is PyJWT syntax that jose silently ignores).
+            payload = jwt.decode(
+                token,
+                _get_verification_key(),
+                algorithms=[_algorithm],
+                audience=_get_jwt_audience(),
+                issuer=_get_jwt_issuer(),
+                options={"require_aud": True, "require_iss": True, "require_exp": True},
+            )
+        else:
+            # Migration window: accept legacy tokens lacking aud/iss, but if the
+            # claims ARE present they must be correct.
+            payload = jwt.decode(
+                token,
+                _get_verification_key(),
+                algorithms=[_algorithm],
+                options={"verify_aud": False},
+            )
+            if payload.get("iss") not in (None, _get_jwt_issuer()):
+                raise JWTError("issuer mismatch")
+            if payload.get("aud") not in (None, _get_jwt_audience()):
+                raise JWTError("audience mismatch")
         # Ensure JTI exists (backward compatibility with old tokens)
         if "jti" not in payload:
             payload["jti"] = "legacy-" + str(uuid.uuid4())
+        # aud/iss were validated above; strip them so TokenPayload (which has no
+        # such fields) constructs cleanly even under extra='forbid'.
+        payload.pop("aud", None)
+        payload.pop("iss", None)
         return TokenPayload(**payload)
-    except JWTError as e:
+    except JOSEError as e:
+        # JOSEError is the base of JWTError/JWSError/JWKError, so a malformed
+        # header/signature (JWSError) or key error maps to a clean 401-style
+        # ValueError, never a leaked 500.
         raise ValueError(f"Invalid token: {e}")

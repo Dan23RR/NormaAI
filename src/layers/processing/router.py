@@ -1,5 +1,5 @@
 """
-Confidence-based processor routing — automatically selects between dots.ocr and Docling.
+Confidence-based processor routing - automatically selects between dots.ocr and Docling.
 
 Routes documents to the best processor based on quality analysis:
 - Digital PDFs with extractable text → Docling (faster, cheaper)

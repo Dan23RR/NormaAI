@@ -188,7 +188,7 @@ def _build_metadata(
 async def _sse_stream(result: dict) -> AsyncIterator[str]:
     """Stream a complete result as Server-Sent Events.
 
-    This is the SSE infrastructure stub — sends the full result
+    This is the SSE infrastructure stub - sends the full result
     in a single data event. When live LLM streaming is enabled,
     this will be replaced with token-by-token streaming from
     LangGraph's astream_events().
@@ -484,7 +484,7 @@ async def _qa_stream_generator(
     try:
         from src.agents.graph import arun_qa
 
-        # Phase 1: Draft — call the real agent graph
+        # Phase 1: Draft - call the real agent graph
         yield PhaseChangeEvent(phase="draft", message="Generating initial response...")
         result = await arun_qa(
             question, profile_dict, cove_enabled=enable_cove, org_id=str(user.org_id)
@@ -568,7 +568,7 @@ async def _gap_analysis_stream_generator(
     try:
         from src.agents.graph import arun_gap_analysis
 
-        # Phase 1: Draft — run the real gap analysis
+        # Phase 1: Draft - run the real gap analysis
         yield PhaseChangeEvent(phase="draft", message=f"Analyzing {framework} requirements...")
         result = await arun_gap_analysis(
             framework, profile_dict, cove_enabled=enable_cove, org_id=str(user.org_id)
@@ -635,7 +635,7 @@ async def _monitor_stream_generator(
     try:
         from src.agents.graph import arun_monitor_check
 
-        # Phase 1: Draft — run the real monitor analysis
+        # Phase 1: Draft - run the real monitor analysis
         yield PhaseChangeEvent(phase="draft", message="Analyzing regulatory change impact...")
         result = await arun_monitor_check(
             regulation_change, profile_dict, cove_enabled=enable_cove, org_id=str(user.org_id)

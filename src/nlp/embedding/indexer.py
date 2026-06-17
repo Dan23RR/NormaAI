@@ -1,5 +1,5 @@
 """
-Qdrant Hybrid Indexer — Dense + BM25 sparse vectors for EU regulations.
+Qdrant Hybrid Indexer - Dense + BM25 sparse vectors for EU regulations.
 
 Implements hybrid search with Reciprocal Rank Fusion (RRF):
 - Dense vectors: FastEmbed (paraphrase-multilingual-mpnet-base-v2, 768 dim) for semantic similarity
@@ -58,7 +58,7 @@ def _text_to_sparse_vector(text: str, vocab_size: int = 30000) -> SparseVector:
     # Aggregate by index to guarantee uniqueness (handles hash collisions)
     index_values: dict[int, float] = {}
     for word, count in word_counts.items():
-        idx = int(hashlib.md5(word.encode()).hexdigest(), 16) % vocab_size
+        idx = int(hashlib.md5(word.encode(), usedforsecurity=False).hexdigest(), 16) % vocab_size
         tf_score = math.log(1 + count)
         index_values[idx] = index_values.get(idx, 0.0) + tf_score
 
@@ -214,7 +214,8 @@ class HybridIndexer:
                 # Create unique ID from celex + global chunk index
                 point_id = int(
                     hashlib.md5(
-                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode()
+                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode(),
+                        usedforsecurity=False,
                     ).hexdigest()[:16],
                     16,
                 )
@@ -275,7 +276,7 @@ class HybridIndexer:
         org_id: str | None = None,
     ) -> int:
         """
-        Index ContextualChunk objects — embeds contextualized_text, stores original text.
+        Index ContextualChunk objects - embeds contextualized_text, stores original text.
 
         This is the recommended method for enterprise use. The contextual prefix
         improves retrieval accuracy by ~10-15% while preserving the original text
@@ -306,7 +307,8 @@ class HybridIndexer:
 
                 point_id = int(
                     hashlib.md5(
-                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode()
+                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode(),
+                        usedforsecurity=False,
                     ).hexdigest()[:16],
                     16,
                 )
@@ -560,11 +562,11 @@ class HybridIndexer:
 
         # Temporal: exclude superseded chunks by default. is_empty (not is_null)
         # because in-force chunks leave superseded_by unset and Qdrant drops null
-        # payload keys — is_null would match nothing and filter out the corpus.
+        # payload keys - is_null would match nothing and filter out the corpus.
         if not include_superseded:
             conditions.append(IsEmptyCondition(is_empty=PayloadField(key="superseded_by")))
 
-        # Multi-tenant isolation — FAIL-CLOSED (mirrors the DB's RLS posture).
+        # Multi-tenant isolation - FAIL-CLOSED (mirrors the DB's RLS posture).
         # - org_id given      -> that org's private chunks + shared (org_id null)
         # - org_id None        -> shared-only (NEVER another tenant's private docs)
         # - allow_all_orgs     -> escape hatch for admin/seed/reindex paths ONLY
@@ -588,7 +590,7 @@ class HybridIndexer:
     def delete_org_chunks(self, org_id: str) -> None:
         """Delete every chunk owned by an org (GDPR Art. 17 erasure).
 
-        Scoped strictly to the org's own documents — the shared regulatory
+        Scoped strictly to the org's own documents - the shared regulatory
         corpus (org_id null) is never touched. A falsy org_id is a no-op so a
         bug can never wipe the shared corpus.
         """

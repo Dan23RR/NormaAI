@@ -1,7 +1,7 @@
 import { LegalLayout, LegalSection } from '@/components/LegalLayout'
 
 export const metadata = {
-  title: 'Cookie Policy — NormaAI',
+  title: 'Cookie Policy - NormaAI',
 }
 
 export default function CookiePage() {

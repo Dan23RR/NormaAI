@@ -233,7 +233,7 @@ async def astream_llm(system_prompt: str, user_message: str) -> AsyncIterator[st
 
     try:
         # Hold one concurrency permit for the duration of the stream (a streaming
-        # call occupies a provider slot just like a unary one) — same per-call cap
+        # call occupies a provider slot just like a unary one) - same per-call cap
         # that protects against the SNC/CoVe fan-out stampede.
         from src.resilience import get_llm_semaphore
 

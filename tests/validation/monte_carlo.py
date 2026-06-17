@@ -530,7 +530,7 @@ def generate_risk_report(result: SimulationResult) -> str:
     """Generate a PE/M&A-ready risk report."""
     lines = [
         "╔══════════════════════════════════════════════════════════════╗",
-        "║  NORMAAI — REGULATORY RISK QUANTIFICATION REPORT           ║",
+        "║  NORMAAI - REGULATORY RISK QUANTIFICATION REPORT           ║",
         "║  Monte Carlo Simulation Analysis                            ║",
         "╠══════════════════════════════════════════════════════════════╣",
         f"║  Company:    {result.company_name:<46s}║",

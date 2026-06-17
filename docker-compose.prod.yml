@@ -1,4 +1,4 @@
-# Production overlay — Hetzner deploy (G10).
+# Production overlay - Hetzner deploy (G10).
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
@@ -34,7 +34,7 @@ services:
       - normaai-network
 
   app:
-    # No public port in production — Caddy proxies to it on the internal
+    # No public port in production - Caddy proxies to it on the internal
     # network. `ports: []` would not override the base mapping, hence !override.
     ports: !override []
     environment:

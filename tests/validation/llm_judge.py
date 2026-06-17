@@ -3,11 +3,11 @@ LLM-as-Judge Evaluator for NormaAI validation.
 
 Uses a separate LLM (different from NormaAI's) to evaluate the quality
 of NormaAI's outputs across 5 dimensions:
-1. Legal Accuracy — Are cited articles correct and pertinent?
-2. Completeness — Are all relevant requirements covered?
-3. Actionability — Are recommendations implementable?
-4. Hallucination Detection — Are there fabricated references?
-5. Cross-Framework Awareness — Are framework interactions noted?
+1. Legal Accuracy - Are cited articles correct and pertinent?
+2. Completeness - Are all relevant requirements covered?
+3. Actionability - Are recommendations implementable?
+4. Hallucination Detection - Are there fabricated references?
+5. Cross-Framework Awareness - Are framework interactions noted?
 
 Usage:
     python -m tests.validation.llm_judge --input results.json

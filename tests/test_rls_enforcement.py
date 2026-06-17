@@ -48,7 +48,7 @@ class TestRLSEnforcement:
                     has_org_id = any(kw.arg == "org_id" for kw in node.keywords)
                     if not has_org_id:
                         violations.append(
-                            f"{router_name}:{node.lineno} — "
+                            f"{router_name}:{node.lineno} - "
                             f"db_manager.session() called without org_id"
                         )
 

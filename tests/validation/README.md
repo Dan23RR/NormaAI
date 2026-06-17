@@ -59,8 +59,8 @@ Each test case (`TestCase`) contains:
 
 ### Per-Test Metrics
 
-- **Precision**: TP / (TP + FP) — accuracy of positive predictions
-- **Recall**: TP / (TP + FN) — coverage of actual violations
+- **Precision**: TP / (TP + FP) - accuracy of positive predictions
+- **Recall**: TP / (TP + FN) - coverage of actual violations
 - **F1 Score**: 2 × (Precision × Recall) / (Precision + Recall)
 
 ### Article Matching Logic
@@ -164,9 +164,9 @@ Default thresholds (configurable in SuiteResult):
 ## Integration with NormaAI
 
 The runner calls three agent functions:
-- `arun_gap_analysis(query, company_profile)` — identifies compliance gaps
-- `arun_qa(query, company_profile)` — answers regulatory questions
-- `arun_monitor_check(query, company_profile)` — monitors compliance status
+- `arun_gap_analysis(query, company_profile)` - identifies compliance gaps
+- `arun_qa(query, company_profile)` - answers regulatory questions
+- `arun_monitor_check(query, company_profile)` - monitors compliance status
 
 Each returns a dict with findings that metrics.py extracts.
 

@@ -214,7 +214,7 @@ export default function QAPage() {
                           </div>
                         )}
 
-                        {/* Related frameworks — clickable to drill down */}
+                        {/* Related frameworks - clickable to drill down */}
                         {msg.data.related_frameworks?.length > 0 && (
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] uppercase text-slate-600">Related:</span>
@@ -249,7 +249,7 @@ export default function QAPage() {
 
                         {/* AI disclosure */}
                         <p className="text-[9px] text-slate-600 mt-2 italic">
-                          Risposta generata da AI — verificare con fonti ufficiali prima di decisioni vincolanti.
+                          Risposta generata da AI - verificare con fonti ufficiali prima di decisioni vincolanti.
                         </p>
                       </div>
                     )}

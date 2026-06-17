@@ -1,4 +1,4 @@
-"""Loader for workflow_presets.yaml — pattern inspired by Mike OSS workflows.
+"""Loader for workflow_presets.yaml - pattern inspired by Mike OSS workflows.
 
 Loads the YAML on import, validates schema, exposes typed getters.
 Cached at module level (mutate `_PRESETS` only in tests).

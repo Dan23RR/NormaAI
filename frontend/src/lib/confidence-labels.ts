@@ -46,7 +46,7 @@ export function getConfidenceLabel(score: number): ConfidenceLabelConfig {
     return {
       level: 'medium',
       label: 'Affidabilità media',
-      sublabel: 'Fonti parziali — verifica raccomandata',
+      sublabel: 'Fonti parziali - verifica raccomandata',
       color: 'text-amber-400',
       bg: 'bg-amber-400/10',
       border: 'border-amber-400/20',
@@ -55,7 +55,7 @@ export function getConfidenceLabel(score: number): ConfidenceLabelConfig {
   return {
     level: 'low',
     label: 'Richiede verifica',
-    sublabel: 'Analisi preliminare — revisione esperto necessaria',
+    sublabel: 'Analisi preliminare - revisione esperto necessaria',
     color: 'text-orange-400',
     bg: 'bg-orange-400/10',
     border: 'border-orange-400/20',
@@ -100,7 +100,7 @@ export function getComplianceLabel(score: number): ConfidenceLabelConfig {
 }
 
 /**
- * Compliance status colors — blue/neutral palette (no traffic lights).
+ * Compliance status colors - blue/neutral palette (no traffic lights).
  *
  * COMPLIANT = blue (informative, not "approved")
  * PARTIALLY_COMPLIANT = amber (caution)

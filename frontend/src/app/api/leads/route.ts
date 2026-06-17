@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Serverless lead capture — keeps the Codex funnel alive while the
+ * Serverless lead capture - keeps the Codex funnel alive while the
  * FastAPI backend (api.normaai.org) is not deployed yet.
  *
  * The landing form posts here ONLY when NEXT_PUBLIC_API_URL is unset
  * (same-origin fallback). Once the backend is live, set that env var on
  * Vercel and traffic flows to /api/v1/leads with the full pipeline
- * (HMAC links, Postgres, suppression list) — this route stays as backup.
+ * (HMAC links, Postgres, suppression list) - this route stays as backup.
  *
  * Env (Vercel → Project Settings → Environment Variables, server-side):
- *   RESEND_API_KEY      optional — enables email notification + delivery
- *   LEADS_NOTIFY_EMAIL  optional — founder inbox (default info@normaai.org)
- *   RESEND_FROM_EMAIL   optional — verified sender (default info@normaai.org)
+ *   RESEND_API_KEY      optional - enables email notification + delivery
+ *   LEADS_NOTIFY_EMAIL  optional - founder inbox (default info@normaai.org)
+ *   RESEND_FROM_EMAIL   optional - verified sender (default info@normaai.org)
  *
  * Design rule: NEVER lose a lead. If Resend is missing or fails, we still
  * log the lead (Vercel function logs) and return the download link.
@@ -27,7 +27,7 @@ type LeadPayload = {
   role?: unknown
   source?: unknown
   lead_ref?: unknown
-  website?: unknown // honeypot — humans never fill it
+  website?: unknown // honeypot - humans never fill it
 }
 
 function clean(v: unknown, max = 200): string {
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const origin = req.nextUrl.origin
   const downloadUrl = CODEX_PATH // relative: form resolves same-origin
 
-  // Always log — this is the persistence floor if email is unavailable.
+  // Always log - this is the persistence floor if email is unavailable.
   console.log(
     JSON.stringify({
       event: 'lead_captured',
@@ -110,19 +110,19 @@ export async function POST(req: NextRequest) {
   const notifyTo = process.env.LEADS_NOTIFY_EMAIL || 'info@normaai.org'
 
   if (apiKey) {
-    // Founder notification — fire first, it's the one that matters.
+    // Founder notification - fire first, it's the one that matters.
     await sendResendEmail({
       apiKey,
       from,
       to: [notifyTo],
-      subject: `[NormaAI lead] ${email}${orgName ? ` — ${orgName}` : ''}`,
+      subject: `[NormaAI lead] ${email}${orgName ? ` - ${orgName}` : ''}`,
       text: [
         'Nuovo lead dal form Codex (route serverless Vercel):',
         '',
         `Email:   ${email}`,
-        `Org:     ${orgName || '—'}`,
-        `Ruolo:   ${role || '—'}`,
-        `LeadRef: ${leadRef || '— (traffico organico)'}`,
+        `Org:     ${orgName || '-'}`,
+        `Ruolo:   ${role || '-'}`,
+        `LeadRef: ${leadRef || '- (traffico organico)'}`,
         `Source:  ${source}`,
         '',
         'NB: se il backend non è ancora live, il lead NON è in Postgres',
@@ -137,16 +137,16 @@ export async function POST(req: NextRequest) {
       apiKey,
       from,
       to: [email],
-      subject: 'Il tuo Codex Post-Omnibus 2025-2029 — NormaAI',
+      subject: 'Il tuo Codex Post-Omnibus 2025-2029 - NormaAI',
       text: [
-        'Grazie per l’interesse in NormaAI.',
+        "Grazie per l'interesse in NormaAI.",
         '',
         `Scarica il Codex Post-Omnibus 2025-2029 (PDF, 17 pagine):`,
         `${origin}${CODEX_PATH}`,
         '',
         'Dentro trovi: soglie CSRD post-Omnibus (1.000+ dipendenti e €450M,',
         'cumulativa), calendario CSDDD (trasposizione 26 luglio 2028,',
-        'prima compliance luglio 2029 — Dir. (UE) 2026/470), flowchart',
+        'prima compliance luglio 2029 - Dir. (UE) 2026/470), flowchart',
         '"sono in scope?", e i 10 errori più comuni nelle prime disclosure.',
         '',
         'Domande su un caso concreto? Rispondi a questa email: 30 minuti,',

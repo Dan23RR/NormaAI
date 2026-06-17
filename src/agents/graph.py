@@ -1,9 +1,9 @@
 """
-NormaAI Agent Graph — LangGraph orchestration for regulatory intelligence.
+NormaAI Agent Graph - LangGraph orchestration for regulatory intelligence.
 
 Two graph variants:
 - Sync graph: for tests, scripts, CLI (uses call_llm → llm.invoke)
-- Async graph: for FastAPI (uses acall_llm → llm.ainvoke — non-blocking)
+- Async graph: for FastAPI (uses acall_llm → llm.ainvoke - non-blocking)
 
 The async public API (arun_qa, arun_gap_analysis, arun_monitor_check)
 uses the async graph with an asyncio.Semaphore to limit concurrency
@@ -65,7 +65,7 @@ def _build_graph(*, use_async_nodes: bool = False):
         use_async_nodes: If True, use async LLM nodes (for FastAPI).
                          If False, use sync nodes (for tests/scripts).
 
-    Flow (local LLM disabled — default):
+    Flow (local LLM disabled - default):
         START -> retrieve -> [route_to_agent] -> agent_node -> confidence_check -> [cove_gate] -> cove_verification? -> END
 
     Flow (local LLM enabled):
@@ -95,7 +95,7 @@ def _build_graph(*, use_async_nodes: bool = False):
 
     graph.add_node("confidence_check", confidence_check_node)
 
-    # SNC Trust Layer — K-sample stochastic governance applied BEFORE
+    # SNC Trust Layer - K-sample stochastic governance applied BEFORE
     # confidence_check. Generates K-1 additional samples in parallel,
     # clusters them behaviorally, computes the closed-form trust score,
     # and routes the request three ways:
@@ -107,7 +107,7 @@ def _build_graph(*, use_async_nodes: bool = False):
         graph.add_node("snc_governance", snc_governance_node)
     graph.add_node("abstain_response", abstain_response_node)
 
-    # CoVe verification node — calls the full 5-phase anti-hallucination pipeline
+    # CoVe verification node - calls the full 5-phase anti-hallucination pipeline
     def cove_verification_node(state: AgentState) -> AgentState:
         """Chain-of-Verification node: verify claims and citations.
 
@@ -174,7 +174,7 @@ def _build_graph(*, use_async_nodes: bool = False):
             config = CoVeConfig(enabled=True)
             # Pull shared clients from app_state: indexer (evidence search) and
             # normattiva_client (Italian-law URN validation). Without the latter,
-            # URN validation is silently skipped — wire it so the claim holds.
+            # URN validation is silently skipped - wire it so the claim holds.
             indexer = None
             normattiva_client = None
             try:
@@ -429,10 +429,10 @@ def _run_graph(state: dict) -> dict:
 
 
 async def _arun_graph(state: dict) -> dict:
-    """Run the async graph (for FastAPI — non-blocking).
+    """Run the async graph (for FastAPI - non-blocking).
 
     Concurrency is bounded PER LLM CALL inside acall_llm (so the SNC/CoVe
-    fan-out is capped at the provider), NOT once per request — wrapping the
+    fan-out is capped at the provider), NOT once per request - wrapping the
     whole graph in the same semaphore would both under-count the fan-out and
     risk deadlock once every permit holds a request needing more permits.
     Uses native .ainvoke() on the LangGraph compiled graph.
@@ -517,7 +517,7 @@ def run_monitor_check(
     )
 
 
-# ─── Public Async API (FastAPI — native async, no to_thread) ─────
+# ─── Public Async API (FastAPI - native async, no to_thread) ─────
 
 
 async def arun_qa(
@@ -526,7 +526,7 @@ async def arun_qa(
     cove_enabled: bool = False,
     org_id: str | None = None,
 ) -> dict:
-    """Async Q&A — uses native .ainvoke(), does NOT block the event loop.
+    """Async Q&A - uses native .ainvoke(), does NOT block the event loop.
 
     Args:
         query: The user's question
@@ -547,7 +547,7 @@ async def arun_gap_analysis(
     cove_enabled: bool = False,
     org_id: str | None = None,
 ) -> dict:
-    """Async gap analysis — uses native .ainvoke(), does NOT block the event loop.
+    """Async gap analysis - uses native .ainvoke(), does NOT block the event loop.
 
     Args:
         framework: EU framework code (e.g., "GDPR", "CSRD")
@@ -557,8 +557,11 @@ async def arun_gap_analysis(
     """
     return await _arun_graph(
         _create_initial_state(
-            framework, "gap_analysis", company_profile,
-            cove_enabled=cove_enabled, org_id=org_id,
+            framework,
+            "gap_analysis",
+            company_profile,
+            cove_enabled=cove_enabled,
+            org_id=org_id,
         )
     )
 
@@ -569,7 +572,7 @@ async def arun_monitor_check(
     cove_enabled: bool = False,
     org_id: str | None = None,
 ) -> dict:
-    """Async monitor — uses native .ainvoke(), does NOT block the event loop.
+    """Async monitor - uses native .ainvoke(), does NOT block the event loop.
 
     Args:
         regulation_change: Description of the regulatory change to assess
@@ -579,7 +582,10 @@ async def arun_monitor_check(
     """
     return await _arun_graph(
         _create_initial_state(
-            regulation_change, "monitor", company_profile,
-            cove_enabled=cove_enabled, org_id=org_id,
+            regulation_change,
+            "monitor",
+            company_profile,
+            cove_enabled=cove_enabled,
+            org_id=org_id,
         )
     )

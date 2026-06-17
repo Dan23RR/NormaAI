@@ -92,8 +92,8 @@ def client():
 
         with TestClient(app, raise_server_exceptions=False) as c:
             # The lifespan startup has just run and set the real availability
-            # flags from the (empty) test environment — no live Qdrant, no LLM
-            # key — which makes the intelligence endpoints return 503 via
+            # flags from the (empty) test environment - no live Qdrant, no LLM
+            # key - which makes the intelligence endpoints return 503 via
             # _require_llm()/_require_qdrant() before the mocked handlers are
             # ever reached. Override the flags AFTER startup, not before.
             app_state.qdrant_available = True

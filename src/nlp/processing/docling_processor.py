@@ -1,5 +1,5 @@
 """
-Docling-based Document Processor — Enterprise-grade PDF/HTML parsing for EU regulations.
+Docling-based Document Processor - Enterprise-grade PDF/HTML parsing for EU regulations.
 
 Uses IBM's Docling library for:
 - Layout-aware document parsing (tables, headers, reading order)

@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("normattiva_client_init_failed", error=str(e))
 
-    # Background acquisition scheduler (opt-in) — the periodic EUR-Lex/Normattiva
+    # Background acquisition scheduler (opt-in) - the periodic EUR-Lex/Normattiva
     # refresh that makes "updated nightly" actually true. Off unless enabled.
     app_state.scheduler = None
     if settings.acquisition_scheduler_enabled:

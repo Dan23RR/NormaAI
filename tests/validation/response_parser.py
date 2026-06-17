@@ -107,7 +107,7 @@ def _parse_gap_analysis(data: dict, metadata: dict) -> dict:
 
         status = str(req.get("status", "")).upper().replace("-", "_")
 
-        # Extract article reference — try multiple field names
+        # Extract article reference - try multiple field names
         article = (
             req.get("article_reference")
             or req.get("article")
@@ -213,7 +213,7 @@ def _parse_monitor(data: dict, metadata: dict) -> dict:
             "deadline": "...",
             "cross_framework_impacts": [...],
             "confidence_score": 0.8,
-            "citations": ["GDPR, Art. 13(2)(a) — ..."]
+            "citations": ["GDPR, Art. 13(2)(a) - ..."]
         }
 
     Metrics engine expects:
@@ -240,7 +240,7 @@ def _parse_monitor(data: dict, metadata: dict) -> dict:
             )
             description = action.get("description", action.get("action", ""))
         elif isinstance(action, str):
-            # Plain string action — try to extract article reference
+            # Plain string action - try to extract article reference
             article = _extract_article_from_text(action) or (
                 citation_articles[i] if i < len(citation_articles) else "unknown"
             )

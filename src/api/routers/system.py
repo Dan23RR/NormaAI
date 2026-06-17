@@ -20,7 +20,7 @@ async def require_scrape_auth(request: Request) -> None:
     """Authorize the Prometheus scrape endpoint.
 
     Accepts EITHER the static PROMETHEUS_BEARER_TOKEN (what the bundled
-    Prometheus presents — a static token can never be an admin JWT, which
+    Prometheus presents - a static token can never be an admin JWT, which
     is why admin-JWT-only auth here would break scraping entirely) OR a
     valid admin JWT, so a human operator can still curl the endpoint.
     """
@@ -108,7 +108,7 @@ async def get_prometheus_metrics():
 async def health_check():
     """Liveness probe: the process is up and serving requests.
 
-    Always returns 200 while the event loop is responsive — do NOT gate
+    Always returns 200 while the event loop is responsive - do NOT gate
     on dependencies here, or a Qdrant outage would make the orchestrator
     kill healthy app containers.
     """

@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
     maxLatency: m.max_latency_ms,
   }))
 
-  // Framework radar chart — uses real gap analysis scores from session when available
+  // Framework radar chart - uses real gap analysis scores from session when available
   const gapScores: Record<string, number> = (() => {
     try {
       const stored = sessionStorage.getItem('normaai_gap_scores')
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
           </div>
           <p className={`text-[10px] text-center mt-1 ${frameworkRadarData.some(d => d.coverage !== null) ? 'text-green-400/70' : 'text-yellow-500/80'}`}>
             {frameworkRadarData.every(d => d.coverage === null)
-              ? 'Sample data — run Gap Analysis to see real coverage scores'
+              ? 'Sample data - run Gap Analysis to see real coverage scores'
               : `Real scores for ${frameworkRadarData.filter(d => d.coverage !== null).map(d => d.framework).join(', ')} · sample for remaining`}
           </p>
         </div>

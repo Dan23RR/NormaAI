@@ -116,11 +116,11 @@ export default function RegulatoryFeedPage() {
           Regulatory Feed
         </h2>
         <p className="text-sm text-slate-500">
-          Aggiornamenti normativi automatici — EUR-Lex, EBA, ESMA, EIOPA, ENISA
+          Aggiornamenti normativi automatici - EUR-Lex, EBA, ESMA, EIOPA, ENISA
         </p>
         <div className="flex items-center gap-2 mt-2">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-[10px] text-green-400 font-medium">Feed attivo — ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}</span>
+          <span className="text-[10px] text-green-400 font-medium">Feed attivo - ultimo aggiornamento: {new Date().toLocaleDateString('it-IT')}</span>
         </div>
       </div>
 
@@ -197,7 +197,7 @@ export default function RegulatoryFeedPage() {
 
       <p className="text-[9px] text-slate-600 italic">
         Feed automatico da EUR-Lex, EBA, ESMA, EIOPA, ENISA. Tempo di aggiornamento target: &lt;48 ore dalla pubblicazione.
-        Le sintesi sono generate da AI — verificare sempre con le fonti ufficiali.
+        Le sintesi sono generate da AI - verificare sempre con le fonti ufficiali.
       </p>
     </div>
   )

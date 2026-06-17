@@ -42,7 +42,7 @@ def _row_to_dict(obj) -> dict:
 
 class ErasureRequest(BaseModel):
     confirm_org_id: str = Field(
-        ..., description="Must equal your organization id — confirms the destructive action."
+        ..., description="Must equal your organization id - confirms the destructive action."
     )
 
 
@@ -56,9 +56,7 @@ async def export_org_data(
     org_id = str(user.org_id)
     async with db_manager.session(org_id=org_id) as session:
         users = (
-            (await session.execute(select(User).where(User.org_id == user.org_id)))
-            .scalars()
-            .all()
+            (await session.execute(select(User).where(User.org_id == user.org_id))).scalars().all()
         )
         clients = (
             (await session.execute(select(Client).where(Client.org_id == user.org_id)))
@@ -69,22 +67,14 @@ async def export_org_data(
         user_ids = [u.id for u in users]
 
         conversations = (
-            (
-                await session.execute(
-                    select(Conversation).where(Conversation.user_id.in_(user_ids))
-                )
-            )
+            (await session.execute(select(Conversation).where(Conversation.user_id.in_(user_ids))))
             .scalars()
             .all()
             if user_ids
             else []
         )
         assessments = (
-            (
-                await session.execute(
-                    select(Assessment).where(Assessment.client_id.in_(client_ids))
-                )
-            )
+            (await session.execute(select(Assessment).where(Assessment.client_id.in_(client_ids))))
             .scalars()
             .all()
             if client_ids

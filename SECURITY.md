@@ -27,7 +27,7 @@ Full details: [ARCHITECTURE.md](ARCHITECTURE.md) § Security Model.
 | Transport | HTTPS/HSTS (Vercel frontend; TLS termination required in front of the API in production) |
 | AuthN | JWT RS256, 15-min access / 7-day refresh with family tracking; Redis blacklist **fail-closed in production** |
 | AuthZ | RBAC (admin/member/viewer) + PostgreSQL Row-Level Security per organization |
-| Brute force | Redis-backed lockout, 5 attempts / 5 min, keyed on email (fail-open by design during Redis outage — documented trade-off) |
+| Brute force | Redis-backed lockout, 5 attempts / 5 min, keyed on email (fail-open by design during Redis outage - documented trade-off) |
 | Input | Prompt-injection sanitization + typed profile validation + length caps |
 | Output | CoVe 5-phase verification; citations validated against EUR-Lex/Normattiva |
 | Secrets | `.env` + `*.pem` gitignored; gitleaks in pre-commit and CI (full history) |

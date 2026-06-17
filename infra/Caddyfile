@@ -1,4 +1,4 @@
-# Caddy — TLS termination for the NormaAI API.
+# Caddy - TLS termination for the NormaAI API.
 # Domain and ACME email come from the environment (docker-compose.prod.yml).
 
 {

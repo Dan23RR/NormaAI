@@ -117,7 +117,7 @@ class DoneEvent(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Overall confidence 0.0-1.0")
     requires_review: bool = Field(..., description="Whether response requires expert review")
     cove_applied: bool = Field(..., description="Whether CoVe verification was applied")
-    # The corrected text after CoVe revision. MUST be surfaced to the client —
+    # The corrected text after CoVe revision. MUST be surfaced to the client -
     # the whole point of verification is that the user reads the revised answer,
     # not the original draft (BUG-002). None when CoVe did not revise.
     revised_text: str | None = Field(
@@ -205,7 +205,7 @@ async def sse_generator(events: AsyncIterator[SSEEvent]) -> AsyncIterator[str]:
 
     except asyncio.CancelledError:
         logger.info("sse_stream_cancelled", extra={"reason": "client disconnected"})
-        # Clean disconnection — no error event needed
+        # Clean disconnection - no error event needed
         raise
 
     except Exception as e:

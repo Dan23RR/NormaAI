@@ -13,7 +13,7 @@ LANDING_HTML = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NormaAI — EU Regulatory Intelligence</title>
+<title>NormaAI - EU Regulatory Intelligence</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#06080f;--surface:#0d1117;--surface2:#161b22;--border:rgba(99,102,241,.12);--border-h:rgba(99,102,241,.3);--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--accent:#818cf8;--accent2:#6366f1;--green:#22c55e;--yellow:#fbbf24;--red:#ef4444;--radius:12px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;--mono:'SF Mono',Monaco,'Cascadia Code',monospace}
@@ -212,7 +212,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     const st=document.getElementById('s-uptime');
     const ss=document.getElementById('sys-status');
     if(ok){dot.className='dot dot-g';ss.textContent='All Systems Online';st.textContent='Online';st.style.color='#4ade80'}
-    else if(partial){dot.className='dot dot-y';ss.textContent='Partial — LLM Unavailable';st.textContent='Partial';st.style.color='#fbbf24'}
+    else if(partial){dot.className='dot dot-y';ss.textContent='Partial - LLM Unavailable';st.textContent='Partial';st.style.color='#fbbf24'}
     else{dot.className='dot dot-r';ss.textContent='Degraded';st.textContent='Down';st.style.color='#ef4444'}
     const li=document.getElementById('llm-info');
     if(stats.llm_provider)li.innerHTML='LLM: <b style="color:var(--text)">'+stats.llm_provider.toUpperCase()+' / '+stats.llm_model+'</b>';

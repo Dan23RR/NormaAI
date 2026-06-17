@@ -1,5 +1,5 @@
 ╔══════════════════════════════════════════════════════════════╗
-║  NORMAAI — REGULATORY RISK QUANTIFICATION REPORT           ║
+║  NORMAAI - REGULATORY RISK QUANTIFICATION REPORT           ║
 ║  Monte Carlo Simulation Analysis                            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Company:    MiaAzienda S.r.l.                             ║

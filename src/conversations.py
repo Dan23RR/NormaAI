@@ -77,7 +77,7 @@ class ConversationManager:
         user_id: str | None = None,
     ) -> dict | None:
         """Get a conversation by ID, optionally filtered by user_id for access control."""
-        # Static SQL only — never assemble query strings dynamically.
+        # Static SQL only - never assemble query strings dynamically.
         # ``:user_id IS NULL`` keeps the no-filter path in the same statement.
         query = text("""
             SELECT id, client_id, user_id, messages, created_at

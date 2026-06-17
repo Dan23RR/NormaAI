@@ -1,4 +1,4 @@
-# NormaAI — EU Regulatory Intelligence Platform
+# NormaAI - EU Regulatory Intelligence Platform
 
 > AI-powered compliance monitoring across 7 EU regulatory frameworks with real-time EUR-Lex integration, anti-hallucination verification, and Italian legislation support.
 
@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-> 🇮🇹 **In breve** — NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE: Q&A sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 7 framework UE — CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR — pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
+> 🇮🇹 **In breve**: NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE. Risponde a domande sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 7 framework UE (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR), pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
 >
 > *La documentazione tecnica completa è in inglese, qui sotto.*
 
@@ -26,13 +26,13 @@ NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-p
 
 ### Core Capabilities
 
-- **Regulatory Q&A** — Ask questions about EU regulations, get cited answers grounded in official texts
-- **Gap Analysis** — Compliance assessment with per-requirement scoring and remediation plans
-- **Impact Monitor** — Real-time analysis of regulatory changes on your company
-- **EUR-Lex Crawler** — Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text)
-- **Normattiva Crawler** — Italian implementing legislation via Open Data API (D.Lgs., Leggi)
-- **CoVe Anti-Hallucination** — 5-phase Chain-of-Verification pipeline for citation accuracy
-- **SSE Streaming** — Real-time streamed responses with verification progress events
+- **Regulatory Q&A** - Ask questions about EU regulations, get cited answers grounded in official texts
+- **Gap Analysis** - Compliance assessment with per-requirement scoring and remediation plans
+- **Impact Monitor** - Real-time analysis of regulatory changes on your company
+- **EUR-Lex Crawler** - Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text)
+- **Normattiva Crawler** - Italian implementing legislation via Open Data API (D.Lgs., Leggi)
+- **CoVe Anti-Hallucination** - 5-phase Chain-of-Verification pipeline for citation accuracy
+- **SSE Streaming** - Real-time streamed responses with verification progress events
 
 ## Architecture
 
@@ -256,12 +256,12 @@ Key variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LLM_PROVIDER` | `gemini` | LLM provider: `gemini` or `anthropic` |
-| `GOOGLE_API_KEY` | — | Google Gemini API key |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key |
+| `GOOGLE_API_KEY` | - | Google Gemini API key |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key |
 | `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection string |
 | `QDRANT_HOST` | `localhost` | Qdrant hostname |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
-| `APP_SECRET_KEY` | — | Application secret (min 64 chars) |
+| `APP_SECRET_KEY` | - | Application secret (min 64 chars) |
 | `APP_ENV` | `development` | Environment: development/staging/production |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated CORS origins |
 
@@ -291,10 +291,10 @@ image to GHCR with attached SBOM (`.github/workflows/release.yml`).
 
 ## Operations
 
-- [docs/RUNBOOK.md](docs/RUNBOOK.md) — incident response, deploy/rollback, maintenance cadence
-- [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md) — RPO 24h / RTO 1h, daily `pg_dump`, monthly restore test
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) - incident response, deploy/rollback, maintenance cadence
+- [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md) - RPO 24h / RTO 1h, daily `pg_dump`, monthly restore test
 - Observability: Prometheus alert rules ([infra/prometheus.rules.yml](infra/prometheus.rules.yml)) +
-  provisioned Grafana dashboard "NormaAI — Health" (auto-loaded at `localhost:3001`)
+  provisioned Grafana dashboard "NormaAI - Health" (auto-loaded at `localhost:3001`)
 
 ## Security
 
@@ -315,7 +315,7 @@ NormaAI is built with deep understanding of the EU regulatory landscape post-Omn
 - **CSRD scope narrowed** to 1,000+ employees (raised from 250)
 - **ESRS data points reduced** by 61% from original Set 1
 - **CSDDD transposition** deadline: 26 July 2028, first compliance: 26 July 2029
-- **VSME Standard** voluntary — flagged for early adoption when beneficial
+- **VSME Standard** voluntary - flagged for early adoption when beneficial
 
 ## Contributing
 
@@ -323,12 +323,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and how to sub
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ## Project Status
 
-**Current release:** MVP / Pre-Production (v0.3.0 — see `pyproject.toml`)
-**Last verified end-to-end:** 2026-06-12 — **327 tests passing** (full suite green; CI runs the suite on every push)
+**Current release:** MVP / Pre-Production (v0.3.0 - see `pyproject.toml`)
+**Last verified end-to-end:** 2026-06-12 - **327 tests passing** (full suite green; CI runs the suite on every push)
 
 ### Shipped (verified empirically, G1)
 
@@ -347,7 +347,7 @@ This project is licensed under the MIT License — see [LICENSE](LICENSE) for de
 | Alembic Migrations | ✅ Complete | 4 revisions: 001 schema, 002 RLS, 003 temporal, 004 normattiva+CoVe |
 | Test suite | ✅ **Full suite green** | 21 files; CI-enforced (`run_tests.ps1` for local tier-by-tier) |
 
-### Test pass rate per tier — baseline 2026-04-28 (current suite: 327 tests / 21 files, enforced in CI)
+### Test pass rate per tier - baseline 2026-04-28 (current suite: 327 tests / 21 files, enforced in CI)
 
 ```
 TIER 1 - Pure unit (no infra)    38/38   100%

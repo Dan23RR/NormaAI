@@ -1,5 +1,5 @@
 """
-Acquisition Layer — Regulatory data crawling and indexing.
+Acquisition Layer - Regulatory data crawling and indexing.
 
 Schedules periodic acquisition from EUR-Lex and Normattiva.
 """

@@ -1,7 +1,7 @@
 """Tests for org-scoped cache key isolation (RLS tenant isolation).
 
 Verifies that cache keys include org_id so that Organization A's cached
-responses are never served to Organization B — even for identical queries.
+responses are never served to Organization B - even for identical queries.
 """
 
 import pytest

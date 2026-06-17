@@ -26,7 +26,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 const LEADS_ENDPOINT = API_URL ? `${API_URL}/api/v1/leads` : '/api/leads'
 
 // Public landing page (Italian, ICP Wave 2: H1 compliance officer mid-market / H2 studi legali generalisti / H3 CFO banche-assicurazioni piccole).
-// Warm-paper editorial theme (public pages only — dashboard stays dark).
+// Warm-paper editorial theme (public pages only - dashboard stays dark).
 // Auth-aware: shows "Vai alla dashboard" if user has a valid token.
 
 type FormStatus =
@@ -133,7 +133,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Hero card right — the product, dark on paper */}
+          {/* Hero card right - the product, dark on paper */}
           <div className="lg:col-span-5">
             <div className="rounded-xl bg-coal p-6 text-[#E8E6E0] shadow-[0_24px_60px_-12px_rgba(20,20,19,0.35)]">
               <div className="mb-4 flex items-center justify-between text-xs text-[#9C9A92]">
@@ -152,14 +152,14 @@ export default function Home() {
                 <div className="flex items-start gap-2">
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-clay" />
                   <span>
-                    <strong className="text-[#E8E6E0]">Direttiva (UE) 2022/2464</strong>, Art. 19a — come
+                    <strong className="text-[#E8E6E0]">Direttiva (UE) 2022/2464</strong>, Art. 19a - come
                     modificata dalla Direttiva (UE) 2026/470 (Omnibus I)
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-clay" />
                   <span>
-                    <strong className="text-[#E8E6E0]">D.Lgs. 125/2024</strong>, Art. 4 — recepimento
+                    <strong className="text-[#E8E6E0]">D.Lgs. 125/2024</strong>, Art. 4 - recepimento
                     italiano
                   </span>
                 </div>
@@ -194,7 +194,7 @@ export default function Home() {
             <ICPCardV2
               tag="Compliance officer interno"
               tagColor="#C2613F"
-              audience="Mid-market 250–1.000 dip."
+              audience="Mid-market 250-1.000 dip."
               pain="1 persona, 7 framework UE. Il CFO chiede 'siamo a posto con X?' e tu devi rispondere con citazione articolo, non opinione."
               solution="Copilota normativo da staff-augmentation. Q&A con citazione EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA, NIS2, GDPR, EU Taxonomy, CSDDD."
               cta="Codex Post-Omnibus →"
@@ -203,10 +203,10 @@ export default function Home() {
             <ICPCardV2
               tag="Studi legali generalisti"
               tagColor="#6B5CA5"
-              audience="3–15 avvocati, no specializzazione ESG"
+              audience="3-15 avvocati, no specializzazione ESG"
               pain="Vorresti offrire compliance UE ai clienti aziendali ma assumere un partner senior costa €150k+ e il volume non è certo."
               solution="Capacity-multiplier: voi mantenete relazione/firma, NormaAI vi dà la base normativa verificata. Pricing add-on per cliente del cliente."
-              cta="Pilot €2.500 — 3 mesi unlimited →"
+              cta="Pilot €2.500 - 3 mesi unlimited →"
               ctaHref="#contact"
             />
             <ICPCardV2
@@ -265,7 +265,7 @@ export default function Home() {
             <UseCase
               n="02"
               title="Gap analysis per cliente"
-              body="Carichi un policy document, scegli il framework, ottieni un report di compliance per requisito con scoring 0–100 e remediation plan ordinato per impatto."
+              body="Carichi un policy document, scegli il framework, ottieni un report di compliance per requisito con scoring 0-100 e remediation plan ordinato per impatto."
               points={['Per-requirement scoring', 'PDF executive summary', 'Multi-framework cross-check']}
             />
             <UseCase
@@ -333,7 +333,7 @@ export default function Home() {
               Guida gratuita · PDF · fonti UE/IT verificate
             </p>
             <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[40px]">
-              Codex Post-Omnibus 2025–2029
+              Codex Post-Omnibus 2025-2029
             </h2>
             <p className="mt-4 leading-relaxed text-night-2">
               La guida operativa post-Omnibus I per chi gestisce CSRD/CSDDD/EU Taxonomy: scope,
@@ -355,7 +355,7 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-                Calendario 2026–2029 con deadline transposition + first reporting
+                Calendario 2026-2029 con deadline transposition + first reporting
               </li>
             </ul>
           </div>
@@ -365,7 +365,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─────────────────── CONTACT / DEMO — dark closing block ─────────────────── */}
+      {/* ─────────────────── CONTACT / DEMO - dark closing block ─────────────────── */}
       <section id="contact" className="bg-coal text-[#E8E6E0]">
         <div className="mx-auto max-w-3xl px-6 py-24 text-center">
           <p className="mb-5 text-xs font-medium uppercase tracking-[0.18em] text-[#9C9A92]">Demo</p>
@@ -595,7 +595,7 @@ function CodexForm() {
         {status.kind === 'submitting' ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Invio in corso…
+            Invio in corso...
           </>
         ) : (
           'Scarica il Codex'

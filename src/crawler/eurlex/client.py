@@ -1,5 +1,5 @@
 """
-EUR-Lex SPARQL Client — Core crawler for EU regulatory intelligence.
+EUR-Lex SPARQL Client - Core crawler for EU regulatory intelligence.
 
 Connects to the EUR-Lex CELLAR SPARQL endpoint to:
 1. Fetch metadata for known EU regulations (CELEX-based)
@@ -8,7 +8,7 @@ Connects to the EUR-Lex CELLAR SPARQL endpoint to:
 4. Monitor for new publications via date-range queries
 
 Endpoint: https://publications.europa.eu/webapi/rdf/sparql
-Ontology: CDM (Common Data Model) — FRBR-compliant OWL
+Ontology: CDM (Common Data Model) - FRBR-compliant OWL
 """
 
 import logging
@@ -44,7 +44,7 @@ RESOURCE_TYPES = {
 # (verified from the production server, 2026-06-15). The Publications
 # Office CELLAR endpoint serves the same official documents from the host
 # that already answers our SPARQL queries, with no such wall.
-# Content negotiation: the document body is the XHTML manifestation —
+# Content negotiation: the document body is the XHTML manifestation -
 # request it with `Accept: application/xhtml+xml` (text/html 404s) and the
 # language as an ISO 639-3 code via Accept-Language.
 CELLAR_CELEX_BASE = "http://publications.europa.eu/resource/celex"
@@ -63,7 +63,7 @@ LANG_ISO639_3 = {
     "RO": "ron",
 }
 
-# Core EU frameworks we track — CELEX numbers
+# Core EU frameworks we track - CELEX numbers
 CORE_FRAMEWORKS: dict[str, dict[str, str]] = {
     "CSRD": {
         "32022L2464": "Corporate Sustainability Reporting Directive",
@@ -90,7 +90,7 @@ CORE_FRAMEWORKS: dict[str, dict[str, str]] = {
     "GDPR": {
         "32016R0679": "General Data Protection Regulation",
     },
-    # Cyber Resilience Act — vulnerability/incident reporting applies from
+    # Cyber Resilience Act - vulnerability/incident reporting applies from
     # 2026-09-11, full application 2027-12-11 (see ADR-004).
     "CRA": {
         "32024R2847": "Cyber Resilience Act",
@@ -360,7 +360,7 @@ class EurLexClient:
 
         Fetches the official XHTML manifestation from the Publications Office
         CELLAR endpoint (publications.europa.eu), NOT the
-        eur-lex.europa.eu/legal-content frontend — the latter IP-walls
+        eur-lex.europa.eu/legal-content frontend - the latter IP-walls
         datacenter clients (HTTP 202 + empty body). CELLAR is the same host
         that answers our SPARQL metadata queries, so it is reachable from the
         production server.
@@ -398,11 +398,9 @@ class EurLexClient:
                     return response.text
 
                 if status in (404, 406):
-                    # No XHTML manifestation for this CELEX/language — deterministic,
+                    # No XHTML manifestation for this CELEX/language - deterministic,
                     # so retrying will not help.
-                    logger.warning(
-                        f"No XHTML manifestation for {celex} (HTTP {status}) via CELLAR"
-                    )
+                    logger.warning(f"No XHTML manifestation for {celex} (HTTP {status}) via CELLAR")
                     return None
 
                 # Transient (202 still rendering, 429/503 throttling, empty 200):
@@ -478,7 +476,7 @@ class EurLexClient:
     @staticmethod
     def _celex_to_doc_type(celex: str) -> str:
         """Infer document type from CELEX number pattern.
-        Format: {sector}{year}{type}{number} — e.g., 3|2022|L|2464
+        Format: {sector}{year}{type}{number} - e.g., 3|2022|L|2464
         Sector=1 char, Year=4 chars, Type=1 char at index 5.
         """
         if len(celex) < 7:

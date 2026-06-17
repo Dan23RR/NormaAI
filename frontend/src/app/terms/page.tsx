@@ -1,7 +1,7 @@
 import { LegalLayout, LegalSection } from '@/components/LegalLayout'
 
 export const metadata = {
-  title: 'Termini di Servizio — NormaAI',
+  title: 'Termini di Servizio - NormaAI',
 }
 
 export default function TermsPage() {

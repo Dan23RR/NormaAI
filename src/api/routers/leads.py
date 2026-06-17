@@ -1,7 +1,7 @@
 """Public leads endpoint + Codex download.
 
-POST /api/v1/leads             — capture lead, return signed download_url
-GET  /api/v1/codex/download    — verify HMAC token, stream PDF, mark downloaded_at
+POST /api/v1/leads             - capture lead, return signed download_url
+GET  /api/v1/codex/download    - verify HMAC token, stream PDF, mark downloaded_at
 
 Public (no JWT required), rate-limited per-IP to mitigate spam.
 
@@ -181,14 +181,14 @@ async def create_lead(
             detail="Troppe richieste da questo indirizzo. Riprova più tardi.",
         )
 
-    # 2. Idempotent UX — return same download_url if email already registered in last 24h
+    # 2. Idempotent UX - return same download_url if email already registered in last 24h
     existing = await _find_recent_lead_by_email(db, payload.email)
     if existing is not None:
         logger.info("lead_duplicate_within_24h", email=payload.email, source=payload.source)
         rel, _abs = _build_download_url(existing.id)
         return LeadResponse(
             ok=True,
-            message="Hai già richiesto il Codex di recente — ecco di nuovo il link.",
+            message="Hai già richiesto il Codex di recente - ecco di nuovo il link.",
             download_url=rel,
         )
 

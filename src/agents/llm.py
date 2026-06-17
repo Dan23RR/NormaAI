@@ -2,7 +2,7 @@
 
 Provides both sync (call_llm) and async (acall_llm) interfaces.
 The async path uses LangChain's native .ainvoke() to avoid blocking
-the FastAPI event loop — critical for concurrent request handling.
+the FastAPI event loop - critical for concurrent request handling.
 
 Retry strategy: exponential backoff via tenacity for transient failures
 (rate limits, overload, timeouts). Non-retryable errors (auth, config)
@@ -61,7 +61,7 @@ def get_llm(temperature: float | None = None):
     """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter).
 
     temperature: override the configured default. CRITICAL for the SNC trust
-    layer — without a non-zero temperature the K stochastic samples are
+    layer - without a non-zero temperature the K stochastic samples are
     identical, so the diversity/entropy signal (and the whole trust score) is
     inert. Pass an explicit value for sampling-based governance.
     """
@@ -177,7 +177,7 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         return _make_error_response(str(e))
 
 
-# ─── Async LLM Call (native .ainvoke — non-blocking) ─────────────
+# ─── Async LLM Call (native .ainvoke - non-blocking) ─────────────
 
 
 @retry(

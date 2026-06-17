@@ -43,7 +43,7 @@ export function CookieBanner() {
     try {
       localStorage.setItem(DISMISS_KEY, 'true')
     } catch {
-      /* ignore — la chiusura resta comunque effettiva per la sessione */
+      /* ignore - la chiusura resta comunque effettiva per la sessione */
     }
     setVisible(false)
   }

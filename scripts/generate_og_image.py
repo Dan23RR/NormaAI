@@ -1,6 +1,6 @@
 """Generate frontend/public/og-image.png (1200x630, OpenGraph/Twitter card).
 
-Warm-paper editorial theme — mirrors the public landing (tailwind tokens
+Warm-paper editorial theme - mirrors the public landing (tailwind tokens
 paper/night/clay). Re-run after copy or palette changes:
     python scripts/generate_og_image.py
 """
@@ -17,7 +17,7 @@ NIGHT3 = (135, 134, 127)     # #87867F
 CLAY = (217, 119, 87)        # #D97757
 LINE = (227, 223, 211)       # #E3DFD3
 
-# Framework chips — darkened hues, legible on paper (mirrors page.tsx FW_COLOR)
+# Framework chips - darkened hues, legible on paper (mirrors page.tsx FW_COLOR)
 FRAMEWORKS = [
     ("CSRD", (31, 122, 83)),
     ("CSDDD", (29, 111, 184)),

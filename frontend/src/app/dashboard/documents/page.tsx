@@ -288,7 +288,7 @@ export default function DocumentsPage() {
 
       {/* AI disclosure */}
       <p className="text-[9px] text-slate-600 italic mt-4">
-        L&apos;analisi documentale è assistita da AI (AI Act Art. 50, Reg. UE 2024/1689) — verificare i risultati con consulenti qualificati.
+        L&apos;analisi documentale è assistita da AI (AI Act Art. 50, Reg. UE 2024/1689) - verificare i risultati con consulenti qualificati.
       </p>
     </div>
   )

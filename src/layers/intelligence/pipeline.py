@@ -1,5 +1,5 @@
 """
-Intelligence Layer Pipeline — Public interface for NormaAI intelligence operations.
+Intelligence Layer Pipeline - Public interface for NormaAI intelligence operations.
 
 Wraps LangGraph agents with optional CoVe verification and SSE streaming support.
 

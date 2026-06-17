@@ -69,7 +69,7 @@ def generate_expert_edge_cases() -> list[dict]:
         {
             "id": "GOLDEN-EDGE-001",
             "name": "Privacy policy completamente vuota",
-            "description": "Documento vuoto — il sistema deve segnalare TUTTI i requisiti mancanti",
+            "description": "Documento vuoto - il sistema deve segnalare TUTTI i requisiti mancanti",
             "source_type": "expert_validated",
             "task_type": "gap_analysis",
             "query": "GDPR",
@@ -126,8 +126,8 @@ def generate_expert_edge_cases() -> list[dict]:
         },
         {
             "id": "GOLDEN-EDGE-002",
-            "name": "Privacy policy perfetta — zero violazioni attese",
-            "description": "Documento completo e conforme — il sistema NON deve segnalare false positive",
+            "name": "Privacy policy perfetta - zero violazioni attese",
+            "description": "Documento completo e conforme - il sistema NON deve segnalare false positive",
             "source_type": "expert_validated",
             "task_type": "gap_analysis",
             "query": "GDPR",

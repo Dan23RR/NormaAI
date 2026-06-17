@@ -4,7 +4,7 @@ Inspired by Mike OSS (willchen96/mike) which uses LibreOffice for legal
 document conversion in their upload pipeline. Adopted here because:
 
 1. NormaAI's Docling + dots.ocr handle PDF well but DOC/DOCX native is
-   rougher (DOCX = XML zip, DOC = binary OLE — Docling does DOCX but
+   rougher (DOCX = XML zip, DOC = binary OLE - Docling does DOCX but
    misses styles; for legal text fidelity matters).
 2. LibreOffice headless is industry-standard for server-side conversion
    and runs in Docker.
@@ -17,7 +17,7 @@ Prerequisites (Docker layer or host):
     apt-get install -y libreoffice-core libreoffice-writer fonts-liberation
 
 Env vars:
-    LIBREOFFICE_BIN     (default: `soffice` — must be in PATH)
+    LIBREOFFICE_BIN     (default: `soffice` - must be in PATH)
     LIBREOFFICE_TIMEOUT (default: 60s per document)
 
 Usage:
@@ -57,7 +57,7 @@ class ConversionError(RuntimeError):
 def libreoffice_available() -> bool:
     """Quick check: is soffice in PATH and executable?
 
-    Returns True if available, False otherwise. No exception raised —
+    Returns True if available, False otherwise. No exception raised -
     callers can fall back to other processors gracefully.
     """
     return shutil.which(LIBREOFFICE_BIN) is not None

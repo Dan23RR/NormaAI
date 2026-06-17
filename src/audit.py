@@ -14,7 +14,7 @@ from enum import Enum
 
 import structlog
 
-# Dedicated audit logger — separate from application logs
+# Dedicated audit logger - separate from application logs
 # Configure to write to a dedicated file/stream in production
 audit_logger = structlog.get_logger("normaai.audit")
 

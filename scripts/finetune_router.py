@@ -173,7 +173,7 @@ Return: {{"frameworks": [...], "complexity": "simple|medium|complex", "entities"
 """
     MODELFILE_PATH.write_text(modelfile_content, encoding="utf-8")
 
-    print(f"\nDone! Deploy with:")
+    print("\nDone! Deploy with:")
     print(f"  ollama create qwen-router -f {MODELFILE_PATH}")
 
 

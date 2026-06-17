@@ -165,7 +165,7 @@ export default function AdminPage() {
                       <td className="py-2.5 text-right text-slate-500">
                         {stats.metrics.total_requests > 0
                           ? `${(m.count / stats.metrics.total_requests * 100).toFixed(1)}%`
-                          : '—'
+                          : '-'
                         }
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-# NormaAI — Architecture
+# NormaAI - Architecture
 
 > Architecture Decision Records and technical deep-dive for contributors.
 > Operations: [docs/RUNBOOK.md](docs/RUNBOOK.md) · [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md) · [SECURITY.md](SECURITY.md)
@@ -67,7 +67,7 @@
 **Decision:** Use PostgreSQL RLS policies with `SET LOCAL app.current_org_id` set at session start via SQLAlchemy events.
 
 **Consequences:**
-- Data isolation enforced at database level — impossible to leak cross-tenant data
+- Data isolation enforced at database level - impossible to leak cross-tenant data
 - No need to audit every SQL query for missing WHERE clauses
 - Small performance overhead (~1-2ms per session for SET LOCAL)
 
@@ -84,7 +84,7 @@
 **Consequences:**
 - Clean separation of orchestration (graph.py) from business logic (nodes.py)
 - Easy to add new agents without modifying the core graph
-- Async graph uses native `.ainvoke()` — no thread pool blocking
+- Async graph uses native `.ainvoke()` - no thread pool blocking
 
 ### ADR-4: Chain-of-Verification (CoVe) Anti-Hallucination
 
@@ -92,11 +92,11 @@
 **Context:** In the legal domain, hallucinated citations or incorrect regulatory thresholds can have serious business consequences. Standard RAG confidence scores are insufficient.
 
 **Decision:** Implement a 5-phase verification pipeline:
-1. **Draft** — Generate initial LLM response
-2. **Planning** — Extract claims and generate verification questions
-3. **Independent Verification** — Answer each question in isolated context
-4. **Revision** — Correct the draft based on verification results
-5. **Citation Validation** — Verify every CELEX/URN against EUR-Lex/Normattiva APIs
+1. **Draft** - Generate initial LLM response
+2. **Planning** - Extract claims and generate verification questions
+3. **Independent Verification** - Answer each question in isolated context
+4. **Revision** - Correct the draft based on verification results
+5. **Citation Validation** - Verify every CELEX/URN against EUR-Lex/Normattiva APIs
 
 **Consequences:**
 - 2-5x increase in latency for verified responses (mitigated by SSE streaming)
@@ -115,13 +115,13 @@ claim is checked.
 generate K-1 additional samples (default K=3, temperature 0.7), cluster them
 behaviorally, compute a closed-form trust score, and route three ways:
 
-- `ADMIT_HIGH` (trust ≥ 0.85) — skip CoVe, answer directly
-- `ADMIT_MID` — proceed to the legacy CoVe gate
-- `ABSTAIN` (trust < 0.50) — return an abstention, flag for expert review
+- `ADMIT_HIGH` (trust ≥ 0.85) - skip CoVe, answer directly
+- `ADMIT_MID` - proceed to the legacy CoVe gate
+- `ABSTAIN` (trust < 0.50) - return an abstention, flag for expert review
 
 **Consequences:**
 - K-1 extra LLM calls per gated request (parallelized; bounded by the LLM semaphore)
-- Abstention becomes a first-class outcome — in a legal product, "I'm not sure"
+- Abstention becomes a first-class outcome - in a legal product, "I'm not sure"
   beats a confident error
 - Config: `SNC_ENABLED`, `SNC_K`, `SNC_THETA_HIGH`, `SNC_THETA_LOW`
 

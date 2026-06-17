@@ -1,5 +1,5 @@
 """
-Processing Layer — Document extraction and routing.
+Processing Layer - Document extraction and routing.
 
 Provides document processing with intelligent routing between dots.ocr and Docling.
 """

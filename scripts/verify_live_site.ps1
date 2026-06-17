@@ -24,7 +24,7 @@ function Check {
             $script:failures++
         }
     } catch {
-        Write-Host "[FAIL] $Name — $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[FAIL] $Name - $($_.Exception.Message)" -ForegroundColor Red
         $script:failures++
     }
 }
@@ -37,7 +37,7 @@ Check 'Home responds 200' {
 
 Check 'Home shows Codex 2025-2029 (not stale 2025-2028)' {
     $html = (Invoke-WebRequest -Uri "$BaseUrl/" -UseBasicParsing).Content
-    ($html -match '2025[–-]2029') -and ($html -notmatch '2025[–-]2028')
+    ($html -match '2025[--]2029') -and ($html -notmatch '2025[--]2028')
 }
 
 Check 'No 2024/XXX placeholder citation' {
@@ -76,7 +76,7 @@ Check '/codex redirect preserves ?lead= tracking param' {
     }
 }
 
-Check 'Lead route alive (honeypot probe — dropped silently, no email)' {
+Check 'Lead route alive (honeypot probe - dropped silently, no email)' {
     $body = @{ email = 'probe@example.com'; website = 'bot-canary'; source = 'smoke_test' } | ConvertTo-Json
     $r = Invoke-WebRequest -Uri "$BaseUrl/api/leads" -Method Post -Body $body -ContentType 'application/json' -UseBasicParsing
     $r.StatusCode -eq 200
@@ -94,9 +94,9 @@ Check 'Lead route rejects invalid email with 422' {
 
 Write-Host ""
 if ($failures -eq 0) {
-    Write-Host "ALL CHECKS PASSED — il sito live è coerente col repo." -ForegroundColor Green
+    Write-Host "ALL CHECKS PASSED - il sito live è coerente col repo." -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "$failures CHECK FALLITI — vedi sopra." -ForegroundColor Red
+    Write-Host "$failures CHECK FALLITI - vedi sopra." -ForegroundColor Red
     exit 1
 }

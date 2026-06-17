@@ -45,7 +45,7 @@ export default function ClientDetailPage() {
             <Building2 size={18} className="text-accent" />
             <h2 className="text-lg font-semibold">{clientName || 'Loading...'}</h2>
           </div>
-          <p className="text-xs text-slate-500">Compliance Dashboard — Monitoraggio continuo</p>
+          <p className="text-xs text-slate-500">Compliance Dashboard - Monitoraggio continuo</p>
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export default function ClientDetailPage() {
           </div>
           {/* AI disclosure */}
           <p className="text-[9px] text-slate-600 italic mt-2">
-            I punteggi di compliance sono stime qualitative generate da AI (AI Act Art. 50, Reg. UE 2024/1689) — non costituiscono certificazione. Verificare con auditor qualificati.
+            I punteggi di compliance sono stime qualitative generate da AI (AI Act Art. 50, Reg. UE 2024/1689) - non costituiscono certificazione. Verificare con auditor qualificati.
           </p>
         </>
       )}

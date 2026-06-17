@@ -1,4 +1,4 @@
-# Pre-commit hooks — secret hygiene + lint before anything reaches CI.
+# Pre-commit hooks - secret hygiene + lint before anything reaches CI.
 # Setup (one-time):  pip install pre-commit && pre-commit install
 # Run on demand:     pre-commit run --all-files
 repos:

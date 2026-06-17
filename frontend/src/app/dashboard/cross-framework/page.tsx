@@ -90,7 +90,7 @@ export default function CrossFrameworkPage() {
   const handleExport = useCallback(() => {
     const lines = [
       'CROSS-FRAMEWORK INTELLIGENCE REPORT',
-      `NormaAI — ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      `NormaAI - ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}`,
       '',
       '═══════════════════════════════════════════════════',
       'MATRICE SOVRAPPOSIZIONI (% obblighi condivisi)',
@@ -115,7 +115,7 @@ export default function CrossFrameworkPage() {
         '',
       ]),
       '═══════════════════════════════════════════════════',
-      'Generato da NormaAI — Le percentuali sono stime indicative.',
+      'Generato da NormaAI - Le percentuali sono stime indicative.',
       'Consultare un professionista qualificato per valutazioni vincolanti.',
     ]
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
@@ -148,7 +148,7 @@ export default function CrossFrameworkPage() {
             Cross-Framework Intelligence
           </h2>
           <p className="text-sm text-slate-500">
-            Analisi sovrapposizioni normative — identifica obblighi condivisi tra framework EU
+            Analisi sovrapposizioni normative - identifica obblighi condivisi tra framework EU
           </p>
         </div>
         <button

@@ -1,5 +1,5 @@
 """
-Legal Document Chunker — Semantic chunking that respects EU regulation structure.
+Legal Document Chunker - Semantic chunking that respects EU regulation structure.
 
 EU legislation follows a strict hierarchy:
   Regulation/Directive → Part → Title → Chapter → Section → Article → Paragraph → Point
@@ -34,14 +34,14 @@ class LegalChunk:
     metadata: dict = field(default_factory=dict)
 
     # Metadata fields:
-    # - celex: str — CELEX number of source regulation
-    # - framework: str — CSRD, CSDDD, AI_ACT, etc.
-    # - chunk_type: str — recital, article, annex, preamble, table
-    # - article_number: str — "Art. 29" or "Recital 45"
-    # - section_title: str — "Chapter III - Sustainability Reporting"
-    # - hierarchy: str — "Part I > Title II > Chapter III > Art. 29"
-    # - page_ref: str — reference for citation
-    # - char_count: int — length of text
+    # - celex: str - CELEX number of source regulation
+    # - framework: str - CSRD, CSDDD, AI_ACT, etc.
+    # - chunk_type: str - recital, article, annex, preamble, table
+    # - article_number: str - "Art. 29" or "Recital 45"
+    # - section_title: str - "Chapter III - Sustainability Reporting"
+    # - hierarchy: str - "Part I > Title II > Chapter III > Art. 29"
+    # - page_ref: str - reference for citation
+    # - char_count: int - length of text
 
 
 class EURLexHTMLChunker:
@@ -172,7 +172,7 @@ class EURLexHTMLChunker:
                 current_article_text = text + "\n"
                 current_article_num = new_article_num
             elif element.name == "table":
-                # Tables are atomic — save as separate chunk
+                # Tables are atomic - save as separate chunk
                 table_text = self._extract_table_text(element)
                 if table_text and len(table_text) >= self.MIN_CHUNK_SIZE:
                     chunks.append(

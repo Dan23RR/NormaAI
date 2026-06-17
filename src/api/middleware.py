@@ -72,9 +72,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to every response.
 
     Headers:
-    - X-Content-Type-Options: nosniff — prevent MIME-type sniffing
-    - X-Frame-Options: DENY — prevent clickjacking
-    - X-XSS-Protection: 0 — disable legacy XSS filter (modern CSP is better)
+    - X-Content-Type-Options: nosniff - prevent MIME-type sniffing
+    - X-Frame-Options: DENY - prevent clickjacking
+    - X-XSS-Protection: 0 - disable legacy XSS filter (modern CSP is better)
     - Referrer-Policy: strict-origin-when-cross-origin
     - Permissions-Policy: restrict dangerous APIs
     - Strict-Transport-Security: HSTS (production only)
@@ -104,7 +104,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 def register_middleware(app: FastAPI) -> None:
     """Register all middleware on the FastAPI app."""
 
-    # Security headers (outermost — runs first)
+    # Security headers (outermost - runs first)
     app.add_middleware(SecurityHeadersMiddleware)
 
     @app.middleware("http")

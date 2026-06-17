@@ -1,4 +1,4 @@
-"""NormaAI configuration — single source of truth for all settings."""
+"""NormaAI configuration - single source of truth for all settings."""
 
 import logging
 import sys
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model_analysis: str = "claude-sonnet-4-5-20250514"
 
-    # OpenRouter (OpenAI-compatible gateway — many models, free tiers for
+    # OpenRouter (OpenAI-compatible gateway - many models, free tiers for
     # real-LLM testing without burning paid quota; also a BYO-key path)
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 120
     llm_max_tokens: int = 4096
 
-    # ─── Local LLM (Ollama — Qwen micro-agents) ───────────────
+    # ─── Local LLM (Ollama - Qwen micro-agents) ───────────────
     local_llm_enabled: bool = False
     local_llm_base_url: str = "http://localhost:11434"
     local_llm_model: str = "qwen3.5:4b"
@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     # ─── Background acquisition scheduler ─────────────────────
     # OFF by default: the periodic EUR-Lex/Normattiva refresh loop only runs
     # when explicitly enabled (so a single-process deploy can opt in, while
-    # tests/CI and multi-replica deploys — where a dedicated worker should own
-    # it — leave it off). Without this, "updated nightly" never actually ran.
+    # tests/CI and multi-replica deploys - where a dedicated worker should own
+    # it - leave it off). Without this, "updated nightly" never actually ran.
     acquisition_scheduler_enabled: bool = False
 
     # ─── Normattiva Open Data ─────────────────────────────────
@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # bge-base-en degraded retrieval on Italian legal text. This model keeps the
     # same 768-dim space (drop-in for the Qdrant collection) and needs no e5-style
     # query/passage prefixes. NOTE: switching the model requires re-seeding the
-    # corpus (vectors live in a model-specific space) — see ADR-005.
+    # corpus (vectors live in a model-specific space) - see ADR-005.
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     embedding_dimension: int = 768
     embedding_batch_size: int = 32
@@ -148,7 +148,7 @@ class Settings(BaseSettings):
     # ─── Resend (transactional email outbound) ─────────────
     resend_api_key: str = ""
     resend_from_email: str = "info@normaai.org"
-    resend_from_name: str = "Daniel Culotta — NormaAI"
+    resend_from_name: str = "Daniel Culotta - NormaAI"
     resend_reply_to: str = "info@normaai.org"
     resend_webhook_secret: str = ""
 

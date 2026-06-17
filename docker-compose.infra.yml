@@ -1,5 +1,5 @@
 # ============================================================
-# NormaAI — Infrastructure Only (Postgres + Qdrant + Redis)
+# NormaAI - Infrastructure Only (Postgres + Qdrant + Redis)
 # Use this when running the app locally with uvicorn.
 #
 # Usage:

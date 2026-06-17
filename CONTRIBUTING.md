@@ -109,7 +109,7 @@ When filing an issue, include:
 
 ## Code of Conduct
 
-Be respectful and constructive. We're building tools to help companies navigate complex regulations — collaboration and clarity matter.
+Be respectful and constructive. We're building tools to help companies navigate complex regulations - collaboration and clarity matter.
 
 ## License
 

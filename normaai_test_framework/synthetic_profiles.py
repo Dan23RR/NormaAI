@@ -1,5 +1,5 @@
 """
-NormaAI Validation Framework — Synthetic Company Profiles
+NormaAI Validation Framework - Synthetic Company Profiles
 ==========================================================
 5 profili aziendali fittizi con gap di compliance noti e documentati.
 Ogni profilo include:
@@ -13,7 +13,7 @@ I gap sono basati su sanzioni reali e scenari documentati.
 
 SYNTHETIC_PROFILES = [
     # ═══════════════════════════════════════════════════════════════
-    # PROFILO A: Manifatturiero tedesco — CSDDD + CSRD
+    # PROFILO A: Manifatturiero tedesco - CSDDD + CSRD
     # Gap ispirati alla sanzione CSDDD-type (catena di fornitura)
     # ═══════════════════════════════════════════════════════════════
     {
@@ -30,15 +30,15 @@ SYNTHETIC_PROFILES = [
             "on-site audits or human rights due diligence on its supply chain beyond tier-1. "
             "There is no formal grievance mechanism for workers in the supply chain to report "
             "violations. StahlWerk publishes an annual sustainability report but it only covers "
-            "Scope 1 and Scope 2 emissions — Scope 3 (supply chain) emissions are not reported "
+            "Scope 1 and Scope 2 emissions - Scope 3 (supply chain) emissions are not reported "
             "at all. The report uses GRI standards but has NOT been aligned with ESRS yet. "
             "The company has not conducted a double materiality assessment. "
             "\n\n"
             "StahlWerk uses an internal ERP system that collects some environmental data from "
             "its own facilities but has no system to collect ESG data from suppliers. The board "
-            "has no dedicated sustainability committee — ESG is handled by the CFO part-time."
+            "has no dedicated sustainability committee - ESG is handled by the CFO part-time."
         ),
-        "sector": "Manufacturing — Automotive Components",
+        "sector": "Manufacturing - Automotive Components",
         "employees": 1200,
         "turnover_eur": 380_000_000,
         "jurisdictions": ["DE", "PL", "CZ"],
@@ -75,7 +75,7 @@ SYNTHETIC_PROFILES = [
                 "framework": "CSRD",
                 "test_id": "A-CSRD-01",
                 "injected_gap": "No Scope 3 emissions reporting",
-                "expected_article": "ESRS E1-6 (Climate Change — GHG Emissions)",
+                "expected_article": "ESRS E1-6 (Climate Change - GHG Emissions)",
                 "severity": "NON_COMPLIANT",
                 "difficulty": "EASY",
                 "description": (
@@ -102,7 +102,7 @@ SYNTHETIC_PROFILES = [
     },
 
     # ═══════════════════════════════════════════════════════════════
-    # PROFILO B: SaaS francese — AI Act + GDPR
+    # PROFILO B: SaaS francese - AI Act + GDPR
     # Gap ispirati a sanzioni reali CNIL e scenari AI Act
     # ═══════════════════════════════════════════════════════════════
     {
@@ -123,14 +123,14 @@ SYNTHETIC_PROFILES = [
             "\n\n"
             "The AI model was trained on a dataset of 50,000 images collected from client "
             "facilities. No AI impact assessment has been conducted. There is no human oversight "
-            "mechanism — the system automatically generates compliance reports and can trigger "
+            "mechanism - the system automatically generates compliance reports and can trigger "
             "disciplinary alerts to HR without human review. Model accuracy is 94.2% overall "
             "but drops to 87.1% for workers wearing non-standard PPE or with mobility aids. "
             "No bias testing has been performed. The system has no technical documentation "
             "as required by the AI Act. Data is processed on AWS eu-west-1 servers but "
             "telemetry data is sent to a US-based analytics provider without SCCs."
         ),
-        "sector": "Technology — AI/Computer Vision SaaS",
+        "sector": "Technology - AI/Computer Vision SaaS",
         "employees": 85,
         "turnover_eur": 12_000_000,
         "jurisdictions": ["FR"],
@@ -207,7 +207,7 @@ SYNTHETIC_PROFILES = [
     },
 
     # ═══════════════════════════════════════════════════════════════
-    # PROFILO C: Banca italiana — DORA + NIS2 + GDPR
+    # PROFILO C: Banca italiana - DORA + NIS2 + GDPR
     # Gap ispirati alle sanzioni Banca d'Italia e Garante Privacy
     # ═══════════════════════════════════════════════════════════════
     {
@@ -223,7 +223,7 @@ SYNTHETIC_PROFILES = [
             "ICT infrastructure: The bank runs its core banking system on an on-premise IBM "
             "mainframe (legacy, installed 2008). The mobile app and web portal run on a "
             "private cloud hosted by a single Italian provider (no redundancy agreement). "
-            "There is NO formal ICT risk management framework — risk assessment is done "
+            "There is NO formal ICT risk management framework - risk assessment is done "
             "annually by the internal audit team using spreadsheets. The bank has never "
             "conducted a digital operational resilience test or threat-led penetration test "
             "(TLPT). Third-party ICT provider contracts do NOT include audit rights, incident "
@@ -232,7 +232,7 @@ SYNTHETIC_PROFILES = [
             "Cybersecurity: The bank experienced a ransomware incident in March 2025 that "
             "encrypted 30% of branch workstations. The incident was detected after 72 hours. "
             "No incident report was filed with the competent authority within the 24-hour "
-            "initial notification window. The bank does not have a dedicated CISO — security "
+            "initial notification window. The bank does not have a dedicated CISO - security "
             "is handled by the IT Operations Manager. There is no formal incident response "
             "plan. Backup tapes are stored in the same building as the primary data center. "
             "\n\n"
@@ -240,7 +240,7 @@ SYNTHETIC_PROFILES = [
             "ransomware incident (exceeding the 72-hour requirement). The bank has a DPO "
             "but the DPO also serves as Head of Legal (conflict of interest)."
         ),
-        "sector": "Financial Services — Retail Banking",
+        "sector": "Financial Services - Retail Banking",
         "employees": 2800,
         "turnover_eur": 850_000_000,
         "jurisdictions": ["IT"],
@@ -308,7 +308,7 @@ SYNTHETIC_PROFILES = [
                 "description": (
                     "GDPR Art. 33 requires notification to the supervisory authority within "
                     "72 hours of becoming aware of a personal data breach. The bank notified "
-                    "after 15 days — a clear and serious violation."
+                    "after 15 days - a clear and serious violation."
                 )
             },
             {
@@ -329,7 +329,7 @@ SYNTHETIC_PROFILES = [
     },
 
     # ═══════════════════════════════════════════════════════════════
-    # PROFILO D: Utility olandese — EU Taxonomy + CSRD
+    # PROFILO D: Utility olandese - EU Taxonomy + CSRD
     # Gap ispirati a greenwashing reale nei report di sostenibilità
     # ═══════════════════════════════════════════════════════════════
     {
@@ -338,7 +338,7 @@ SYNTHETIC_PROFILES = [
         "description": (
             "GreenGrid Energy B.V. is a Dutch energy utility headquartered in Rotterdam with "
             "4,500 employees and EUR 2.1 billion annual revenue. The company operates a mix "
-            "of renewable (60% — wind and solar farms) and natural gas (40%) power generation "
+            "of renewable (60% - wind and solar farms) and natural gas (40%) power generation "
             "assets across the Netherlands and Belgium. "
             "\n\n"
             "In its 2024 sustainability report, GreenGrid claims to be 'Taxonomy-aligned' for "
@@ -358,7 +358,7 @@ SYNTHETIC_PROFILES = [
             "but minutes are not published and there is no disclosure of how sustainability "
             "performance is linked to executive remuneration."
         ),
-        "sector": "Energy — Power Generation & Utilities",
+        "sector": "Energy - Power Generation & Utilities",
         "employees": 4500,
         "turnover_eur": 2_100_000_000,
         "jurisdictions": ["NL", "BE"],
@@ -381,7 +381,7 @@ SYNTHETIC_PROFILES = [
                 "framework": "TAXONOMY",
                 "test_id": "D-TAX-02",
                 "injected_gap": "No DNSH assessment for biodiversity on offshore wind",
-                "expected_article": "Art. 17 Taxonomy Reg. (2020/852) — DNSH criteria",
+                "expected_article": "Art. 17 Taxonomy Reg. (2020/852) - DNSH criteria",
                 "severity": "NON_COMPLIANT",
                 "difficulty": "HARD",
                 "description": (
@@ -420,7 +420,7 @@ SYNTHETIC_PROFILES = [
     },
 
     # ═══════════════════════════════════════════════════════════════
-    # PROFILO E: Scale-up spagnola — GDPR (DPA errors) + AI Act
+    # PROFILO E: Scale-up spagnola - GDPR (DPA errors) + AI Act
     # Gap ispirati a sanzione AEPD e scenari AI Act
     # ═══════════════════════════════════════════════════════════════
     {
@@ -449,7 +449,7 @@ SYNTHETIC_PROFILES = [
             "or the right to contest automated decisions. There is no Data Protection Impact "
             "Assessment (DPIA) despite high-risk processing of special category data."
         ),
-        "sector": "Technology — HR-Tech / AI Recruitment",
+        "sector": "Technology - HR-Tech / AI Recruitment",
         "employees": 45,
         "turnover_eur": 3_500_000,
         "jurisdictions": ["ES", "FR", "DE"],
@@ -458,14 +458,14 @@ SYNTHETIC_PROFILES = [
                 "framework": "AI_ACT",
                 "test_id": "E-AIACT-01",
                 "injected_gap": "Emotion recognition in recruitment without compliance",
-                "expected_article": "Art. 5(1)(f) AI Act — Prohibited practices (emotion recognition in workplace)",
+                "expected_article": "Art. 5(1)(f) AI Act - Prohibited practices (emotion recognition in workplace)",
                 "severity": "NON_COMPLIANT",
                 "difficulty": "MEDIUM",
                 "description": (
                     "The AI Act Art. 5(1)(f) PROHIBITS AI systems that infer emotions of a "
                     "natural person in the workplace, except for medical or safety reasons. "
                     "Facial expression and voice tone analysis in recruitment is a PROHIBITED "
-                    "practice, not just high-risk — this is the most severe category."
+                    "practice, not just high-risk - this is the most severe category."
                 )
             },
             {
@@ -569,12 +569,12 @@ def summary():
         n = len(p["test_cases"])
         total += n
         fw_set = sorted(set(tc["framework"] for tc in p["test_cases"]))
-        print(f"  {p['id']}: {p['company_name']} — {n} test cases ({', '.join(fw_set)})")
+        print(f"  {p['id']}: {p['company_name']} - {n} test cases ({', '.join(fw_set)})")
     print(f"\n  TOTALE: {total} test cases across {len(SYNTHETIC_PROFILES)} profiles")
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("NormaAI Validation Framework — Synthetic Profiles Summary")
+    print("NormaAI Validation Framework - Synthetic Profiles Summary")
     print("=" * 60)
     summary()

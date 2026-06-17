@@ -393,14 +393,14 @@ class NormaAIClient:
                         continue
 
                 if resp.status_code == 429:
-                    # Rate limited — wait and retry
+                    # Rate limited - wait and retry
                     retry_after = int(resp.headers.get("Retry-After", "5"))
                     logger.warning(f"Rate limited on {endpoint}, waiting {retry_after}s")
                     await asyncio.sleep(retry_after)
                     continue
 
                 if resp.status_code >= 500:
-                    # Server error — exponential backoff
+                    # Server error - exponential backoff
                     delay = self.config.retry_delay_base * (2**attempt)
                     logger.warning(
                         f"Server error {resp.status_code} on {endpoint}, "

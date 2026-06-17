@@ -1,4 +1,4 @@
-# PRIVACY POLICY — VisionGuard Workplace Safety System
+# PRIVACY POLICY - VisionGuard Workplace Safety System
 
 **Last Updated:** December 1, 2025
 **Data Controller:** VisionGuard SAS, 45 Rue de la République, 69002 Lyon, France

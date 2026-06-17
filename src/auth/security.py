@@ -23,7 +23,7 @@ from src.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-# Token configuration — loaded from settings (src/config.py)
+# Token configuration - loaded from settings (src/config.py)
 def _get_access_token_expire_minutes() -> int:
     return get_settings().access_token_expire_minutes
 
@@ -80,7 +80,7 @@ def _load_rsa_keys() -> None:
         sys.exit(1)
 
     _algorithm = "HS256"
-    logger.warning("jwt_using_hs256_fallback — Generate RSA keys for production")
+    logger.warning("jwt_using_hs256_fallback - Generate RSA keys for production")
 
 
 def _get_signing_key() -> str:
@@ -195,12 +195,12 @@ class TokenBlacklist:
     async def is_blacklisted(self, jti: str, family: str | None = None) -> bool:
         """Check if a token JTI or its family is blacklisted.
 
-        SECURITY: Fail-closed in production — if Redis is down, all tokens
+        SECURITY: Fail-closed in production - if Redis is down, all tokens
         are treated as blacklisted to prevent unauthorized access.
         """
         if not self._available or not self._client:
             if get_settings().app_env == "production":
-                logger.error("blacklist_unavailable_in_production — fail closed")
+                logger.error("blacklist_unavailable_in_production - fail closed")
                 return True  # Fail closed: deny access if we can't verify
             return False
         try:

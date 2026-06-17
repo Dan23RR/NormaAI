@@ -1,4 +1,4 @@
-# Deploy backend su Hetzner (G10) — guida operativa
+# Deploy backend su Hetzner (G10) - guida operativa
 
 > Obiettivo: `api.normaai.org` live con TLS, in ~1 ora. Prerequisiti: account
 > Hetzner Cloud, dominio `normaai.org` su Cloudflare, repo su GitHub.
@@ -8,7 +8,7 @@
 ## 1. Server (5 min)
 
 Hetzner Cloud → Create Server:
-- **CX22** (2 vCPU / 4 GB — basta per il pilot; l'app ha limit 4G ma i servizi
+- **CX22** (2 vCPU / 4 GB - basta per il pilot; l'app ha limit 4G ma i servizi
   insieme stanno in ~3 GB con swap), immagine **Ubuntu 24.04**, location **Falkenstein/Norimberga** (data residency DE).
 - SSH key: aggiungi la tua chiave pubblica (mai password).
 - Firewall Hetzner (o `ufw`): in ingresso solo **22, 80, 443**.
@@ -16,7 +16,7 @@ Hetzner Cloud → Create Server:
 ## 2. DNS (2 min)
 
 Su Cloudflare, record **A**: `api.normaai.org` → IP del server, **proxy OFF
-(grigio/DNS-only)** — Caddy fa Let's Encrypt da solo; il proxy arancione
+(grigio/DNS-only)** - Caddy fa Let's Encrypt da solo; il proxy arancione
 interferirebbe con la challenge. (Il sito su Vercel resta com'è.)
 
 ## 3. Bootstrap server (10 min)

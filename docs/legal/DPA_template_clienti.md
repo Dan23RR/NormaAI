@@ -1,9 +1,9 @@
 # Accordo sul Trattamento dei Dati Personali (Data Processing Agreement)
 
-**Allegato al contratto di servizio NormaAI — ai sensi dell'Art. 28 del Regolamento (UE) 2016/679 (GDPR)**
+**Allegato al contratto di servizio NormaAI - ai sensi dell'Art. 28 del Regolamento (UE) 2016/679 (GDPR)**
 
 > Versione template: Marzo 2026 · NormaAI v0.3
-> Questo documento è un modello (template) da allegare alla proposta di pilot / al contratto di servizio. I campi tra parentesi quadre `[…]` vanno compilati al momento della firma. Le clausole obbligatorie ex Art. 28(3) GDPR sono già predisposte e non vanno modificate senza confronto legale.
+> Questo documento è un modello (template) da allegare alla proposta di pilot / al contratto di servizio. I campi tra parentesi quadre `[...]` vanno compilati al momento della firma. Le clausole obbligatorie ex Art. 28(3) GDPR sono già predisposte e non vanno modificate senza confronto legale.
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Ruolo | Soggetto |
 |---|---|
-| **Titolare del trattamento** (di seguito "Cliente" o "Titolare") | `[Ragione sociale Cliente]`, P.IVA `[…]`, sede legale `[…]`, in persona del legale rappresentante / DPO `[…]` |
-| **Responsabile del trattamento** (di seguito "NormaAI") | NormaAI S.r.l., P.IVA `[…]`, sede legale `[…]`, contatto privacy: privacy@normaai.org |
+| **Titolare del trattamento** (di seguito "Cliente" o "Titolare") | `[Ragione sociale Cliente]`, P.IVA `[...]`, sede legale `[...]`, in persona del legale rappresentante / DPO `[...]` |
+| **Responsabile del trattamento** (di seguito "NormaAI") | NormaAI S.r.l., P.IVA `[...]`, sede legale `[...]`, contatto privacy: privacy@normaai.org |
 
 Le Parti, premesso che il Cliente utilizza il servizio NormaAI di analisi automatizzata di conformità normativa europea (di seguito il "Servizio"), e che nell'erogazione del Servizio NormaAI tratta dati personali per conto del Cliente, concordano quanto segue ai sensi dell'Art. 28 GDPR.
 
@@ -35,7 +35,7 @@ Le Parti, premesso che il Cliente utilizza il servizio NormaAI di analisi automa
 **2.1 Categorie di interessati.** A titolo indicativo: dipendenti, collaboratori, referenti aziendali e altri soggetti i cui dati personali siano eventualmente contenuti nei documenti e nelle query che il Cliente sottopone al Servizio.
 
 **2.2 Tipologie di dati personali.**
-- Profili aziendali (settore, dimensione, fatturato, giurisdizioni) — nella misura in cui contengano dati riferibili a persone fisiche.
+- Profili aziendali (settore, dimensione, fatturato, giurisdizioni) - nella misura in cui contengano dati riferibili a persone fisiche.
 - Query di compliance e cronologia delle conversazioni.
 - Documenti caricati per l'analisi (il cui contenuto è determinato unilateralmente dal Cliente).
 - Metadati di utilizzo del Servizio (log tecnici, identificativi utente, timestamp, indirizzo IP).
@@ -53,7 +53,7 @@ Ai sensi dell'Art. 28(3) GDPR, NormaAI si impegna a:
 3. **adottare misure tecniche e organizzative adeguate** ex Art. 32 GDPR (vedi art. 4);
 4. rispettare le **condizioni per il ricorso a sub-responsabili** (vedi art. 5);
 5. **assistere il Titolare** con misure tecniche e organizzative adeguate per dar seguito alle richieste di esercizio dei diritti degli interessati (vedi art. 6);
-6. **assistere il Titolare** nel garantire il rispetto degli obblighi ex Artt. 32–36 GDPR (sicurezza, notifica violazioni, DPIA, consultazione preventiva), tenuto conto della natura del trattamento e delle informazioni disponibili;
+6. **assistere il Titolare** nel garantire il rispetto degli obblighi ex Artt. 32-36 GDPR (sicurezza, notifica violazioni, DPIA, consultazione preventiva), tenuto conto della natura del trattamento e delle informazioni disponibili;
 7. su scelta del Titolare, **cancellare o restituire** tutti i dati personali al termine del Servizio (vedi art. 8);
 8. mettere a disposizione del Titolare **tutte le informazioni necessarie** a dimostrare il rispetto degli obblighi e consentire e contribuire alle **attività di audit** (vedi art. 9);
 9. **informare immediatamente** il Titolare qualora, a suo parere, un'istruzione violi il GDPR o altre disposizioni in materia di protezione dei dati.
@@ -91,13 +91,13 @@ Le misure di dettaglio sono descritte nella pagina pubblica di sicurezza ([/secu
 
 ---
 
-## 6. Assistenza per i diritti degli interessati (Artt. 12–23)
+## 6. Assistenza per i diritti degli interessati (Artt. 12-23)
 
 NormaAI assiste il Titolare, con misure tecniche e organizzative adeguate e nella misura del possibile, a dar seguito alle richieste degli interessati relative a: accesso, rettifica, cancellazione, limitazione, portabilità e opposizione. Qualora una richiesta dell'interessato pervenga direttamente a NormaAI, questa non vi dà autonomamente seguito ma la trasmette senza ingiustificato ritardo al Titolare, indirizzando l'interessato al Titolare medesimo.
 
 ---
 
-## 7. Violazioni dei dati personali — notifica (Artt. 33–34 GDPR)
+## 7. Violazioni dei dati personali - notifica (Artt. 33-34 GDPR)
 
 **7.1 Notifica al Titolare.** NormaAI notifica al Titolare ogni violazione di dati personali **senza ingiustificato ritardo e comunque entro 48 ore** dal momento in cui ne è venuta a conoscenza, così da consentire al Titolare di adempiere ai propri obblighi (di norma notifica all'Autorità di controllo entro 72 ore ex Art. 33).
 
@@ -137,9 +137,9 @@ NormaAI mette a disposizione del Titolare le informazioni necessarie a dimostrar
 
 | Titolare (Cliente) | Responsabile (NormaAI S.r.l.) |
 |---|---|
-| Nome: `[…]` | Nome: `[…]` |
-| Ruolo: `[…]` | Ruolo: `[…]` |
-| Data: `[…]` | Data: `[…]` |
+| Nome: `[...]` | Nome: `[...]` |
+| Ruolo: `[...]` | Ruolo: `[...]` |
+| Data: `[...]` | Data: `[...]` |
 | Firma: ____________________ | Firma: ____________________ |
 
 ---

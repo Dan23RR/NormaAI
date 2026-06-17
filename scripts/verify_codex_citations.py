@@ -11,7 +11,7 @@ Output:
 Run:  poetry run python scripts/verify_codex_citations.py
 
 NB: this script is conservative. If a SPARQL query returns no result,
-the claim is marked YELLOW (not RED) — the absence of result may mean
+the claim is marked YELLOW (not RED) - the absence of result may mean
 the document is too recent to be indexed or our query is too narrow.
 A RED mark is only used when the query returns a CONTRADICTING result.
 """
@@ -23,18 +23,16 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import httpx
-
 
 SPARQL_ENDPOINT = "https://publications.europa.eu/webapi/rdf/sparql"
 
 # Public CELEX for the relevant base directives.
-CELEX_CSRD = "32022L2464"      # Directive (EU) 2022/2464 — CSRD
-CELEX_CSDDD = "32024L1760"     # Directive (EU) 2024/1760 — CSDDD
-CELEX_TAXONOMY = "32020R0852"  # Regulation (EU) 2020/852 — EU Taxonomy
-CELEX_ESRS_SET1 = "32023R2772" # Implementing Reg. — ESRS Set 1
+CELEX_CSRD = "32022L2464"      # Directive (EU) 2022/2464 - CSRD
+CELEX_CSDDD = "32024L1760"     # Directive (EU) 2024/1760 - CSDDD
+CELEX_TAXONOMY = "32020R0852"  # Regulation (EU) 2020/852 - EU Taxonomy
+CELEX_ESRS_SET1 = "32023R2772" # Implementing Reg. - ESRS Set 1
 
 
 # ─────────────────────────── Data model ─────────────────────────────
@@ -45,8 +43,8 @@ class ClaimResult:
     title: str
     status: str             # "GREEN" | "YELLOW" | "RED"
     summary: str
-    evidence_url: Optional[str] = None
-    sparql_query: Optional[str] = None
+    evidence_url: str | None = None
+    sparql_query: str | None = None
     raw_results: list = field(default_factory=list)
 
 
@@ -175,7 +173,7 @@ def verify_claim_1_omnibus_adoption() -> ClaimResult:
         claim_id="1",
         title="Omnibus I adozione e numero OJ",
         status="GREEN",
-        summary=f"Top hit: CELEX {celex} ({date}) — {title}",
+        summary=f"Top hit: CELEX {celex} ({date}) - {title}",
         evidence_url=url,
         sparql_query=query_omnibus_proposals(),
         raw_results=[
@@ -213,7 +211,7 @@ def verify_claim_2_csrd_thresholds() -> ClaimResult:
         claim_id="2",
         title="CSRD soglie ricavi/bilancio post-Omnibus",
         status="GREEN",
-        summary=f"Atto modificante CSRD: CELEX {celex} ({date}) — {title}",
+        summary=f"Atto modificante CSRD: CELEX {celex} ({date}) - {title}",
         evidence_url=f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}",
         sparql_query=query_amending_acts(CELEX_CSRD, 2024),
         raw_results=[
@@ -237,7 +235,7 @@ def verify_claim_3_esrs_set1() -> ClaimResult:
         status="YELLOW",
         summary=(
             f"Trovati {len(bindings)} atti che emendano ESRS Set 1 (CELEX 32023R2772). "
-            "La % esatta del taglio non è verificabile via SPARQL — richiede lettura "
+            "La % esatta del taglio non è verificabile via SPARQL - richiede lettura "
             "dell'allegato dell'implementing act EFRAG aggiornato. "
             "Marcare come 'stima EFRAG' nel PDF, NON come dato regolamentare."
         ),
@@ -277,7 +275,7 @@ def verify_claim_4_csddd_deadline() -> ClaimResult:
         claim_id="4",
         title="CSDDD transposition deadline post-Omnibus",
         status="GREEN",
-        summary=f"Atto modificante CSDDD: CELEX {celex} — {title}",
+        summary=f"Atto modificante CSDDD: CELEX {celex} - {title}",
         evidence_url=f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}",
         sparql_query=query_amending_acts(CELEX_CSDDD, 2024),
         raw_results=[
@@ -288,7 +286,7 @@ def verify_claim_4_csddd_deadline() -> ClaimResult:
 
 
 def verify_claim_5_market_data() -> ClaimResult:
-    """Claim 5: "80% calo perimetro IT" — non verificabile via EUR-Lex."""
+    """Claim 5: "80% calo perimetro IT" - non verificabile via EUR-Lex."""
     return ClaimResult(
         claim_id="5",
         title="Mercato IT: 80% calo aziende in scope CSRD",
@@ -382,7 +380,7 @@ def main() -> int:
 
 def write_verified_md(results: list[ClaimResult], path: Path) -> None:
     lines = [
-        "# Codex Post-Omnibus — Cap 1 VERIFIED",
+        "# Codex Post-Omnibus - Cap 1 VERIFIED",
         "",
         f"> Auto-generato da `scripts/verify_codex_citations.py` il "
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')}.",
@@ -401,7 +399,7 @@ def write_verified_md(results: list[ClaimResult], path: Path) -> None:
     lines += ["", "## Dettagli per claim", ""]
     for r in results:
         lines += [
-            f"### Claim {r.claim_id} — {r.title}",
+            f"### Claim {r.claim_id} - {r.title}",
             "",
             f"**Status:** `{r.status}`",
             "",

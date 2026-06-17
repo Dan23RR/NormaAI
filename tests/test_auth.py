@@ -124,7 +124,7 @@ class TestTokenBlacklistFailClosed:
         from src.auth.security import TokenBlacklist
 
         bl = TokenBlacklist()
-        # Don't connect to Redis — simulate unavailability
+        # Don't connect to Redis - simulate unavailability
         bl._available = False
         bl._client = None
 
@@ -163,13 +163,13 @@ class TestBruteForceProtection:
         bf._client = mock_redis
         bf._available = True
 
-        # Simulate attempts under the limit — returns None (allowed)
+        # Simulate attempts under the limit - returns None (allowed)
         mock_redis.get.return_value = "2"  # 2 attempts so far (< MAX_ATTEMPTS)
         mock_redis.pipeline.return_value = AsyncMock()
         result = await bf.check_and_increment("test@example.com", "1.2.3.4")
         assert result is None  # Login allowed
 
-        # Simulate lockout — attempts >= MAX_ATTEMPTS
+        # Simulate lockout - attempts >= MAX_ATTEMPTS
         mock_redis.get.return_value = str(MAX_ATTEMPTS)
         mock_redis.ttl.return_value = 240  # 4 minutes remaining
         result = await bf.check_and_increment("test@example.com", "1.2.3.4")
@@ -200,7 +200,7 @@ class TestBruteForceProtection:
         bf._available = False
 
         result = await bf.check_and_increment("test@example.com", "1.2.3.4")
-        assert result is None  # Allowed — fail open
+        assert result is None  # Allowed - fail open
 
     @pytest.mark.asyncio
     async def test_remaining_attempts_calculation(self):

@@ -63,7 +63,7 @@ slowapi = "^0.1.9"
 # Report generation
 fpdf2 = "^2.8.0"
 
-# Transactional email (Resend — Codex/lead delivery)
+# Transactional email (Resend - Codex/lead delivery)
 resend = "^2.4.0"
 
 # Observability
@@ -129,7 +129,7 @@ extend-immutable-calls = [
     "fastapi.File",
     "fastapi.Form",
     "fastapi.Security",
-    # Dependency factory (returns a Depends-able checker) — same contract.
+    # Dependency factory (returns a Depends-able checker) - same contract.
     "src.auth.dependencies.require_role",
 ]
 

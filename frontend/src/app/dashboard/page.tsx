@@ -45,7 +45,7 @@ export default function DashboardOverview() {
       }`}>
         <div className={`w-2.5 h-2.5 rounded-full ${isHealthy ? 'bg-green-400' : 'bg-yellow-400'}`} />
         <span className="text-sm font-medium">
-          {isHealthy ? 'All systems operational' : 'Partial — some services unavailable'}
+          {isHealthy ? 'All systems operational' : 'Partial - some services unavailable'}
         </span>
         <span className="text-xs text-slate-500 ml-auto">v{stats.version} &middot; {stats.environment}</span>
       </div>
@@ -55,7 +55,7 @@ export default function DashboardOverview() {
         <StatCard
           icon={Database}
           label="Chunks Indexed"
-          value={stats.qdrant?.points_count?.toLocaleString() || '—'}
+          value={stats.qdrant?.points_count?.toLocaleString() || '-'}
           color="text-blue-400"
         />
         <StatCard

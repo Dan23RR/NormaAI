@@ -1,11 +1,11 @@
-"""Chain-of-Verification (CoVe) orchestrator — main coordinator for the 5-phase pipeline.
+"""Chain-of-Verification (CoVe) orchestrator - main coordinator for the 5-phase pipeline.
 
 Orchestrates:
-1. Draft extraction — parse claims from initial LLM response
-2. Planning — generate verification questions
-3. Verification — independently verify each claim in isolated context
-4. Revision — rewrite response based on evidence
-5. Validation — check citations against regulatory databases
+1. Draft extraction - parse claims from initial LLM response
+2. Planning - generate verification questions
+3. Verification - independently verify each claim in isolated context
+4. Revision - rewrite response based on evidence
+5. Validation - check citations against regulatory databases
 
 Each phase emits SSE events for streaming progress to clients.
 Graceful degradation: if any phase fails, continue to next phase.
@@ -49,7 +49,7 @@ _CELEX_RE = re.compile(r"^3\d{4}[A-Z]{1,2}\d{3,4}$")
 
 
 def _known_celex() -> set[str]:
-    """CELEX numbers we have actually seeded — our trusted ground truth.
+    """CELEX numbers we have actually seeded - our trusted ground truth.
 
     A citation to a regulation we never indexed is, by definition, unverifiable
     from our corpus and must NOT be rubber-stamped as valid (that was the bug
@@ -88,7 +88,7 @@ def _extract_citations_from_text(text: str) -> list[dict]:
 
     # CELEX pattern: real CELEX numbers carry a sector digit + year + type
     # LETTER + number, e.g. 32022L2464 (CSRD), 32024R1689 (AI Act). The old
-    # all-digit pattern \b3\d{7}\b never matched these — EU citations slipped
+    # all-digit pattern \b3\d{7}\b never matched these - EU citations slipped
     # through unvalidated. Match both the lettered form and the rare all-digit.
     celex_pattern = r"\b3\d{4}[A-Z]{1,2}\d{3,4}\b|\b3\d{7}\b"
     seen_celex = set()
@@ -106,7 +106,7 @@ def _extract_citations_from_text(text: str) -> list[dict]:
         )
 
     # Article references: "Art. 29", "Article 5", "artt. 1-3"
-    article_pattern = r"(?:Art\.?|Article|artt\.?)\s+(\d+)(?:\s*[-–]\s*(\d+))?"
+    article_pattern = r"(?:Art\.?|Article|artt\.?)\s+(\d+)(?:\s*[--]\s*(\d+))?"
     for match in re.finditer(article_pattern, text, re.IGNORECASE):
         start = match.group(1)
         end = match.group(2) if match.group(2) else start
@@ -304,7 +304,7 @@ class CoVeOrchestrator:
             )
 
             # Flag review when a citation FAILED validation (e.g. a CELEX we
-            # could not verify) — not merely because a citation is present.
+            # could not verify) - not merely because a citation is present.
             invalid_citations = sum(1 for c in citation_checks if not c.exists)
             yield DoneEvent(
                 total_tokens=len(revision.revised_text.split()),
@@ -630,7 +630,7 @@ class CoVeOrchestrator:
             try:
                 if citation["type"] == "urn" and self.normattiva_client:
                     # Validate Italian law URN. validate_urn is ASYNC and returns
-                    # a URNValidationResult object (attributes, not a dict) — the
+                    # a URNValidationResult object (attributes, not a dict) - the
                     # old code neither awaited it nor read it correctly.
                     try:
                         result = await self.normattiva_client.validate_urn(citation["value"])
@@ -656,21 +656,29 @@ class CoVeOrchestrator:
 
                 elif citation["type"] == "celex":
                     celex = citation["value"]
-                    url = (
-                        f"https://eur-lex.europa.eu/legal-content/EN/TXT/"
-                        f"?uri=CELEX:{celex}"
-                    )
+                    url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/" f"?uri=CELEX:{celex}"
                     if not _CELEX_RE.match(celex):
-                        # Malformed CELEX — almost certainly fabricated.
+                        # Malformed CELEX - almost certainly fabricated.
                         checks.append(
-                            CitationCheck(celex=celex, exists=False, is_current=False, url=url,
-                                          validation="invalid", error="Malformed CELEX identifier")
+                            CitationCheck(
+                                celex=celex,
+                                exists=False,
+                                is_current=False,
+                                url=url,
+                                validation="invalid",
+                                error="Malformed CELEX identifier",
+                            )
                         )
                     elif celex in _known_celex():
                         # Cited a regulation we actually indexed → trusted.
                         checks.append(
-                            CitationCheck(celex=celex, exists=True, is_current=True, url=url,
-                                          validation="verified")
+                            CitationCheck(
+                                celex=celex,
+                                exists=True,
+                                is_current=True,
+                                url=url,
+                                validation="verified",
+                            )
                         )
                     elif self.indexer is not None and getattr(self.indexer, "eurlex", None):
                         # Best-effort live check against EUR-Lex (when wired).
@@ -679,7 +687,8 @@ class CoVeOrchestrator:
                             exists = bool(getattr(meta, "title", None))
                             checks.append(
                                 CitationCheck(
-                                    celex=celex, exists=exists,
+                                    celex=celex,
+                                    exists=exists,
                                     is_current=bool(getattr(meta, "is_in_force", exists)),
                                     url=getattr(meta, "full_text_url", url) or url,
                                     validation="verified" if exists else "unverified",
@@ -687,17 +696,27 @@ class CoVeOrchestrator:
                             )
                         except Exception as e:  # noqa: BLE001
                             checks.append(
-                                CitationCheck(celex=celex, exists=False, is_current=False,
-                                              url=url, validation="unverified",
-                                              error=f"unverified: {e}")
+                                CitationCheck(
+                                    celex=celex,
+                                    exists=False,
+                                    is_current=False,
+                                    url=url,
+                                    validation="unverified",
+                                    error=f"unverified: {e}",
+                                )
                             )
                     else:
                         # Well-formed but outside our corpus and no live check:
                         # mark UNVERIFIED rather than rubber-stamping it valid.
                         checks.append(
-                            CitationCheck(celex=celex, exists=False, is_current=False, url=url,
-                                          validation="unverified",
-                                          error="Not in indexed corpus; unverified")
+                            CitationCheck(
+                                celex=celex,
+                                exists=False,
+                                is_current=False,
+                                url=url,
+                                validation="unverified",
+                                error="Not in indexed corpus; unverified",
+                            )
                         )
 
                 elif citation["type"] == "article":

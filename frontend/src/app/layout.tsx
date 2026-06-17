@@ -22,7 +22,7 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title:
-    'NormaAI — Compliance EU senza allucinazioni AI | CSRD, AI Act, DORA, NIS2',
+    'NormaAI - Compliance EU senza allucinazioni AI | CSRD, AI Act, DORA, NIS2',
   description:
     'Il copilota normativo difendibile in audit per i 7 framework UE. Q&A con citazione primary source EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA per intermediari piccoli, NIS2, GDPR.',
   keywords: [
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     'consulenza ESG Italia',
   ],
   openGraph: {
-    title: 'NormaAI — Compliance EU senza allucinazioni AI',
+    title: 'NormaAI - Compliance EU senza allucinazioni AI',
     description:
       'Il copilota normativo difendibile in audit per i 7 framework UE. Citazione primary source EUR-Lex in 30 secondi.',
     url: SITE_URL,
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  // Warm paper — matches the public landing background.
+  // Warm paper - matches the public landing background.
   themeColor: '#FAF9F5',
 }
 
@@ -85,7 +85,7 @@ const jsonLd = {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'EUR',
-        description: 'Pilot su richiesta — Codex Post-Omnibus 2025-2029 gratuito',
+        description: 'Pilot su richiesta - Codex Post-Omnibus 2025-2029 gratuito',
       },
       provider: { '@id': `${SITE_URL}/#org` },
     },

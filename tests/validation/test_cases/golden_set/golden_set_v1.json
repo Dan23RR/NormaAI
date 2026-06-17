@@ -2,7 +2,7 @@
   "test_cases": [
     {
       "id": "GDPR-SANCTION-2024-IT-001-L1",
-      "name": "[L1] Sanzione Garante Privacy Italia 2024-03-15 — Art. 13(2)(a), Art. 5(1)(e)",
+      "name": "[L1] Sanzione Garante Privacy Italia 2024-03-15 - Art. 13(2)(a), Art. 5(1)(e)",
       "description": "Test case derivato da sanzione reale: Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
       "source_type": "sanction",
       "sanction_source": {
@@ -65,7 +65,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-001-L2",
-      "name": "[L2] Sanzione Garante Privacy Italia 2024-03-15 — Art. 13(2)(a), Art. 5(1)(e)",
+      "name": "[L2] Sanzione Garante Privacy Italia 2024-03-15 - Art. 13(2)(a), Art. 5(1)(e)",
       "description": "Test case derivato da sanzione reale: Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
       "source_type": "sanction",
       "sanction_source": {
@@ -128,7 +128,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-001-L3",
-      "name": "[L3] Sanzione Garante Privacy Italia 2024-03-15 — Art. 13(2)(a), Art. 5(1)(e)",
+      "name": "[L3] Sanzione Garante Privacy Italia 2024-03-15 - Art. 13(2)(a), Art. 5(1)(e)",
       "description": "Test case derivato da sanzione reale: Mancata indicazione del periodo di conservazione dei dati nella privacy policy. I dati venivano conservati a tempo indeterminato senza giustificazione.",
       "source_type": "sanction",
       "sanction_source": {
@@ -191,7 +191,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-002-L1",
-      "name": "[L1] Sanzione Garante Privacy Italia 2024-05-22 — Art. 28(3)(h), Art. 28(3)(d), Art. 32",
+      "name": "[L1] Sanzione Garante Privacy Italia 2024-05-22 - Art. 28(3)(h), Art. 28(3)(d), Art. 32",
       "description": "Test case derivato da sanzione reale: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
       "source_type": "sanction",
       "sanction_source": {
@@ -261,7 +261,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-002-L2",
-      "name": "[L2] Sanzione Garante Privacy Italia 2024-05-22 — Art. 28(3)(h), Art. 28(3)(d), Art. 32",
+      "name": "[L2] Sanzione Garante Privacy Italia 2024-05-22 - Art. 28(3)(h), Art. 28(3)(d), Art. 32",
       "description": "Test case derivato da sanzione reale: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
       "source_type": "sanction",
       "sanction_source": {
@@ -331,7 +331,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-002-L3",
-      "name": "[L3] Sanzione Garante Privacy Italia 2024-05-22 — Art. 28(3)(h), Art. 28(3)(d), Art. 32",
+      "name": "[L3] Sanzione Garante Privacy Italia 2024-05-22 - Art. 28(3)(h), Art. 28(3)(d), Art. 32",
       "description": "Test case derivato da sanzione reale: DPA con il fornitore cloud non includeva diritto di audit per il titolare. Sub-responsabili non autorizzati. Misure di sicurezza insufficienti per dati sanitari.",
       "source_type": "sanction",
       "sanction_source": {
@@ -401,7 +401,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-003-L1",
-      "name": "[L1] Sanzione Garante Privacy Italia 2024-07-10 — Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
+      "name": "[L1] Sanzione Garante Privacy Italia 2024-07-10 - Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
       "description": "Test case derivato da sanzione reale: Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
       "source_type": "sanction",
       "sanction_source": {
@@ -471,7 +471,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-003-L2",
-      "name": "[L2] Sanzione Garante Privacy Italia 2024-07-10 — Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
+      "name": "[L2] Sanzione Garante Privacy Italia 2024-07-10 - Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
       "description": "Test case derivato da sanzione reale: Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
       "source_type": "sanction",
       "sanction_source": {
@@ -541,7 +541,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-IT-003-L3",
-      "name": "[L3] Sanzione Garante Privacy Italia 2024-07-10 — Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
+      "name": "[L3] Sanzione Garante Privacy Italia 2024-07-10 - Art. 7(3), Art. 6(1)(a), Art. 13(2)(c)",
       "description": "Test case derivato da sanzione reale: Consenso marketing raccolto con checkbox pre-selezionata. Nessun meccanismo di revoca del consenso facilmente accessibile. Informativa non menzionava il diritto alla revoca.",
       "source_type": "sanction",
       "sanction_source": {
@@ -611,7 +611,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-UK-001-L1",
-      "name": "[L1] Sanzione ICO UK 2024-02-28 — Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
+      "name": "[L1] Sanzione ICO UK 2024-02-28 - Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
       "description": "Test case derivato da sanzione reale: Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
       "source_type": "sanction",
       "sanction_source": {
@@ -688,7 +688,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-UK-001-L2",
-      "name": "[L2] Sanzione ICO UK 2024-02-28 — Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
+      "name": "[L2] Sanzione ICO UK 2024-02-28 - Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
       "description": "Test case derivato da sanzione reale: Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
       "source_type": "sanction",
       "sanction_source": {
@@ -765,7 +765,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-UK-001-L3",
-      "name": "[L3] Sanzione ICO UK 2024-02-28 — Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
+      "name": "[L3] Sanzione ICO UK 2024-02-28 - Art. 5(1)(a), Art. 6(1)(a), Art. 13(1)(c)",
       "description": "Test case derivato da sanzione reale: Profilazione algoritmica degli utenti senza base giuridica valida. Mancata informativa sui processi decisionali automatizzati. Informativa carente sulle finalità.",
       "source_type": "sanction",
       "sanction_source": {
@@ -842,7 +842,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-FR-001-L1",
-      "name": "[L1] Sanzione CNIL France 2024-01-18 — Art. 5(1)(a), Art. 7(1), Art. 7(2)",
+      "name": "[L1] Sanzione CNIL France 2024-01-18 - Art. 5(1)(a), Art. 7(1), Art. 7(2)",
       "description": "Test case derivato da sanzione reale: Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
       "source_type": "sanction",
       "sanction_source": {
@@ -919,7 +919,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-FR-001-L2",
-      "name": "[L2] Sanzione CNIL France 2024-01-18 — Art. 5(1)(a), Art. 7(1), Art. 7(2)",
+      "name": "[L2] Sanzione CNIL France 2024-01-18 - Art. 5(1)(a), Art. 7(1), Art. 7(2)",
       "description": "Test case derivato da sanzione reale: Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
       "source_type": "sanction",
       "sanction_source": {
@@ -996,7 +996,7 @@
     },
     {
       "id": "GDPR-SANCTION-2024-FR-001-L3",
-      "name": "[L3] Sanzione CNIL France 2024-01-18 — Art. 5(1)(a), Art. 7(1), Art. 7(2)",
+      "name": "[L3] Sanzione CNIL France 2024-01-18 - Art. 5(1)(a), Art. 7(1), Art. 7(2)",
       "description": "Test case derivato da sanzione reale: Cookie di tracciamento depositati senza consenso valido. Consenso non dimostrabile. Banner cookie non distinguibile. Trasferimenti verso USA non dichiarati nell'informativa.",
       "source_type": "sanction",
       "sanction_source": {
@@ -1073,7 +1073,7 @@
     },
     {
       "id": "SYN-GDPR-L1-4a3dfb",
-      "name": "[Synthetic L1] GDPR — Privacy policy senza periodo di conservazione dati",
+      "name": "[Synthetic L1] GDPR - Privacy policy senza periodo di conservazione dati",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1126,7 +1126,7 @@
     },
     {
       "id": "SYN-GDPR-L1-8347a4",
-      "name": "[Synthetic L1] GDPR — DPA senza clausola di audit",
+      "name": "[Synthetic L1] GDPR - DPA senza clausola di audit",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1179,7 +1179,7 @@
     },
     {
       "id": "SYN-GDPR-L1-27858b",
-      "name": "[Synthetic L1] GDPR — Nessuna menzione del DPO nella privacy policy",
+      "name": "[Synthetic L1] GDPR - Nessuna menzione del DPO nella privacy policy",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1232,7 +1232,7 @@
     },
     {
       "id": "SYN-GDPR-L1-0ea945",
-      "name": "[Synthetic L1] GDPR — Piano incidenti senza procedura notifica 72h al Garante",
+      "name": "[Synthetic L1] GDPR - Piano incidenti senza procedura notifica 72h al Garante",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1285,7 +1285,7 @@
     },
     {
       "id": "SYN-GDPR-L1-e3a51b",
-      "name": "[Synthetic L1] GDPR — Consent form senza meccanismo di revoca",
+      "name": "[Synthetic L1] GDPR - Consent form senza meccanismo di revoca",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1338,7 +1338,7 @@
     },
     {
       "id": "SYN-GDPR-L1-570735",
-      "name": "[Synthetic L1] GDPR — Assenza completa del registro dei trattamenti",
+      "name": "[Synthetic L1] GDPR - Assenza completa del registro dei trattamenti",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1391,7 +1391,7 @@
     },
     {
       "id": "SYN-GDPR-L1-dfa231",
-      "name": "[Synthetic L1] GDPR — Trattamento ad alto rischio senza DPIA",
+      "name": "[Synthetic L1] GDPR - Trattamento ad alto rischio senza DPIA",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1444,7 +1444,7 @@
     },
     {
       "id": "SYN-GDPR-L2-0cf185",
-      "name": "[Synthetic L2] GDPR — Periodo conservazione vago: 'per il tempo necessario'",
+      "name": "[Synthetic L2] GDPR - Periodo conservazione vago: 'per il tempo necessario'",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1497,7 +1497,7 @@
     },
     {
       "id": "SYN-GDPR-L2-da377a",
-      "name": "[Synthetic L2] GDPR — Clausola audit limitata a 'previo accordo scritto'",
+      "name": "[Synthetic L2] GDPR - Clausola audit limitata a 'previo accordo scritto'",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1550,7 +1550,7 @@
     },
     {
       "id": "SYN-GDPR-L2-37b2a1",
-      "name": "[Synthetic L2] GDPR — Consenso bundled con accettazione T&C generali",
+      "name": "[Synthetic L2] GDPR - Consenso bundled con accettazione T&C generali",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1603,7 +1603,7 @@
     },
     {
       "id": "SYN-GDPR-L2-671730",
-      "name": "[Synthetic L2] GDPR — Raccolta dati eccessiva mascherata da 'servizio migliore'",
+      "name": "[Synthetic L2] GDPR - Raccolta dati eccessiva mascherata da 'servizio migliore'",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1656,7 +1656,7 @@
     },
     {
       "id": "SYN-GDPR-L2-7934b8",
-      "name": "[Synthetic L2] GDPR — Trasferimento extra-UE menzionato ma senza garanzie specifiche",
+      "name": "[Synthetic L2] GDPR - Trasferimento extra-UE menzionato ma senza garanzie specifiche",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1709,7 +1709,7 @@
     },
     {
       "id": "SYN-GDPR-L3-597959",
-      "name": "[Synthetic L3] GDPR — Clausola audit tecnicamente presente ma svuotata di contenuto",
+      "name": "[Synthetic L3] GDPR - Clausola audit tecnicamente presente ma svuotata di contenuto",
       "description": "Documento sintetico con 1 difetti iniettati a livello 3",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1762,7 +1762,7 @@
     },
     {
       "id": "SYN-GDPR-L3-810136",
-      "name": "[Synthetic L3] GDPR — Diritto alla cancellazione tecnicamente presente ma con eccezioni enormi",
+      "name": "[Synthetic L3] GDPR - Diritto alla cancellazione tecnicamente presente ma con eccezioni enormi",
       "description": "Documento sintetico con 1 difetti iniettati a livello 3",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1815,7 +1815,7 @@
     },
     {
       "id": "SYN-GDPR-L3-e89d31",
-      "name": "[Synthetic L3] GDPR — Finalità originaria che nasconde un purpose creep verso IA",
+      "name": "[Synthetic L3] GDPR - Finalità originaria che nasconde un purpose creep verso IA",
       "description": "Documento sintetico con 1 difetti iniettati a livello 3",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1868,7 +1868,7 @@
     },
     {
       "id": "SYN-GDPR-L5-0e8e50",
-      "name": "[Synthetic L5] GDPR — DPA con riferimento a Privacy Shield (invalidato da Schrems II nel 2020)",
+      "name": "[Synthetic L5] GDPR - DPA con riferimento a Privacy Shield (invalidato da Schrems II nel 2020)",
       "description": "Documento sintetico con 1 difetti iniettati a livello 5",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1921,7 +1921,7 @@
     },
     {
       "id": "SYN-GDPR-L5-f36ebc",
-      "name": "[Synthetic L5] GDPR — Misure di sicurezza basate su standard obsoleto (Allegato B D.Lgs. 196/2003)",
+      "name": "[Synthetic L5] GDPR - Misure di sicurezza basate su standard obsoleto (Allegato B D.Lgs. 196/2003)",
       "description": "Documento sintetico con 1 difetti iniettati a livello 5",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -1974,7 +1974,7 @@
     },
     {
       "id": "SYN-DORA-L1-a2b63e",
-      "name": "[Synthetic L1] DORA — Assenza completa del framework di gestione rischi ICT",
+      "name": "[Synthetic L1] DORA - Assenza completa del framework di gestione rischi ICT",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2027,7 +2027,7 @@
     },
     {
       "id": "SYN-DORA-L1-6bbb68",
-      "name": "[Synthetic L1] DORA — Nessun piano di risposta e ripristino ICT",
+      "name": "[Synthetic L1] DORA - Nessun piano di risposta e ripristino ICT",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2080,7 +2080,7 @@
     },
     {
       "id": "SYN-DORA-L1-bccad2",
-      "name": "[Synthetic L1] DORA — Contratti ICT senza clausole contrattuali minime DORA",
+      "name": "[Synthetic L1] DORA - Contratti ICT senza clausole contrattuali minime DORA",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2133,7 +2133,7 @@
     },
     {
       "id": "SYN-DORA-L2-ef704b",
-      "name": "[Synthetic L2] DORA — Testing ICT generico senza frequenza e metodologia definite",
+      "name": "[Synthetic L2] DORA - Testing ICT generico senza frequenza e metodologia definite",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2186,7 +2186,7 @@
     },
     {
       "id": "SYN-DORA-L2-f6a217",
-      "name": "[Synthetic L2] DORA — Policy fornitori ICT senza due diligence strutturata",
+      "name": "[Synthetic L2] DORA - Policy fornitori ICT senza due diligence strutturata",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2239,7 +2239,7 @@
     },
     {
       "id": "SYN-NIS2-L1-2a75a7",
-      "name": "[Synthetic L1] NIS2 — Nessuna procedura di notifica incidenti al CSIRT",
+      "name": "[Synthetic L1] NIS2 - Nessuna procedura di notifica incidenti al CSIRT",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2292,7 +2292,7 @@
     },
     {
       "id": "SYN-NIS2-L1-4d80ec",
-      "name": "[Synthetic L1] NIS2 — Assenza piano di continuità operativa",
+      "name": "[Synthetic L1] NIS2 - Assenza piano di continuità operativa",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2345,7 +2345,7 @@
     },
     {
       "id": "SYN-NIS2-L1-4dd2b1",
-      "name": "[Synthetic L1] NIS2 — Governance sicurezza senza responsabilità del management",
+      "name": "[Synthetic L1] NIS2 - Governance sicurezza senza responsabilità del management",
       "description": "Documento sintetico con 1 difetti iniettati a livello 1",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2398,7 +2398,7 @@
     },
     {
       "id": "SYN-NIS2-L2-8fbe89",
-      "name": "[Synthetic L2] NIS2 — Supply chain security limitata ai fornitori di primo livello",
+      "name": "[Synthetic L2] NIS2 - Supply chain security limitata ai fornitori di primo livello",
       "description": "Documento sintetico con 1 difetti iniettati a livello 2",
       "source_type": "synthetic",
       "synthetic_source": {
@@ -2452,7 +2452,7 @@
     {
       "id": "GOLDEN-EDGE-001",
       "name": "Privacy policy completamente vuota",
-      "description": "Documento vuoto — il sistema deve segnalare TUTTI i requisiti mancanti",
+      "description": "Documento vuoto - il sistema deve segnalare TUTTI i requisiti mancanti",
       "source_type": "expert_validated",
       "task_type": "gap_analysis",
       "query": "GDPR",
@@ -2518,8 +2518,8 @@
     },
     {
       "id": "GOLDEN-EDGE-002",
-      "name": "Privacy policy perfetta — zero violazioni attese",
-      "description": "Documento completo e conforme — il sistema NON deve segnalare false positive",
+      "name": "Privacy policy perfetta - zero violazioni attese",
+      "description": "Documento completo e conforme - il sistema NON deve segnalare false positive",
       "source_type": "expert_validated",
       "task_type": "gap_analysis",
       "query": "GDPR",

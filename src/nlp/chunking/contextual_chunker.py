@@ -1,5 +1,5 @@
 """
-Contextual Chunker — Enriches chunks with document-level context for better retrieval.
+Contextual Chunker - Enriches chunks with document-level context for better retrieval.
 
 Key innovation: Instead of embedding raw article text, prepend a contextual summary
 that places the chunk in its regulatory hierarchy. This improves retrieval accuracy

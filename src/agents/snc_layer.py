@@ -1,4 +1,4 @@
-"""SNC Governance Layer — Behavioral Trust Clustering applied to NormaAI.
+"""SNC Governance Layer - Behavioral Trust Clustering applied to NormaAI.
 
 Wraps the existing acall_llm() pipeline with K-sample stochastic generation
 and applies the closed-form trust thermodynamic governor.
@@ -151,11 +151,10 @@ async def snc_governance(
 
     n_extra = cfg.k - 1
     # Resample at the configured SNC temperature (NOT the global 0.0) so the K
-    # samples actually differ — otherwise entropy is always 0 and the trust
+    # samples actually differ - otherwise entropy is always 0 and the trust
     # score collapses to the model's self-declared confidence (BUG-001).
     extra_tasks = [
-        acall_llm(system_prompt, user_message, temperature=cfg.temperature)
-        for _ in range(n_extra)
+        acall_llm(system_prompt, user_message, temperature=cfg.temperature) for _ in range(n_extra)
     ]
     try:
         extra_samples = await asyncio.gather(*extra_tasks, return_exceptions=True)

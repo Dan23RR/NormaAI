@@ -1,5 +1,5 @@
 """
-Synthetic Document Generator — Red Team Adversarial Testing.
+Synthetic Document Generator - Red Team Adversarial Testing.
 
 Generates realistic regulatory documents with intentionally injected flaws
 at 5 difficulty levels for testing NormaAI's detection capabilities.
@@ -585,7 +585,7 @@ def generate_synthetic_test_case(
 
     return {
         "id": case_id,
-        "name": f"[Synthetic L{level}] {framework} — {selected_flaws[0]['description'][:80]}",
+        "name": f"[Synthetic L{level}] {framework} - {selected_flaws[0]['description'][:80]}",
         "description": f"Documento sintetico con {len(selected_flaws)} difetti iniettati a livello {level}",
         "source_type": "synthetic",
         "synthetic_source": {

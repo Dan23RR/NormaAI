@@ -1,5 +1,5 @@
 """
-NormaAI Validation Framework — Test Runner
+NormaAI Validation Framework - Test Runner
 =============================================
 Esegue automaticamente tutti i test case contro gli endpoint NormaAI
 e raccoglie i risultati per la confusion matrix.
@@ -297,7 +297,7 @@ def run_all_tests(base_url, delay_between_tests=5, timeout=120):
                 "ERROR": "\u26A0\uFE0F"
             }.get(classification["classification"], "?")
             print(f"       {symbol} {classification['classification']} "
-                  f"(score: {classification['match_score']}) — {classification['analysis']}")
+                  f"(score: {classification['match_score']}) - {classification['analysis']}")
 
         # Delay between API calls to avoid rate limiting
         if delay_between_tests > 0:
@@ -392,7 +392,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("=" * 60)
-    print("NormaAI Validation Framework — Test Runner v1.0")
+    print("NormaAI Validation Framework - Test Runner v1.0")
     print("=" * 60)
     print(f"  Target:  {args.base_url}")
     print(f"  Delay:   {args.delay}s between calls")
@@ -404,7 +404,7 @@ if __name__ == "__main__":
         r = httpx.get(f"{args.base_url}/health", timeout=10)
         print(f"  Health:  {r.status_code} OK")
     except Exception as e:
-        print(f"  Health:  FAILED — {e}")
+        print(f"  Health:  FAILED - {e}")
         print("\n  \u26A0\uFE0F  NormaAI API non raggiungibile. Assicurati che sia in esecuzione.")
         sys.exit(1)
 

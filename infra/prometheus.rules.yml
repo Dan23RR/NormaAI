@@ -71,7 +71,7 @@ groups:
           severity: warning
         annotations:
           summary: "Redis circuit breaker is OPEN"
-          description: "Cache and brute-force lockout degraded. NOTE: token blacklist is fail-closed in production — logins with revoked tokens are denied, this is expected."
+          description: "Cache and brute-force lockout degraded. NOTE: token blacklist is fail-closed in production - logins with revoked tokens are denied, this is expected."
 
       - alert: QdrantCircuitOpen
         expr: normaai_circuit_breaker_state{service="qdrant"} == 2
@@ -80,4 +80,4 @@ groups:
           severity: critical
         annotations:
           summary: "Qdrant circuit breaker is OPEN"
-          description: "Retrieval is down — Q&A/gap-analysis answers will degrade or fail."
+          description: "Retrieval is down - Q&A/gap-analysis answers will degrade or fail."

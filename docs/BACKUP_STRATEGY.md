@@ -1,4 +1,4 @@
-# NormaAI — Backup & Disaster Recovery
+# NormaAI - Backup & Disaster Recovery
 
 > Obiettivi: **RPO 24h** (max 1 giorno di dati persi) · **RTO 1h** (ripristino entro 1 ora).
 > Adeguati alla fase pilot; rivedere a RPO 15min/RTO 30min con i primi contratti enterprise
@@ -8,11 +8,11 @@
 
 | Dato | Dove | Criticità | Strategia |
 |---|---|---|---|
-| PostgreSQL (org, utenti, leads, assessments, conversations, audit) | volume `postgres_data` | **CRITICA — unica fonte non ricostruibile** | `pg_dump` giornaliero + retention 30gg |
-| Qdrant (vettori normativi) | volume `qdrant_data` | Bassa — ricostruibile con `python -m src.pipeline --action seed` (~min/ore) | snapshot settimanale opzionale, oppure nulla |
-| Redis (cache, blacklist, lockout) | volume `redis_data` | Nessuna — effimero by design | nessun backup |
+| PostgreSQL (org, utenti, leads, assessments, conversations, audit) | volume `postgres_data` | **CRITICA - unica fonte non ricostruibile** | `pg_dump` giornaliero + retention 30gg |
+| Qdrant (vettori normativi) | volume `qdrant_data` | Bassa - ricostruibile con `python -m src.pipeline --action seed` (~min/ore) | snapshot settimanale opzionale, oppure nulla |
+| Redis (cache, blacklist, lockout) | volume `redis_data` | Nessuna - effimero by design | nessun backup |
 | Chiavi JWT + `.env` | filesystem | Alta (segreti) | copia manuale cifrata offline (password manager / disco cifrato), MAI nel repo |
-| Codice | GitHub remoto | — | già versionato |
+| Codice | GitHub remoto | - | già versionato |
 
 ## Backup giornaliero Postgres
 
@@ -51,7 +51,7 @@ curl http://localhost:8000/readyz
 
 Qdrant dopo un disastro totale: `python -m src.pipeline --action seed` (ricostruisce dai crawler).
 
-## Test di restore (mensile — obbligatorio)
+## Test di restore (mensile - obbligatorio)
 
 Un backup non testato non è un backup:
 

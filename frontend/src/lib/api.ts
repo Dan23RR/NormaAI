@@ -114,7 +114,7 @@ class ApiClient {
           if (idx >= 0) {
             list[idx] = { ...list[idx], ...data }
           } else {
-            // Editing a pre-loaded DEMO_CLIENT — save the edited copy to session
+            // Editing a pre-loaded DEMO_CLIENT - save the edited copy to session
             list.push({ id: clientId, ...data })
           }
           sessionStorage.setItem('normaai_demo_clients', JSON.stringify(list))
@@ -122,7 +122,7 @@ class ApiClient {
         return { id: clientId, ...data } as T
       }
 
-      // POST — create new client
+      // POST - create new client
       const newClient = { id: `demo-${Date.now()}`, ...data }
       try {
         const stored = sessionStorage.getItem('normaai_demo_clients')

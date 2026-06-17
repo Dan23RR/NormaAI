@@ -58,7 +58,7 @@ class DatabaseSessionManager:
         session = self._sessionmaker()
         try:
             # Set the RLS context. NOTE: `SET LOCAL` only survives the current
-            # transaction — and these sessions commit multiple times per request,
+            # transaction - and these sessions commit multiple times per request,
             # so SET LOCAL was lost before the real queries ran and RLS saw no
             # org_id. set_config(..., is_local=false) is connection-scoped and
             # survives transaction boundaries; we RESET it in finally so a pooled
@@ -83,7 +83,7 @@ class DatabaseSessionManager:
                         text("SELECT set_config('app.current_org_id', '', false)")
                     )
                     await session.commit()
-                except Exception:  # noqa: BLE001 — best-effort reset on teardown
+                except Exception:  # noqa: BLE001 - best-effort reset on teardown
                     pass
             await session.close()
 

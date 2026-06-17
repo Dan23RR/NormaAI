@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 
 /**
  * Wrapper for static legal/policy pages: privacy, terms, security.
- * Warm-paper editorial theme — visually continuous with the landing.
+ * Warm-paper editorial theme - visually continuous with the landing.
  */
 export function LegalLayout({
   children,
@@ -26,7 +26,7 @@ export function LegalLayout({
 
   return (
     <div className="min-h-screen bg-paper text-night">
-      {/* Header — same shape as landing nav for visual continuity */}
+      {/* Header - same shape as landing nav for visual continuity */}
       <nav className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-90">
@@ -66,7 +66,7 @@ export function LegalLayout({
         </article>
       </main>
 
-      {/* Footer — minimal, mirrors landing footer */}
+      {/* Footer - minimal, mirrors landing footer */}
       <footer className="border-t border-line bg-paper-2">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-xs text-night-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">

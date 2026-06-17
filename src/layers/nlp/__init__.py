@@ -1,5 +1,5 @@
 """
-NLP Layer — Text processing, chunking, embedding, and retrieval.
+NLP Layer - Text processing, chunking, embedding, and retrieval.
 
 Provides structured prefix building, hybrid retrieval, and semantic enrichment.
 """

@@ -1,5 +1,5 @@
 """
-dots.ocr Document Processor — Vision-language model for complex document extraction.
+dots.ocr Document Processor - Vision-language model for complex document extraction.
 
 dots.ocr (by rednote-hilab) is a 3B-parameter vision-language model that unifies
 layout detection, text recognition, and reading order reconstruction.
@@ -17,7 +17,7 @@ Integration architecture:
               [Markdown converter] → Clean text for chunking pipeline
 
 Deployment modes:
-1. vLLM server (recommended for production — fast, supports batching)
+1. vLLM server (recommended for production - fast, supports batching)
 2. HuggingFace Transformers (simpler, for dev/testing)
 3. HTTP client (connect to external dots.ocr service)
 

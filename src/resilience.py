@@ -56,7 +56,7 @@ def get_llm_semaphore() -> asyncio.Semaphore:
 
 class CircuitState(Enum):
     CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failing — reject requests fast
+    OPEN = "open"  # Failing - reject requests fast
     HALF_OPEN = "half_open"  # Testing recovery
 
 

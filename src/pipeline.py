@@ -1,5 +1,5 @@
 """
-NormaAI Ingestion Pipeline — End-to-end: EUR-Lex → Parse → Chunk → Context → Index.
+NormaAI Ingestion Pipeline - End-to-end: EUR-Lex → Parse → Chunk → Context → Index.
 
 This is the main orchestration script that:
 1. Crawls EUR-Lex for all core framework regulations
@@ -62,7 +62,7 @@ class IngestionPipeline:
         Supports both EUR-Lex (EU regulations) and Normattiva (Italian implementations).
         """
         logger.info("=" * 60)
-        logger.info("NORMAAI SEED PIPELINE — Building regulatory knowledge base")
+        logger.info("NORMAAI SEED PIPELINE - Building regulatory knowledge base")
         logger.info("=" * 60)
 
         start_time = time.time()
@@ -224,7 +224,7 @@ class IngestionPipeline:
         logger.info(f"Seeding Normattiva implementations for {len(frameworks)} frameworks...")
 
         # Map EU framework codes to Italian search queries
-        FRAMEWORK_SEARCH_QUERIES: dict[str, list[str]] = {  # noqa: N806 — function-scoped constant
+        FRAMEWORK_SEARCH_QUERIES: dict[str, list[str]] = {  # noqa: N806 - function-scoped constant
             "CSRD": [
                 "rendicontazione societaria di sostenibilità",
                 "decreto legislativo recepimento direttiva 2022/2464",
@@ -256,7 +256,7 @@ class IngestionPipeline:
                 "decreto legislativo 101 2018",
             ],
             # CRA is an EU Regulation (no transposition); national measures
-            # are adaptation decrees — search for those.
+            # are adaptation decrees - search for those.
             "CRA": [
                 "regolamento ciberresilienza prodotti elementi digitali",
                 "adeguamento regolamento 2024/2847",
@@ -385,7 +385,7 @@ class IngestionPipeline:
         Incremental update: check for amendments and new publications.
         Called by the periodic Celery job (every 6 hours).
         """
-        logger.info(f"NORMAAI UPDATE — Checking for changes (last {days_back} days)")
+        logger.info(f"NORMAAI UPDATE - Checking for changes (last {days_back} days)")
 
         start_time = time.time()
 
@@ -458,7 +458,7 @@ class IngestionPipeline:
             file_path: Path to the document file
             framework: EU framework code (e.g., "CSRD", "GDPR")
             force_engine: Override auto-routing ("dots_ocr", "docling")
-            org_id: Owning tenant. MUST be set for tenant uploads — without it the
+            org_id: Owning tenant. MUST be set for tenant uploads - without it the
                 chunks are indexed as shared (org_id null) and become visible to
                 every tenant (cross-tenant leak/poisoning, SEC-01).
 
@@ -486,7 +486,9 @@ class IngestionPipeline:
 
         from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
 
-        celex = f"DOC_{hashlib.md5(file_path.encode()).hexdigest()[:8].upper()}"
+        celex = (
+            f"DOC_{hashlib.md5(file_path.encode(), usedforsecurity=False).hexdigest()[:8].upper()}"
+        )
         chunker = EURLexHTMLChunker(celex=celex, framework=framework)
 
         # Wrap markdown in minimal HTML for the chunker
@@ -513,7 +515,7 @@ class IngestionPipeline:
             ctx.metadata.update(chunk.metadata)
             enriched.append(ctx)
 
-        # Step 4: Index into Qdrant — scoped to the owning tenant.
+        # Step 4: Index into Qdrant - scoped to the owning tenant.
         settings = get_settings()
         indexed = self.indexer.index_contextual_chunks(
             enriched, batch_size=settings.embedding_batch_size, org_id=org_id

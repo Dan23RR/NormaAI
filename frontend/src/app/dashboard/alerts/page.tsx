@@ -65,7 +65,7 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Filters — always start clean (no persistence between sessions)
+  // Filters - always start clean (no persistence between sessions)
   const [severityFilter, setSeverityFilterRaw] = useState<Severity | ''>('')
   const [frameworkFilter, setFrameworkFilterRaw] = useState<Framework | ''>('')
   const [readFilter, setReadFilterRaw] = useState<'all' | 'read' | 'unread'>('all')
@@ -347,7 +347,7 @@ export default function AlertsPage() {
           <p className="text-sm mt-1">
             {activeFilterCount > 0
               ? 'No alerts match your current filters'
-              : 'You are all caught up — no regulatory alerts at this time'}
+              : 'You are all caught up - no regulatory alerts at this time'}
           </p>
           {activeFilterCount > 0 && (
             <button
@@ -362,7 +362,7 @@ export default function AlertsPage() {
 
       {/* AI disclosure */}
       <p className="text-[9px] text-slate-600 italic mt-4">
-        Gli alert sono generati da AI (AI Act Art. 50, Reg. UE 2024/1689) — verificare con fonti ufficiali prima di decisioni vincolanti.
+        Gli alert sono generati da AI (AI Act Art. 50, Reg. UE 2024/1689) - verificare con fonti ufficiali prima di decisioni vincolanti.
       </p>
     </div>
   )

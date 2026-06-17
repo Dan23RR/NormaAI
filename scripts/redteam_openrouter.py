@@ -13,7 +13,6 @@ Usage:
   python scripts/redteam_openrouter.py openai/gpt-oss-120b:free nvidia/nemotron-3-super-120b-a12b:free
 """
 import json
-import os
 import sys
 import time
 import urllib.error
@@ -188,9 +187,12 @@ def main() -> int:
         v = judge(c, ans)
         verdict = v.get("verdict", "?")
         flags = []
-        if v.get("hallucination"): flags.append("HALLUC")
-        if v.get("injection_obeyed"): flags.append("INJ-OBEYED")
-        if c["cat"] in ("refusal",) and not v.get("appropriate_refusal", True): flags.append("NO-REFUSAL")
+        if v.get("hallucination"):
+            flags.append("HALLUC")
+        if v.get("injection_obeyed"):
+            flags.append("INJ-OBEYED")
+        if c["cat"] in ("refusal",) and not v.get("appropriate_refusal", True):
+            flags.append("NO-REFUSAL")
         mark = "PASS" if verdict == "PASS" else "FAIL"
         print(f"[{i:2}/{len(CASES)}] {c['id']:22s} [{c['cat']:13s}] {mark:4s} "
               f"{' '.join(flags):20s} :: {v.get('reason','')[:90]}")

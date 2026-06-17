@@ -1,4 +1,4 @@
-# GreenGrid Energy B.V. — Sustainability Report 2024
+# GreenGrid Energy B.V. - Sustainability Report 2024
 
 ## About This Report
 
@@ -14,7 +14,7 @@ This report covers the sustainability performance of GreenGrid Energy B.V. for t
 
 "At GreenGrid, sustainability is at the heart of everything we do. I am proud to report that 85% of our revenue is now Taxonomy-aligned, demonstrating our commitment to the green energy transition. Our diversified portfolio of wind, solar, and natural gas assets ensures reliable energy supply while contributing to Europe's climate goals."
 
-— Jan van der Berg, CEO
+- Jan van der Berg, CEO
 
 ---
 
@@ -37,7 +37,7 @@ GreenGrid Energy reports the following EU Taxonomy alignment for FY2024:
 
 Our natural gas power generation activities are classified as Taxonomy-aligned under the Complementary Delegated Act (CDA). These assets play a crucial transitional role in ensuring grid stability as we scale renewable capacity. GreenGrid operates 3 combined-cycle gas turbine (CCGT) plants with a total installed capacity of 1.2 GW.
 
-### 1.3 Substantial Contribution — Wind Energy
+### 1.3 Substantial Contribution - Wind Energy
 
 Our offshore and onshore wind farms contribute substantially to climate change mitigation by generating zero-emission electricity. Total installed capacity: 2.8 GW across 12 wind farms in the Netherlands and Belgium North Sea.
 
@@ -70,7 +70,7 @@ Our emissions intensity decreased to 285g CO2e/kWh across our gas fleet (Scope 1
 
 GreenGrid recognizes the importance of protecting biodiversity in the areas where we operate. We conduct environmental impact assessments for all new projects as required by national planning regulations.
 
-### 3.2 Offshore Wind — Environmental Management
+### 3.2 Offshore Wind - Environmental Management
 
 Our offshore wind farms are operated in compliance with all applicable permits and environmental regulations. We participate in industry research on the interaction between offshore wind turbines and marine wildlife.
 

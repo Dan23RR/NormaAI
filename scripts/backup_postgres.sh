@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NormaAI — daily Postgres backup (Linux server variant of backup_postgres.ps1).
+# NormaAI - daily Postgres backup (Linux server variant of backup_postgres.ps1).
 # Install on the Hetzner box:
 #   chmod +x scripts/backup_postgres.sh
 #   crontab -e   ->   0 2 * * * /opt/normaai/scripts/backup_postgres.sh >> /var/log/normaai-backup.log 2>&1

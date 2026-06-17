@@ -1,5 +1,5 @@
 """
-NormaAI Compliance Report Generator — PDF reports for gap analysis results.
+NormaAI Compliance Report Generator - PDF reports for gap analysis results.
 
 Generates professional compliance reports using fpdf2:
 - Gap analysis reports per framework
@@ -16,9 +16,9 @@ from fpdf import FPDF
 
 # ---- Brand colours --------------------------------------------------------
 
-_HEADER_BG = (30, 58, 95)  # #1e3a5f — corporate navy
+_HEADER_BG = (30, 58, 95)  # #1e3a5f - corporate navy
 _HEADER_TEXT = (255, 255, 255)  # white
-_ACCENT = (41, 98, 168)  # #2962a8 — lighter blue for sub-headers
+_ACCENT = (41, 98, 168)  # #2962a8 - lighter blue for sub-headers
 _ROW_EVEN = (245, 247, 250)  # light grey-blue alternating rows
 _ROW_ODD = (255, 255, 255)  # white
 _TEXT_DARK = (33, 37, 41)  # near-black body text
@@ -30,10 +30,10 @@ _GREY = (173, 181, 189)  # not applicable
 
 # Priority badge colours
 _PRIORITY_COLOURS = {
-    "P1": (220, 53, 69),  # red — critical
-    "P2": (255, 152, 0),  # orange — high
-    "P3": (255, 193, 7),  # yellow — medium
-    "P4": (25, 135, 84),  # green — low
+    "P1": (220, 53, 69),  # red - critical
+    "P2": (255, 152, 0),  # orange - high
+    "P3": (255, 193, 7),  # yellow - medium
+    "P4": (25, 135, 84),  # green - low
 }
 
 _STATUS_COLOURS = {
@@ -243,7 +243,7 @@ class ComplianceReportGenerator:
             reqs = fd.get("requirements", [])
             score = fd.get("overall_score", 0.0)
 
-            self._add_section_title(pdf, f"{fw} — {score:.1f}% Compliance")
+            self._add_section_title(pdf, f"{fw} - {score:.1f}% Compliance")
 
             # Top gaps
             gaps = [r for r in reqs if r.get("status") == "NON_COMPLIANT"]
@@ -433,7 +433,7 @@ class ComplianceReportGenerator:
             effort = req.get("effort", "")
             req.get("remediation", "")
 
-            # Calculate row height — use multi_cell for description if long
+            # Calculate row height - use multi_cell for description if long
             row_h = 6
 
             # Check page break

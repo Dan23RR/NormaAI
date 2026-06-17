@@ -31,7 +31,7 @@ class SeverityEnum(str, Enum):
     INFORMATIONAL = "INFORMATIONAL"
 
 
-# Shared across routers — single source of truth (includes CRA).
+# Shared across routers - single source of truth (includes CRA).
 from src.api.schemas import FrameworkEnum  # noqa: E402
 
 # --- Pydantic Models -----------------------------------------------------

@@ -70,7 +70,7 @@ async def register(
     db.add(org)
     await db.flush()
 
-    # Create user — rely on DB UNIQUE constraint to prevent race conditions
+    # Create user - rely on DB UNIQUE constraint to prevent race conditions
     user = User(
         org_id=org.id,
         email=payload.email,
@@ -197,7 +197,7 @@ async def refresh_token(
 
     # Check if this specific token was already used (replay attack detection)
     if await token_blacklist.is_blacklisted(token_data.jti, family=token_data.family):
-        # Token reuse detected — compromise! Blacklist the entire family
+        # Token reuse detected - compromise! Blacklist the entire family
         if token_data.family:
             await token_blacklist.blacklist_token_family(token_data.family)
         audit_log(
@@ -205,7 +205,7 @@ async def refresh_token(
             AuditOutcome.DENIED,
             user_id=token_data.sub,
             ip_address=client_ip,
-            detail="Refresh token reuse — family revoked",
+            detail="Refresh token reuse - family revoked",
         )
         raise HTTPException(
             status_code=401,

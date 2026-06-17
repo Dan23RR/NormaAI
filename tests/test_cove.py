@@ -271,7 +271,7 @@ class TestCitationValidation:
     """Regression guard: the 'audit-defensible' promise must not rubber-stamp."""
 
     def test_celex_extraction_matches_real_format(self):
-        """Real CELEX (with type letter) must be extracted — the old digit-only
+        """Real CELEX (with type letter) must be extracted - the old digit-only
         regex silently missed every EU citation."""
         from src.agents.cove.orchestrator import _extract_citations_from_text
 
@@ -284,7 +284,7 @@ class TestCitationValidation:
 
     async def test_known_celex_valid_unknown_unverified(self):
         """A seeded CELEX validates; a well-formed but unseeded one is flagged
-        unverified (NOT rubber-stamped) — this is the core anti-hallucination fix."""
+        unverified (NOT rubber-stamped) - this is the core anti-hallucination fix."""
         from src.agents.cove.models import CoVeConfig
         from src.agents.cove.orchestrator import CoVeOrchestrator
 

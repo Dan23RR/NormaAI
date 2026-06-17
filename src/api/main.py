@@ -1,5 +1,5 @@
 """
-NormaAI API — FastAPI backend for EU regulatory intelligence.
+NormaAI API - FastAPI backend for EU regulatory intelligence.
 
 Thin orchestration module: app creation, CORS, router registration.
 Business logic lives in dedicated modules:
@@ -74,19 +74,19 @@ NormaAI monitors **7 EU regulatory frameworks** in real-time and provides AI-pow
 
 | Framework | Status |
 |-----------|--------|
-| **CSRD** — Corporate Sustainability Reporting | Active |
-| **CSDDD** — Corporate Sustainability Due Diligence | Active |
-| **AI Act** — Artificial Intelligence Regulation | Active |
-| **DORA** — Digital Operational Resilience | Active |
-| **NIS2** — Network & Information Security | Active |
-| **EU Taxonomy** — Sustainable Finance Classification | Active |
-| **GDPR** — General Data Protection | Active |
+| **CSRD** - Corporate Sustainability Reporting | Active |
+| **CSDDD** - Corporate Sustainability Due Diligence | Active |
+| **AI Act** - Artificial Intelligence Regulation | Active |
+| **DORA** - Digital Operational Resilience | Active |
+| **NIS2** - Network & Information Security | Active |
+| **EU Taxonomy** - Sustainable Finance Classification | Active |
+| **GDPR** - General Data Protection | Active |
 
 ### Core capabilities
-- **Q&A** — Ask questions about EU regulations with cited answers
-- **Gap Analysis** — Compliance assessment with scoring per framework
-- **Monitor** — Impact analysis of regulatory changes on your company
-- **Crawl** — Real-time EUR-Lex data via SPARQL endpoint
+- **Q&A** - Ask questions about EU regulations with cited answers
+- **Gap Analysis** - Compliance assessment with scoring per framework
+- **Monitor** - Impact analysis of regulatory changes on your company
+- **Crawl** - Real-time EUR-Lex data via SPARQL endpoint
 """
 
 # ─── App ──────────────────────────────────────────────────────────

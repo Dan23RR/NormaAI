@@ -1,5 +1,5 @@
 """
-Test case schemas — structured format for all validation test cases.
+Test case schemas - structured format for all validation test cases.
 
 Each test case describes:
 - Source (sanction, synthetic, greenwashing benchmark)

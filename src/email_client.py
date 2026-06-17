@@ -1,4 +1,4 @@
-"""Email client — Resend SDK with graceful fallback.
+"""Email client - Resend SDK with graceful fallback.
 
 Free tier: 3000 email/month, 100/day. DKIM auto on verified domains.
 Migrated from smtplib (G6.17) for:
@@ -14,7 +14,7 @@ Env vars (read via src.config.get_settings):
     NORMAAI_PUBLIC_URL     (used to build absolute URLs)
 
 Exposes one send path:
-    send_codex_email()       — inbound (post-form Codex download)
+    send_codex_email()       - inbound (post-form Codex download)
 
 Returns (success, error_message) without raising.
 """
@@ -53,7 +53,7 @@ def _from_header(cfg: dict) -> str:
 
 
 def _codex_email_html(recipient_name: str, download_url: str) -> str:
-    """Inbound Codex download — brand-consistent dark template."""
+    """Inbound Codex download - brand-consistent dark template."""
     name = recipient_name or "ciao"
     return f"""\
 <!doctype html>

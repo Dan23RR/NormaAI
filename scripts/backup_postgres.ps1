@@ -1,4 +1,4 @@
-# NormaAI — daily Postgres backup (custom-format dump + 30-day retention).
+# NormaAI - daily Postgres backup (custom-format dump + 30-day retention).
 # Schedule via Task Scheduler (see docs/BACKUP_STRATEGY.md). Safe to run manually.
 #
 # Exit codes: 0 ok · 1 dump failed · 2 verify failed
@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path $file)) {
 
 $sizeKb = [math]::Round((Get-Item $file).Length / 1KB)
 if ($sizeKb -lt 5) {
-    Write-Error "[backup] dump suspiciously small ($sizeKb KB) — treating as failure"
+    Write-Error "[backup] dump suspiciously small ($sizeKb KB) - treating as failure"
     exit 2
 }
 

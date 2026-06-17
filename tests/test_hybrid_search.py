@@ -1,7 +1,7 @@
 """Unit tests for the Hybrid Search (Qdrant) indexer.
 
 Tests cover:
-- Sparse vector generation (_text_to_sparse_vector — module-level helper)
+- Sparse vector generation (_text_to_sparse_vector - module-level helper)
 - Reciprocal Rank Fusion (HybridIndexer._reciprocal_rank_fusion)
 - Query filter construction (HybridIndexer._build_filter)
 - Determinism and hash properties

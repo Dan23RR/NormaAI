@@ -134,7 +134,7 @@ export default function GapAnalysisPage() {
                 <>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold">{result.framework} — Valutazione Conformità</h3>
+                      <h3 className="text-lg font-semibold">{result.framework} - Valutazione Conformità</h3>
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className={`text-xs px-2.5 py-1 rounded border font-medium ${confidence.border} ${confidence.bg} ${confidence.color}`}>
                           {confidence.label}
@@ -171,7 +171,7 @@ export default function GapAnalysisPage() {
 
                   {/* Mandatory AI disclaimer */}
                   <p className="text-[10px] text-slate-500 mt-3 leading-relaxed bg-surface2 rounded-lg px-3 py-2">
-                    <strong>Analisi generata da AI</strong> — Questa valutazione rappresenta una stima preliminare basata sulle
+                    <strong>Analisi generata da AI</strong> - Questa valutazione rappresenta una stima preliminare basata sulle
                     informazioni fornite e sulla knowledge base normativa di NormaAI. Non costituisce una certificazione di conformità
                     né consulenza legale. Lo stato effettivo di compliance può variare in base a fattori non analizzati.
                     Consultare sempre un professionista qualificato per una valutazione vincolante.

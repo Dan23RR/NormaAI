@@ -113,14 +113,14 @@ th{background:#f8fafc;font-weight:600}
 .disclaimer{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;font-size:10px;color:#64748b;margin-top:12px;line-height:1.5}
 .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8}
 </style></head><body>
-<h1>NormaAI — ${reportType === 'audit-pack' ? 'Audit Evidence Pack' : reportType === 'executive-summary' ? 'Executive Summary' : 'Gap Analysis Report'}</h1>
+<h1>NormaAI - ${reportType === 'audit-pack' ? 'Audit Evidence Pack' : reportType === 'executive-summary' ? 'Executive Summary' : 'Gap Analysis Report'}</h1>
 <p><strong>Company:</strong> ${profile.name} | <strong>Sector:</strong> ${profile.sector} | <strong>Employees:</strong> ${profile.employee_count.toLocaleString()} | <strong>Revenue:</strong> &euro;${profile.revenue_eur.toLocaleString()}</p>
 <p><strong>Jurisdictions:</strong> ${profile.jurisdictions.join(', ')} | <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
 ${analyses.map(a => `
 <h2>${a.framework} Compliance Analysis</h2>
-<p><span class="ai-badge">AI Act Art. 50 — Analisi generata da AI</span></p>
+<p><span class="ai-badge">AI Act Art. 50 - Analisi generata da AI</span></p>
 <p>Livello di conformità: <span class="score">${a.overall_score >= 70 ? 'Buon livello di conformità' : a.overall_score >= 40 ? 'Conformità parziale' : 'Gap significativi rilevati'}</span></p>
-<p style="font-size:11px;color:#64748b">Affidabilità analisi: ${a.confidence_score >= 0.85 ? 'Alta — basata su fonti normative dirette' : a.confidence_score >= 0.65 ? 'Media — verifica raccomandata' : 'Preliminare — revisione esperto necessaria'}</p>
+<p style="font-size:11px;color:#64748b">Affidabilità analisi: ${a.confidence_score >= 0.85 ? 'Alta - basata su fonti normative dirette' : a.confidence_score >= 0.65 ? 'Media - verifica raccomandata' : 'Preliminare - revisione esperto necessaria'}</p>
 <div class="disclaimer"><strong>Nota legale:</strong> Questa valutazione è una stima preliminare generata da intelligenza artificiale. Non costituisce consulenza legale né certificazione di conformità. Consultare un professionista qualificato per valutazioni vincolanti.</div>
 <table><thead><tr><th>Requirement</th><th>Article</th><th>Status</th><th>Priority</th><th>Gap</th></tr></thead><tbody>
 ${a.requirements.map(r => `<tr><td>${r.description}</td><td>${r.article_reference}</td><td><span class="badge ${r.status === 'COMPLIANT' ? 'compliant' : r.status === 'PARTIALLY_COMPLIANT' ? 'partial' : r.status === 'NON_COMPLIANT' ? 'non-compliant' : 'na'}">${r.status.replace(/_/g, ' ')}</span></td><td>${r.priority}</td><td>${r.gap_description || '&mdash;'}</td></tr>`).join('')}

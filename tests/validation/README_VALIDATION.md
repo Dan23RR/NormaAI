@@ -6,7 +6,7 @@ Comprehensive testing framework for regulatory compliance AI, covering **150+ ad
 
 ### 1. File: `promptfoo_config.yaml` (398 lines, 21 KB)
 
-**Adversarial Red Team Suite** — 150+ test cases across 7 categories.
+**Adversarial Red Team Suite** - 150+ test cases across 7 categories.
 
 **Coverage:**
 
@@ -21,8 +21,8 @@ Comprehensive testing framework for regulatory compliance AI, covering **150+ ad
 | **Ambiguity Handling** | 10 | Vague questions | Missing framework context, presupposition errors, out-of-scope questions |
 
 **Providers:**
-- `normaai-qa` — Q&A agent for regulatory intelligence
-- `normaai-gap` — Gap analysis engine for company compliance
+- `normaai-qa` - Q&A agent for regulatory intelligence
+- `normaai-gap` - Gap analysis engine for company compliance
 
 **Usage:**
 ```bash
@@ -35,21 +35,21 @@ npx promptfoo eval -c tests/validation/promptfoo_config.yaml --filter-pattern "c
 ```
 
 **Assertions Used:**
-- `not-contains` — Validates system does NOT generate false information
-- `contains-any` — Ensures multiple relevant frameworks/articles mentioned
-- `llm-rubric` — LLM-powered evaluation of response quality
+- `not-contains` - Validates system does NOT generate false information
+- `contains-any` - Ensures multiple relevant frameworks/articles mentioned
+- `llm-rubric` - LLM-powered evaluation of response quality
 
 ---
 
 ### 2. File: `.github/workflows/validation.yml` (223 lines, 6.4 KB)
 
-**CI/CD Pipeline** — Multi-stage validation with thresholds.
+**CI/CD Pipeline** - Multi-stage validation with thresholds.
 
 **Workflow Triggers:**
-- **PR validation** (golden set) — Fast check on every pull request
-- **Full regression** (on merge to main, weekly schedule) — 500+ test cases
-- **Red team** (weekly) — Promptfoo adversarial suite
-- **Manual trigger** — Parameterized runs with suite/framework filters
+- **PR validation** (golden set) - Fast check on every pull request
+- **Full regression** (on merge to main, weekly schedule) - 500+ test cases
+- **Red team** (weekly) - Promptfoo adversarial suite
+- **Manual trigger** - Parameterized runs with suite/framework filters
 
 **Job Stages:**
 
@@ -91,7 +91,7 @@ npx promptfoo eval -c tests/validation/promptfoo_config.yaml --filter-pattern "c
 
 ### 3. File: `generate_golden_set.py` (338 lines, 15 KB)
 
-**Bootstrap Test Suite Generator** — 50+ curated golden set test cases.
+**Bootstrap Test Suite Generator** - 50+ curated golden set test cases.
 
 **Three Test Sources:**
 
@@ -207,10 +207,10 @@ Monte Carlo (5000 iterations, 60 min)
 - HTML/markdown injection → safely ignored
 
 ### Edge Cases
-- Micro-enterprises (3 employees) — DPO not required (usually)
-- Startups with GPS tracking — DPIA required (yes)
-- PMI 80 employees, €15M revenue — CSRD exempt (yes)
-- Freelancers — GDPR applies (yes)
+- Micro-enterprises (3 employees) - DPO not required (usually)
+- Startups with GPS tracking - DPIA required (yes)
+- PMI 80 employees, €15M revenue - CSRD exempt (yes)
+- Freelancers - GDPR applies (yes)
 
 ---
 

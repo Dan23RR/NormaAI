@@ -93,7 +93,7 @@ ruvector.db
 !scripts/backup_postgres.ps1
 !scripts/verify_live_site.ps1
 
-# ─── Database backups (local dumps — never commit) ─────────────
+# ─── Database backups (local dumps - never commit) ─────────────
 backups/
 g1_*.txt
 g2_*.txt
@@ -101,9 +101,9 @@ g3_*.txt
 g3_smoke_*.txt
 zi2m4eub
 
-# ─── Marketing drafts (prospect PII — NEVER commit) ────────────
+# ─── Marketing drafts (prospect PII - NEVER commit) ────────────
 # Personalized cold drafts + ICP pending lists contain prospect personal
-# data. They were assumed ignored but weren't — a `git add -A` would have
+# data. They were assumed ignored but weren't - a `git add -A` would have
 # staged them. Keep the whole drafts/ subtree out of git.
 marketing/drafts/
 

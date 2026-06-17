@@ -155,7 +155,7 @@
   "time": { "from": "now-3h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "NormaAI — Health",
+  "title": "NormaAI - Health",
   "uid": "normaai-health",
   "version": 1
 }

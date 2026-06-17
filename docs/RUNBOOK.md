@@ -1,4 +1,4 @@
-# NormaAI — Runbook operativo
+# NormaAI - Runbook operativo
 
 > Procedure per incidenti e operazioni ricorrenti. Pubblico: Daniel (founder-operator)
 > e qualsiasi agente LLM in co-work. Aggiornare a ogni incidente reale (post-mortem in fondo).
@@ -28,7 +28,7 @@ curl http://localhost:8000/readyz      # readiness (503 = dipendenze giù)
 
 1. `curl /health` → se non risponde: processo/container morto → §2.
 2. `curl /readyz` → 503: guarda `checks` nel body (qdrant/llm down) → §3/§4.
-3. Grafana → dashboard "NormaAI — Health": 5xx rate, circuit breakers, p95.
+3. Grafana → dashboard "NormaAI - Health": 5xx rate, circuit breakers, p95.
 4. Prometheus → http://localhost:9090/alerts per alert attivi.
 5. `docker compose logs --tail 100 app` → cerca `circuit_open`, `*_failed`, tracebacks.
 
@@ -106,7 +106,7 @@ docker compose restart redis   # recovery cache: immediato; nessun dato critico 
 - Bounce/spam rate su → controlla la dashboard Resend e la configurazione
   DKIM/SPF del dominio mittente.
 - Ogni email DEVE avere footer privacy + List-Unsubscribe (iniettati da
-  `email_client` — se mancano nei log, indaga prima di inviare).
+  `email_client` - se mancano nei log, indaga prima di inviare).
 
 ## 8. Incidente di sicurezza
 
@@ -137,7 +137,7 @@ poetry run alembic downgrade -1          # rollback ultima (ATTENZIONE: vedi not
 ```
 
 - Le migrazioni 001-008 sono additive; il downgrade di 002 (RLS) **disabilita
-  l'isolamento multi-tenant** — mai in produzione con più di 1 org.
+  l'isolamento multi-tenant** - mai in produzione con più di 1 org.
 - Frontend: Vercel → Deployments → "Promote to Production" sul deploy precedente (rollback 1-click).
 
 ## 10. Manutenzione ricorrente

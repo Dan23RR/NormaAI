@@ -1,5 +1,5 @@
 """
-Sanctions Harvester — Automated test case generation from real enforcement data.
+Sanctions Harvester - Automated test case generation from real enforcement data.
 
 Pipeline:
 1. Fetch enforcement data from public databases
@@ -8,11 +8,11 @@ Pipeline:
 4. Output as TestCase JSON files
 
 Supported sources:
-- GDPR Enforcement Tracker (CMS.Law) — 2400+ decisions
-- Garante Privacy Italia — provvedimenti
-- ICO UK — decision notices
-- CNIL France — décisions
-- BaFin Germany — DORA/NIS2 enforcement
+- GDPR Enforcement Tracker (CMS.Law) - 2400+ decisions
+- Garante Privacy Italia - provvedimenti
+- ICO UK - decision notices
+- CNIL France - décisions
+- BaFin Germany - DORA/NIS2 enforcement
 
 Usage:
     python -m tests.validation.sanctions_harvester --framework GDPR --limit 50
@@ -206,7 +206,7 @@ DOCUMENT_TEMPLATES = {
         "title": "Modulo di Consenso al Trattamento dei Dati Personali",
         "sections": {
             "consent_mechanism": "Con la presente, l'interessato esprime il proprio consenso libero, specifico, informato e inequivocabile al trattamento dei propri dati personali per le finalità sotto indicate.",
-            "legal_basis": "Base giuridica: Art. 6(1)(a) GDPR — consenso dell'interessato.",
+            "legal_basis": "Base giuridica: Art. 6(1)(a) GDPR - consenso dell'interessato.",
             "demonstrate_consent": "Il presente consenso viene registrato elettronicamente con marca temporale e indirizzo IP dell'interessato, ai fini della dimostrabilità ai sensi dell'Art. 7(1) GDPR.",
             "distinguishable_consent": "La richiesta di consenso è presentata in forma chiaramente distinguibile dalle altre dichiarazioni, in linguaggio semplice e chiaro, ai sensi dell'Art. 7(2) GDPR.",
             "withdrawal_mechanism": "L'interessato può revocare il consenso in qualsiasi momento tramite: email a privacy@{domain}, pannello account personale, o richiesta scritta al Titolare.",
@@ -405,7 +405,7 @@ def enforcement_to_test_case(record: EnforcementRecord, difficulty: int = 1) -> 
 
     return {
         "id": case_id,
-        "name": f"Sanzione {record.authority} {record.date} — {', '.join(record.violated_articles[:3])}",
+        "name": f"Sanzione {record.authority} {record.date} - {', '.join(record.violated_articles[:3])}",
         "description": f"Test case derivato da sanzione reale: {record.violation_summary[:300]}",
         "source_type": "sanction",
         "sanction_source": {

@@ -43,17 +43,17 @@ export interface CompanyProfile {
 
 export type Framework = 'CSRD' | 'CSDDD' | 'AI_ACT' | 'DORA' | 'NIS2' | 'TAXONOMY' | 'GDPR'
 
-// NormaAI brand framework colors — mirrors dashboard/styles.css --fw-* tokens.
+// NormaAI brand framework colors - mirrors dashboard/styles.css --fw-* tokens.
 // Updated 2026-04-28 (G7.2): aligned to design system, no longer using
 // generic Tailwind palette.
 export const FRAMEWORKS: { value: Framework; label: string; color: string }[] = [
-  { value: 'CSRD',     label: 'CSRD — Sustainability Reporting', color: '#34d399' },
-  { value: 'CSDDD',    label: 'CSDDD — Due Diligence',           color: '#5fbcff' },
-  { value: 'AI_ACT',   label: 'AI Act — AI Regulation',          color: '#b08bff' },
-  { value: 'DORA',     label: 'DORA — Digital Resilience',       color: '#ff8c5a' },
-  { value: 'NIS2',     label: 'NIS2 — Cybersecurity',            color: '#f4b740' },
-  { value: 'TAXONOMY', label: 'EU Taxonomy — Green Finance',     color: '#4ad6c2' },
-  { value: 'GDPR',     label: 'GDPR — Data Protection',          color: '#ef4f63' },
+  { value: 'CSRD',     label: 'CSRD - Sustainability Reporting', color: '#34d399' },
+  { value: 'CSDDD',    label: 'CSDDD - Due Diligence',           color: '#5fbcff' },
+  { value: 'AI_ACT',   label: 'AI Act - AI Regulation',          color: '#b08bff' },
+  { value: 'DORA',     label: 'DORA - Digital Resilience',       color: '#ff8c5a' },
+  { value: 'NIS2',     label: 'NIS2 - Cybersecurity',            color: '#f4b740' },
+  { value: 'TAXONOMY', label: 'EU Taxonomy - Green Finance',     color: '#4ad6c2' },
+  { value: 'GDPR',     label: 'GDPR - Data Protection',          color: '#ef4f63' },
 ]
 
 // Q&A

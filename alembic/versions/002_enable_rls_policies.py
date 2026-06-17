@@ -44,7 +44,7 @@ def upgrade() -> None:
             WITH CHECK (org_id::text = current_setting('app.current_org_id', true))
         """)
 
-    # Conversations — join through users.org_id
+    # Conversations - join through users.org_id
     op.execute("ALTER TABLE conversations ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE conversations FORCE ROW LEVEL SECURITY")
     op.execute("""
@@ -57,7 +57,7 @@ def upgrade() -> None:
         )
     """)
 
-    # Assessments — join through clients.org_id
+    # Assessments - join through clients.org_id
     op.execute("ALTER TABLE assessments ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE assessments FORCE ROW LEVEL SECURITY")
     op.execute("""
@@ -70,7 +70,7 @@ def upgrade() -> None:
         )
     """)
 
-    # Alerts — join through clients.org_id
+    # Alerts - join through clients.org_id
     op.execute("ALTER TABLE alerts ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE alerts FORCE ROW LEVEL SECURITY")
     op.execute("""
@@ -83,7 +83,7 @@ def upgrade() -> None:
         )
     """)
 
-    # Organizations — only see your own org
+    # Organizations - only see your own org
     op.execute("ALTER TABLE organizations ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE organizations FORCE ROW LEVEL SECURITY")
     op.execute("""

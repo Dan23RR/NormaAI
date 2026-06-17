@@ -4,12 +4,12 @@ Inserts after the agent_node (monitor/gap/qa) and before confidence_check.
 Reads the draft response from state['result_json'], generates K-1 additional
 samples, and writes:
 
-  state['snc_decision']     — full SNCDecision dict
-  state['snc_action']       — ADMIT_HIGH | ADMIT_MID | ABSTAIN
-  state['confidence_score'] — overwritten with SNC trust score
-  state['result_json']      — overwritten with modal cluster representative
-  state['requires_expert_review'] — True if action == ABSTAIN
-  state['snc_audit']        — serialized audit blob for compliance logging
+  state['snc_decision']     - full SNCDecision dict
+  state['snc_action']       - ADMIT_HIGH | ADMIT_MID | ABSTAIN
+  state['confidence_score'] - overwritten with SNC trust score
+  state['result_json']      - overwritten with modal cluster representative
+  state['requires_expert_review'] - True if action == ABSTAIN
+  state['snc_audit']        - serialized audit blob for compliance logging
 
 The downstream graph routing (existing should_route_to_cove) uses the new
 trust score automatically. We add a stricter SNC routing if the action is

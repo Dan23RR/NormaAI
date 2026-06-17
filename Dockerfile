@@ -1,5 +1,5 @@
 # ============================================================
-# NormaAI — Multi-stage Dockerfile for production deployment
+# NormaAI - Multi-stage Dockerfile for production deployment
 # ============================================================
 
 # Stage 1: Build dependencies
@@ -13,7 +13,7 @@ COPY pyproject.toml poetry.lock* ./
 # Generate lock file if missing, then export to requirements.txt.
 # Include the `openrouter` extra so langchain-openai (the OpenRouter/OpenAI-
 # compatible provider, imported lazily in src/agents/llm.py) ships in the image
-# — without it the openrouter path fails at runtime with ModuleNotFoundError.
+# - without it the openrouter path fails at runtime with ModuleNotFoundError.
 RUN poetry lock --no-update --no-interaction 2>/dev/null || true && \
     poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter > requirements.txt
 
@@ -55,7 +55,7 @@ RUN chown -R normaai:normaai /app
 USER normaai
 
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
-# network/lock writes — it loads the baked model purely from the local cache.
+# network/lock writes - it loads the baked model purely from the local cache.
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

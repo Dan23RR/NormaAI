@@ -69,7 +69,7 @@ export default function CodexPage() {
               Lead magnet · PDF · fonti UE/IT verificate · Italiano
             </div>
             <h1 className="text-3xl font-serif font-normal tracking-tight md:text-5xl">
-              Codex Post-Omnibus 2025–2029
+              Codex Post-Omnibus 2025-2029
             </h1>
             <p className="mt-4 max-w-xl text-night-2">
               La guida operativa post-Omnibus I per chi gestisce CSRD/CSDDD/EU Taxonomy: scope,
@@ -91,7 +91,7 @@ export default function CodexPage() {
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-                Calendario 2026–2028 con deadline transposition + first reporting
+                Calendario 2026-2028 con deadline transposition + first reporting
               </li>
             </ul>
             <p className="mt-6 text-sm text-night-2">
@@ -140,7 +140,7 @@ function CodexFormFallback() {
     <div className="rounded-xl border border-line bg-white p-6">
       <div className="flex items-center gap-2 text-sm text-night-2">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Caricamento…
+        Caricamento...
       </div>
     </div>
   )
@@ -148,7 +148,7 @@ function CodexFormFallback() {
 
 function CodexForm() {
   const searchParams = useSearchParams()
-  // lead_id passato dalle email Wave 2 (?lead={lead_id}) — usato per tracciare
+  // lead_id passato dalle email Wave 2 (?lead={lead_id}) - usato per tracciare
   // la provenienza del click e correlarlo al lead già censito nel CRM.
   const [leadRef, setLeadRef] = useState<string>('')
   const [status, setStatus] = useState<FormStatus>({ kind: 'idle' })
@@ -286,7 +286,7 @@ function CodexForm() {
       <p className="mt-1 text-sm text-night-2">
         Inserisci l&apos;email aziendale: il link di download compare subito qui sotto.
       </p>
-      {/* lead_id dalla cold email Wave 2 (?lead=…): tenuto nel DOM per tracking/debug.
+      {/* lead_id dalla cold email Wave 2 (?lead=...): tenuto nel DOM per tracking/debug.
           Il valore viaggia al backend via Referer (referrerPolicy unsafe-url). */}
       {leadRef && <input type="hidden" name="lead_ref" value={leadRef} readOnly />}
       <label className="mt-5 block text-sm text-night-2">Email aziendale</label>
@@ -327,7 +327,7 @@ function CodexForm() {
         {status.kind === 'submitting' ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Invio in corso…
+            Invio in corso...
           </>
         ) : (
           <>

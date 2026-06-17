@@ -1,5 +1,5 @@
 """
-Intelligence Layer — AI reasoning and verification.
+Intelligence Layer - AI reasoning and verification.
 
 Provides LangGraph agents with optional CoVe verification and streaming support.
 """

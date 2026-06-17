@@ -1,4 +1,4 @@
-# Automated dependency updates — grouped weekly to keep PR noise low.
+# Automated dependency updates - grouped weekly to keep PR noise low.
 version: 2
 updates:
   - package-ecosystem: pip

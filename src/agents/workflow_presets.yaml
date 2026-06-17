@@ -18,7 +18,7 @@
 #       references_required: ["EUR-Lex", "Normattiva", "Comunicazioni_BdI"]
 #
 # Versioning: incrementa version quando si aggiungono preset.
-# Compatibilità: backward-compatible — aggiungere campi opzionali, MAI rimuovere id.
+# Compatibilità: backward-compatible - aggiungere campi opzionali, MAI rimuovere id.
 #
 # Generato 2026-05-15 in iter 6 /loop, ispirato a Mike OSS workflow concept.
 
@@ -180,7 +180,7 @@ presets:
       criteri tematici) + timeline reporting obbligatorio (4h initial / 72h
       intermediate / 1 month final) + canale autorità (BdI INFOSTAT / IVASS).
     system_prompt_addendum: |
-      Sei in modalità "DORA incident classification". URGENT use case — l'utente
+      Sei in modalità "DORA incident classification". URGENT use case - l'utente
       sta gestendo un incident reale e ha 4 ore per fare il primo reporting.
       Output:
       1. Major / Significant cyber threat / Non-reportable

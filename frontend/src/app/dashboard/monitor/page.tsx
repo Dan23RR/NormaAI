@@ -187,7 +187,7 @@ export default function MonitorPage() {
             </span>
           </div>
           <p className="text-[9px] text-slate-600 italic">
-            Analisi generata da AI — verificare con fonti ufficiali prima di decisioni vincolanti.
+            Analisi generata da AI - verificare con fonti ufficiali prima di decisioni vincolanti.
           </p>
         </div>
       )}

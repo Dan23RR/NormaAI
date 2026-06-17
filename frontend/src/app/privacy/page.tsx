@@ -1,7 +1,7 @@
 import { LegalLayout, LegalSection } from '@/components/LegalLayout'
 
 export const metadata = {
-  title: 'Privacy Policy — NormaAI',
+  title: 'Privacy Policy - NormaAI',
 }
 
 export default function PrivacyPage() {
@@ -54,20 +54,20 @@ export default function PrivacyPage() {
       <LegalSection title="4. Sub-Responsabili del Trattamento">
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong className="text-night">Google LLC</strong> (Gemini API) — elaborazione query
+            <strong className="text-night">Google LLC</strong> (Gemini API) - elaborazione query
             AI. Trasferimenti USA coperti da Standard Contractual Clauses (SCC) e Data Privacy
             Framework (DPF).
           </li>
           <li>
-            <strong className="text-night">Resend, Inc.</strong> (USA) — invio di email transazionali
+            <strong className="text-night">Resend, Inc.</strong> (USA) - invio di email transazionali
             e di servizio (outbound). Trasferimenti coperti da SCC.
           </li>
           <li>
-            <strong className="text-night">Google Workspace / Gmail</strong> (USA) — casella di posta
+            <strong className="text-night">Google Workspace / Gmail</strong> (USA) - casella di posta
             per la gestione delle risposte (inbound). Coperto da DPF/SCC.
           </li>
           <li>
-            <strong className="text-night">Hetzner Online GmbH</strong> (Germania, UE) — hosting
+            <strong className="text-night">Hetzner Online GmbH</strong> (Germania, UE) - hosting
             applicativo e database con data residency UE; nessun trasferimento extra-UE.
           </li>
         </ul>

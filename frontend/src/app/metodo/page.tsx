@@ -12,14 +12,14 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Metodo e trasparenza — NormaAI',
+  title: 'Metodo e trasparenza - NormaAI',
   description:
     'Come è costruita NormaAI: pipeline anti-allucinazione verificabile, corpus EUR-Lex/Normattiva, decisioni di ingegneria pubbliche. Ogni numero in questa pagina è riproducibile dalla test suite.',
 }
 
 // Every figure on this page is reproducible from the repository.
 // Update via: run_tests.ps1 (test counts) · CORE_FRAMEWORKS (seeds) ·
-// the public ADRs. No live counters, no demo data — by design.
+// the public ADRs. No live counters, no demo data - by design.
 const VERIFIED = {
   lastVerified: '2026-06-12',
   backendTests: 327,
@@ -91,7 +91,7 @@ export default function MetodoPage() {
         </h1>
         <p className="mt-6 text-lg leading-relaxed text-night-2">
           In un mercato dove ogni AI si dichiara "affidabile", noi facciamo una cosa
-          diversa: pubblichiamo il metodo, le decisioni di ingegneria e i numeri — e ogni
+          diversa: pubblichiamo il metodo, le decisioni di ingegneria e i numeri - e ogni
           numero in questa pagina è riproducibile eseguendo la test suite del progetto,
           non generato da uno script di marketing. Ultima verifica:{' '}
           <strong className="text-night">{VERIFIED.lastVerified}</strong>.
@@ -129,7 +129,7 @@ export default function MetodoPage() {
           <p className="mt-6 text-sm text-night-3">
             Come riprodurli: la suite gira in CI a ogni commit (lint, type-check, test su
             Postgres/Qdrant/Redis reali, scansioni di sicurezza, SBOM). I conteggi sopra
-            sono l'output dell'ultima run completa, aggiornati a ogni release — mai stimati.
+            sono l'output dell'ultima run completa, aggiornati a ogni release - mai stimati.
           </p>
         </div>
       </section>
@@ -180,8 +180,8 @@ export default function MetodoPage() {
               <p className="mt-5 leading-relaxed text-night-2">
                 Infrastruttura in data center EU (Germania, regione Francoforte) con
                 isolamento multi-tenant a livello di database (Row-Level Security
-                PostgreSQL). Per i regimi più rigorosi — DPIA strict, settore finanziario,
-                segreto industriale — NormaAI funziona in modalità sovrana:
+                PostgreSQL). Per i regimi più rigorosi - DPIA strict, settore finanziario,
+                segreto industriale - NormaAI funziona in modalità sovrana:
               </p>
               <ul className="mt-5 space-y-2.5 text-sm text-night-2">
                 <li className="flex items-start gap-2.5">
@@ -211,11 +211,11 @@ export default function MetodoPage() {
               <div className="rounded-xl bg-coal p-6 text-[#E8E6E0]">
                 <div className="mb-3 flex items-center gap-2 text-xs text-[#9C9A92]">
                   <ServerCog className="h-4 w-4" />
-                  AI Act, Art. 50 — trasparenza
+                  AI Act, Art. 50 - trasparenza
                 </div>
                 <p className="text-sm leading-relaxed">
                   NormaAI è essa stessa un sistema AI soggetto al Regolamento (UE)
-                  2024/1689 — e lo dichiara su ogni superficie. Il footer della dashboard,
+                  2024/1689 - e lo dichiara su ogni superficie. Il footer della dashboard,
                   le risposte e questa pagina dicono la stessa cosa:{' '}
                   <strong className="text-white">
                     supporto decisionale, non consulenza legale
@@ -233,14 +233,14 @@ export default function MetodoPage() {
       <section className="border-t border-line">
         <div className="mx-auto max-w-3xl px-6 py-16">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-            Decisioni di ingegneria — pubbliche
+            Decisioni di ingegneria - pubbliche
           </p>
           <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[36px]">
             Anche quando sbagliamo, lo scriviamo.
           </h2>
           <p className="mt-4 leading-relaxed text-night-2">
             Ogni decisione rilevante è un Architecture Decision Record datato. Questa è la
-            serie completa — inclusa quella in cui i nostri stessi documenti avevano le
+            serie completa - inclusa quella in cui i nostri stessi documenti avevano le
             date CSDDD sbagliate, e come l'abbiamo corretto con la fonte primaria.
           </p>
           <div className="mt-8 space-y-4">
@@ -271,7 +271,7 @@ export default function MetodoPage() {
           </h2>
           <p className="mx-auto mt-4 max-w-xl leading-relaxed text-[#B5B3AA]">
             Porta un caso reale del tuo lavoro: se la risposta non è migliore della tua
-            ricerca attuale — citazioni alla mano — niente seguito.
+            ricerca attuale - citazioni alla mano - niente seguito.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 md:flex-row">
             <a

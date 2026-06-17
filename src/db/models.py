@@ -7,7 +7,6 @@ from typing import Any, Optional
 from sqlalchemy import (
     BigInteger,
     Boolean,
-    Column,
     Date,
     DateTime,
     Float,
@@ -260,14 +259,9 @@ class CitationVerification(Base):
 
 
 class Lead(Base):
-    """Leads — both inbound (Codex form) and outbound (Wave 2 prospects).
+    """Leads captured from the public Codex download form.
 
-    Source tracking:
-        - inbound (legacy): 'codex_download', 'demo_request', 'newsletter'
-        - outbound (Wave 2): icp_hypothesis ∈ {H1,H2,H3} + source_channel
-          ∈ {registroimprese, linkedin_free, cnf_albo, ivass, banca_italia, manual}
-
-    Lifecycle (outbound): see migration 007 — outreach_status enum.
+    Source: 'codex_download', 'demo_request', or 'newsletter'.
     """
 
     __tablename__ = "leads"
@@ -296,76 +290,5 @@ class Lead(Base):
         DateTime(timezone=True), nullable=True
     )
     email_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Outbound Wave 2 fields (migration 007)
-    icp_hypothesis: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    outreach_status: Mapped[str] = mapped_column(String(32), nullable=False, default="target")
-    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    source_channel: Mapped[str] = mapped_column(String(32), nullable=False, default="inbound")
-    enrichment_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    personalization_hook: Mapped[str | None] = mapped_column(Text, nullable=True)
-    last_outreach_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    role_title: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
-    __table_args__ = (
-        Index("ix_leads_email_created", "email", "created_at"),
-        Index(
-            "ix_leads_hypothesis_status",
-            "icp_hypothesis",
-            "outreach_status",
-            postgresql_where=(Column("icp_hypothesis").isnot(None)),
-        ),
-    )
-
-    # Relationships
-    outreach_events: Mapped[list["OutreachEvent"]] = relationship(
-        back_populates="lead",
-        cascade="all, delete-orphan",
-        order_by="OutreachEvent.created_at",
-    )
-
-
-class OutreachEvent(Base):
-    """Append-only log of every outbound send, open/click, and inbound reply.
-
-    One row per email sent. Replies link to the same event via thread_id (IMAP).
-    Idempotency_key prevents duplicate sends (hash of lead_id + subject + date).
-    """
-
-    __tablename__ = "outreach_events"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    lead_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("leads.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    channel: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # email|linkedin_dm|phone|other
-    direction: Mapped[str] = mapped_column(String(20), nullable=False)  # outbound|inbound
-    subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    body_draft: Mapped[str | None] = mapped_column(Text, nullable=True)
-    body_sent: Mapped[str | None] = mapped_column(Text, nullable=True)
-    draft_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    clicked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    reply_body: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reply_status: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
-    sentiment: Mapped[float | None] = mapped_column(Float, nullable=True)
-    objection_cluster: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    raw_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    provider_meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    __table_args__ = (Index("ix_outreach_events_lead", "lead_id", "created_at"),)
-
-    # Relationships
-    lead: Mapped["Lead"] = relationship(back_populates="outreach_events")
+    __table_args__ = (Index("ix_leads_email_created", "email", "created_at"),)

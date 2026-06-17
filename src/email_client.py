@@ -9,15 +9,14 @@ Migrated from smtplib (G6.17) for:
 Env vars (read via src.config.get_settings):
     RESEND_API_KEY         (required for actual sending)
     RESEND_FROM_EMAIL      (default: info@normaai.org)
-    RESEND_FROM_NAME       (default: "Daniel Culotta — NormaAI")
+    RESEND_FROM_NAME       (default: "NormaAI")
     RESEND_REPLY_TO        (default: info@normaai.org)
     NORMAAI_PUBLIC_URL     (used to build absolute URLs)
 
-Exposes two send paths:
+Exposes one send path:
     send_codex_email()       — inbound (post-form Codex download)
-    send_outreach_email()    — outbound Wave 2 (cold + follow-up)
 
-Both return (success, error_message) without raising.
+Returns (success, error_message) without raising.
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ def _get_config() -> dict:
     return {
         "api_key": os.environ.get("RESEND_API_KEY", "").strip(),
         "from_email": os.environ.get("RESEND_FROM_EMAIL", "info@normaai.org").strip(),
-        "from_name": os.environ.get("RESEND_FROM_NAME", "Daniel Culotta — NormaAI").strip(),
+        "from_name": os.environ.get("RESEND_FROM_NAME", "NormaAI").strip(),
         "reply_to": os.environ.get("RESEND_REPLY_TO", "info@normaai.org").strip(),
         "public_url": os.environ.get("NORMAAI_PUBLIC_URL", "https://normaai.org").rstrip("/"),
     }
@@ -195,94 +194,6 @@ def send_codex_email(
         html=_codex_email_html(recipient_name, download_url),
         text=_codex_email_text(recipient_name, download_url),
         tags=[{"name": "campaign", "value": "codex_inbound"}],
-    )
-
-
-def _outreach_compliance_footer(cfg: dict, *, cold: bool) -> str:
-    """GDPR footer appended to every outbound email.
-
-    Cold (first-touch) emails carry the full Art. 14 disclosure (data source +
-    legitimate-interest basis); follow-ups carry a compact opt-out line. Both
-    always pair with a List-Unsubscribe header (RFC 2369) set in
-    send_outreach_email. Injected centrally so the Wave 2 drafts are compliant
-    regardless of their hand-written body.
-    """
-    privacy_url = f"{cfg['public_url']}/privacy"
-    optout = cfg["from_email"]
-    if cold:
-        return (
-            "\n\n—\n"
-            "Ti scrivo a questo indirizzo professionale perché risulti tra i referenti "
-            "della tua organizzazione su fonti pubbliche e professionali. Tratto i tuoi "
-            "dati di contatto per legittimo interesse al marketing diretto B2B "
-            f"(GDPR Art. 6.1.f). Informativa e diritto di opposizione (Art. 21): {privacy_url} "
-            f"— oppure rispondi STOP o scrivi a {optout}."
-        )
-    return (
-        "\n\n—\n"
-        f"Per non ricevere più questi messaggi rispondi STOP o scrivi a {optout}. "
-        f"Informativa: {privacy_url}"
-    )
-
-
-def send_outreach_email(
-    *,
-    to_email: str,
-    subject: str,
-    body_text: str,
-    body_html: str | None = None,
-    icp_hypothesis: str,
-    lead_id: str,
-    idempotency_key: str | None = None,
-    in_reply_to: str | None = None,
-) -> tuple[bool, str | None]:
-    """Outbound Wave 2 cold/follow-up email.
-
-    Adds tracking tags so Resend webhooks can attribute open/click events
-    back to the right hypothesis + lead in `outreach_events`.
-
-    Pass `in_reply_to` for follow-up emails to keep the same Gmail thread.
-
-    GDPR: a compliance footer (Art. 14 disclosure on cold, opt-out on follow-up)
-    and a List-Unsubscribe header are injected centrally here, so every send is
-    lawful even if the draft body omits them. Idempotent: the footer is skipped
-    when the caller's body already links to /privacy.
-    """
-    cfg = _get_config()
-    cold = in_reply_to is None
-    footer = _outreach_compliance_footer(cfg, cold=cold)
-
-    if "/privacy" not in body_text:
-        body_text = body_text.rstrip() + footer
-
-    if body_html is None:
-        # Plain-text only emails get higher reply rates in B2B IT (less spam-y).
-        body_html = f'<pre style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;">{body_text}</pre>'
-    elif "/privacy" not in body_html:
-        body_html = body_html + "<br/><br/>" + footer.strip().replace("\n", "<br/>")
-
-    headers: dict[str, str] = {
-        # RFC 2369 one-click unsubscribe. Lifts deliverability and
-        # reinforces the Art. 6.1.f legitimate-interest opt-out.
-        "List-Unsubscribe": f"<mailto:{cfg['from_email']}?subject=unsubscribe>",
-    }
-    if in_reply_to:
-        headers["In-Reply-To"] = in_reply_to
-        headers["References"] = in_reply_to
-    if idempotency_key:
-        headers["X-Idempotency-Key"] = idempotency_key
-
-    return _send_via_resend(
-        to_email=to_email,
-        subject=subject,
-        html=body_html,
-        text=body_text,
-        headers=headers,
-        tags=[
-            {"name": "campaign", "value": "outreach_wave2"},
-            {"name": "hypothesis", "value": icp_hypothesis},
-            {"name": "lead_id", "value": lead_id[:64]},
-        ],
     )
 
 

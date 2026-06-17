@@ -6,6 +6,10 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+> 🇮🇹 **In breve** — NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE: Q&A sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 7 framework UE — CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR — pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
+>
+> *La documentazione tecnica completa è in inglese, qui sotto.*
+
 ## Overview
 
 NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-powered compliance intelligence for enterprises:

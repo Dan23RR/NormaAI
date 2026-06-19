@@ -391,9 +391,13 @@ class UnifiedDocumentProcessor:
                 file_path, "dots_ocr forced but failed"
             )
         elif force_engine == "docling":
-            return self._try_docling(file_path) or self._empty_result(
-                file_path, "docling forced but failed"
+            # Route to the right Docling backend by file type (mirrors the smart
+            # routing below). The old call to a non-existent self._try_docling
+            # raised AttributeError on every forced-docling request.
+            docling_result = (
+                self._try_docling_html(file_path) if is_html else self._try_docling_pdf(file_path)
             )
+            return docling_result or self._empty_result(file_path, "docling forced but failed")
 
         # Smart routing
         if is_image:

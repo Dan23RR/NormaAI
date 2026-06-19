@@ -29,6 +29,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 security_scheme = HTTPBearer(auto_error=False)
 
+# A VALID bcrypt hash, computed once at import, used only on the unknown-email
+# login path so verify_password runs in constant time. The previous inline
+# literal was an invalid 59-char salt, so bcrypt.checkpw raised ValueError: an
+# unknown email returned HTTP 500 while a wrong password returned 401, which
+# leaks which emails exist (the user-enumeration attack this guard prevents).
+_DUMMY_PASSWORD_HASH = hash_password("normaai-constant-time-dummy")
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -128,10 +135,11 @@ async def login(
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
-    # Constant-time comparison: always compute bcrypt to prevent user enumeration timing attacks
-    _dummy_hash = "$2b$12$LJ3m4ks5K5k7k8k9k0k1k2k3k4k5k6k7k8k9k0k1k2k3k4k5k6k7"
+    # Constant-time comparison: always run bcrypt (against a valid dummy hash on
+    # the unknown-email path) so neither timing nor status code reveals whether
+    # the email exists.
     password_valid = verify_password(
-        payload.password, user.hashed_password if user else _dummy_hash
+        payload.password, user.hashed_password if user else _DUMMY_PASSWORD_HASH
     )
 
     if not user or not password_valid:

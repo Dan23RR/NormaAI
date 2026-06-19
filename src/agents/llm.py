@@ -22,7 +22,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.resilience import llm_circuit, require_circuit
+from src.resilience import ServiceUnavailableError, llm_circuit, require_circuit
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,14 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
             "requires_expert_review": True,
         }
 
-    require_circuit(llm_circuit)
+    # Circuit check inside its own guard: an OPEN circuit must degrade to the
+    # standardized error dict (what every caller expects), not raise
+    # ServiceUnavailableError up into the agent graph.
+    try:
+        require_circuit(llm_circuit)
+    except ServiceUnavailableError as e:
+        logger.warning(f"LLM circuit open ({settings.llm_provider}): {e}")
+        return _make_error_response(f"LLM circuit open: {e}")
 
     try:
         llm = get_llm()
@@ -230,7 +237,13 @@ async def acall_llm(
             "requires_expert_review": True,
         }
 
-    require_circuit(llm_circuit)
+    # Circuit check inside its own guard (see call_llm): an OPEN circuit degrades
+    # to the standardized error dict instead of raising into the agent graph.
+    try:
+        require_circuit(llm_circuit)
+    except ServiceUnavailableError as e:
+        logger.warning(f"LLM circuit open ({settings.llm_provider}): {e}")
+        return _make_error_response(f"LLM circuit open: {e}")
 
     try:
         # Acquire the concurrency permit PER LLM CALL so the SNC/CoVe fan-out

@@ -238,26 +238,21 @@ class TestGeminiStreamer:
         ):
             await _collect(_astream_gemini_with_retry("sys", "user"))
 
-    async def test_retryable_error_does_not_retry_bug(self):
-        # BUG (captured, not asserted-as-correct): the @retry decorator is
-        # INERT on these async-generator functions. tenacity's retry wrapper
-        # runs once and returns the async_generator object before the body
-        # executes; the body only runs during iteration, by which point the
-        # retry machinery is already gone. So a RetryableLLMError (e.g. 429)
-        # is surfaced after a SINGLE attempt - the advertised "3 attempts /
-        # exponential backoff" never happens for the streaming path.
-        # Contrast the unary path (acall_llm) whose test proves await_count==3.
+    async def test_retryable_error_not_retried_on_stream(self):
+        # By design the streaming path does NOT retry: a partial stream can't be
+        # safely resumed, so a transient error (429) is classified
+        # RetryableLLMError and surfaced after a SINGLE attempt for the caller to
+        # retry the whole request. (The unary acall_llm path does retry: 3x.)
         settings = _make_settings(provider="gemini")
         fake_genai = MagicMock()
         fake_genai.GenerativeModel.side_effect = RuntimeError("rate limit 429")
         with (
             _patch_settings(settings),
             patch.object(streaming_llm, "_get_gemini_client", return_value=fake_genai),
-            patch("tenacity.nap.time.sleep", return_value=None),
             pytest.raises(streaming_llm.RetryableLLMError),
         ):
             await _collect(_astream_gemini_with_retry("sys", "user"))
-        # Actual behavior: constructed exactly once (no retry).
+        # Constructed exactly once (no retry).
         assert fake_genai.GenerativeModel.call_count == 1
 
 
@@ -303,22 +298,20 @@ class TestAnthropicStreamer:
         assert kwargs["system"] == "SYS"
         assert kwargs["messages"] == [{"role": "user", "content": "USR"}]
 
-    async def test_error_inside_stream_is_classified_no_retry_bug(self):
-        # Same INERT-@retry bug as the Gemini streamer: a transient error
-        # (503 overloaded) is classified RetryableLLMError but NOT retried,
-        # because @retry does not wrap async-generator bodies. Captured as the
-        # actual (single-attempt) behavior, not asserted as correct.
+    async def test_error_classified_and_not_retried_on_stream(self):
+        # By design (see the Gemini streamer test): a transient error (503
+        # overloaded) is classified RetryableLLMError and surfaced after a single
+        # attempt -- the streaming path does not retry a partial stream.
         settings = _make_settings(provider="anthropic")
         client = MagicMock()
         client.messages.stream = MagicMock(side_effect=RuntimeError("overloaded 503"))
         with (
             _patch_settings(settings),
             patch.object(streaming_llm, "_get_anthropic_client", return_value=client),
-            patch("tenacity.nap.time.sleep", return_value=None),
             pytest.raises(streaming_llm.RetryableLLMError),
         ):
             await _collect(_astream_anthropic_with_retry("sys", "user"))
-        # Actual behavior: stream attempted exactly once (no retry).
+        # Stream attempted exactly once (no retry).
         assert client.messages.stream.call_count == 1
 
 

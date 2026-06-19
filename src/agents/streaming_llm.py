@@ -5,24 +5,22 @@ yielding tokens as they arrive from the LLM. Supports both raw token streaming
 and JSON-response streaming.
 
 Features:
-- Provider abstraction (Gemini / Anthropic)
+- Provider abstraction (Gemini / Anthropic / OpenRouter)
 - Automatic error handling and logging
 - Respects LLM settings (temperature, max_tokens, timeout)
-- Retry logic for transient failures (via tenacity)
 - Circuit breaker integration for service degradation
+
+NOTE on retries: transient errors are NOT retried mid-stream. A partial stream
+cannot be safely resumed -- restarting would re-emit already-sent tokens and
+corrupt the response -- so transient failures surface to the caller, which
+retries the whole request. (The unary path, src.agents.llm.acall_llm, does
+retry.) A previous version decorated these async generators with tenacity
+@retry, which is inert on generator functions and silently did nothing.
 """
 
 import asyncio
 import logging
 from collections.abc import AsyncIterator
-
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from src.agents.llm import NonRetryableLLMError, RetryableLLMError, _classify_error
 from src.config import get_settings
@@ -69,13 +67,6 @@ def _get_openrouter_client():
 # ─── Core Streaming Functions ──────────────────────────────────
 
 
-@retry(
-    retry=retry_if_exception_type(RetryableLLMError),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
 async def _astream_gemini_with_retry(system_prompt: str, user_message: str) -> AsyncIterator[str]:
     """Internal: stream from Gemini with retry on transient errors.
 
@@ -114,13 +105,6 @@ async def _astream_gemini_with_retry(system_prompt: str, user_message: str) -> A
         raise _classify_error(e) from e
 
 
-@retry(
-    retry=retry_if_exception_type(RetryableLLMError),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
 async def _astream_anthropic_with_retry(
     system_prompt: str, user_message: str
 ) -> AsyncIterator[str]:
@@ -148,13 +132,6 @@ async def _astream_anthropic_with_retry(
         raise _classify_error(e) from e
 
 
-@retry(
-    retry=retry_if_exception_type(RetryableLLMError),
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
 async def _astream_openrouter_with_retry(
     system_prompt: str, user_message: str
 ) -> AsyncIterator[str]:
@@ -194,7 +171,7 @@ async def astream_llm(system_prompt: str, user_message: str) -> AsyncIterator[st
 
     Features:
     - Circuit breaker (fast-fail when LLM is down)
-    - Exponential backoff retry (3 attempts for transient errors)
+    - Transient errors surface to the caller (a partial stream can't be retried)
     - Proper error handling and logging
     - Respects temperature, max_tokens, timeout from config
 

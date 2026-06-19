@@ -11,8 +11,10 @@ All audit events include: who, what, when, where (IP), and outcome.
 
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Any
 
 import structlog
+from starlette.requests import Request
 
 # Dedicated audit logger - separate from application logs
 # Configure to write to a dedicated file/stream in production
@@ -85,7 +87,7 @@ def audit_log(
     resource: str | None = None,
     detail: str | None = None,
     request_id: str | None = None,
-    extra: dict | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> None:
     """Record a structured audit event.
 
@@ -129,7 +131,7 @@ def audit_log(
         audit_logger.error("audit_event", **event)
 
 
-def get_client_ip(request) -> str:
+def get_client_ip(request: Request) -> str:
     """Extract the client IP, resisting X-Forwarded-For spoofing.
 
     X-Forwarded-For is a client-appendable header: each proxy appends the IP of

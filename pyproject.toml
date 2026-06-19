@@ -159,3 +159,9 @@ python_functions = "test_*"
 markers = [
     "skipif: skip test if condition is true",
 ]
+
+[tool.coverage.run]
+# src/bizdev is an internal GTM/CRM layer: gitignored and absent from the public
+# repo, so CI never measures it. Omit it locally too so local coverage matches
+# CI and is not dragged down by 0%-covered modules that do not ship.
+omit = ["src/bizdev/*"]

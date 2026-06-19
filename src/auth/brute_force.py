@@ -5,6 +5,7 @@ Redis-backed login attempt tracking with automatic lockout.
 
 import logging
 import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,8 @@ class BruteForceProtection:
     After MAX_ATTEMPTS failures, the account is locked for LOCKOUT_SECONDS.
     """
 
-    def __init__(self):
-        self._client = None
+    def __init__(self) -> None:
+        self._client: Any = None
         self._available = False
         # Best-effort in-process fallback used ONLY when Redis is unavailable:
         # key -> (attempts, expiry_epoch_seconds). Per-instance (in a multi-replica
@@ -36,12 +37,12 @@ class BruteForceProtection:
         # than failing fully open during a Redis outage.
         self._memory: dict[str, tuple[int, float]] = {}
 
-    async def connect(self, redis_client) -> None:
+    async def connect(self, redis_client: Any) -> None:
         """Use an existing Redis connection."""
         self._client = redis_client
         self._available = redis_client is not None
 
-    async def _get_redis(self):
+    async def _get_redis(self) -> Any:
         """Lazily connect to Redis if needed."""
         if self._client is not None:
             return self._client
@@ -52,7 +53,7 @@ class BruteForceProtection:
             from src.config import get_settings
 
             settings = get_settings()
-            self._client = aioredis.from_url(
+            self._client = aioredis.from_url(  # type: ignore[no-untyped-call]  # redis.asyncio untyped
                 settings.redis_url,
                 decode_responses=True,
                 socket_connect_timeout=3,

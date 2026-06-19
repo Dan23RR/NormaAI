@@ -65,6 +65,9 @@ jobs:
           src/auth/dependencies.py
           src/auth/security.py
           src/db/engine.py
+          src/audit.py
+          src/auth/brute_force.py
+          src/crawler/normattiva/urn_validator.py
 
   test-backend:
     name: Backend Tests
@@ -125,11 +128,11 @@ jobs:
           echo "Qdrant did not become ready in time" >&2; exit 1
       - name: Run tests with coverage
         run: |
-          # Floor kept just below the current real coverage (~41%); all tests
-          # pass. Ratchet up as coverage grows (target 60%). Tests still gate.
+          # Floor kept below the current real coverage (~57%, src/bizdev omitted
+          # via pyproject); all tests pass. Ratchet up toward the 70% target.
           poetry run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=38
+            --cov-fail-under=53
         env:
           APP_ENV: testing
           LLM_PROVIDER: gemini

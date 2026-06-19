@@ -10,7 +10,7 @@ EU URN format: urn:nir:unione.europea:regolamento:2024;1689
 
 import logging
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel
 
@@ -268,7 +268,7 @@ class URNValidator:
         return extracted_urns
 
     @staticmethod
-    def _build_urn_from_match(groups: dict) -> str | None:
+    def _build_urn_from_match(groups: dict[str, Any]) -> str | None:
         """Build URN from regex match groups."""
         tipo = groups.get("tipo", "").lower()
         numero = groups.get("numero", "")

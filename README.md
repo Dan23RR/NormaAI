@@ -362,6 +362,11 @@ TIER 8 - Monte Carlo             48/48   100%
                                 312/312  100%
 ```
 
+> Note: TIER 8 (Monte Carlo) is a standalone regulatory-risk **validation/research
+> harness** under `tests/validation/` (Weibull-based methodology check, run
+> offline). It is **not** a runtime API capability and is not wired into `src/` -
+> it is listed here only because it ships with its own test set.
+
 ---
 
 Built with LangGraph + Qdrant Hybrid Search + EUR-Lex SPARQL + Normattiva Open Data

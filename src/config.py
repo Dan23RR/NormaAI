@@ -162,26 +162,6 @@ class Settings(BaseSettings):
     resend_reply_to: str = "info@normaai.org"
     resend_webhook_secret: str = ""
 
-    # ─── IMAP polling (reply-analyst agent) ─────────────────
-    imap_host: str = "imap.gmail.com"
-    imap_port: int = 993
-    imap_user: str = ""
-    imap_password: str = ""
-    imap_folder: str = "INBOX"
-    imap_processed_label: str = "normaai/processed"
-
-    # ─── Telegram bot (founder notifications) ───────────────
-    telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
-
-    # ─── Operations agents (LLM routing per agent) ──────────
-    agent_icp_researcher_model: str = "claude-sonnet-4-7"
-    agent_outreach_strategist_model: str = "claude-sonnet-4-7"
-    agent_reply_analyst_model: str = "claude-haiku-4-5-20251001"
-    agent_weekly_digest_model: str = "claude-opus-4-7"
-    agent_icp_daily_prospect_target: int = 5
-    agent_outreach_daily_send_limit: int = 3
-
     @property
     def cors_origin_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string.
@@ -263,6 +243,20 @@ def validate_settings_or_exit() -> Settings:
             warnings.append(
                 "APP_SECRET_KEY is still default or too short. Generate a real key for security."
             )
+
+    # CORS: main.py registers CORSMiddleware with allow_credentials=True. A '*'
+    # origin under credentialed CORS is a footgun (the browser rejects it, but
+    # Starlette would still echo the header). cors_origin_list already fails
+    # closed by emptying the list; refuse to even start in production so the
+    # misconfiguration is loud, not a silently broken CORS surface.
+    if settings.app_env == "production":
+        raw_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+        if "*" in raw_origins:
+            _config_logger.critical(
+                "CORS_ORIGINS contains '*' in production with credentialed CORS. "
+                "Set CORS_ORIGINS to explicit https origins (e.g. https://normaai.org)."
+            )
+            sys.exit(1)
 
     for w in warnings:
         _config_logger.warning(w)

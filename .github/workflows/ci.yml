@@ -51,6 +51,20 @@ jobs:
         # not fail the gate. Tighten by removing this once the backlog is clear.
         continue-on-error: true
         run: poetry run mypy src/ --ignore-missing-imports --no-strict-optional
+      - name: Mypy strict gate (critical modules)
+        # BLOCKING ratchet: these security/correctness-critical modules are fully
+        # type-annotated and MUST stay mypy-clean under the strict base config
+        # (no --no-strict-optional relaxation). Grow this list as more modules are
+        # cleaned; the broad `mypy src/` above stays non-blocking until then.
+        run: >
+          poetry run mypy --ignore-missing-imports
+          src/config.py
+          src/agents/sanitization.py
+          src/api/streaming/generators.py
+          src/api/streaming/sse.py
+          src/auth/dependencies.py
+          src/auth/security.py
+          src/db/engine.py
 
   test-backend:
     name: Backend Tests
@@ -111,11 +125,11 @@ jobs:
           echo "Qdrant did not become ready in time" >&2; exit 1
       - name: Run tests with coverage
         run: |
-          # Floor set to the current real coverage (~37%); all tests pass.
-          # Ratchet this up as coverage grows (target 60%). Tests still gate.
+          # Floor kept just below the current real coverage (~41%); all tests
+          # pass. Ratchet up as coverage grows (target 60%). Tests still gate.
           poetry run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=30
+            --cov-fail-under=38
         env:
           APP_ENV: testing
           LLM_PROVIDER: gemini

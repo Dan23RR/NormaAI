@@ -8,20 +8,25 @@ Security features:
 - Redis-backed token blacklist for instant revocation
 """
 
-import logging
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import bcrypt
+import structlog
 from jose import JWTError, jwt
 from jose.exceptions import JOSEError
 from pydantic import BaseModel
 
 from src.config import get_settings
 
-logger = logging.getLogger(__name__)
+# structlog (matches the rest of the codebase). The previous stdlib
+# logging.getLogger raised TypeError on the structured kwargs used below
+# (e.g. logger.info("event", jti=...)) on the rarely-exercised key-load and
+# token-blacklist paths - a latent bug now fixed by using a structlog logger.
+logger = structlog.get_logger(__name__)
 
 
 # Token configuration - loaded from settings (src/config.py)
@@ -148,8 +153,10 @@ class TokenBlacklist:
 
     KEY_PREFIX = "normaai:token:blacklist:"
 
-    def __init__(self):
-        self._client = None
+    def __init__(self) -> None:
+        # redis.asyncio is untyped; annotate as Any so the client attribute is
+        # not narrowed to None after the initial assignment.
+        self._client: Any = None
         self._available = False
 
     async def connect(self) -> bool:
@@ -158,7 +165,7 @@ class TokenBlacklist:
             import redis.asyncio as aioredis
 
             settings = get_settings()
-            self._client = aioredis.from_url(
+            self._client = aioredis.from_url(  # type: ignore[no-untyped-call]  # redis.asyncio is untyped
                 settings.redis_url,
                 decode_responses=True,
                 socket_connect_timeout=5,
@@ -172,7 +179,7 @@ class TokenBlacklist:
             self._available = False
             return False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection."""
         if self._client:
             await self._client.aclose()
@@ -278,7 +285,7 @@ def create_access_token(
         "iss": _get_jwt_issuer(),
         "aud": _get_jwt_audience(),
     }
-    return jwt.encode(payload, _get_signing_key(), algorithm=_algorithm)
+    return str(jwt.encode(payload, _get_signing_key(), algorithm=_algorithm))
 
 
 def create_refresh_token(
@@ -302,7 +309,7 @@ def create_refresh_token(
         "iss": _get_jwt_issuer(),
         "aud": _get_jwt_audience(),
     }
-    return jwt.encode(payload, _get_signing_key(), algorithm=_algorithm)
+    return str(jwt.encode(payload, _get_signing_key(), algorithm=_algorithm))
 
 
 def create_token_pair(

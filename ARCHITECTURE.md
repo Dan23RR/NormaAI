@@ -231,8 +231,8 @@ pytest tests/test_hybrid_search.py -v
 pytest tests/test_normattiva_client.py -v
 pytest tests/test_api_integration.py -v
 
-# Coverage gate. CI enforces a floor of 30% today (real coverage is ~37%),
+# Coverage gate. CI enforces a floor of 38% today (real coverage is ~41%),
 # ratcheting toward a 60% target as coverage grows. See .github/workflows/ci.yml
 # for the authoritative, CI-enforced value.
-pytest tests/ --cov=src --cov-fail-under=30   # 60 is the target, not yet the gate
+pytest tests/ --cov=src --cov-fail-under=38   # 60 is the target, not yet the gate
 ```

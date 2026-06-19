@@ -2,7 +2,8 @@
 
 import contextlib
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
+from typing import Any
 
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 RLS_GUC = "app.current_org_id"
 
 
-def _reset_rls_on_checkin(dbapi_connection, connection_record):
+def _reset_rls_on_checkin(dbapi_connection: Any, connection_record: Any) -> None:
     """Pool 'checkin' hook: clear the RLS org GUC on the raw connection.
 
     The org context is a *connection-scoped* GUC (set_config(..., is_local=false))
@@ -59,11 +60,11 @@ def _reset_rls_on_checkin(dbapi_connection, connection_record):
 class DatabaseSessionManager:
     """Manages async database connections with RLS enforcement."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._engine: AsyncEngine | None = None
         self._sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
-    def init(self, dsn: str | None = None):
+    def init(self, dsn: str | None = None) -> None:
         settings = get_settings()
         url = dsn or settings.database_url
         self._engine = create_async_engine(
@@ -84,7 +85,7 @@ class DatabaseSessionManager:
             expire_on_commit=False,
         )
 
-    async def close(self):
+    async def close(self) -> None:
         if self._engine:
             await self._engine.dispose()
             self._engine = None
@@ -164,7 +165,7 @@ async def get_scoped_db_session(org_id: str) -> AsyncIterator[AsyncSession]:
         yield session
 
 
-def get_tenant_session():
+def get_tenant_session() -> Callable[..., AsyncIterator[AsyncSession]]:
     """FastAPI dependency that automatically applies RLS using the authenticated user's org_id.
 
     Combines JWT authentication with Row-Level Security in a single dependency.

@@ -120,7 +120,7 @@ async def lifespan(app: FastAPI):
     app_state.scheduler = None
     if settings.acquisition_scheduler_enabled:
         try:
-            from src.layers.acquisition.scheduler import AcquisitionScheduler
+            from src.crawler.scheduler import AcquisitionScheduler
 
             scheduler = AcquisitionScheduler(interval_hours=settings.eurlex_crawl_interval_hours)
             await scheduler.start()

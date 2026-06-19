@@ -1,6 +1,7 @@
 """FastAPI dependencies for authentication and authorization."""
 
 import uuid
+from collections.abc import Awaitable, Callable
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -89,10 +90,10 @@ async def get_optional_user(
         raise
 
 
-def require_role(*allowed_roles: str):
+def require_role(*allowed_roles: str) -> Callable[..., Awaitable[CurrentUser]]:
     """Dependency factory: require the user to have one of the specified roles."""
 
-    async def _check_role(user: CurrentUser = Depends(get_current_user)):
+    async def _check_role(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

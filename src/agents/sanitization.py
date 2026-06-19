@@ -27,6 +27,7 @@ once at import), low telemetry-noise on Italian compliance prose.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 try:  # structlog is the project-wide logging standard; fall back to stdlib.
     import structlog
@@ -155,12 +156,12 @@ def sanitize_input(text: str, max_length: int = 5000) -> str:
     return text
 
 
-def sanitize_profile(profile: dict) -> dict:
+def sanitize_profile(profile: dict[str, Any]) -> dict[str, Any]:
     """Sanitize company-profile fields: length-cap + type-enforce + telemetry."""
     if not isinstance(profile, dict):
         return {}
 
-    sanitized: dict = {}
+    sanitized: dict[str, Any] = {}
 
     str_fields = ["name", "sector", "existing_documents"]
     for field in str_fields:

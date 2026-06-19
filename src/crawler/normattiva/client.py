@@ -14,7 +14,7 @@ from datetime import datetime
 from xml.etree import ElementTree as ET
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ class Articolo(BaseModel):
     testo: str
     commi: list[str] = Field(default_factory=list)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "numero": "1",
                 "rubrica": "Disposizioni generali",
@@ -41,6 +41,7 @@ class Articolo(BaseModel):
                 "commi": ["Comma 1 text", "Comma 2 text"],
             }
         }
+    )
 
 
 class NormativeActSummary(BaseModel):
@@ -54,8 +55,8 @@ class NormativeActSummary(BaseModel):
     data_pubblicazione: datetime
     in_vigore: bool
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "urn": "urn:nir:stato:legge:2024;123",
                 "tipo": "legge",
@@ -66,6 +67,7 @@ class NormativeActSummary(BaseModel):
                 "in_vigore": True,
             }
         }
+    )
 
 
 class SearchResult(BaseModel):

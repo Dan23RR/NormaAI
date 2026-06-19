@@ -12,7 +12,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
     from .client import NormattivaOpenDataClient, URNValidationResult
@@ -39,8 +39,8 @@ class URNComponents(BaseModel):
     numero: str  # Act number
     articolo: str | None = None  # Optional article reference
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "autorita": "stato",
                 "tipo": "legge",
@@ -49,6 +49,7 @@ class URNComponents(BaseModel):
                 "articolo": None,
             }
         }
+    )
 
 
 # ============================================================================

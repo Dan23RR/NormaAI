@@ -48,7 +48,10 @@ def _build_system_prompt_for_resample(state: dict) -> str:
         "qa": "qa_bot",
     }.get(task, "qa_bot")
 
-    prompts_dir = Path(__file__).parent.parent / "prompts"
+    # snc_node.py lives at src/agents/; THREE parents reach the repo-root
+    # prompts/ dir (the old two resolved to the non-existent src/prompts/, so the
+    # SNC trust layer silently ran with an empty system prompt).
+    prompts_dir = Path(__file__).parent.parent.parent / "prompts"
     path = prompts_dir / f"{prompt_name}.txt"
     if path.exists():
         return path.read_text(encoding="utf-8")

@@ -42,7 +42,11 @@ from src.api.streaming.sse import (
 
 logger = logging.getLogger(__name__)
 
-PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+# orchestrator.py lives at src/agents/cove/, one level deeper than src/agents/
+# nodes.py: it needs FOUR parents to reach the repo-root prompts/ dir (the old
+# three resolved to the non-existent src/prompts/, so _load_prompt raised
+# FileNotFoundError and the whole CoVe pipeline failed whenever it was enabled).
+PROMPTS_DIR = Path(__file__).parent.parent.parent.parent / "prompts"
 
 # Canonical CELEX format (sector 3 = legislation): 3 + YYYY + type letter(s) + number.
 _CELEX_RE = re.compile(r"^3\d{4}[A-Z]{1,2}\d{3,4}$")

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Source_Serif_4 } from 'next/font/google'
+import { Source_Serif_4, Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
@@ -13,6 +13,22 @@ const serif = Source_Serif_4({
   weight: ['400', '600'],
   style: ['normal', 'italic'],
   variable: '--font-serif',
+  display: 'swap',
+})
+
+// Self-hosted by next/font (variable fonts). Replaces the old globals.css
+// @import from Google Fonts, which was both invalid CSS position (after
+// @tailwind - Turbopack rejects it) and blocked at runtime by the CSP
+// font-src 'self'. Self-hosting serves them from our own origin: CSP-compliant.
+const sans = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+const mono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
   display: 'swap',
 })
 
@@ -94,7 +110,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it" className={`dark ${serif.variable}`}>
+    <html lang="it" className={`dark ${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body className="font-sans">
         <script
           type="application/ld+json"

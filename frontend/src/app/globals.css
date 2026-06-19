@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Fonts ──────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+/* Fonts are self-hosted via next/font (see src/app/layout.tsx): Inter
+   (--font-sans), Geist Mono (--font-mono), Source Serif 4 (--font-serif). */
 
 /* ── Base ───────────────────────────────────────────────────────────── */
 
@@ -11,7 +11,7 @@ html, body {
   margin: 0;
   background: #0a0d12;
   color: #e6ebf2;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.45;
   font-feature-settings: 'cv11', 'ss01', 'ss03';

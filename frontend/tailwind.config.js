@@ -76,7 +76,7 @@ module.exports = {
       },
       fontFamily: {
         sans: [
-          'Inter',
+          'var(--font-sans)',
           'system-ui',
           '-apple-system',
           'Segoe UI',
@@ -90,7 +90,7 @@ module.exports = {
           'serif',
         ],
         mono: [
-          'Geist Mono',
+          'var(--font-mono)',
           'JetBrains Mono',
           'Menlo',
           'Consolas',

@@ -157,7 +157,7 @@ async def get_alerts_summary(
         base = (
             select(Alert)
             .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed is False))
+            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
         )
 
         # Total count
@@ -166,7 +166,7 @@ async def get_alerts_summary(
 
         # Unread count
         unread_stmt = select(func.count()).select_from(
-            base.where(Alert.is_read is False).subquery()
+            base.where(Alert.is_read.is_(False)).subquery()
         )
         total_unread = (await session.execute(unread_stmt)).scalar() or 0
 
@@ -174,7 +174,7 @@ async def get_alerts_summary(
         sev_stmt = (
             select(Alert.severity, func.count().label("count"))
             .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed is False))
+            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
             .group_by(Alert.severity)
             .order_by(func.count().desc())
         )
@@ -185,7 +185,7 @@ async def get_alerts_summary(
         fw_stmt = (
             select(Alert.framework, func.count().label("count"))
             .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed is False))
+            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
             .group_by(Alert.framework)
             .order_by(func.count().desc())
         )
@@ -253,7 +253,7 @@ async def list_alerts(
             select(func.count())
             .select_from(Alert)
             .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_read is False))
+            .where(and_(Client.org_id == user.org_id, Alert.is_read.is_(False)))
         )
         unread_count = (await session.execute(unread_stmt)).scalar() or 0
 

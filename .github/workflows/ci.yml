@@ -128,11 +128,11 @@ jobs:
           echo "Qdrant did not become ready in time" >&2; exit 1
       - name: Run tests with coverage
         run: |
-          # Floor kept below the current real coverage (~86%, src/bizdev omitted
+          # Floor kept below the current real coverage (~88%, src/bizdev omitted
           # via pyproject); all tests pass. Well past the 70% target.
           poetry run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml --cov-report=term-missing \
-            --cov-fail-under=82
+            --cov-fail-under=84
         env:
           APP_ENV: testing
           LLM_PROVIDER: gemini

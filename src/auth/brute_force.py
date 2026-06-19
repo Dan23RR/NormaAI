@@ -4,6 +4,7 @@ Redis-backed login attempt tracking with automatic lockout.
 """
 
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,12 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 5
 LOCKOUT_SECONDS = 300  # 5 minutes
 KEY_PREFIX = "normaai:bruteforce:"
+
+# In-memory fallback cap: bounds memory if Redis is down during an attack that
+# sprays many distinct emails. Per-account brute force stays capped; once the
+# cap is hit, genuinely new keys degrade to open (a single account under attack
+# is still limited by the entries already tracked).
+_MEMORY_MAX_KEYS = 10_000
 
 
 class BruteForceProtection:
@@ -23,6 +30,11 @@ class BruteForceProtection:
     def __init__(self):
         self._client = None
         self._available = False
+        # Best-effort in-process fallback used ONLY when Redis is unavailable:
+        # key -> (attempts, expiry_epoch_seconds). Per-instance (in a multi-replica
+        # deploy the effective limit is MAX_ATTEMPTS x replicas), but far better
+        # than failing fully open during a Redis outage.
+        self._memory: dict[str, tuple[int, float]] = {}
 
     async def connect(self, redis_client) -> None:
         """Use an existing Redis connection."""
@@ -66,7 +78,8 @@ class BruteForceProtection:
         """
         redis = await self._get_redis()
         if redis is None:
-            return None  # Fail open if Redis unavailable (log warning above)
+            # Redis down: degrade to a bounded in-memory counter, not fail-open.
+            return self._memory_check_and_increment(email.lower())
 
         # Use email as primary key to prevent account enumeration attacks
         key = self._key(email.lower())
@@ -98,10 +111,38 @@ class BruteForceProtection:
 
         except Exception as e:
             logger.warning("brute_force_check_error: %s", e)
-            return None  # Fail open on Redis errors
+            return self._memory_check_and_increment(email.lower())
+
+    def _memory_check_and_increment(self, key: str) -> str | None:
+        """Bounded in-process fallback mirroring the Redis lockout logic."""
+        now = time.time()
+        # Drop expired entries; if still over the cap the dict is full of active
+        # locks (an ongoing spray) -> stop tracking genuinely new keys.
+        if len(self._memory) > _MEMORY_MAX_KEYS:
+            self._memory = {k: v for k, v in self._memory.items() if v[1] > now}
+
+        entry = self._memory.get(key)
+        if entry and entry[1] > now:
+            attempts, expiry = entry
+            if attempts >= MAX_ATTEMPTS:
+                remaining = int(expiry - now)
+                return (
+                    f"Too many failed login attempts. "
+                    f"Account locked for {remaining // 60 + 1} minute(s). "
+                    f"Please try again later."
+                )
+            self._memory[key] = (attempts + 1, expiry)
+            return None
+
+        # New or expired key: start a fresh window unless the cap is reached.
+        if len(self._memory) >= _MEMORY_MAX_KEYS:
+            return None
+        self._memory[key] = (1, now + LOCKOUT_SECONDS)
+        return None
 
     async def reset(self, email: str) -> None:
         """Reset attempt counter on successful login."""
+        self._memory.pop(email.lower(), None)  # clear any in-memory fallback entry
         redis = await self._get_redis()
         if redis is None:
             return
@@ -115,6 +156,9 @@ class BruteForceProtection:
         """Get remaining attempts before lockout."""
         redis = await self._get_redis()
         if redis is None:
+            entry = self._memory.get(email.lower())
+            if entry and entry[1] > time.time():
+                return max(0, MAX_ATTEMPTS - entry[0])
             return MAX_ATTEMPTS
 
         try:

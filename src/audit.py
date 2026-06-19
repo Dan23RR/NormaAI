@@ -130,19 +130,41 @@ def audit_log(
 
 
 def get_client_ip(request) -> str:
-    """Extract client IP from FastAPI request, respecting proxy headers."""
-    # Check X-Forwarded-For (common with reverse proxies)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Take the first IP (client's original IP)
-        return forwarded.split(",")[0].strip()
+    """Extract the client IP, resisting X-Forwarded-For spoofing.
 
-    # Check X-Real-IP (nginx)
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip.strip()
+    X-Forwarded-For is a client-appendable header: each proxy appends the IP of
+    the host that connected to it, so the LEFTMOST entries are attacker-controlled
+    and only the rightmost ``trusted_proxy_count`` entries (added by our own
+    proxies) can be trusted. We therefore read the entry appended by the
+    OUTERMOST trusted proxy -- index ``-trusted_proxy_count`` from the end --
+    rather than the spoofable first one. With no proxy in front
+    (``trusted_proxy_count == 0``) the header is ignored entirely and only the
+    direct socket peer is used.
 
-    # Fall back to direct connection
+    This matters for rate limiting and audit integrity: the old "first entry"
+    logic let any client forge their logged/limited IP via a header.
+    """
+    from src.config import get_settings
+
+    trusted = get_settings().trusted_proxy_count
+
+    if trusted > 0:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+            if parts:
+                # The real client IP is the one our outermost trusted proxy
+                # appended. Clamp if the chain is shorter than expected (a
+                # spoofed-short header can only push the index left, never past 0).
+                idx = max(0, len(parts) - trusted)
+                return parts[idx]
+
+        # X-Real-IP is single-valued (set by nginx); only honor it behind a proxy.
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+
+    # No trusted proxy, or no forwarding headers: use the direct socket peer.
     if request.client:
         return request.client.host
 

@@ -67,7 +67,14 @@ class URNValidator:
     # Italian act types and their aliases
     ITALIAN_ACT_TYPES = {
         "legge": ["legge", "l."],
-        "decreto.legislativo": ["decreto.legislativo", "d.lgs.", "dlgs"],
+        "decreto.legislativo": [
+            "decreto.legislativo",
+            "d.lgs.",
+            "dlgs",
+            "lgs.",
+            "lgs",
+            "legislativo",
+        ],
         "decreto.legge": ["decreto.legge", "d.l.", "dl"],
         "decreto.presidente.repubblica": ["decreto.presidente.repubblica", "d.p.r.", "dpr"],
         "decreto.presidente.consiglio.ministri": [
@@ -125,10 +132,17 @@ class URNValidator:
             r"art\.?\s+\d+(?:,\s*comma\s+\d+)?.*?(?P<tipo>legge|l\.)\s+n\.?\s*(?P<numero>\d+)(?:del|/)\s*(?P<anno>\d{4})",
             re.IGNORECASE,
         ),
-        # "Regolamento (UE) 2024/1689"
-        re.compile(r"regolamento\s*\((?:ue|eu)\)\s+(?P<anno>\d{4})/(?P<numero>\d+)", re.IGNORECASE),
+        # "Regolamento (UE) 2024/1689" - capture tipo + an `eu` marker so
+        # _build_urn_from_match emits an EU URN (previously dropped: no tipo group).
+        re.compile(
+            r"(?P<tipo>regolamento)\s*\((?P<eu>ue|eu)\)\s+(?P<anno>\d{4})/(?P<numero>\d+)",
+            re.IGNORECASE,
+        ),
         # "Direttiva (UE) 2024/1689"
-        re.compile(r"direttiva\s*\((?:ue|eu)\)\s+(?P<anno>\d{4})/(?P<numero>\d+)", re.IGNORECASE),
+        re.compile(
+            r"(?P<tipo>direttiva)\s*\((?P<eu>ue|eu)\)\s+(?P<anno>\d{4})/(?P<numero>\d+)",
+            re.IGNORECASE,
+        ),
     ]
 
     # Month mapping for Italian dates
@@ -263,23 +277,22 @@ class URNValidator:
         if not (tipo and numero and anno):
             return None
 
-        # Determine authority and normalize type
-        autorita = "stato"
-        urn_tipo = tipo
-
-        # Check for EU legislation
-        if "ue" in tipo or "eu" in tipo:
+        # Determine authority and normalize the act type. EU citations carry an
+        # `eu` group (or "ue"/"eu" inside tipo); Italian ones go through the alias
+        # table. The two branches are mutually exclusive, so the Italian alias
+        # loop can no longer clobber the ".ue" suffix (the old bug where EU types
+        # fell through to "regolamento" without the EU authority).
+        is_eu = bool(groups.get("eu")) or "ue" in tipo or "eu" in tipo
+        if is_eu:
             autorita = "unione.europea"
-            if "regolamento" in tipo:
-                urn_tipo = "regolamento.ue"
-            elif "direttiva" in tipo:
-                urn_tipo = "direttiva.ue"
-
-        # Normalize type abbreviations to full names
-        for full_type, aliases in URNValidator.ITALIAN_ACT_TYPES.items():
-            if tipo in aliases:
-                urn_tipo = full_type
-                break
+            urn_tipo = "direttiva.ue" if "direttiva" in tipo else "regolamento.ue"
+        else:
+            autorita = "stato"
+            urn_tipo = tipo
+            for full_type, aliases in URNValidator.ITALIAN_ACT_TYPES.items():
+                if tipo in aliases:
+                    urn_tipo = full_type
+                    break
 
         # Parse date if we have day and month
         if groups.get("giorno") and groups.get("mese"):

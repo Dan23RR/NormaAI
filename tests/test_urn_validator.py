@@ -4,10 +4,9 @@ Citations are the core of NormaAI's "verified sources" promise, so this pins the
 validator's format rules, round-trip parsing, normalization and (Italian)
 citation extraction. TIER 1 (pure functions; no DB/network).
 
-NOTE: ``from_citation``/``extract_and_validate`` are utility helpers, not yet
-wired into the production CoVe path. A known limitation is documented in
-``test_from_citation_eu_regulation_not_yet_extracted`` (EU citation patterns do
-not capture an act ``tipo``, so EU references are currently not extracted).
+NOTE: ``from_citation``/``extract_and_validate`` are utility helpers (not wired
+into the production CoVe path yet). They extract both Italian and EU legislative
+references.
 """
 
 from __future__ import annotations
@@ -87,11 +86,20 @@ def test_from_citation_empty_on_plain_text():
     assert URNValidator.from_citation("questo testo non contiene citazioni") == []
 
 
-def test_from_citation_eu_regulation_not_yet_extracted():
-    # KNOWN LIMITATION: the EU citation regexes capture anno/numero but no `tipo`,
-    # so _build_urn_from_match (which requires tipo) drops them. Pinned so the day
-    # someone fixes EU extraction this test flips and is updated deliberately.
-    assert URNValidator.from_citation("come da Regolamento (UE) 2024/1689") == []
+def test_from_citation_extracts_eu_regulation():
+    urns = URNValidator.from_citation("come da Regolamento (UE) 2024/1689")
+    assert urns == ["urn:nir:unione.europea:regolamento.ue:2024;1689"]
+
+
+def test_from_citation_extracts_eu_directive():
+    urns = URNValidator.from_citation("ai sensi della Direttiva (UE) 2022/2464")
+    assert urns == ["urn:nir:unione.europea:direttiva.ue:2022;2464"]
+
+
+def test_from_citation_normalizes_dlgs_type():
+    # "d.lgs." must normalize to the full act type, not the raw "lgs." token.
+    urns = URNValidator.from_citation("vedi d.lgs. n. 138/2023")
+    assert urns == ["urn:nir:stato:decreto.legislativo:2023;138"]
 
 
 def test_extract_and_validate_separates_valid_and_invalid():

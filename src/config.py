@@ -147,6 +147,13 @@ class Settings(BaseSettings):
     cors_allow_headers: str = "Authorization,Content-Type,X-Request-ID,Accept"
     cors_max_age: int = 600  # preflight cache in seconds
 
+    # ─── Reverse-proxy trust ────────────────────────────────
+    # Number of trusted reverse proxies in front of the app (Hetzner/Vercel = 1).
+    # get_client_ip reads the IP appended by the OUTERMOST trusted proxy instead
+    # of the spoofable leftmost X-Forwarded-For entry. 0 = no proxy (ignore XFF
+    # and trust only the direct socket peer).
+    trusted_proxy_count: int = 1
+
     # ─── Public URL ─────────────────────────────────────────
     normaai_public_url: str = "https://normaai.org"
 

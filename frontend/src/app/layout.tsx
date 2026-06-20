@@ -96,7 +96,7 @@ const jsonLd = {
       operatingSystem: 'Web',
       url: SITE_URL,
       description:
-        'Q&A normativo con citazioni primary-source EUR-Lex, gap analysis multi-framework e monitor real-time delle modifiche regolatorie EU. Pipeline anti-allucinazione Chain-of-Verification.',
+        'Q&A normativo con citazioni primary-source EUR-Lex, gap analysis multi-framework e monitoraggio delle modifiche regolatorie EU. Pipeline anti-allucinazione Chain-of-Verification.',
       offers: {
         '@type': 'Offer',
         price: '0',

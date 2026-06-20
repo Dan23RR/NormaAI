@@ -56,28 +56,31 @@ Notes carried over from ADR-006:
 ## 2. 🔴 Enable real multi-tenant isolation (RLS) — the #1 readiness gap
 
 Today the app connects as the Postgres **owner** (`normaai`), so RLS is bypassed
-and tenant isolation is application-level only. To make it real:
+and tenant isolation is application-level only. The code-side groundwork is now
+done: `/auth/register` sets `app.current_org_id` after the org flush (PostgreSQL
+only), and the two-tenant pool-isolation test (`tests/test_rls_pool_isolation.py`)
+now **runs in CI** against a provisioned non-superuser role, so a future
+regression fails the build. What remains is the operational switch:
 
 1. Create the non-superuser role + fill the INSERT-policy gaps (one-time, as a
    superuser, on the live DB):
    ```bash
    psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<strong-app-password>'" -f scripts/setup_app_role.sql
    ```
-2. Apply the register code note in `scripts/setup_app_role.sql` (set
-   `app.current_org_id` right after the org flush in `/auth/register`).
-3. **Validate on staging** with a two-tenant check before prod:
+2. **Validate on staging** with a two-tenant check before prod:
    - register org A and org B; as A, confirm `/api/v1/clients`, `/alerts`,
      `/conversations`, `/gdpr/export` return **only** A's rows; repeat as B.
    - confirm register + create-client + create-alert still succeed (the INSERT
-     policies are correct).
-4. Switch the app to the non-superuser role and redeploy:
-   ```yaml
-   # docker-compose.prod.yml (app service)
-   DATABASE_URL: postgresql+asyncpg://normaai_app:${APP_DB_PASSWORD}@postgres:5432/normaai
+     policies + the register `set_config` are correct).
+3. Switch the app to the non-superuser role with the RLS overlay (set
+   `APP_DB_PASSWORD` in `.env` first; migrations still run as the `normaai`
+   owner, the overlay only repoints the long-lived app process):
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+     -f docker-compose.rls.yml up -d
    ```
-   Keep the superuser URL only for `alembic upgrade` (migrations run as owner).
 
-Until step 4 is done + verified, a cross-tenant leak is possible — do not put
+Until step 3 is done + verified, a cross-tenant leak is possible — do not put
 two real customers on the instance before this.
 
 ---

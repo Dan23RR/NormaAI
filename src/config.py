@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     # ─── Data Sources ─────────────────────────────────────────
     data_source: str = "both"  # "eurlex", "normattiva", or "both"
 
+    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD). Set this to
+    # the last seed/refresh date at deploy time. Surfaced in API metadata and PDF
+    # footers so a reader can tell how fresh the law is - the corpus is frozen
+    # between manual re-seeds and superseded_by is only set at seed time, so an
+    # honest staleness signal is the interim mitigation for serving repealed law.
+    corpus_as_of: str = ""
+
     # ─── Embedding ────────────────────────────────────────────
     # Multilingual by default: the corpus mixes EU-English (EUR-Lex) and Italian
     # (Normattiva) and most user queries are Italian. The previous English-only

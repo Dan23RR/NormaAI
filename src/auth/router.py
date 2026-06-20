@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ from src.auth.security import (
     token_blacklist,
     verify_password,
 )
-from src.db.engine import get_db_session
+from src.db.engine import RLS_GUC, get_db_session
 from src.db.models import Organization, User
 
 logger = logging.getLogger(__name__)
@@ -76,6 +76,21 @@ async def register(
     org = Organization(name=payload.organization_name, slug=slug)
     db.add(org)
     await db.flush()
+
+    # Set the RLS org context for the just-created org so the subsequent user
+    # INSERT passes the users_org_insert WITH CHECK under a NON-superuser role +
+    # FORCE ROW LEVEL SECURITY. No-op under the current superuser app role and
+    # skipped on sqlite (tests); REQUIRED once DATABASE_URL points at the
+    # normaai_app role (see scripts/setup_app_role.sql / docs/DEPLOY_READINESS.md).
+    try:
+        is_postgres = db.get_bind().dialect.name == "postgresql"
+    except Exception:
+        is_postgres = False
+    if is_postgres:
+        await db.execute(
+            text(f"SELECT set_config('{RLS_GUC}', :oid, true)"),
+            {"oid": str(org.id)},
+        )
 
     # Create user - rely on DB UNIQUE constraint to prevent race conditions
     user = User(

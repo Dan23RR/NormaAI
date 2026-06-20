@@ -165,13 +165,18 @@ def _build_metadata(
     framework: str | None = None,
 ) -> dict:
     """Build response metadata with tenant context."""
+    settings = get_settings()
     meta = {
         "timestamp": datetime.now(UTC).isoformat(),
-        "model": get_settings().active_model,
+        "model": settings.active_model,
         "org_id": str(user.org_id),
         "ai_generated": True,
         "disclaimer": "AI-assisted analysis. Not legal advice. Expert review recommended.",
     }
+    # Corpus freshness signal: the regulatory corpus is frozen between manual
+    # re-seeds, so tell the client how current the law is (empty => not configured).
+    if settings.corpus_as_of:
+        meta["corpus_as_of"] = settings.corpus_as_of
     if cached:
         meta["cached"] = True
     if framework:
@@ -235,7 +240,14 @@ async def ask_question(
         try:
             from src.cache import response_cache
 
-            cached = await response_cache.get("qa", payload.question, profile_dict, org_id=org_id)
+            # CoVe-verified answers differ from the cached non-CoVe draft and the
+            # cache key does not include the flag, so bypass the cache when CoVe
+            # is requested (avoids cross-serving a verified vs unverified result).
+            cached = (
+                None
+                if payload.enable_cove
+                else await response_cache.get("qa", payload.question, profile_dict, org_id=org_id)
+            )
             if cached:
                 response_body = {
                     "status": "success",
@@ -252,13 +264,18 @@ async def ask_question(
         except Exception as cache_err:
             logger.debug("cache_get_failed", endpoint="qa", error=str(cache_err))
 
-        result = await arun_qa(payload.question, profile_dict, org_id=org_id)
+        result = await arun_qa(
+            payload.question, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
+        )
 
-        # Cache with org isolation
+        # Cache with org isolation (skip when CoVe ran - see cache-read note above)
         try:
             from src.cache import response_cache
 
-            await response_cache.set("qa", payload.question, result, profile_dict, org_id=org_id)
+            if not payload.enable_cove:
+                await response_cache.set(
+                    "qa", payload.question, result, profile_dict, org_id=org_id
+                )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="qa", error=str(cache_err))
 
@@ -330,8 +347,12 @@ async def run_gap_analysis_endpoint(
         try:
             from src.cache import response_cache
 
-            cached = await response_cache.get(
-                "gap_analysis", payload.framework.value, profile_dict, org_id=org_id
+            cached = (
+                None
+                if payload.enable_cove
+                else await response_cache.get(
+                    "gap_analysis", payload.framework.value, profile_dict, org_id=org_id
+                )
             )
             if cached:
                 return {
@@ -344,15 +365,18 @@ async def run_gap_analysis_endpoint(
         except Exception as cache_err:
             logger.debug("cache_get_failed", endpoint="gap_analysis", error=str(cache_err))
 
-        result = await arun_gap_analysis(payload.framework.value, profile_dict, org_id=org_id)
+        result = await arun_gap_analysis(
+            payload.framework.value, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
+        )
 
-        # Cache with org isolation
+        # Cache with org isolation (skip when CoVe ran)
         try:
             from src.cache import response_cache
 
-            await response_cache.set(
-                "gap_analysis", payload.framework.value, result, profile_dict, org_id=org_id
-            )
+            if not payload.enable_cove:
+                await response_cache.set(
+                    "gap_analysis", payload.framework.value, result, profile_dict, org_id=org_id
+                )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="gap_analysis", error=str(cache_err))
 
@@ -418,8 +442,12 @@ async def monitor_change(
         try:
             from src.cache import response_cache
 
-            cached = await response_cache.get(
-                "monitor", payload.regulation_change, profile_dict, org_id=org_id
+            cached = (
+                None
+                if payload.enable_cove
+                else await response_cache.get(
+                    "monitor", payload.regulation_change, profile_dict, org_id=org_id
+                )
             )
             if cached:
                 return {
@@ -430,15 +458,18 @@ async def monitor_change(
         except Exception as cache_err:
             logger.debug("cache_get_failed", endpoint="monitor", error=str(cache_err))
 
-        result = await arun_monitor_check(payload.regulation_change, profile_dict, org_id=org_id)
+        result = await arun_monitor_check(
+            payload.regulation_change, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
+        )
 
-        # Cache with org isolation
+        # Cache with org isolation (skip when CoVe ran)
         try:
             from src.cache import response_cache
 
-            await response_cache.set(
-                "monitor", payload.regulation_change, result, profile_dict, org_id=org_id
-            )
+            if not payload.enable_cove:
+                await response_cache.set(
+                    "monitor", payload.regulation_change, result, profile_dict, org_id=org_id
+                )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="monitor", error=str(cache_err))
 

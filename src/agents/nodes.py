@@ -206,6 +206,9 @@ _INJECTION_GUARD = (
 )
 
 _CELEX_IN_TEXT = re.compile(r"\b3\d{4}[A-Z]{1,2}\d{3,4}\b")
+# Article reference like "Art. 19a", "Articolo 8(1)", "Article 12-bis" -> captures
+# the article number token (digits + optional trailing letter, e.g. "19a", "8").
+_ARTICLE_REF = re.compile(r"(?:art(?:icol[oei])?|article)\.?\s*(\d+\s*[a-z]?)", re.IGNORECASE)
 
 
 def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
@@ -239,6 +242,29 @@ def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
         for m in _CELEX_IN_TEXT.finditer(answer):
             if m.group(0) not in grounded_celex:
                 ungrounded += 1
+
+    # Article-level grounding: flag a citation whose article number appears in NO
+    # retrieved chunk. Conservative by design - it ONLY runs when the retrieved
+    # evidence has SUBSTANTIVE text (real legal chunks, not stubs), and only
+    # counts an article wholly absent from that text. The framework/CELEX checks
+    # above stay the primary signal; this catches a fabricated article number
+    # smuggled into an otherwise-grounded framework.
+    substantive = any(len(str(c.get("text", "")).strip()) > 30 for c in chunks)
+    if substantive and citations:
+        chunk_text = " ".join(
+            f"{c.get('text', '')} {c.get('article_number', '')}" for c in chunks
+        ).lower()
+        compact = chunk_text.replace(" ", "")
+        for cit in citations:
+            if not isinstance(cit, dict):
+                continue
+            ref = str(cit.get("reference", "") or cit.get("article_ref", ""))
+            for art in _ARTICLE_REF.findall(ref):
+                token = art.replace(" ", "").lower()
+                # match the compact ("19a") or spaced ("19") form
+                if token not in compact and art.strip().lower() not in chunk_text:
+                    ungrounded += 1
+                    break
 
     if ungrounded:
         result["requires_expert_review"] = True

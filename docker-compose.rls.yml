@@ -1,0 +1,29 @@
+# Real Row-Level Security overlay - opt-in.
+#
+# By default the app connects to Postgres as `normaai`, the bundled image's
+# SUPERUSER and the table OWNER, which BYPASSES RLS even with FORCE ROW LEVEL
+# SECURITY. So out of the box, multi-tenant isolation is enforced only by the
+# application-level `WHERE org_id = ...` clauses, with no database backstop.
+#
+# This overlay repoints the app's runtime DATABASE_URL to the NON-superuser
+# `normaai_app` role, which makes the migration-002 RLS policies actually
+# enforce tenant isolation at the database.
+#
+# ONE-TIME SETUP (on the live DB, as the `normaai` superuser):
+#   psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<APP_DB_PASSWORD>'" \
+#        -f scripts/setup_app_role.sql
+# then set APP_DB_PASSWORD in .env and deploy WITH this overlay:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.rls.yml up -d
+#
+# Alembic migrations still run as the `normaai` owner (it owns the schema); only
+# the long-lived app process connects as normaai_app.
+#
+# !! VALIDATE the two-tenant isolation check in docs/DEPLOY_READINESS.md on
+# staging BEFORE switching production traffic - a wrong policy either breaks
+# register or silently leaks across tenants.
+
+services:
+  app:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://normaai_app:${APP_DB_PASSWORD:?APP_DB_PASSWORD must be set to enable the RLS overlay}@postgres:5432/normaai

@@ -78,15 +78,21 @@ async def qa_stream_generator(
                 from src.agents.cove.orchestrator import CoVeOrchestrator
 
                 indexer = None
+                normattiva_client = None
                 try:
                     from src.api.app_state import app_state
 
                     indexer = getattr(app_state, "indexer", None)
+                    # Wire the Normattiva client so CoVe actually validates Italian
+                    # URN citations; without it _validate_citations silently skips them.
+                    normattiva_client = getattr(app_state, "normattiva_client", None)
                 except (ImportError, AttributeError):
                     pass
 
                 config = CoVeConfig(enabled=True)
-                orchestrator = CoVeOrchestrator(indexer=indexer, config=config)
+                orchestrator = CoVeOrchestrator(
+                    indexer=indexer, normattiva_client=normattiva_client, config=config
+                )
                 draft_state = {
                     "query": question,
                     "company_profile": profile_dict or {},
@@ -146,15 +152,21 @@ async def gap_analysis_stream_generator(
                 from src.agents.cove.orchestrator import CoVeOrchestrator
 
                 indexer = None
+                normattiva_client = None
                 try:
                     from src.api.app_state import app_state
 
                     indexer = getattr(app_state, "indexer", None)
+                    # Wire the Normattiva client so CoVe actually validates Italian
+                    # URN citations; without it _validate_citations silently skips them.
+                    normattiva_client = getattr(app_state, "normattiva_client", None)
                 except (ImportError, AttributeError):
                     pass
 
                 config = CoVeConfig(enabled=True)
-                orchestrator = CoVeOrchestrator(indexer=indexer, config=config)
+                orchestrator = CoVeOrchestrator(
+                    indexer=indexer, normattiva_client=normattiva_client, config=config
+                )
                 draft_state = {
                     "query": framework,
                     "company_profile": profile_dict,
@@ -213,15 +225,21 @@ async def monitor_stream_generator(
                 from src.agents.cove.orchestrator import CoVeOrchestrator
 
                 indexer = None
+                normattiva_client = None
                 try:
                     from src.api.app_state import app_state
 
                     indexer = getattr(app_state, "indexer", None)
+                    # Wire the Normattiva client so CoVe actually validates Italian
+                    # URN citations; without it _validate_citations silently skips them.
+                    normattiva_client = getattr(app_state, "normattiva_client", None)
                 except (ImportError, AttributeError):
                     pass
 
                 config = CoVeConfig(enabled=True)
-                orchestrator = CoVeOrchestrator(indexer=indexer, config=config)
+                orchestrator = CoVeOrchestrator(
+                    indexer=indexer, normattiva_client=normattiva_client, config=config
+                )
                 draft_state = {
                     "query": regulation_change,
                     "company_profile": profile_dict,

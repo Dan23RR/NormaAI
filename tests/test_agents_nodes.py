@@ -262,6 +262,42 @@ class TestGroundingGuard:
         out = _apply_grounding_guard(result, chunks)
         assert "grounding_warning" not in out
 
+    def test_grounded_article_reference_not_flagged(self):
+        # The cited article number IS present in the retrieved chunk text -> ok.
+        chunks = [
+            {
+                "framework": "GDPR",
+                "text": "Articolo 17 Diritto alla cancellazione. L'interessato ha diritto...",
+                "article_number": "Article 17",
+            }
+        ]
+        result = {
+            "answer": "You may request erasure.",
+            "citations": [{"framework": "GDPR", "reference": "Art. 17(1)"}],
+            "confidence_score": 0.9,
+        }
+        out = _apply_grounding_guard(result, chunks)
+        assert "grounding_warning" not in out
+        assert out["confidence_score"] == 0.9
+
+    def test_fabricated_article_reference_flags_and_caps(self):
+        # The cited article number appears in NO retrieved chunk -> ungrounded.
+        chunks = [
+            {
+                "framework": "GDPR",
+                "text": "Articolo 17 Diritto alla cancellazione...",
+                "article_number": "Article 17",
+            }
+        ]
+        result = {
+            "answer": "See the provision.",
+            "citations": [{"framework": "GDPR", "reference": "Art. 99(3)"}],
+            "confidence_score": 0.95,
+        }
+        out = _apply_grounding_guard(result, chunks)
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.6
+
     def test_bad_confidence_value_falls_back_to_0_6(self):
         result = {
             "answer": "ok",

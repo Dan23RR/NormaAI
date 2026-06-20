@@ -61,6 +61,18 @@ class _NormaPDF(FPDF):
             "It does not constitute legal advice. Consult qualified professionals "
             "before making compliance decisions."
         )
+        # Append the corpus as-of date when configured, so the reader knows how
+        # current the underlying law is (the corpus is frozen between re-seeds).
+        try:
+            from src.config import get_settings
+
+            as_of = getattr(get_settings(), "corpus_as_of", "")
+            if as_of:
+                self._disclaimer += (
+                    f" Regulatory corpus as of {as_of}; verify the primary source for changes."
+                )
+        except Exception:
+            pass
 
     def footer(self):
         self.set_y(-20)

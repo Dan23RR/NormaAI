@@ -7,7 +7,9 @@ samples, and writes:
   state['snc_decision']     - full SNCDecision dict
   state['snc_action']       - ADMIT_HIGH | ADMIT_MID | ABSTAIN
   state['confidence_score'] - overwritten with SNC trust score
-  state['result_json']      - overwritten with modal cluster representative
+  state['result_json']      - modal cluster representative, with confidence_score
+                              overwritten by the COMPUTED trust (the self-reported
+                              LLM confidence is kept as self_reported_confidence)
   state['requires_expert_review'] - True if action == ABSTAIN
   state['snc_audit']        - serialized audit blob for compliance logging
 
@@ -144,7 +146,22 @@ async def async_snc_governance_node(state: dict) -> dict:
     state["snc_decision"] = serialize_decision(decision)
     state["snc_action"] = decision.action
     state["confidence_score"] = decision.trust  # overwrite legacy confidence
-    state["result_json"] = json.dumps(decision.modal_answer, ensure_ascii=False)
+
+    # Surface the COMPUTED trust to the client - NOT the modal sample's
+    # self-declared confidence. _extract_result returns result_json, so writing
+    # the raw modal_answer here would show the LLM's own confidence number
+    # (self-grading) on every ADMIT path; only ABSTAIN carried the real trust.
+    # We override confidence_score with the computed trust and keep the original
+    # self-reported value alongside for transparency/auditing.
+    modal = decision.modal_answer
+    surfaced = dict(modal) if isinstance(modal, dict) else {"answer": str(modal), "citations": []}
+    surfaced["self_reported_confidence"] = (
+        modal.get("confidence_score") if isinstance(modal, dict) else None
+    )
+    surfaced["confidence_score"] = decision.trust
+    surfaced["snc_trust"] = decision.trust
+    surfaced["snc_action"] = decision.action
+    state["result_json"] = json.dumps(surfaced, ensure_ascii=False)
     state["requires_expert_review"] = decision.action == "ABSTAIN"
     state["snc_audit"] = state["snc_decision"]
 

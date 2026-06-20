@@ -258,8 +258,13 @@ class TestAsyncNodeHappyPath:
         assert out["snc_action"] == "ADMIT_MID"
         assert out["confidence_score"] == pytest.approx(0.7)
         assert out["requires_expert_review"] is False
-        # result_json overwritten with the modal answer.
-        assert json.loads(out["result_json"]) == decision.modal_answer
+        # result_json carries the modal answer but with the COMPUTED trust
+        # surfaced as confidence_score (not the sample's self-declared value).
+        surfaced = json.loads(out["result_json"])
+        assert surfaced["answer"] == decision.modal_answer["answer"]
+        assert surfaced["confidence_score"] == pytest.approx(0.7)
+        assert surfaced["snc_trust"] == pytest.approx(0.7)
+        assert surfaced["snc_action"] == "ADMIT_MID"
         # serialized audit blob present and consistent.
         assert out["snc_audit"] == out["snc_decision"]
         assert out["snc_decision"]["action"] == "ADMIT_MID"

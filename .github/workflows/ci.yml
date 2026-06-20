@@ -126,6 +126,25 @@ jobs:
             echo "Waiting for Qdrant... ($i/30)"; sleep 2
           done
           echo "Qdrant did not become ready in time" >&2; exit 1
+      - name: Provision non-superuser role for the RLS isolation test
+        # tests/test_rls_pool_isolation.py is the real two-tenant regression. It
+        # skips unless POSTGRES_RLS_TEST_URL points at a NON-superuser, NON-
+        # BYPASSRLS role (a superuser bypasses RLS and the assertions pass
+        # vacuously). The CI postgres user `normaai` is a superuser, so we create
+        # a dedicated `rls_tester` role here and point the test at it below.
+        env:
+          PGPASSWORD: ci-test-password
+        run: |
+          psql -h localhost -U normaai -d normaai_test -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rls_tester') THEN
+              CREATE ROLE rls_tester LOGIN PASSWORD 'rls-test-pw'
+                NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+            END IF;
+          END $$;
+          GRANT CONNECT ON DATABASE normaai_test TO rls_tester;
+          GRANT USAGE, CREATE ON SCHEMA public TO rls_tester;
+          SQL
       - name: Run tests with coverage
         run: |
           # Floor kept below the current real coverage (~88%, src/bizdev omitted
@@ -143,6 +162,9 @@ jobs:
           # Available for tests that exercise real Postgres (e.g. RLS policies).
           # Tier-2 tests default to sqlite; opt in via this URL.
           POSTGRES_TEST_URL: postgresql+asyncpg://normaai:ci-test-password@localhost:5432/normaai_test
+          # Non-superuser role (provisioned above) so the two-tenant RLS pool
+          # isolation test actually RUNS and gates the build instead of skipping.
+          POSTGRES_RLS_TEST_URL: postgresql+asyncpg://rls_tester:rls-test-pw@localhost:5432/normaai_test
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4

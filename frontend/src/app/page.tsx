@@ -104,8 +104,8 @@ export default function Home() {
               Aggiornato post-Omnibus I · CSRD scope 1.000+ dipendenti
             </p>
             <h1 className="font-serif text-5xl font-normal leading-[1.08] tracking-tight md:text-[64px]">
-              Compliance EU senza{' '}
-              <em className="italic text-clay">allucinazioni</em> AI.
+              Compliance EU con citazioni{' '}
+              <em className="italic text-clay">verificate</em>.
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-night-2">
               Il copilota normativo difendibile in audit per chi gestisce 7 framework EU. Citazioni
@@ -165,7 +165,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-start gap-2 pt-2 text-emerald-300">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>3/3 citazioni verificate · 0 fonti inventate</span>
+                  <span>3/3 citazioni verificate contro la fonte primaria</span>
                 </div>
               </div>
             </div>

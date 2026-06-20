@@ -38,7 +38,7 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title:
-    'NormaAI - Compliance EU senza allucinazioni AI | CSRD, AI Act, DORA, NIS2',
+    'NormaAI - Compliance EU con citazioni primary-source verificate | CSRD, AI Act, DORA, NIS2',
   description:
     'Il copilota normativo difendibile in audit per i 7 framework UE. Q&A con citazione primary source EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA per intermediari piccoli, NIS2, GDPR.',
   keywords: [
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     'consulenza ESG Italia',
   ],
   openGraph: {
-    title: 'NormaAI - Compliance EU senza allucinazioni AI',
+    title: 'NormaAI - Compliance EU con citazioni primary-source verificate',
     description:
       'Il copilota normativo difendibile in audit per i 7 framework UE. Citazione primary source EUR-Lex in 30 secondi.',
     url: SITE_URL,

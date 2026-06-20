@@ -603,6 +603,34 @@ class HybridIndexer:
             ),
         )
 
+    def mark_superseded(self, celex: str, superseded_by: str) -> int:
+        """Set ``superseded_by`` on every indexed chunk of a CELEX.
+
+        This is the write side of temporal freshness: at seed time superseded_by
+        is left unset for in-force regulations (so _build_filter's IsEmpty check
+        keeps them), and this method flips it once a regulation is no longer in
+        force - so the default retrieval filter stops serving repealed law as
+        current. ``superseded_by`` is the successor CELEX when known, else a
+        marker like ``"not_in_force"``.
+
+        Both args must be truthy (a blank celex would match the whole corpus and
+        a blank marker would not register as superseded under the IsEmpty filter)
+        - either is a no-op. Returns the number of chunks updated.
+        """
+        if not celex or not superseded_by:
+            return 0
+        flt = Filter(must=[FieldCondition(key="celex", match=MatchValue(value=celex))])
+        count = self.client.count(
+            collection_name=self.COLLECTION_NAME, count_filter=flt, exact=True
+        ).count
+        if count:
+            self.client.set_payload(
+                collection_name=self.COLLECTION_NAME,
+                payload={"superseded_by": superseded_by},
+                points=flt,
+            )
+        return count
+
     def get_collection_stats(self) -> dict:
         """Get collection info for monitoring."""
         info = self.client.get_collection(self.COLLECTION_NAME)

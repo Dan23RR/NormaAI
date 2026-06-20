@@ -382,19 +382,31 @@ class IngestionPipeline:
 
     def update(self, days_back: int = 7) -> dict:
         """
-        Incremental update: check for amendments and new publications.
-        Called by the periodic Celery job (every 6 hours).
+        Incremental update: refresh temporal status + index new publications.
+
+        Run on demand (CLI ``--action update``) or by the AcquisitionScheduler
+        when ACQUISITION_SCHEDULER_ENABLED=true. Re-checks the in-force status of
+        tracked regulations and marks any no longer in force as superseded (so
+        the corpus stops serving repealed law as current), then indexes recently
+        published legislation.
         """
         logger.info(f"NORMAAI UPDATE - Checking for changes (last {days_back} days)")
 
         start_time = time.time()
 
-        # Check amendments to tracked regulations
+        # Tracked CELEX numbers across all frameworks
         all_celex = []
         for celex_map in CORE_FRAMEWORKS.values():
             all_celex.extend(celex_map.keys())
 
+        # Check amendments to tracked regulations
         amendments = self.eurlex.check_for_new_amendments(all_celex)
+
+        # Temporal freshness: mark chunks of regulations no longer in force as
+        # superseded (an amendment alone does NOT supersede a still-in-force act).
+        freshness = refresh_in_force_status(
+            self.eurlex, self.indexer, all_celex, amendments=amendments
+        )
 
         # Check for new legislation
         new_legislation = self.eurlex.fetch_recent_legislation(days_back=days_back)
@@ -431,12 +443,15 @@ class IngestionPipeline:
             "timestamp": datetime.utcnow().isoformat(),
             "elapsed_seconds": round(elapsed, 1),
             "amendments_found": len(amendments),
+            "regulations_superseded": freshness["superseded_regulations"],
+            "chunks_superseded": freshness["superseded_chunks"],
             "new_legislation": len(new_legislation),
             "new_chunks_indexed": indexed,
         }
 
         logger.info(
             f"UPDATE COMPLETE: {len(amendments)} amendments, "
+            f"{freshness['superseded_chunks']} chunks superseded, "
             f"{len(new_legislation)} new, {indexed} chunks indexed ({elapsed:.1f}s)"
         )
         return stats
@@ -546,6 +561,66 @@ class IngestionPipeline:
 
     def close(self):
         self.eurlex.close()
+
+
+def refresh_in_force_status(eurlex, indexer, tracked_celex: list[str], amendments=None) -> dict:
+    """Re-check the in-force status of tracked regulations and mark the chunks of
+    any that are NO LONGER in force as superseded.
+
+    This is the write side of temporal freshness. The retrieval filter excludes
+    chunks whose ``superseded_by`` is set, but at seed time that field is only
+    written from the initial is_in_force flag and never refreshed - so a norm
+    repealed AFTER the seed kept being served as current law. This closes that
+    gap: it re-queries EUR-Lex for each tracked CELEX and, when a regulation is
+    now ``is_in_force == False``, flips ``superseded_by`` on its chunks.
+
+    Correctness guard: an amendment alone does NOT supersede a still-in-force
+    regulation (e.g. CSRD amended by Omnibus is still the law) - only a False
+    in-force flag triggers a mark. When EUR-Lex names a successor act, the most
+    recent amending CELEX is used as the pointer; otherwise ``"not_in_force"``.
+    A None in-force flag (unknown) is treated conservatively as "leave as-is".
+
+    Returns ``{"checked", "superseded_regulations", "superseded_chunks"}``.
+    """
+    if amendments is None:
+        try:
+            amendments = eurlex.check_for_new_amendments(tracked_celex)
+        except Exception as e:
+            logger.warning(f"  amendment lookup failed: {e}")
+            amendments = []
+
+    # original CELEX -> most recent amending CELEX (amendments are DESC by date)
+    latest_amender: dict[str, str] = {}
+    for a in amendments:
+        orig = getattr(a, "original_celex", None)
+        amending = getattr(a, "amending_celex", None)
+        if orig and amending:
+            latest_amender.setdefault(orig, amending)
+
+    checked = 0
+    superseded_regulations = 0
+    superseded_chunks = 0
+    for celex in tracked_celex:
+        try:
+            meta = eurlex.fetch_regulation_metadata(celex)
+        except Exception as e:
+            logger.warning(f"  in-force re-check failed for {celex}: {e}")
+            continue
+        checked += 1
+        # Only mark when EXPLICITLY no longer in force (None = unknown = leave it).
+        if meta.is_in_force is False:
+            marker = latest_amender.get(celex) or "not_in_force"
+            marked = indexer.mark_superseded(celex, marker)
+            if marked:
+                superseded_regulations += 1
+                superseded_chunks += marked
+                logger.info(f"  Superseded {marked} chunks: {celex} -> {marker}")
+
+    return {
+        "checked": checked,
+        "superseded_regulations": superseded_regulations,
+        "superseded_chunks": superseded_chunks,
+    }
 
 
 def main():

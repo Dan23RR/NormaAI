@@ -8,7 +8,7 @@ without any network/LLM/DB access. asyncio_mode is "auto" in this repo, so bare
 """
 
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.crawler.scheduler import AcquisitionScheduler
 
@@ -244,17 +244,31 @@ class TestAcquireEurlex:
 
     async def test_empty_client_no_regulations(self):
         # MagicMock client whose query methods return [] -> no downloads, no
-        # indexing. Avoids touching the real HybridIndexer / chunkers.
+        # indexing. Avoids touching the real HybridIndexer / chunkers (the
+        # in-force refresh is stubbed so it neither builds a real indexer nor
+        # hits Qdrant).
         client = MagicMock()
         client.check_for_new_amendments.return_value = []
         client.fetch_recent_legislation.return_value = []
         sched = AcquisitionScheduler(eurlex_client=client)
 
-        result = await sched._acquire_eurlex()
+        with (
+            patch("src.nlp.embedding.indexer.HybridIndexer"),
+            patch(
+                "src.pipeline.refresh_in_force_status",
+                return_value={
+                    "checked": 0,
+                    "superseded_regulations": 0,
+                    "superseded_chunks": 0,
+                },
+            ),
+        ):
+            result = await sched._acquire_eurlex()
 
         assert result == {
             "regulations_found": 0,
             "amendments_found": 0,
+            "superseded_chunks": 0,
             "chunks_indexed": 0,
         }
         # The client was actually consulted with the CORE_FRAMEWORKS celex list.
@@ -273,12 +287,46 @@ class TestAcquireEurlex:
         client.fetch_recent_legislation.return_value = []
         sched = AcquisitionScheduler(eurlex_client=client)
 
-        result = await sched._acquire_eurlex()
+        with (
+            patch("src.nlp.embedding.indexer.HybridIndexer"),
+            patch(
+                "src.pipeline.refresh_in_force_status",
+                return_value={
+                    "checked": 0,
+                    "superseded_regulations": 0,
+                    "superseded_chunks": 0,
+                },
+            ),
+        ):
+            result = await sched._acquire_eurlex()
 
         assert result["regulations_found"] == 0
         assert result["amendments_found"] == 2
         assert result["chunks_indexed"] == 0
         client.download_full_text_html.assert_not_called()
+
+    async def test_superseded_chunks_surfaced_from_refresh(self):
+        # The in-force refresh result is surfaced in the cycle stats.
+        client = MagicMock()
+        client.check_for_new_amendments.return_value = []
+        client.fetch_recent_legislation.return_value = []
+        sched = AcquisitionScheduler(eurlex_client=client)
+
+        with (
+            patch("src.nlp.embedding.indexer.HybridIndexer"),
+            patch(
+                "src.pipeline.refresh_in_force_status",
+                return_value={
+                    "checked": 8,
+                    "superseded_regulations": 1,
+                    "superseded_chunks": 12,
+                },
+            ) as mock_refresh,
+        ):
+            result = await sched._acquire_eurlex()
+
+        assert result["superseded_chunks"] == 12
+        mock_refresh.assert_called_once()
 
     async def test_client_raising_is_caught_and_reported(self):
         # The broad try/except wraps the whole body; an exploding client method

@@ -573,3 +573,41 @@ class TestCollectionStats:
         idx = make_indexer(client)
         stats = idx.get_collection_stats()
         assert stats["status"] == "yellow"
+
+
+class TestMarkSuperseded:
+    def test_marks_chunks_and_returns_count(self):
+        client = MagicMock()
+        client.count.return_value.count = 3
+        idx = make_indexer(client)
+
+        n = idx.mark_superseded("32022L2464", "32026L0470")
+
+        assert n == 3
+        client.set_payload.assert_called_once()
+        kwargs = client.set_payload.call_args.kwargs
+        assert kwargs["payload"] == {"superseded_by": "32026L0470"}
+        assert kwargs["collection_name"] == idx.COLLECTION_NAME
+        # the points selector filters on the target CELEX
+        cond = kwargs["points"].must[0]
+        assert cond.key == "celex"
+        assert cond.match.value == "32022L2464"
+
+    def test_zero_count_skips_set_payload(self):
+        client = MagicMock()
+        client.count.return_value.count = 0
+        idx = make_indexer(client)
+
+        n = idx.mark_superseded("32022L2464", "X")
+
+        assert n == 0
+        client.set_payload.assert_not_called()
+
+    def test_falsy_args_are_noop(self):
+        client = MagicMock()
+        idx = make_indexer(client)
+
+        assert idx.mark_superseded("", "X") == 0
+        assert idx.mark_superseded("C1", "") == 0
+        client.count.assert_not_called()
+        client.set_payload.assert_not_called()

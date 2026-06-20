@@ -198,6 +198,26 @@ class AcquisitionScheduler:
             amendments = self.eurlex.check_for_new_amendments(all_celex)
             logger.info(f"    Found {len(amendments)} amendments")
 
+            # Temporal freshness: mark chunks of regulations no longer in force as
+            # superseded so repealed law stops being served as current. Run on a
+            # worker thread - the SPARQL re-checks and Qdrant writes are blocking.
+            superseded_chunks = 0
+            try:
+                from src.nlp.embedding.indexer import HybridIndexer
+                from src.pipeline import refresh_in_force_status
+
+                freshness = await asyncio.to_thread(
+                    refresh_in_force_status,
+                    self.eurlex,
+                    HybridIndexer(),
+                    all_celex,
+                    amendments,
+                )
+                superseded_chunks = freshness["superseded_chunks"]
+                logger.info(f"    Superseded {superseded_chunks} chunks (no longer in force)")
+            except Exception as e:
+                logger.warning(f"    in-force refresh failed: {e}")
+
             # Check for new legislation
             new_legislation = self.eurlex.fetch_recent_legislation(days_back=1)
             logger.info(f"    Found {len(new_legislation)} new regulations")
@@ -248,6 +268,7 @@ class AcquisitionScheduler:
             return {
                 "regulations_found": len(new_legislation),
                 "amendments_found": len(amendments),
+                "superseded_chunks": superseded_chunks,
                 "chunks_indexed": indexed,
             }
 

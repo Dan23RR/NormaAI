@@ -89,10 +89,26 @@ async def trigger_crawl(
                 all_celex.extend(celex_map.keys())
 
             amendments = await asyncio.to_thread(client.check_for_new_amendments, all_celex)
+
+            # Apply temporal freshness: mark chunks of regulations no longer in
+            # force as superseded - not just count amendments.
+            from src.nlp.embedding.indexer import HybridIndexer
+            from src.pipeline import refresh_in_force_status
+
+            freshness = await asyncio.to_thread(
+                refresh_in_force_status, client, HybridIndexer(), all_celex, amendments
+            )
             return {
                 "status": "success",
-                "message": f"Amendment check complete: {len(amendments)} amendments found",
-                "data": {"amendments_count": len(amendments)},
+                "message": (
+                    f"Amendment check complete: {len(amendments)} amendments, "
+                    f"{freshness['superseded_chunks']} chunks superseded"
+                ),
+                "data": {
+                    "amendments_count": len(amendments),
+                    "regulations_superseded": freshness["superseded_regulations"],
+                    "chunks_superseded": freshness["superseded_chunks"],
+                },
             }
     except Exception as e:
         logger.error("crawl_error", error=str(e))

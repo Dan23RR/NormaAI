@@ -26,7 +26,7 @@ import pytest
 
 import src.nlp.chunking.legal_chunker as legal_chunker_mod
 import src.pipeline as pipeline_mod
-from src.pipeline import IngestionPipeline
+from src.pipeline import IngestionPipeline, refresh_in_force_status
 
 
 # --------------------------------------------------------------------------- #
@@ -629,3 +629,86 @@ class TestMainDispatch:
             pytest.raises(SystemExit),
         ):
             pipeline_mod.main()
+
+
+# --------------------------------------------------------------------------- #
+# refresh_in_force_status() - temporal freshness write-side
+# --------------------------------------------------------------------------- #
+def _meta(is_in_force):
+    m = MagicMock()
+    m.is_in_force = is_in_force
+    return m
+
+
+class TestRefreshInForceStatus:
+    def test_marks_only_not_in_force_regs(self):
+        eurlex = MagicMock()
+        # C1 repealed, C2 in force, C3 unknown(None) -> only C1 marked
+        eurlex.fetch_regulation_metadata.side_effect = [_meta(False), _meta(True), _meta(None)]
+        indexer = MagicMock()
+        indexer.mark_superseded.return_value = 5
+
+        out = refresh_in_force_status(eurlex, indexer, ["C1", "C2", "C3"], amendments=[])
+
+        assert out == {"checked": 3, "superseded_regulations": 1, "superseded_chunks": 5}
+        indexer.mark_superseded.assert_called_once_with("C1", "not_in_force")
+
+    def test_uses_amending_celex_as_marker_when_known(self):
+        eurlex = MagicMock()
+        eurlex.fetch_regulation_metadata.return_value = _meta(False)
+        indexer = MagicMock()
+        indexer.mark_superseded.return_value = 2
+        amd = MagicMock()
+        amd.original_celex = "C1"
+        amd.amending_celex = "CNEW"
+
+        out = refresh_in_force_status(eurlex, indexer, ["C1"], amendments=[amd])
+
+        indexer.mark_superseded.assert_called_once_with("C1", "CNEW")
+        assert out["superseded_chunks"] == 2
+
+    def test_in_force_reg_not_marked(self):
+        eurlex = MagicMock()
+        eurlex.fetch_regulation_metadata.return_value = _meta(True)
+        indexer = MagicMock()
+
+        out = refresh_in_force_status(eurlex, indexer, ["C1"], amendments=[])
+
+        indexer.mark_superseded.assert_not_called()
+        assert out["superseded_regulations"] == 0
+
+    def test_metadata_error_is_non_fatal(self):
+        eurlex = MagicMock()
+        eurlex.fetch_regulation_metadata.side_effect = RuntimeError("sparql down")
+        indexer = MagicMock()
+
+        out = refresh_in_force_status(eurlex, indexer, ["C1"], amendments=[])
+
+        assert out["checked"] == 0
+        indexer.mark_superseded.assert_not_called()
+
+    def test_string_amendments_tolerated(self):
+        # update() passes amendments as plain strings in some tests; must not crash.
+        eurlex = MagicMock()
+        eurlex.fetch_regulation_metadata.return_value = _meta(True)
+        indexer = MagicMock()
+
+        out = refresh_in_force_status(eurlex, indexer, ["C1"], amendments=["a1", "a2"])
+
+        assert out["checked"] == 1
+
+
+class TestUpdateSurfacesFreshness:
+    def test_update_includes_superseded_stats(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["eurlex"].check_for_new_amendments.return_value = []
+        m["eurlex"].fetch_recent_legislation.return_value = []
+        m["eurlex"].fetch_regulation_metadata.return_value = _meta(True)  # all in force
+
+        stats = p.update()
+
+        assert stats["chunks_superseded"] == 0
+        assert stats["regulations_superseded"] == 0
+        # the in-force re-check actually queried the tracked corpus
+        assert m["eurlex"].fetch_regulation_metadata.call_count > 0
+        m["indexer"].mark_superseded.assert_not_called()

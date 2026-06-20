@@ -167,7 +167,7 @@ jobs:
           POSTGRES_RLS_TEST_URL: postgresql+asyncpg://rls_tester:rls-test-pw@localhost:5432/normaai_test
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: coverage.xml
@@ -307,7 +307,7 @@ jobs:
           format: cyclonedx-json
           output-file: sbom.cdx.json
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx
           path: sbom.cdx.json

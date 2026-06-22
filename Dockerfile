@@ -48,6 +48,10 @@ RUN python -c "from fastembed import TextEmbedding; \
 COPY src/ src/
 COPY prompts/ prompts/
 COPY scripts/ scripts/
+# Migrations: needed so `docker compose run app alembic upgrade head` works in the
+# container (without these, alembic loads an empty config -> "No script_location").
+COPY alembic/ alembic/
+COPY alembic.ini ./
 
 # Set ownership (covers the baked model cache too)
 RUN chown -R normaai:normaai /app

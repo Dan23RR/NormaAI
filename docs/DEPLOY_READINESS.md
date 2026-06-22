@@ -38,18 +38,33 @@ Consequences to accept before the force-push:
 ## 1. Standard deploy
 
 ```bash
-# on the server, from /opt/normaai
+# on the server, from /opt/normaai  (service is `app`, not `api`)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm api alembic upgrade head
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-curl -fsS http://localhost:8000/health   # expect 200
+docker exec normaai-app curl -fsS http://localhost:8000/health   # expect {"status":"ok",...}
 ```
 
-Notes carried over from ADR-006:
-- The embedding model is multilingual; if the corpus was seeded with the old
-  English model, **re-seed**: `... run --rm api python -m src.pipeline --action seed --recreate` (~40 min; run in tmux).
-- `APP_ENV=production` requires real RSA JWT keys + a real `APP_SECRET_KEY`
-  (HS256 + `change-me` are fatal by design). They are already on the server `.env`.
+Notes:
+- **alembic in the image**: the Dockerfile now `COPY`s `alembic/` + `alembic.ini`,
+  so `run --rm app alembic upgrade head` works after a rebuild. (Before that fix it
+  failed with *"No 'script_location' key"* because the config wasn't in the image.)
+- **schema came from `init_db.sql`, not alembic**: the first DB was created by
+  `scripts/init_db.sql` (mounted at `/docker-entrypoint-initdb.d/`), so `alembic
+  upgrade head` may hit *"relation already exists"*. If so, `alembic stamp head`
+  to record the version, then **run `scripts/setup_app_role.sql`** (§2) which
+  reconciles the RLS policies to the migration intent (init_db.sql's RLS is
+  partial - e.g. it enables RLS on `conversations` but creates no read policy).
+- **health from the host**: the prod overlay removes the app's host port (Caddy
+  fronts it), so `curl localhost:8000` from the host fails by design - probe via
+  `docker exec normaai-app curl ...` or through Caddy (`https://api.normaai.org`).
+- **qdrant "unhealthy"**: the qdrant image has no curl, so its old healthcheck
+  always failed and blocked the app. Fixed (healthcheck removed, app waits on
+  `service_started`). If you see it on an un-pulled server, `git pull` first.
+- ADR-006: if the corpus was seeded with the old English embedding model,
+  **re-seed**: `... run --rm app python -m src.pipeline --action seed --recreate`
+  (~40 min; run in tmux). `APP_ENV=production` needs real RSA JWT keys + a real
+  `APP_SECRET_KEY` (already on the server `.env`).
 
 ---
 

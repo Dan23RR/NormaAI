@@ -94,6 +94,31 @@ def _list_client_ids(client: httpx.Client, token: str) -> set[str]:
     return {c["id"] for c in r.json()}
 
 
+def _create_conversation(client: httpx.Client, token: str) -> str:
+    r = client.post("/api/v1/conversations", json={}, headers=_auth(token))
+    if r.status_code != 201:
+        _fail(
+            f"create conversation returned {r.status_code} (expected 201) - the role "
+            f"cannot write/read conversations under RLS (missing conversations policy? "
+            f"run the updated scripts/setup_app_role.sql). Body: {r.text[:300]}"
+        )
+    cid = (r.json().get("data") or {}).get("id")
+    if not cid:
+        _fail(
+            "create conversation returned no id - the post-insert re-fetch likely hit the "
+            "missing conversations read policy (run the updated scripts/setup_app_role.sql)"
+        )
+    print(f"  ok: created conversation (id={cid})")
+    return cid
+
+
+def _list_conversation_ids(client: httpx.Client, token: str) -> set[str]:
+    r = client.get("/api/v1/conversations", headers=_auth(token))
+    if r.status_code != 200:
+        _fail(f"list conversations returned {r.status_code}: {r.text[:200]}")
+    return {c["id"] for c in r.json().get("data", [])}
+
+
 def main() -> None:
     print(f"Two-tenant RLS isolation check against {BASE_URL}\n")
     with httpx.Client(base_url=BASE_URL, timeout=30.0) as client:
@@ -133,6 +158,19 @@ def main() -> None:
                 f"(expected 404)"
             )
         print("  ok: cross-tenant fetch-by-id is 404 (no IDOR)")
+
+        # Conversations: init_db.sql ENABLEs RLS on this table but creates NO read
+        # policy, so a non-superuser role sees zero rows (and the create endpoint's
+        # post-insert re-fetch fails). The clients checks above can't catch this -
+        # clients has a policy, conversations doesn't until setup_app_role.sql runs.
+        print("\nChecking conversations isolation...")
+        conv_a = _create_conversation(client, token_a)
+        _create_conversation(client, token_b)
+        if conv_a not in _list_conversation_ids(client, token_a):
+            _fail("org A cannot see its OWN conversation - conversations RLS read policy missing")
+        if conv_a in _list_conversation_ids(client, token_b):
+            _fail("CROSS-TENANT LEAK: org B sees org A's conversation")
+        print("  ok: conversations are isolated and readable by their owner")
 
     print("\nRESULT: PASSED - register + create work under the role, and the two")
     print("tenants are isolated end-to-end. (Confirm the role is non-superuser")

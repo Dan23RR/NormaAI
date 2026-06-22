@@ -37,11 +37,11 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+    # No container healthcheck: the qdrant image ships without curl/wget/sh, so a
+    # CMD healthcheck fails with "executable not found" and marks the service
+    # unhealthy forever, blocking dependents (this bit the prod deploy). Qdrant
+    # readiness is handled app-side (app_state.qdrant_available, fail-closed) and
+    # the app depends_on this service with condition: service_started.
     restart: unless-stopped
     deploy:
       resources:
@@ -96,7 +96,11 @@ services:
       postgres:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
+        # service_started, not service_healthy: the qdrant image has no in-container
+        # health tool (see the qdrant service above). The app handles qdrant
+        # readiness itself (fail-closed) so it must not be gated on a health probe
+        # that can never pass.
+        condition: service_started
       redis:
         condition: service_healthy
     healthcheck:

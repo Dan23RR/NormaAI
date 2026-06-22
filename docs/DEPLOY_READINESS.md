@@ -67,11 +67,16 @@ regression fails the build. What remains is the operational switch:
    ```bash
    psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<strong-app-password>'" -f scripts/setup_app_role.sql
    ```
-2. **Validate on staging** with a two-tenant check before prod:
-   - register org A and org B; as A, confirm `/api/v1/clients`, `/alerts`,
-     `/conversations`, `/gdpr/export` return **only** A's rows; repeat as B.
-   - confirm register + create-client + create-alert still succeed (the INSERT
-     policies + the register `set_config` are correct).
+2. **Validate on staging** with a two-tenant check before prod - run the bundled
+   harness against the running instance:
+   ```bash
+   python scripts/validate_rls_two_tenant.py http://localhost:8000
+   ```
+   It registers org A + org B, creates a client for each, and asserts that
+   register + create WORK under the role (INSERT policies + register `set_config`
+   correct) AND that neither org sees the other's client by list or by id (no
+   IDOR). Exit 0 = PASSED. Also confirm the role itself is non-privileged:
+   `psql "$DATABASE_URL" -c "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user;"` → `f | f`.
 3. Switch the app to the non-superuser role with the RLS overlay (set
    `APP_DB_PASSWORD` in `.env` first; migrations still run as the `normaai`
    owner, the overlay only repoints the long-lived app process):

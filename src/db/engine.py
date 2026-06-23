@@ -99,39 +99,50 @@ class DatabaseSessionManager:
             org_id: Organization ID for Row-Level Security. When set,
                     PostgreSQL RLS policies will filter data to this org.
 
-        Tenant isolation guarantee: the connection-scoped GUC set below is reset
-        on every pool checkin (see ``_reset_rls_on_checkin``), so a no-org
-        session can never inherit a stale org context from a pooled connection.
+        Tenant isolation guarantee: the org GUC is re-applied at the START of
+        every transaction (see the ``after_begin`` listener below) and reset on
+        every pool checkin (``_reset_rls_on_checkin``), so a no-org session can
+        never inherit a stale org context from a pooled connection.
+
+        Why per-transaction (not once at session start): SQLAlchemy RELEASES the
+        connection back to the pool on ``commit()``, so a GUC set a single time
+        is lost for the NEXT transaction the same session runs - e.g. the
+        post-commit ``refresh()`` in create_client, whose SELECT then sees zero
+        rows under RLS and fails ("Could not refresh instance"). Re-asserting the
+        GUC on each ``after_begin`` keeps the commit-then-read pattern correct.
 
         Defence-in-depth only: RLS is bypassed when the app connects as a
         superuser or the table owner. Production MUST use a NON-superuser role
-        with FORCE ROW LEVEL SECURITY (see docs/DEPLOY_HETZNER.md), otherwise
-        this context is advisory and tenant isolation is not actually enforced.
+        (see docs/DEPLOY_HETZNER.md), otherwise this context is advisory and
+        tenant isolation is not actually enforced.
         """
         if self._sessionmaker is None:
             raise RuntimeError("DatabaseSessionManager is not initialized. Call init() first.")
         session = self._sessionmaker()
-        try:
-            # `SET LOCAL` would be lost across the multiple commits a request
-            # performs, so we use connection-scoped set_config(..., is_local=false).
-            if org_id:
-                await session.execute(
-                    text(f"SELECT set_config('{RLS_GUC}', :org_id, false)"),
-                    {"org_id": str(org_id)},
+
+        listener: Callable[..., None] | None = None
+        if org_id:
+            org_value = str(org_id)
+
+            def _apply_org_context(_sess: Any, _trans: Any, conn: Any) -> None:
+                # Transaction-local (is_local=true): set fresh each transaction,
+                # auto-cleared at its end so it can never bleed to the next one.
+                conn.execute(
+                    text(f"SELECT set_config('{RLS_GUC}', :v, true)"),
+                    {"v": org_value},
                 )
+
+            listener = _apply_org_context
+            event.listen(session.sync_session, "after_begin", listener)
+
+        try:
             yield session
         except Exception:
             await session.rollback()
             raise
         finally:
-            # Eager best-effort reset (the pool checkin hook is the real
-            # guarantee; this just clears it sooner for the common path).
-            if org_id:
-                try:
-                    await session.execute(text(f"SELECT set_config('{RLS_GUC}', '', false)"))
-                    await session.commit()
-                except Exception:  # noqa: BLE001 - best-effort; pool checkin still resets
-                    pass
+            if listener is not None:
+                event.remove(session.sync_session, "after_begin", listener)
             await session.close()
 
     @contextlib.asynccontextmanager

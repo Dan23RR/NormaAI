@@ -8,13 +8,12 @@ real ``test.db``: it asserts the *mechanics* with mocks and fake sessions —
 
   * ``init()`` builds the engine + sessionmaker and registers the ``checkin``
     listener ONLY for a postgresql backend, NOT for sqlite.
-  * ``session(org_id)`` sets the connection-scoped GUC via
-    ``set_config(..., false)`` and best-effort resets+commits it in ``finally``.
-  * ``session()`` without an org never touches the GUC.
+  * ``session(org_id)`` registers an ``after_begin`` listener that re-applies the
+    org GUC (``set_config(..., is_local=true)``) at EVERY transaction (so it
+    survives the connection release on commit), and removes it on teardown.
+  * ``session()`` without an org registers no listener and never sets the GUC.
   * ``session()`` before ``init()`` raises RuntimeError("...not initialized...").
-  * the exception path rolls back, still resets the GUC, and closes.
-  * a failing best-effort reset is swallowed (the pool checkin is the real
-    guarantee) and the session is still closed.
+  * the exception path rolls back, removes the listener, and closes.
   * ``close()`` disposes the engine and resets ``_engine``/``_sessionmaker``.
   * ``get_db_session`` / ``get_scoped_db_session`` / ``get_tenant_session``
     drive ``db_manager.session(...)`` correctly.
@@ -61,22 +60,20 @@ PG_DSN = "postgresql+asyncpg://u:pw@localhost:5432/normaai_test_unused"
 
 
 class FakeSession:
-    """Records every awaited operation so tests can assert the exact SQL/order.
+    """Records body operations and carries a ``sync_session`` MagicMock.
 
-    ``fail_reset`` forces the best-effort reset (``set_config(..., '')``) in the
-    ``finally`` block to raise, to exercise the swallow-and-still-close path.
+    The RLS org GUC is applied by an ``after_begin`` listener registered on
+    ``sync_session`` (re-asserted at every transaction begin so it survives the
+    connection release on commit), NOT by a direct execute on this session - so
+    tests observe the listener via patched ``event.listen``/``event.remove``.
     """
 
-    def __init__(self, *, fail_reset: bool = False) -> None:
+    def __init__(self) -> None:
         self.calls: list[tuple] = []
-        self.fail_reset = fail_reset
+        self.sync_session = MagicMock(name="sync_session")
 
     async def execute(self, stmt, params=None):
-        sql = str(stmt)
-        if self.fail_reset and "set_config('app.current_org_id', ''" in sql:
-            self.calls.append(("execute_RAISE", sql, params))
-            raise RuntimeError("simulated reset failure")
-        self.calls.append(("execute", sql, params))
+        self.calls.append(("execute", str(stmt), params))
         return MagicMock(name="Result")
 
     async def commit(self):
@@ -90,7 +87,7 @@ class FakeSession:
 
 
 def _execute_sqls(session: FakeSession) -> list[str]:
-    return [c[1] for c in session.calls if c[0] in ("execute", "execute_RAISE")]
+    return [c[1] for c in session.calls if c[0] == "execute"]
 
 
 def _make_fake_async_engine(backend: str) -> MagicMock:
@@ -218,6 +215,14 @@ class TestClose:
 # ───────────────────────── session() GUC mechanics ─────────────────────────
 
 
+def _registered_after_begin(mock_listen: MagicMock):
+    """Return (target, listener_fn) for the single after_begin registration."""
+    assert mock_listen.call_count == 1, "exactly one listener should be registered"
+    target, ident, fn = mock_listen.call_args.args
+    assert ident == "after_begin"
+    return target, fn
+
+
 class TestSessionMechanics:
     async def test_not_initialized_raises_runtime_error(self):
         mgr = DatabaseSessionManager()
@@ -225,96 +230,102 @@ class TestSessionMechanics:
             async with mgr.session():
                 pass
 
-    async def test_session_with_org_sets_and_resets_guc(self):
+    async def test_session_with_org_registers_after_begin_listener_that_sets_guc(self):
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
 
-        async with mgr.session(org_id="org-123") as s:
-            assert s is fake
-
-        sqls = _execute_sqls(fake)
-        # 1) connection-scoped SET (is_local=false), bound param, not f-string'd
-        assert sqls[0] == f"SELECT set_config('{RLS_GUC}', :org_id, false)"
-        assert fake.calls[0] == (
-            "execute",
-            f"SELECT set_config('{RLS_GUC}', :org_id, false)",
-            {"org_id": "org-123"},
-        )
-        # 2) finally: best-effort reset to empty + commit, then close
-        assert sqls[1] == f"SELECT set_config('{RLS_GUC}', '', false)"
-        kinds = [c[0] for c in fake.calls]
-        assert kinds == ["execute", "execute", "commit", "close"]
+        with (
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove") as mock_remove,
+        ):
+            async with mgr.session(org_id="org-123") as s:
+                assert s is fake
+            # listener registered on the session's sync_session for after_begin
+            target, fn = _registered_after_begin(mock_listen)
+            assert target is fake.sync_session
+            # and the listener, fired with a connection, sets the GUC
+            # transaction-local (is_local=true) with the bound org value.
+            conn = MagicMock()
+            fn(MagicMock(), MagicMock(), conn)
+            stmt, params = conn.execute.call_args.args
+            assert str(stmt) == f"SELECT set_config('{RLS_GUC}', :v, true)"
+            assert params == {"v": "org-123"}
+            # removed in finally (no listener leak across pooled sessions)
+            assert mock_remove.call_count == 1
+        assert ("close",) in fake.calls
 
     async def test_session_org_id_is_stringified(self):
-        """A non-string org_id (e.g. UUID) is passed as str() in the bound param."""
+        """A non-string org_id (e.g. UUID) is bound as str() inside the listener."""
         import uuid
 
         org = uuid.uuid4()
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
-        async with mgr.session(org_id=org):
-            pass
-        assert fake.calls[0][2] == {"org_id": str(org)}
+        with (
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove"),
+        ):
+            async with mgr.session(org_id=org):
+                pass
+            _, fn = _registered_after_begin(mock_listen)
+            conn = MagicMock()
+            fn(MagicMock(), MagicMock(), conn)
+            assert conn.execute.call_args.args[1] == {"v": str(org)}
 
-    async def test_session_without_org_never_touches_guc(self):
+    async def test_session_without_org_registers_no_listener(self):
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
 
-        async with mgr.session() as s:
-            assert s is fake
-
-        # No SET, no reset, no commit — only close.
-        assert _execute_sqls(fake) == []
+        with (
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove") as mock_remove,
+        ):
+            async with mgr.session() as s:
+                assert s is fake
+        assert not mock_listen.called
+        assert not mock_remove.called
+        # No GUC plumbing — only close.
         assert [c[0] for c in fake.calls] == ["close"]
 
     async def test_session_empty_org_id_treated_as_no_org(self):
-        """``org_id=""`` is falsy -> the GUC must NOT be set (guards against an
-        accidental empty-string tenant context)."""
+        """``org_id=""`` is falsy -> NO listener (no accidental empty tenant ctx)."""
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
-        async with mgr.session(org_id=""):
-            pass
-        assert _execute_sqls(fake) == []
+        with (
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove"),
+        ):
+            async with mgr.session(org_id=""):
+                pass
+        assert not mock_listen.called
         assert [c[0] for c in fake.calls] == ["close"]
 
-    async def test_session_exception_rolls_back_resets_and_closes(self):
+    async def test_session_exception_rolls_back_removes_listener_and_closes(self):
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
 
-        with pytest.raises(ValueError, match="boom"):
+        with (
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove") as mock_remove,
+            pytest.raises(ValueError, match="boom"),
+        ):
             async with mgr.session(org_id="org-x"):
                 raise ValueError("boom")
 
         kinds = [c[0] for c in fake.calls]
-        # SET -> rollback (except) -> reset (finally) -> commit -> close
-        assert kinds == ["execute", "rollback", "execute", "commit", "close"]
-        assert _execute_sqls(fake)[1] == f"SELECT set_config('{RLS_GUC}', '', false)"
-
-    async def test_session_best_effort_reset_failure_is_swallowed_and_closes(self):
-        """If the finally reset raises, it is swallowed (the pool checkin hook is
-        the real guarantee) and the session is STILL closed."""
-        fake = FakeSession(fail_reset=True)
-        mgr = DatabaseSessionManager()
-        mgr._sessionmaker = lambda: fake
-
-        # Must NOT propagate the reset failure.
-        async with mgr.session(org_id="org-x"):
-            pass
-
-        kinds = [c[0] for c in fake.calls]
-        assert kinds == ["execute", "execute_RAISE", "close"]
-        # commit never ran (reset raised before it); close still ran.
-        assert "commit" not in kinds
-        assert ("close",) in fake.calls
+        # body raised -> rollback (except) -> close (finally)
+        assert kinds == ["rollback", "close"]
+        # listener was registered then removed even on the error path
+        assert mock_listen.call_count == 1
+        assert mock_remove.call_count == 1
 
     async def test_session_no_org_does_not_swallow_body_exception(self):
-        """The no-org path has no SET/reset; an error in the body still
-        propagates after rollback + close."""
+        """The no-org path still propagates a body error after rollback + close."""
         fake = FakeSession()
         mgr = DatabaseSessionManager()
         mgr._sessionmaker = lambda: fake
@@ -342,14 +353,21 @@ class TestDependencyGenerators:
 
     async def test_get_scoped_db_session_sets_org_guc(self):
         fake = FakeSession()
-        with patch.object(engine_mod.db_manager, "_sessionmaker", lambda: fake):
+        with (
+            patch.object(engine_mod.db_manager, "_sessionmaker", lambda: fake),
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove"),
+        ):
             gen = get_scoped_db_session("org-555")
             yielded = await gen.__anext__()
             assert yielded is fake
             with pytest.raises(StopAsyncIteration):
                 await gen.__anext__()
-        assert fake.calls[0][2] == {"org_id": "org-555"}
-        assert _execute_sqls(fake)[0] == f"SELECT set_config('{RLS_GUC}', :org_id, false)"
+            # the org GUC is applied via the after_begin listener
+            _, _, fn = mock_listen.call_args.args
+            conn = MagicMock()
+            fn(MagicMock(), MagicMock(), conn)
+            assert conn.execute.call_args.args[1] == {"v": "org-555"}
 
     def test_get_tenant_session_returns_async_gen_dependency(self):
         dep = get_tenant_session()
@@ -361,15 +379,22 @@ class TestDependencyGenerators:
         fake = FakeSession()
         user = MagicMock()
         user.org_id = "org-77"
-        with patch.object(engine_mod.db_manager, "_sessionmaker", lambda: fake):
+        with (
+            patch.object(engine_mod.db_manager, "_sessionmaker", lambda: fake),
+            patch.object(engine_mod.event, "listen") as mock_listen,
+            patch.object(engine_mod.event, "remove"),
+        ):
             agen = dep(user=user)
             yielded = await agen.__anext__()
             assert yielded is fake
             with pytest.raises(StopAsyncIteration):
                 await agen.__anext__()
-        # str(user.org_id) is bound into the SET, and it is reset on teardown.
-        assert fake.calls[0][2] == {"org_id": "org-77"}
-        assert [c[0] for c in fake.calls] == ["execute", "execute", "commit", "close"]
+            # str(user.org_id) is bound into the after_begin GUC setter.
+            _, _, fn = mock_listen.call_args.args
+            conn = MagicMock()
+            fn(MagicMock(), MagicMock(), conn)
+            assert conn.execute.call_args.args[1] == {"v": "org-77"}
+        assert [c[0] for c in fake.calls] == ["close"]
 
 
 # ───────────────────────── _reset_rls_on_checkin fail-closed hook ─────────────────────────

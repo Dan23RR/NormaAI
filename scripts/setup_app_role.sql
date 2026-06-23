@@ -27,6 +27,15 @@ BEGIN
       'CREATE ROLE normaai_app LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE',
       :app_pw
     );
+  ELSE
+    -- Role already exists: SYNC the password to :app_pw. The previous
+    -- IF-NOT-EXISTS-only guard silently kept the old password on a re-run, so a
+    -- new APP_DB_PASSWORD in .env no longer matched -> the app got
+    -- "password authentication failed for user normaai_app". Always align it.
+    EXECUTE format(
+      'ALTER ROLE normaai_app WITH LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE',
+      :app_pw
+    );
   END IF;
 END$$;
 

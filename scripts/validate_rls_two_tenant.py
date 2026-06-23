@@ -57,7 +57,8 @@ def _register(client: httpx.Client, label: str) -> str:
         "name": f"RLS Test {label}",
         "organization_name": f"RLS-Org-{label}-{suffix}",
     }
-    r = client.post("/auth/register", json=body)
+    # auth router has its own /auth prefix AND is mounted at /api/v1 (main.py)
+    r = client.post("/api/v1/auth/register", json=body)
     if r.status_code != 201:
         _fail(
             f"register org {label} returned {r.status_code} (expected 201) - the "

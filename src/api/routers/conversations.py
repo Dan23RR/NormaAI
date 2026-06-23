@@ -117,7 +117,7 @@ async def list_conversations(
             text("""
                 SELECT id, client_id, user_id, messages, created_at, updated_at
                 FROM conversations
-                WHERE user_id = :user_id
+                WHERE CAST(user_id AS TEXT) = :user_id
                 ORDER BY updated_at DESC
                 LIMIT :limit OFFSET :offset
             """),
@@ -313,7 +313,10 @@ async def delete_conversation(
         from sqlalchemy import text
 
         await session.execute(
-            text("DELETE FROM conversations WHERE id = :id AND user_id = :user_id"),
+            text(
+                "DELETE FROM conversations "
+                "WHERE CAST(id AS TEXT) = :id AND CAST(user_id AS TEXT) = :user_id"
+            ),
             {"id": conversation_id, "user_id": user_id},
         )
         await session.commit()

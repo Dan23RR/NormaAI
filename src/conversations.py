@@ -60,7 +60,7 @@ class ConversationManager:
                 UPDATE conversations
                 SET messages = messages || :message::jsonb,
                     updated_at = :now
-                WHERE id = :conv_id
+                WHERE CAST(id AS TEXT) = :conv_id
             """),
             {
                 "conv_id": conversation_id,
@@ -79,11 +79,15 @@ class ConversationManager:
         """Get a conversation by ID, optionally filtered by user_id for access control."""
         # Static SQL only - never assemble query strings dynamically.
         # ``:user_id IS NULL`` keeps the no-filter path in the same statement.
+        # CAST the UUID columns to text: the bound params are Python strings and
+        # PostgreSQL has no implicit ``uuid = text`` operator (asyncpg raises
+        # UndefinedFunctionError). CAST(... AS TEXT) is portable across Postgres
+        # and the sqlite test backend (``::text`` is not).
         query = text("""
             SELECT id, client_id, user_id, messages, created_at
             FROM conversations
-            WHERE id = :id
-              AND (CAST(:user_id AS TEXT) IS NULL OR user_id = :user_id)
+            WHERE CAST(id AS TEXT) = :id
+              AND (CAST(:user_id AS TEXT) IS NULL OR CAST(user_id AS TEXT) = :user_id)
         """)
         params: dict = {"id": conversation_id, "user_id": user_id}
         result = await session.execute(query, params)

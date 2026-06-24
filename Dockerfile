@@ -3,7 +3,7 @@
 # ============================================================
 
 # Stage 1: Build dependencies
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 RUN pip install --no-cache-dir poetry==1.8.5
 
@@ -18,7 +18,7 @@ RUN poetry lock --no-update --no-interaction 2>/dev/null || true && \
     poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter > requirements.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Security: non-root user
 RUN groupadd -r normaai && useradd -r -g normaai -d /app -s /sbin/nologin normaai

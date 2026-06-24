@@ -156,7 +156,9 @@ export async function POST(req: NextRequest) {
         '',
         '--',
         'Ricevi questa email perché hai richiesto il Codex dal nostro sito.',
-        'Non riceverai altre comunicazioni senza tuo consenso (GDPR Art. 6.1.b).',
+        'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo',
+        'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
+        'rispondendo a questa email.',
       ].join('\n'),
     })
   }

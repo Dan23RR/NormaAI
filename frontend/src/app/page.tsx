@@ -121,6 +121,13 @@ export default function Home() {
                 Scarica il Codex Post-Omnibus (PDF)
                 <ArrowRight className="h-4 w-4" />
               </a>
+              <a
+                href="/scope-csrd.html"
+                className="inline-flex items-center gap-2 rounded-md border border-line-2 bg-white px-5 py-3 font-medium text-night transition hover:border-clay hover:text-clay-deep"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Sei ancora in ambito CSRD? Verifica gratis
+              </a>
             </div>
             <p className="mt-4 text-sm text-night-2">
               Oppure{' '}

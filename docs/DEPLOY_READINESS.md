@@ -68,7 +68,7 @@ Notes:
 
 ---
 
-## 2. 🔴 Enable real multi-tenant isolation (RLS) — the #1 readiness gap
+## 2. 🔴 Enable real multi-tenant isolation (RLS) - the #1 readiness gap
 
 Today the app connects as the Postgres **owner** (`normaai`), so RLS is bypassed
 and tenant isolation is application-level only. The code-side groundwork is now
@@ -100,7 +100,7 @@ regression fails the build. What remains is the operational switch:
      -f docker-compose.rls.yml up -d
    ```
 
-Until step 3 is done + verified, a cross-tenant leak is possible — do not put
+Until step 3 is done + verified, a cross-tenant leak is possible - do not put
 two real customers on the instance before this.
 
 ---

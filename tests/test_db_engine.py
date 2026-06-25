@@ -1,10 +1,10 @@
-"""Unit tests for ``src.db.engine`` — DatabaseSessionManager lifecycle and the
+"""Unit tests for ``src.db.engine`` - DatabaseSessionManager lifecycle and the
 RLS pool-checkin hook MECHANICS.
 
 The full multi-tenant pool-isolation regression needs a real (non-superuser)
 Postgres and lives in ``tests/test_rls_pool_isolation.py`` (skip-gated on
 ``POSTGRES_RLS_TEST_URL``). This file deliberately requires NO Postgres and NO
-real ``test.db``: it asserts the *mechanics* with mocks and fake sessions —
+real ``test.db``: it asserts the *mechanics* with mocks and fake sessions - 
 
   * ``init()`` builds the engine + sessionmaker and registers the ``checkin``
     listener ONLY for a postgresql backend, NOT for sqlite.
@@ -287,7 +287,7 @@ class TestSessionMechanics:
                 assert s is fake
         assert not mock_listen.called
         assert not mock_remove.called
-        # No GUC plumbing — only close.
+        # No GUC plumbing - only close.
         assert [c[0] for c in fake.calls] == ["close"]
 
     async def test_session_empty_org_id_treated_as_no_org(self):

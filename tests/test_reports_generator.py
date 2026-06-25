@@ -314,7 +314,7 @@ class TestGenerateExecutiveSummary:
 
 
 # ---------------------------------------------------------------------------
-# Section builders (direct, on a live PDF page) — data-shaping + no-raise
+# Section builders (direct, on a live PDF page) - data-shaping + no-raise
 # ---------------------------------------------------------------------------
 
 

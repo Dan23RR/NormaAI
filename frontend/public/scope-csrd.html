@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sei ancora in ambito CSRD? · Verifica gratuita post-Omnibus I — NormaAI</title>
+<title>Sei ancora in ambito CSRD? · Verifica gratuita post-Omnibus I · NormaAI</title>
 <meta name="description" content="Strumento gratuito: verifica in 10 secondi se la tua impresa è ancora in ambito di rendicontazione CSRD dopo l'Omnibus I (Dir. UE 2026/470). Soglie 1.000 dipendenti e €450M, logica cumulativa.">
 <meta name="robots" content="index,follow">
-<meta property="og:title" content="Sei ancora in ambito CSRD? — Verifica gratuita post-Omnibus I">
-<meta property="og:description" content="L'Omnibus I ha alzato le soglie a 1.000 dipendenti e €450M (cumulative). ~80% delle imprese prima obbligate ne è fuori — o in zona grigia. Scoprilo subito.">
+<meta property="og:title" content="Sei ancora in ambito CSRD? Verifica gratuita post-Omnibus I">
+<meta property="og:description" content="L'Omnibus I ha alzato le soglie a 1.000 dipendenti e €450M (cumulative). ~80% delle imprese prima obbligate ne è fuori, o in zona grigia. Scoprilo subito.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://normaai.org/scope-csrd.html">
 <style>
@@ -153,7 +153,7 @@
 
 <header>
   <div class="wrap bar">
-    <a class="brand" href="https://normaai.org" aria-label="NormaAI — home">
+    <a class="brand" href="https://normaai.org" aria-label="NormaAI, home">
       <span class="mark" aria-hidden="true">N</span>
       <span class="brand-name">NormaAI</span>
     </a>
@@ -166,7 +166,7 @@
   <section class="hero">
     <span class="eyebrow">Strumento gratuito · CSRD post-Omnibus I</span>
     <h1>Sei ancora in ambito CSRD?</h1>
-    <p class="lede">L'<b>Omnibus I</b> (Direttiva UE 2026/470, in vigore dal <b>18 marzo 2026</b>) ha riscritto le soglie: ora servono <b>più di 1.000 dipendenti</b> <b>e</b> <b>oltre €450M di ricavi</b> — in logica <b>cumulativa</b>, non più "2 su 3". Circa l'<b>80% delle imprese</b> prima obbligate ne è uscito, o è finito in una zona grigia. Verifica la tua posizione in 10 secondi.</p>
+    <p class="lede">L'<b>Omnibus I</b> (Direttiva UE 2026/470, in vigore dal <b>18 marzo 2026</b>) ha riscritto le soglie: ora servono <b>più di 1.000 dipendenti</b> <b>e</b> <b>oltre €450M di ricavi</b>, in logica <b>cumulativa</b>, non più "2 su 3". Circa l'<b>80% delle imprese</b> prima obbligate ne è uscito, o è finito in una zona grigia. Verifica la tua posizione in 10 secondi.</p>
   </section>
 
   <section class="card" aria-labelledby="calc-h">
@@ -176,14 +176,14 @@
     <form id="calc" novalidate>
       <div class="grid">
         <div class="field">
-          <label for="emp">Dipendenti <span class="sub">— numero medio annuo</span></label>
+          <label for="emp">Dipendenti <span class="sub">(numero medio annuo)</span></label>
           <div class="inp">
             <input id="emp" inputmode="numeric" autocomplete="off" placeholder="es. 850" aria-describedby="calc-h">
             <span class="suf">dipendenti</span>
           </div>
         </div>
         <div class="field">
-          <label for="rev">Ricavi netti annui <span class="sub">— in milioni di €</span></label>
+          <label for="rev">Ricavi netti annui <span class="sub">(in milioni di €)</span></label>
           <div class="inp">
             <span class="pre">€</span>
             <input id="rev" inputmode="decimal" autocomplete="off" placeholder="es. 300">
@@ -235,7 +235,7 @@
   function toNum(s){
     if (s == null) return NaN;
     // accetta "1.200", "1200", "1,5" (migliaia IT / decimale)
-    s = String(s).trim().replace(/ /g,'');
+    s = String(s).trim().replace(/ /g,'');
     if (s === '') return NaN;
     // virgola = decimale (punti = migliaia); altrimenti distingui migliaia da decimale
     if (s.indexOf(',') > -1){ s = s.replace(/\./g,'').replace(',', '.'); }
@@ -262,7 +262,7 @@
     return 'out';
   }
 
-  var CITE = 'Base normativa: Art. 19-bis Direttiva 2013/34/UE (rendicontazione di sostenibilità delle grandi imprese; Art. 29-bis per i gruppi), introdotto dalla CSRD — Dir. (UE) 2022/2464 — e ristretto dall’Omnibus I, Dir. (UE) 2026/470, in vigore dal 18 marzo 2026. CELEX 32026L0470.';
+  var CITE = 'Base normativa: Art. 19-bis Direttiva 2013/34/UE (rendicontazione di sostenibilità delle grandi imprese; Art. 29-bis per i gruppi), introdotto dalla CSRD, Dir. (UE) 2022/2464, e ristretto dall’Omnibus I, Dir. (UE) 2026/470, in vigore dal 18 marzo 2026. CELEX 32026L0470.';
 
   function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }); }
 
@@ -285,11 +285,11 @@
     } else if (band === 'filo'){
       tag = 'Fuori oggi · sul filo';
       var reason;
-      if (empOver && !revOver) reason = 'Superi la soglia dei dipendenti ma <b>non</b> quella dei ricavi: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo — ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.';
-      else if (revOver && !empOver) reason = 'Superi la soglia dei ricavi ma <b>non</b> quella dei dipendenti: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo — ma un’assunzione netta o un consolidamento può farti entrare.';
+      if (empOver && !revOver) reason = 'Superi la soglia dei dipendenti ma <b>non</b> quella dei ricavi: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.';
+      else if (revOver && !empOver) reason = 'Superi la soglia dei ricavi ma <b>non</b> quella dei dipendenti: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.';
       else if (listed && !(emp>=850||rev>=380)) reason = 'Come <b>società quotata</b> sotto le nuove soglie dimensionali sei in linea di principio esclusa, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).';
       else reason = 'Oggi sei <b>fuori</b> dall’obbligo, ma sei <b>a ridosso</b> di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro/fuori da un esercizio all’altro.';
-      title = 'Oggi sei fuori dall’obbligo CSRD — ma sei sul filo della soglia.';
+      title = 'Oggi sei fuori dall’obbligo CSRD, ma sei sul filo della soglia.';
       body = reason + ' È il caso in cui una <b>verifica puntuale</b> (e una scelta tra obbligo, adozione volontaria e VSME) vale di più.';
       notes = '<ul class="notes">'
         + '<li><b>Perimetro variabile:</b> lo scope si misura a fine esercizio, ma i dati ESG vanno raccolti su tutto l’anno. Se hai M&amp;A o riassetti in corso, l’analisi diventa multi-scenario.</li>'
@@ -299,7 +299,7 @@
     } else {
       tag = 'Fuori ambito · obbligo diretto';
       title = 'Probabilmente sei fuori dall’ambito di rendicontazione CSRD obbligatoria.';
-      body = 'Non superi le soglie cumulative post-Omnibus (1.000 dipendenti <b>e</b> €450M). L’obbligo <b>diretto</b> non scatta — ma "fuori da CSRD" non significa "fuori da tutto":';
+      body = 'Non superi le soglie cumulative post-Omnibus (1.000 dipendenti <b>e</b> €450M). L’obbligo <b>diretto</b> non scatta, ma "fuori da CSRD" non significa "fuori da tutto":';
       notes = '<ul class="notes">'
         + '<li><b>Pressione di filiera (VSME):</b> se sei fornitore di un gruppo in ambito, riceverai richieste di disclosure di sostenibilità lungo la catena.</li>'
         + '<li><b>Taxonomy indiretta:</b> se hai finanziamento bancario, la banca (per il proprio GAR) può chiederti dati Taxonomy-eligible.</li>'
@@ -344,10 +344,10 @@
             + '<input class="hp" type="text" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">'
             + '<button class="btn btn-cta" type="submit">Ricevi l’analisi + il Codex →</button>'
             + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel (founder). Niente newsletter, niente cessione a terzi. '
-              + 'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo tema (legittimo interesse, GDPR Art. 6.1.f) — <a href="https://normaai.org/privacy">privacy</a>.</p>'
+              + 'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo tema (legittimo interesse, GDPR Art. 6.1.f). <a href="https://normaai.org/privacy">privacy</a>.</p>'
           + '</form>'
         + '</div>'
-        + '<div class="cta-ok"><div class="big">Fatto — ti ricontatto al più presto.</div>'
+        + '<div class="cta-ok"><div class="big">Fatto. Ti ricontatto al più presto.</div>'
           + '<p class="fine" style="margin-top:10px">Il tuo <b style="color:#fff">Codex Post-Omnibus</b> è pronto: <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricalo qui</a>.</p></div>'
       + '</div>';
 
@@ -367,7 +367,7 @@
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.style.color = '#ffb4a2'; return; }
-      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio…';
+      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio...';
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', website:hp })

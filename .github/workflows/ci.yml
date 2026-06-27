@@ -266,6 +266,12 @@ jobs:
             echo "::error::Private keys detected in tracked files!"
             FOUND=1
           fi
+          # Personal-email leak gate: the founder's personal Gmail must never ship
+          # in a tracked asset (use info@normaai.org). Catches a stale Codex PDF too.
+          if echo "$SCAN_FILES" | xargs grep -lE 'daniel\.culotta@gmail\.com' 2>/dev/null; then
+            echo "::error::Personal email (daniel.culotta@gmail.com) found in tracked files - use info@normaai.org"
+            FOUND=1
+          fi
           if [ "$FOUND" -eq 1 ]; then exit 1; fi
       - name: Verify .gitignore protections
         run: |

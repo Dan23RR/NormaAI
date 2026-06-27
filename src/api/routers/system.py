@@ -129,9 +129,24 @@ async def readiness_check():
     """
     from fastapi.responses import JSONResponse
 
+    # Corpus gate: an EMPTY Qdrant collection still passes ``qdrant_available``
+    # (the collection merely EXISTS), but it cannot answer anything with a
+    # citation - so readiness must go red until it is actually seeded. Default
+    # True so a missing indexer (e.g. tests) never spuriously fails readiness;
+    # only a KNOWN-empty collection flips it down.
+    corpus_ok = True
+    _idx = getattr(app_state, "indexer", None)
+    if app_state.qdrant_available and _idx is not None:
+        try:
+            corpus_ok = ((_idx.get_collection_stats() or {}).get("points_count", 0) or 0) > 0
+        except Exception as e:  # noqa: BLE001
+            logger.warning("readyz_corpus_check_failed", error=str(e))
+            corpus_ok = False
+
     checks = {
         "qdrant": app_state.qdrant_available,
         "llm": app_state.llm_available,
+        "corpus": corpus_ok,
     }
     ready = all(checks.values())
     body = {

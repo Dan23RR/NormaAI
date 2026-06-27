@@ -51,6 +51,15 @@ def test_xff_two_trusted_proxies(monkeypatch):
     assert get_client_ip(req) == "203.0.113.7"
 
 
+def test_xff_short_chain_is_ignored_as_spoofed(monkeypatch):
+    _patch_proxies(monkeypatch, 2)
+    # Behind 2 proxies, but the client sent a single (forged) entry: the chain is
+    # shorter than expected, so it is untrusted -> fall back to the socket peer
+    # instead of returning the spoofable parts[0].
+    req = _request({"X-Forwarded-For": "6.6.6.6"}, client_host="203.0.113.5")
+    assert get_client_ip(req) == "203.0.113.5"
+
+
 def test_xff_ignored_when_no_trusted_proxy(monkeypatch):
     _patch_proxies(monkeypatch, 0)
     # No proxy in front: ignore the forgeable header, use the socket peer.

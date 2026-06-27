@@ -193,11 +193,12 @@ class TestReadyz:
     def test_readyz_ready_returns_200(self, client, app_state):
         app_state.qdrant_available = True
         app_state.llm_available = True
+        app_state.indexer = None  # no seeded indexer -> corpus check defaults ready
         r = client.get("/readyz")
         assert r.status_code == 200
         body = r.json()
         assert body["status"] == "ready"
-        assert body["checks"] == {"qdrant": "up", "llm": "up"}
+        assert body["checks"] == {"qdrant": "up", "llm": "up", "corpus": "up"}
 
     def test_readyz_not_ready_returns_503_when_qdrant_down(self, client, app_state):
         app_state.qdrant_available = False
@@ -217,6 +218,23 @@ class TestReadyz:
         body = r.json()
         assert body["status"] == "not_ready"
         assert body["checks"]["llm"] == "down"
+
+    def test_readyz_not_ready_when_corpus_empty(self, client, app_state):
+        # qdrant/llm up but the collection has zero points -> not ready, so the
+        # green liveness check can no longer hide an unseeded corpus.
+        app_state.qdrant_available = True
+        app_state.llm_available = True
+        idx = MagicMock()
+        idx.get_collection_stats.return_value = {"points_count": 0}
+        app_state.indexer = idx
+        try:
+            r = client.get("/readyz")
+            assert r.status_code == 503
+            body = r.json()
+            assert body["status"] == "not_ready"
+            assert body["checks"]["corpus"] == "down"
+        finally:
+            app_state.indexer = None
 
 
 # ──────────────────────────────────────────────────────────────────────────

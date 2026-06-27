@@ -29,6 +29,44 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("database_initialization_failed", error=str(e))
 
+    # Fail-fast: in production the app MUST connect as a NON-superuser DB role.
+    # PostgreSQL silently bypasses every Row-Level-Security policy for superusers
+    # and table owners, so connecting as such makes multi-tenant isolation INERT
+    # (one tenant could read another's data). Refuse to start rather than serve
+    # real client data unprotected. No-op outside production / non-PostgreSQL
+    # (e.g. the sqlite test backend).
+    if settings.app_env == "production" and "postgresql" in (settings.database_url or ""):
+        from sqlalchemy import text as _sql_text
+
+        from src.db.engine import db_manager
+
+        try:
+            async with db_manager.session() as _role_chk:
+                _row = (
+                    await _role_chk.execute(
+                        _sql_text(
+                            "SELECT rolsuper, rolbypassrls FROM pg_roles "
+                            "WHERE rolname = current_user"
+                        )
+                    )
+                ).first()
+            if _row is not None and (_row[0] or _row[1]):
+                raise RuntimeError(
+                    "FATAL: the app connects to PostgreSQL as a SUPERUSER or "
+                    f"BYPASSRLS role (rolsuper={_row[0]}, rolbypassrls={_row[1]}). "
+                    "PostgreSQL ignores Row-Level Security for such roles, so tenant "
+                    "isolation would be inert. Point DATABASE_URL at the non-superuser "
+                    "'normaai_app' role and deploy with the docker-compose.rls.yml "
+                    "overlay (see docs/DEPLOY_HETZNER.md)."
+                )
+            logger.info("rls_role_verified", superuser=False)
+        except RuntimeError:
+            raise  # propagate the fatal superuser error: do NOT start the app
+        except Exception as e:
+            # Could not verify (DB unreachable / transient): warn but do not block
+            # startup on a connectivity blip - the ROLE is the risk, not an outage.
+            logger.warning("rls_role_check_skipped", error=str(e))
+
     # Check Qdrant
     try:
         from src.nlp.embedding.indexer import HybridIndexer

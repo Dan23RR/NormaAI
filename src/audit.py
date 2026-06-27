@@ -154,12 +154,13 @@ def get_client_ip(request: Request) -> str:
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             parts = [p.strip() for p in forwarded.split(",") if p.strip()]
-            if parts:
-                # The real client IP is the one our outermost trusted proxy
-                # appended. Clamp if the chain is shorter than expected (a
-                # spoofed-short header can only push the index left, never past 0).
-                idx = max(0, len(parts) - trusted)
-                return parts[idx]
+            # Only trust the chain when it is at least as long as the number of
+            # proxies we know sit in front of us. A SHORTER chain means the client
+            # forged a too-short header, so every entry is attacker-controlled:
+            # ignore it and fall back to X-Real-IP / the socket peer, rather than
+            # returning the spoofable parts[0].
+            if len(parts) >= trusted:
+                return parts[len(parts) - trusted]
 
         # X-Real-IP is single-valued (set by nginx); only honor it behind a proxy.
         real_ip = request.headers.get("X-Real-IP")

@@ -4,7 +4,7 @@ RLS pool-checkin hook MECHANICS.
 The full multi-tenant pool-isolation regression needs a real (non-superuser)
 Postgres and lives in ``tests/test_rls_pool_isolation.py`` (skip-gated on
 ``POSTGRES_RLS_TEST_URL``). This file deliberately requires NO Postgres and NO
-real ``test.db``: it asserts the *mechanics* with mocks and fake sessions - 
+real ``test.db``: it asserts the *mechanics* with mocks and fake sessions -
 
   * ``init()`` builds the engine + sessionmaker and registers the ``checkin``
     listener ONLY for a postgresql backend, NOT for sqlite.

@@ -9,10 +9,10 @@ Adds:
 - Indexes on email and (email, created_at) for rate-limit queries
 - Lifecycle tracking (status, notes) for CRM-light workflow
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
 
+from alembic import op
 
 revision = "005_add_leads_table"
 down_revision = "004_normattiva_cove"

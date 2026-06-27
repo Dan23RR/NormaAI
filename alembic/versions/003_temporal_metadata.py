@@ -9,9 +9,10 @@ the parent_documents table for the Parent Document Retrieval pattern.
 Parent documents store full articles; smaller sub-chunks are used for
 vector search and then resolved back to their parent for LLM context.
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
+
+from alembic import op
 
 revision = "003_temporal_metadata"
 down_revision = "002_rls"

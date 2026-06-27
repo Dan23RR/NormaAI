@@ -9,9 +9,10 @@ Adds:
 - New citation_verifications table for CoVe pipeline
 - Indexes on source and urn for efficient querying
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
+
+from alembic import op
 
 revision = "004_normattiva_cove"
 down_revision = "003_temporal_metadata"

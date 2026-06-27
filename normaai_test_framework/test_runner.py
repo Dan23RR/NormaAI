@@ -8,13 +8,13 @@ Uso:
     python test_runner.py [--base-url http://localhost:8000] [--delay 5] [--output results.json]
 """
 
-import json
-import time
 import argparse
 import datetime
-import sys
+import json
 import os
 import re
+import sys
+import time
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.dirname(__file__))
@@ -27,7 +27,6 @@ except ImportError:
     import httpx
 
 from synthetic_profiles import SYNTHETIC_PROFILES, get_all_test_cases
-
 
 # ─── Result Classification ───────────────────────────
 
@@ -256,7 +255,7 @@ def run_all_tests(base_url, delay_between_tests=5, timeout=120):
         print(f"{'='*60}")
 
         # Run gap analysis for this profile+framework
-        print(f"  Calling gap-analysis endpoint...")
+        print("  Calling gap-analysis endpoint...")
         start_time = time.time()
         api_response = run_gap_analysis(client, base_url, profile, framework, timeout)
         elapsed = round(time.time() - start_time, 2)

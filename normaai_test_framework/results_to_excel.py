@@ -5,8 +5,8 @@ Uso:
     python results_to_excel.py [test_results.json]
 """
 import json
-import sys
 import os
+import sys
 
 try:
     from openpyxl import load_workbook

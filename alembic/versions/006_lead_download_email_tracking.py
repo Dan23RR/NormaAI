@@ -10,9 +10,9 @@ Adds:
 - leads.last_email_sent_at: timestamp ultimo invio email transazionale
 - leads.email_error: errore SMTP eventuale (per troubleshooting)
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision = "006_lead_download_email_tracking"
 down_revision = "005_add_leads_table"

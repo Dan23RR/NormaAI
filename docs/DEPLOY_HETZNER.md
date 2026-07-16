@@ -97,9 +97,10 @@ chmod 600 jwt_private.pem
 #    scarica da EUR-Lex: minuti.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres qdrant redis
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
-# crea il ruolo non-superuser normaai_app (+ policy mancanti); imposta APP_DB_PASSWORD nel .env
+# crea il ruolo non-superuser normaai_app (+ policy mancanti). Passa la STESSA
+# password che hai messo in APP_DB_PASSWORD nel .env (:'app_pw' la quota da solo):
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
-  psql -U normaai -d normaai < scripts/setup_app_role.sql
+  psql -U normaai -d normaai -v app_pw="<APP_DB_PASSWORD>" < scripts/setup_app_role.sql
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app python -m src.pipeline --action seed
 
 # 2) Avvia l'app CON l'overlay RLS: gira come normaai_app (RLS attiva e applicata).

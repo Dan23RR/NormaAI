@@ -8,7 +8,7 @@
 -- policy gaps that block a non-superuser from registering / writing.
 --
 -- HOW TO USE (one-time, on the live DB, as a SUPERUSER e.g. the `normaai` owner):
---   psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<strong-password>'" -f scripts/setup_app_role.sql
+--   psql "$SUPERUSER_DATABASE_URL" -v app_pw="<strong-password>" -f scripts/setup_app_role.sql
 -- then set the app's DATABASE_URL to normaai_app and redeploy.
 --
 -- !! VALIDATE ON STAGING FIRST !! Run the two-tenant isolation check in
@@ -20,24 +20,25 @@
 -- =============================================================================
 
 -- 1) The role -----------------------------------------------------------------
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'normaai_app') THEN
-    EXECUTE format(
-      'CREATE ROLE normaai_app LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE',
-      :app_pw
-    );
-  ELSE
-    -- Role already exists: SYNC the password to :app_pw. The previous
-    -- IF-NOT-EXISTS-only guard silently kept the old password on a re-run, so a
-    -- new APP_DB_PASSWORD in .env no longer matched -> the app got
-    -- "password authentication failed for user normaai_app". Always align it.
-    EXECUTE format(
-      'ALTER ROLE normaai_app WITH LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE',
-      :app_pw
-    );
-  END IF;
-END$$;
+-- NOTE: psql does NOT interpolate :variables inside a DO $$ ... $$ dollar-quoted
+-- block, so the earlier DO-block version failed with "syntax error at :app_pw".
+-- Apply the password at the psql level instead (outside any dollar-quote), where
+-- :'app_pw' expands to a safely-quoted string literal.
+--
+-- Create the role only when missing; \gexec runs the generated CREATE statement.
+SELECT format(
+  'CREATE ROLE normaai_app LOGIN PASSWORD %L NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE',
+  :'app_pw'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'normaai_app')
+\gexec
+
+-- Always SYNC the password + attributes (idempotent). The previous
+-- IF-NOT-EXISTS-only guard silently kept the old password on a re-run, so a new
+-- APP_DB_PASSWORD in .env no longer matched -> the app got "password
+-- authentication failed for user normaai_app". Running this unconditionally
+-- always realigns it.
+ALTER ROLE normaai_app WITH LOGIN PASSWORD :'app_pw' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
 
 -- 2) Least-privilege grants ---------------------------------------------------
 GRANT CONNECT ON DATABASE normaai TO normaai_app;

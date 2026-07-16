@@ -80,7 +80,7 @@ regression fails the build. What remains is the operational switch:
 1. Create the non-superuser role + fill the INSERT-policy gaps (one-time, as a
    superuser, on the live DB):
    ```bash
-   psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<strong-app-password>'" -f scripts/setup_app_role.sql
+   psql "$SUPERUSER_DATABASE_URL" -v app_pw="<strong-app-password>" -f scripts/setup_app_role.sql
    ```
 2. **Validate on staging** with a two-tenant check before prod - run the bundled
    harness against the running instance:

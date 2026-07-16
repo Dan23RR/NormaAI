@@ -114,7 +114,11 @@ class LeadCreate(BaseModel):
     role: str | None = Field(None, max_length=100)
     source: str = Field(
         default="codex_download",
-        pattern=r"^(codex_download|demo_request|newsletter)$",
+        # Accepts the static checkers' banded sources too (scope_checker:in|filo|out,
+        # aiact_checker:in|out). Today those forms post to the Vercel serverless
+        # route; this keeps the backend contract compatible the day leads are
+        # routed here, instead of silently 422-ing them.
+        pattern=r"^(codex_download|demo_request|newsletter|scope_checker(:[a-z_]+)?|aiact_checker(:[a-z_]+(:[a-z_+]+)?)?)$",
     )
 
 

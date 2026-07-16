@@ -72,7 +72,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Honeypot: pretend success so bots stop retrying, deliver nothing.
+  // Logged first: a human whose browser autofilled the hidden field would
+  // otherwise vanish without a trace ("NEVER lose a lead" applies here too).
   if (clean(body.website)) {
+    console.log(
+      JSON.stringify({
+        event: 'lead_honeypot',
+        email: clean(body.email),
+        source: clean(body.source, 80),
+        lead_ref: clean(body.lead_ref, 80),
+        ts: new Date().toISOString(),
+      }),
+    )
     return NextResponse.json({ message: 'Richiesta registrata.' }, { status: 200 })
   }
 
@@ -115,9 +126,9 @@ export async function POST(req: NextRequest) {
       apiKey,
       from,
       to: [notifyTo],
-      subject: `[NormaAI lead] ${email}${orgName ? ` - ${orgName}` : ''}`,
+      subject: `[NormaAI lead${leadRef ? ` - ${leadRef}` : ''}] ${email}${orgName ? ` - ${orgName}` : ''}`,
       text: [
-        'Nuovo lead dal form Codex (route serverless Vercel):',
+        'Nuovo lead dal sito (route serverless Vercel):',
         '',
         `Email:   ${email}`,
         `Org:     ${orgName || '-'}`,
@@ -131,35 +142,65 @@ export async function POST(req: NextRequest) {
       replyTo: email,
     })
 
-    // Codex delivery to the lead (best-effort; download link is already
-    // in the HTTP response, so a failure here costs nothing).
+    // Lead delivery email (best-effort; download link is already in the HTTP
+    // response, so a failure here costs nothing). Branched per funnel: an AI
+    // Act lead must NOT receive a CSRD-only first touchpoint - for a brand that
+    // sells regulatory precision, the first email has to match the check done.
+    const isAiAct = leadRef === 'scope-aiact'
     await sendResendEmail({
       apiKey,
       from,
       to: [email],
-      subject: 'Il tuo Codex Post-Omnibus 2025-2029 - NormaAI',
-      text: [
-        "Grazie per l'interesse in NormaAI.",
-        '',
-        `Scarica il Codex Post-Omnibus 2025-2029 (PDF, 17 pagine):`,
-        `${origin}${CODEX_PATH}`,
-        '',
-        'Dentro trovi: soglie CSRD post-Omnibus (1.000+ dipendenti e €450M,',
-        'cumulativa), calendario CSDDD (trasposizione 26 luglio 2028,',
-        'prima compliance luglio 2029 - Dir. (UE) 2026/470), flowchart',
-        '"sono in scope?", e i 10 errori più comuni nelle prime disclosure.',
-        '',
-        'Domande su un caso concreto? Rispondi a questa email: 30 minuti,',
-        'senza impegno.',
-        '',
-        'Daniel Culotta · NormaAI · info@normaai.org',
-        '',
-        '--',
-        'Ricevi questa email perché hai richiesto il Codex dal nostro sito.',
-        'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo',
-        'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
-        'rispondendo a questa email.',
-      ].join('\n'),
+      subject: isAiAct
+        ? 'Il tuo check AI Act (Art. 50) + Codex Post-Omnibus - NormaAI'
+        : 'Il tuo Codex Post-Omnibus 2025-2029 - NormaAI',
+      text: (isAiAct
+        ? [
+            "Grazie per l'interesse in NormaAI.",
+            '',
+            'Ho ricevuto il tuo check AI Act (Art. 50, Reg. UE 2024/1689): ti',
+            'scrivo io, personalmente, con la lettura del tuo caso - chi è il',
+            'destinatario di ogni obbligo, quali eccezioni valgono per voi e',
+            'cosa predisporre prima del 2 agosto 2026.',
+            '',
+            'Se vuoi anticipare, rispondi a questa email: 20 minuti di',
+            'confronto, senza impegno.',
+            '',
+            'In omaggio, come promesso, il Codex Post-Omnibus CSRD/CSDDD',
+            '(PDF, 17 pagine - il quadro sostenibilità post-Omnibus I):',
+            `${origin}${CODEX_PATH}`,
+            '',
+            'Daniel Culotta · NormaAI · info@normaai.org',
+            '',
+            '--',
+            'Ricevi questa email perché hai usato il check AI Act sul nostro sito.',
+            'Usiamo i tuoi dati solo per inviarti l\'analisi e ricontattarti su questo',
+            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
+            'rispondendo a questa email.',
+          ]
+        : [
+            "Grazie per l'interesse in NormaAI.",
+            '',
+            `Scarica il Codex Post-Omnibus 2025-2029 (PDF, 17 pagine):`,
+            `${origin}${CODEX_PATH}`,
+            '',
+            'Dentro trovi: soglie CSRD post-Omnibus (1.000+ dipendenti e €450M,',
+            'cumulativa), calendario CSDDD (trasposizione 26 luglio 2028,',
+            'prima compliance luglio 2029 - Dir. (UE) 2026/470), flowchart',
+            '"sono in scope?", e i 10 errori più comuni nelle prime disclosure.',
+            '',
+            'Domande su un caso concreto? Rispondi a questa email: 20 minuti,',
+            'senza impegno.',
+            '',
+            'Daniel Culotta · NormaAI · info@normaai.org',
+            '',
+            '--',
+            'Ricevi questa email perché hai richiesto il Codex dal nostro sito.',
+            'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo',
+            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
+            'rispondendo a questa email.',
+          ]
+      ).join('\n'),
     })
   }
 

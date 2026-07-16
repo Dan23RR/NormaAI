@@ -80,6 +80,41 @@ class TestLeadValidation:
         )
         assert r.status_code == 422
 
+    def test_checker_banded_sources_accepted(self, client):
+        # The static checkers (scope-csrd.html, scope-aiact.html) send banded
+        # sources like "scope_checker:filo" / "aiact_checker:in". Today they post
+        # to the Vercel serverless route, but the backend contract must accept
+        # them too, or routing leads here would silently 422 the funnel.
+        # Model-level on purpose: this fixture mocks src.db.engine with MagicMock,
+        # so ANY valid POST 422s on the mocked dependency's (*args, **kwargs)
+        # signature - the pattern lives in the schema, and that's what we pin.
+        # The `client` fixture is requested (even without HTTP calls) so the
+        # import below happens inside the same patched-module context as every
+        # other test here - importing it bare would cache the module against the
+        # REAL engine and break the file's isolation for later tests.
+        from src.api.routers.leads import LeadCreate
+
+        for src in (
+            "scope_checker:in",
+            "scope_checker:filo",
+            "aiact_checker:out",
+            # AI Act checker also appends the user's selections after the band,
+            # e.g. in:chat+gen, so the founder notification says WHICH obligations.
+            "aiact_checker:in:chat+gen",
+            "aiact_checker:in:chat+gen+emo+deep",
+        ):
+            lead = LeadCreate(email="ok@example.com", source=src)
+            assert lead.source == src
+
+    def test_invalid_checker_band_still_rejected(self, client):
+        # The pattern stays a whitelist: unknown prefixes and non [a-z_] bands fail.
+        for src in ("scope_checker:IN", "other_checker:in", "aiact_checker:x y"):
+            r = client.post(
+                "/api/v1/leads",
+                json={"email": "ok@example.com", "source": src},
+            )
+            assert r.status_code == 422, f"source {src!r} must be rejected"
+
 
 # ────────────────────── Schema shape ──────────────────────
 

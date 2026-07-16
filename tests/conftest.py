@@ -6,14 +6,24 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.auth.security import create_access_token
-
-# Set test environment before any imports
+# Set the test environment BEFORE any src import. Importing src modules can
+# construct (and lru_cache) Settings at import time, freezing whatever APP_ENV is
+# visible at that moment. This block used to sit BELOW a src import: on dev
+# machines (no APP_ENV in the shell or .env) that cached app_env="development"
+# and environment-dependent tests failed locally while passing in CI (where the
+# workflow exports APP_ENV before Python starts).
 os.environ["APP_ENV"] = "testing"
 os.environ["LLM_PROVIDER"] = "gemini"
 os.environ["GOOGLE_API_KEY"] = "test-key-not-real"
 os.environ["APP_SECRET_KEY"] = "test-secret-key-for-jwt-tokens-minimum-64-characters-long-abcdef"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///test.db"
+
+from src.auth.security import create_access_token  # noqa: E402  (env must be set first)
+from src.config import get_settings  # noqa: E402
+
+# Defensive: if anything imported src.config before this conftest ran (plugins,
+# earlier conftests), drop the cached Settings so tests see the values above.
+get_settings.cache_clear()
 
 
 @pytest.fixture

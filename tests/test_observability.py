@@ -1,22 +1,23 @@
 """Tests for the OpenTelemetry + Prometheus observability stack (src.observability).
 
-The optional ``opentelemetry-*`` and ``prometheus-client`` extras are NOT
-installed in the test environment, so at import time the module sets
-``_metrics_available = False`` and ``_tracer_available = False`` and never
-defines the module-level metric singletons (REQUEST_COUNT, LLM_TOKENS, ...).
+The optional ``opentelemetry-*`` and ``prometheus-client`` extras may or may not
+be installed in the environment running the suite (absent in CI, often PRESENT
+in dev venvs). The tests therefore never assume the ambient import state:
 
-Two test surfaces follow from that:
-
-* **Degraded mode** (real module state) -- every public function must be a
-  safe no-op / sentinel response and never touch a metric object or import
-  ``src.config``. No real exporters, registries, or network are involved.
+* **Degraded mode** is SIMULATED by the ``degraded`` fixture: it forces
+  ``_metrics_available``/``_tracer_available`` to False and removes the
+  module-level metric singletons; monkeypatch restores everything on teardown.
+  Every public function must then be a safe no-op / sentinel response. We
+  deliberately do NOT ``importlib.reload()`` the module to fake absence: with
+  prometheus-client installed, a re-executed module would re-register its
+  collectors against the global registry and raise "Duplicated timeseries".
 
 * **Instrumented mode** -- we flip the module flags with ``patch.object`` and
   inject ``MagicMock`` stand-ins for the otel/prometheus/FastAPIInstrumentor
   names *where they are looked up* (the ``src.observability`` module globals,
-  ``create=True`` because they are absent in degraded mode). This exercises the
-  happy paths and the graceful-degradation ``try/except`` branches inside
-  ``setup_observability`` without importing the heavy libs.
+  ``create=True`` because they may be absent). This exercises the happy paths
+  and the graceful-degradation ``try/except`` branches inside
+  ``setup_observability`` without touching the heavy libs.
 
 No real exporters are created and the shared sqlite test.db is never opened.
 """
@@ -31,31 +32,49 @@ import pytest
 
 import src.observability as obs
 
+_METRIC_SINGLETONS = (
+    "APP_INFO",
+    "REQUEST_COUNT",
+    "REQUEST_LATENCY",
+    "LLM_CALL_COUNT",
+    "LLM_CALL_LATENCY",
+    "LLM_TOKENS",
+    "CIRCUIT_STATE",
+    "ACTIVE_REQUESTS",
+)
+
+
+@pytest.fixture
+def degraded(monkeypatch):
+    """Force src.observability into its degraded state, whatever is installed.
+
+    Flags off + metric singletons removed = exactly the module state produced by
+    an import with the optional extras missing. monkeypatch restores both the
+    flags and any deleted attributes on teardown.
+    """
+    monkeypatch.setattr(obs, "_metrics_available", False)
+    monkeypatch.setattr(obs, "_tracer_available", False)
+    for name in _METRIC_SINGLETONS:
+        if hasattr(obs, name):
+            monkeypatch.delattr(obs, name)
+    return obs
+
 
 # --------------------------------------------------------------------------- #
-# Import-time module state
+# Degraded module state (simulated by the fixture)
 # --------------------------------------------------------------------------- #
 class TestModuleState:
-    def test_optional_libs_absent_in_test_env(self):
-        # The whole test design hinges on the extras being uninstalled here.
-        # If this ever flips, the degraded-mode tests below need revisiting.
-        assert obs._metrics_available is False
-        assert obs._tracer_available is False
+    def test_degraded_fixture_flags_off(self, degraded):
+        # The fixture reproduces the "extras not installed" import state
+        # deterministically, on any machine.
+        assert degraded._metrics_available is False
+        assert degraded._tracer_available is False
 
-    def test_metric_singletons_not_defined_when_unavailable(self):
-        # The `if _metrics_available:` block at module scope never ran, so none
-        # of the Prometheus collectors exist as module attributes.
-        for name in (
-            "APP_INFO",
-            "REQUEST_COUNT",
-            "REQUEST_LATENCY",
-            "LLM_CALL_COUNT",
-            "LLM_CALL_LATENCY",
-            "LLM_TOKENS",
-            "CIRCUIT_STATE",
-            "ACTIVE_REQUESTS",
-        ):
-            assert not hasattr(obs, name), f"{name} should be absent in degraded mode"
+    def test_metric_singletons_not_defined_when_unavailable(self, degraded):
+        # In degraded state none of the Prometheus collectors exist as module
+        # attributes (the `if _metrics_available:` block never ran).
+        for name in _METRIC_SINGLETONS:
+            assert not hasattr(degraded, name), f"{name} should be absent in degraded mode"
 
     def test_public_api_is_present(self):
         # Functions are defined unconditionally regardless of optional libs.
@@ -69,8 +88,8 @@ class TestModuleState:
 # get_metrics_response()
 # --------------------------------------------------------------------------- #
 class TestGetMetricsResponse:
-    def test_degraded_returns_sentinel_plaintext(self):
-        body, content_type = obs.get_metrics_response()
+    def test_degraded_returns_sentinel_plaintext(self, degraded):
+        body, content_type = degraded.get_metrics_response()
         assert body == "# Prometheus client not installed\n"
         assert content_type == "text/plain"
 

@@ -14,6 +14,22 @@ from .schemas import (
 )
 
 
+def citation_grounding_rate(output: dict, retrieved_chunks: list | None) -> float | None:
+    """Fraction of an answer's citations backed by the retrieved evidence.
+
+    Single source of truth is src.agents.nodes.citation_grounding_rate, so this
+    validation KPI uses the SAME rules as the runtime grounding guard and the two
+    never diverge. Returns None when there is nothing to score (no citations).
+
+    Aggregate over a suite by averaging the non-None values into
+    SuiteResult.avg_citation_grounding_rate. NOTE: this needs a run that captures
+    retrieved_chunks per case; the online harness must expose them first.
+    """
+    from src.agents.nodes import citation_grounding_rate as _rate
+
+    return _rate(output, retrieved_chunks)
+
+
 def normalize_article(article: str) -> str:
     """
     Normalize article references for comparison.

@@ -433,6 +433,34 @@ class TestHybridSearch:
         assert results[0]["celex"] == "C2"
         assert all({"id", "score", "text", "celex", "framework"} <= set(r) for r in results)
 
+    def test_hybrid_search_exposes_raw_per_retriever_scores(self):
+        # Additive dense_score / sparse_score let a downstream consumer gate on
+        # retrieval strength. A chunk in both carries both; a chunk from only one
+        # retriever carries None for the other. Existing keys are unchanged.
+        client = MagicMock()
+        idx = make_indexer(client)
+        dense = [
+            SimpleNamespace(id="a", score=0.82, payload={"text": "ta", "framework": "CSRD"}),
+            SimpleNamespace(id="b", score=0.40, payload={"text": "tb", "framework": "CSRD"}),
+        ]
+        sparse = [
+            SimpleNamespace(id="b", score=7.5, payload={"text": "tb", "framework": "CSRD"}),
+            SimpleNamespace(id="c", score=3.1, payload={"text": "tc", "framework": "DORA"}),
+        ]
+        with patch.object(idx, "_search_compat", side_effect=[dense, sparse]):
+            results = idx.hybrid_search("q", limit=10)
+
+        by_id = {r["id"]: r for r in results}
+        # "a": dense only.
+        assert by_id["a"]["dense_score"] == pytest.approx(0.82)
+        assert by_id["a"]["sparse_score"] is None
+        # "b": both retrievers.
+        assert by_id["b"]["dense_score"] == pytest.approx(0.40)
+        assert by_id["b"]["sparse_score"] == pytest.approx(7.5)
+        # "c": sparse only.
+        assert by_id["c"]["dense_score"] is None
+        assert by_id["c"]["sparse_score"] == pytest.approx(3.1)
+
     def test_hybrid_search_respects_limit(self):
         client = MagicMock()
         idx = make_indexer(client)

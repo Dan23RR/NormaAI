@@ -211,6 +211,27 @@ _CELEX_IN_TEXT = re.compile(r"\b3\d{4}[A-Z]{1,2}\d{3,4}\b")
 _ARTICLE_REF = re.compile(r"(?:art(?:icol[oei])?|article)\.?\s*(\d+\s*[a-z]?)", re.IGNORECASE)
 
 
+def _norm_ws(text: str) -> str:
+    """Lowercase and collapse whitespace - for verbatim-quote matching."""
+    return " ".join(str(text or "").lower().split())
+
+
+def _snippet_supported(snippet: str, evidence_norm: str) -> bool:
+    """A cited quote is 'supported' when it is (near-)verbatim in the evidence:
+    a substring of the normalized evidence, OR >= 50% of its content words (>3 chars)
+    appear in it. Tolerates minor truncation of a real quote while catching a
+    wholesale-fabricated one. Callers ignore trivially short snippets.
+    """
+    s = _norm_ws(snippet)
+    if not s or s in evidence_norm:
+        return True
+    words = [w for w in re.findall(r"\w+", s) if len(w) > 3]
+    if not words:
+        return True
+    present = sum(1 for w in words if w in evidence_norm)
+    return (present / len(words)) >= 0.5
+
+
 def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
     """Flag answers whose citations are NOT backed by retrieved sources.
 
@@ -266,6 +287,19 @@ def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
                     ungrounded += 1
                     break
 
+    # Quote grounding: a cited verbatim quote must actually appear in the evidence.
+    # The citation schema (prompts/qa_bot.txt) asks for a quote_snippet, and a
+    # FABRICATED quote is the most deceptive hallucination - it reads like a direct
+    # source. Only on substantive evidence; trivially short snippets are ignored.
+    if substantive and citations:
+        evidence_norm = _norm_ws(" ".join(str(c.get("text", "")) for c in chunks))
+        for cit in citations:
+            if not isinstance(cit, dict):
+                continue
+            snippet = str(cit.get("quote_snippet", "") or "").strip()
+            if len(snippet) > 8 and not _snippet_supported(snippet, evidence_norm):
+                ungrounded += 1
+
     if ungrounded:
         result["requires_expert_review"] = True
         result["grounding_warning"] = (
@@ -276,6 +310,39 @@ def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
         except (ValueError, TypeError):
             result["confidence_score"] = 0.6
     return result
+
+
+def citation_grounding_rate(result: dict, retrieved_chunks: list | None) -> float | None:
+    """Fraction of a result's citations that are backed by the retrieved evidence.
+
+    A reusable, LLM-free KPI for the product's core promise. A citation counts as
+    grounded when its framework is present in the retrieved evidence AND, if it cites
+    a verbatim quote, that quote is supported. Uses the SAME primitives as the runtime
+    grounding guard, so the metric and the guard never diverge. Returns None when there
+    is nothing to score (no citations).
+    """
+    if not isinstance(result, dict):
+        return None
+    citations = [c for c in (result.get("citations") or []) if isinstance(c, dict)]
+    if not citations:
+        return None
+    chunks = [c for c in (retrieved_chunks or []) if isinstance(c, dict)]
+    grounded_fw = {str(c.get("framework", "")).upper() for c in chunks if c.get("framework")}
+    evidence_norm = _norm_ws(" ".join(str(c.get("text", "")) for c in chunks))
+    substantive = any(len(str(c.get("text", "")).strip()) > 30 for c in chunks)
+
+    grounded = 0
+    for cit in citations:
+        if not chunks:
+            continue  # citations with zero evidence are never grounded
+        fw = str(cit.get("framework", "")).upper()
+        if grounded_fw and fw and fw not in grounded_fw:
+            continue
+        snippet = str(cit.get("quote_snippet", "") or "").strip()
+        if substantive and len(snippet) > 8 and not _snippet_supported(snippet, evidence_norm):
+            continue
+        grounded += 1
+    return grounded / len(citations)
 
 
 def _pack_llm_result(result: dict, state: AgentState | None = None) -> dict:

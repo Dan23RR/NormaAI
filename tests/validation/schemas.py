@@ -209,6 +209,10 @@ class SuiteResult(BaseModel):
     avg_recall: float = 0.0
     avg_f1: float = 0.0
     min_recall: float = 0.0
+    # The moat as a number: mean fraction of emitted citations backed by the
+    # retrieved evidence, over cases where it could be scored. None until wired to
+    # a run that captures retrieved_chunks per case.
+    avg_citation_grounding_rate: float | None = None
 
     # Per-framework breakdown
     framework_metrics: dict[str, dict] = Field(default_factory=dict)

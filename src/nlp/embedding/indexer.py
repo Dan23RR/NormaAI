@@ -473,12 +473,20 @@ class HybridIndexer:
         # RRF fusion
         fused = self._reciprocal_rank_fusion(dense_results, sparse_results, k=rrf_k)
 
-        # Get top results with payloads
+        # Get top results with payloads. Keep each retriever's RAW score so a
+        # downstream consumer can gate on retrieval strength (e.g. abstain harder
+        # when the best evidence is weak) - the RRF score alone hides that.
         results = []
         seen_ids = set()
         all_results_map = {}
-        for r in dense_results + sparse_results:
+        dense_score_map = {}
+        sparse_score_map = {}
+        for r in dense_results:
             all_results_map[r.id] = r
+            dense_score_map[r.id] = getattr(r, "score", None)
+        for r in sparse_results:
+            all_results_map[r.id] = r
+            sparse_score_map[r.id] = getattr(r, "score", None)
 
         for point_id, rrf_score in fused[:limit]:
             if point_id in seen_ids:
@@ -498,6 +506,10 @@ class HybridIndexer:
                         "chunk_type": payload.get("chunk_type", ""),
                         "article_number": payload.get("article_number", ""),
                         "section_title": payload.get("section_title", ""),
+                        # Additive: raw per-retriever cosine/BM25 score.
+                        # None = the chunk was not returned by that retriever.
+                        "dense_score": dense_score_map.get(point_id),
+                        "sparse_score": sparse_score_map.get(point_id),
                     }
                 )
 

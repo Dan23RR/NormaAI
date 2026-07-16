@@ -38,6 +38,7 @@ from src.agents.nodes import (
     async_monitor_agent_node,
     async_qa_bot_node,
     async_simple_response_node,
+    citation_grounding_rate,
     confidence_check_node,
     detect_frameworks_in_query,
     gap_analyst_node,
@@ -297,6 +298,112 @@ class TestGroundingGuard:
         out = _apply_grounding_guard(result, chunks)
         assert out["requires_expert_review"] is True
         assert out["confidence_score"] == 0.6
+
+
+# ─── Quote-snippet grounding (verbatim quotes vs the evidence) ─────
+
+
+class TestQuoteSnippetGrounding:
+    _EV = "L'interessato ha diritto alla cancellazione dei dati personali senza ingiustificato ritardo."
+
+    def test_fabricated_quote_flags_and_caps(self):
+        # A quote absent from the evidence is the most deceptive hallucination.
+        chunks = [{"framework": "GDPR", "text": self._EV}]
+        result = {
+            "answer": "ok",
+            "citations": [
+                {
+                    "framework": "GDPR",
+                    "quote_snippet": "il titolare deve pagare una sanzione di dieci milioni subito",
+                }
+            ],
+            "confidence_score": 0.95,
+        }
+        out = _apply_grounding_guard(result, chunks)
+        assert out["requires_expert_review"] is True
+        assert "grounding_warning" in out
+        assert out["confidence_score"] == 0.6
+
+    def test_verbatim_quote_not_flagged(self):
+        chunks = [{"framework": "GDPR", "text": self._EV}]
+        result = {
+            "answer": "ok",
+            "citations": [
+                {
+                    "framework": "GDPR",
+                    "quote_snippet": "diritto alla cancellazione dei dati personali",
+                }
+            ],
+            "confidence_score": 0.9,
+        }
+        out = _apply_grounding_guard(result, chunks)
+        assert "grounding_warning" not in out
+        assert out["confidence_score"] == 0.9
+
+    def test_trivially_short_quote_ignored(self):
+        # Too short to verify reliably -> not flagged (conservative).
+        chunks = [{"framework": "GDPR", "text": self._EV}]
+        result = {
+            "answer": "ok",
+            "citations": [{"framework": "GDPR", "quote_snippet": "art 17"}],
+            "confidence_score": 0.9,
+        }
+        out = _apply_grounding_guard(result, chunks)
+        assert "grounding_warning" not in out
+
+
+# ─── citation_grounding_rate (the moat as a number) ───────────────
+
+
+class TestCitationGroundingRate:
+    def test_none_when_no_citations(self):
+        assert (
+            citation_grounding_rate({"citations": []}, [{"framework": "GDPR", "text": "x"}]) is None
+        )
+        assert citation_grounding_rate({}, []) is None
+        assert citation_grounding_rate("not a dict", []) is None
+
+    def test_all_grounded_is_one(self):
+        chunks = [
+            {"framework": "GDPR", "text": "principi"},
+            {"framework": "CSRD", "text": "report"},
+        ]
+        result = {"citations": [{"framework": "GDPR"}, {"framework": "CSRD"}]}
+        assert citation_grounding_rate(result, chunks) == pytest.approx(1.0)
+
+    def test_half_grounded_on_framework_mismatch(self):
+        chunks = [{"framework": "GDPR", "text": "principi"}]
+        result = {"citations": [{"framework": "GDPR"}, {"framework": "AI_ACT"}]}
+        assert citation_grounding_rate(result, chunks) == pytest.approx(0.5)
+
+    def test_zero_when_no_evidence(self):
+        result = {"citations": [{"framework": "GDPR"}, {"framework": "CSRD"}]}
+        assert citation_grounding_rate(result, []) == pytest.approx(0.0)
+
+    def test_fabricated_quote_lowers_rate(self):
+        chunks = [
+            {
+                "framework": "GDPR",
+                "text": "L'interessato ha diritto alla cancellazione dei dati personali.",
+            }
+        ]
+        result = {
+            "citations": [
+                {"framework": "GDPR", "quote_snippet": "diritto alla cancellazione dei dati"},
+                {"framework": "GDPR", "quote_snippet": "sanzione di dieci milioni di euro subito"},
+            ]
+        }
+        assert citation_grounding_rate(result, chunks) == pytest.approx(0.5)
+
+    def test_metric_agrees_with_guard(self):
+        # Metric and guard never diverge: an ungrounded framework makes the rate
+        # < 1.0 AND makes the guard force review.
+        chunks = [{"framework": "CSRD", "text": "sustainability reporting requirements"}]
+        result = {"answer": "x", "citations": [{"framework": "GDPR"}], "confidence_score": 0.9}
+        rate = citation_grounding_rate(result, chunks)
+        guarded = _apply_grounding_guard(dict(result), chunks)
+        assert rate == pytest.approx(0.0)
+        assert guarded["requires_expert_review"] is True
 
     def test_bad_confidence_value_falls_back_to_0_6(self):
         result = {

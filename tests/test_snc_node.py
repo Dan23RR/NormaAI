@@ -27,6 +27,7 @@ import pytest
 from src.agents import snc_node
 from src.agents.snc_layer import SNCConfig, SNCDecision, snc_governance
 from src.agents.snc_node import (
+    _best_dense_score,
     _build_user_message,
     _config_from_settings,
     abstain_response_node,
@@ -482,6 +483,60 @@ class TestEndToEndGovernance:
         assert decision.trust < 0.50
         assert decision.action == "ABSTAIN"
 
+    async def test_consensus_floor_abstains_when_no_sample_corroborates(self):
+        # Three fully-divergent citations at HIGH self-confidence (0.95). The
+        # thermodynamic trust lands at ~0.548 (>= theta_low 0.50), so WITHOUT the
+        # consensus floor this would be ADMIT_MID. But the modal cluster is a
+        # singleton (no sample agrees with any other), so the floor forces ABSTAIN.
+        # The trust score itself stays > theta_low, proving it is the FLOOR (not the
+        # numeric trust) that abstained.
+        initial = {
+            "answer": "A",
+            "confidence_score": 0.95,
+            "citations": [{"framework": "GDPR", "article_number": "5"}],
+        }
+        r2 = {
+            "answer": "B",
+            "confidence_score": 0.95,
+            "citations": [{"framework": "CSRD", "article_number": "19a"}],
+        }
+        r3 = {
+            "answer": "C",
+            "confidence_score": 0.95,
+            "citations": [{"framework": "CSDDD", "article_number": "8"}],
+        }
+        mocked = AsyncMock(side_effect=[r2, r3])
+        with patch("src.agents.snc_layer.acall_llm", mocked):
+            decision = await snc_governance(
+                initial_response=initial,
+                system_prompt="SYS",
+                user_message="USR",
+                config=_admit_high_settings(),
+            )
+        assert decision.trust > 0.50  # would have been ADMIT_MID on trust alone
+        assert decision.action == "ABSTAIN"  # ...but the consensus floor overrode it
+
+    async def test_consensus_floor_does_not_fire_on_two_one_split(self):
+        # A 2-vs-1 majority (modal cluster size 2 >= min_modal_agreement) is real
+        # corroboration: the floor must NOT fire, the trust-based action stands.
+        cited = {"framework": "GDPR", "article_number": "5"}
+        initial = {"answer": "A", "confidence_score": 0.9, "citations": [cited]}
+        r2 = {"answer": "A2", "confidence_score": 0.9, "citations": [cited]}
+        r3 = {
+            "answer": "B",
+            "confidence_score": 0.9,
+            "citations": [{"framework": "CSRD", "article_number": "1"}],
+        }
+        mocked = AsyncMock(side_effect=[r2, r3])
+        with patch("src.agents.snc_layer.acall_llm", mocked):
+            decision = await snc_governance(
+                initial_response=initial,
+                system_prompt="SYS",
+                user_message="USR",
+                config=_admit_high_settings(),
+            )
+        assert decision.action == "ADMIT_MID"
+
     async def test_two_one_split_intermediate_admit_mid(self):
         # 2-vs-1 split => 2 clusters, skewed entropy (0 < sigma < 1). With
         # ppv 0.9 the trust lands between theta_low and theta_high => ADMIT_MID.
@@ -614,7 +669,18 @@ class TestNodeWiredToRealGovernance:
             patch.object(snc_node, "_build_user_message", return_value="USR"),
             patch("src.agents.snc_layer.acall_llm", mocked),
         ):
-            state = {"result_json": json.dumps(initial)}
+            # SNC runs AFTER retrieval: the served citation must be backed by a
+            # retrieved chunk, else the (re-applied) grounding guard flags it.
+            state = {
+                "result_json": json.dumps(initial),
+                "retrieved_chunks": [
+                    {
+                        "framework": "GDPR",
+                        "article_number": "5",
+                        "text": "I dati personali sono trattati secondo i principi dell'articolo 5.",
+                    }
+                ],
+            }
             out = await async_snc_governance_node(state)
 
         assert out["snc_action"] == "ADMIT_HIGH"
@@ -661,3 +727,154 @@ class TestNodeWiredToRealGovernance:
         payload = json.loads(terminal["result_json"])
         assert payload["abstention_reason"] == "snc_low_trust"
         assert payload["snc_audit"] == out["snc_audit"]
+
+
+# ─── Grounding guard applied to the SERVED modal answer ───────────────
+#
+# The guard used to run only on the pre-SNC first draft. SNC serves the modal
+# resample, a DIFFERENT sample: an ungrounded citation there would reach the user
+# unflagged. The node now re-applies the guard to the served answer.
+
+
+class TestGroundingGuardOnServedModal:
+    def _decision(self, citations):
+        return SNCDecision(
+            action="ADMIT_HIGH",
+            trust=0.9,
+            ppv=0.9,
+            sigma_calib=0.0,
+            t_comp=0.6,
+            n_clusters=1,
+            modal_answer={"answer": "risposta", "citations": citations},
+            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": citations}],
+        )
+
+    async def test_ungrounded_modal_citation_forces_review_despite_admit_high(self):
+        # Modal cites AI_ACT but the retrieved evidence is GDPR only: the guard
+        # must force expert review and cap confidence, even though SNC said
+        # ADMIT_HIGH. This is the product's core promise at the real delivery point.
+        decision = self._decision([{"framework": "AI_ACT", "article_number": "6"}])
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=SNCConfig(enabled=True)),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USR"),
+            patch.object(snc_node, "snc_governance", AsyncMock(return_value=decision)),
+        ):
+            state = {
+                "result_json": json.dumps(
+                    {"answer": "d", "confidence_score": 0.9, "citations": []}
+                ),
+                "retrieved_chunks": [{"framework": "GDPR", "text": "principi di trattamento dati"}],
+            }
+            out = await async_snc_governance_node(state)
+
+        assert out["snc_action"] == "ADMIT_HIGH"  # SNC admitted on sample agreement
+        assert out["requires_expert_review"] is True  # ...but the guard caught it
+        surfaced = json.loads(out["result_json"])
+        assert "grounding_warning" in surfaced
+        assert surfaced["confidence_score"] <= 0.6  # capped by the guard
+        assert surfaced["snc_trust"] == pytest.approx(0.9)  # raw trust preserved for audit
+
+    async def test_grounded_modal_citation_stays_clean(self):
+        # Sanity: a modal citation backed by the retrieved evidence is not flagged.
+        decision = self._decision([{"framework": "GDPR", "article_number": "5"}])
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=SNCConfig(enabled=True)),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USR"),
+            patch.object(snc_node, "snc_governance", AsyncMock(return_value=decision)),
+        ):
+            state = {
+                "result_json": json.dumps(
+                    {"answer": "d", "confidence_score": 0.9, "citations": []}
+                ),
+                "retrieved_chunks": [
+                    {"framework": "GDPR", "article_number": "5", "text": "principi articolo 5"}
+                ],
+            }
+            out = await async_snc_governance_node(state)
+
+        assert out["requires_expert_review"] is False
+        surfaced = json.loads(out["result_json"])
+        assert "grounding_warning" not in surfaced
+        assert surfaced["confidence_score"] == pytest.approx(0.9)
+
+
+# ─── Retrieval support gate (weak evidence -> flag + cap) ─────────────
+#
+# Even with agreeing samples and grounded citations, an answer built on weak
+# retrieved evidence (best dense score below threshold) must not sound authoritative.
+
+
+class TestBestDenseScore:
+    def test_returns_max_present_score(self):
+        chunks = [{"dense_score": 0.1}, {"dense_score": 0.7}, {"sparse_score": 9.0}]
+        assert _best_dense_score(chunks) == pytest.approx(0.7)
+
+    def test_none_when_no_dense_scores(self):
+        assert _best_dense_score([{"sparse_score": 9.0}, {"text": "x"}]) is None
+        assert _best_dense_score([]) is None
+        assert _best_dense_score(None) is None
+
+
+class TestRetrievalSupportGate:
+    def _admit_high_no_citations(self):
+        # No citations -> the grounding guard is a no-op, isolating the gate.
+        return SNCDecision(
+            action="ADMIT_HIGH",
+            trust=0.9,
+            ppv=0.9,
+            sigma_calib=0.0,
+            t_comp=0.6,
+            n_clusters=1,
+            modal_answer={"answer": "risposta", "citations": []},
+            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": []}],
+        )
+
+    async def _run(self, cfg, chunks):
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USR"),
+            patch.object(
+                snc_node, "snc_governance", AsyncMock(return_value=self._admit_high_no_citations())
+            ),
+        ):
+            state = {
+                "result_json": json.dumps(
+                    {"answer": "d", "confidence_score": 0.9, "citations": []}
+                ),
+                "retrieved_chunks": chunks,
+            }
+            return await async_snc_governance_node(state)
+
+    async def test_weak_evidence_flags_and_caps_despite_admit_high(self):
+        cfg = SNCConfig(enabled=True, weak_evidence_dense_score=0.25)
+        out = await self._run(cfg, [{"framework": "GDPR", "text": "x", "dense_score": 0.10}])
+        assert out["snc_action"] == "ADMIT_HIGH"
+        assert out["requires_expert_review"] is True
+        surfaced = json.loads(out["result_json"])
+        assert "weak_evidence_warning" in surfaced
+        assert surfaced["confidence_score"] <= 0.6
+        assert surfaced["snc_trust"] == pytest.approx(0.9)  # raw trust preserved
+
+    async def test_strong_evidence_stays_clean(self):
+        cfg = SNCConfig(enabled=True, weak_evidence_dense_score=0.25)
+        out = await self._run(cfg, [{"framework": "GDPR", "text": "x", "dense_score": 0.80}])
+        assert out["requires_expert_review"] is False
+        surfaced = json.loads(out["result_json"])
+        assert "weak_evidence_warning" not in surfaced
+        assert surfaced["confidence_score"] == pytest.approx(0.9)
+
+    async def test_gate_disabled_when_threshold_zero(self):
+        cfg = SNCConfig(enabled=True, weak_evidence_dense_score=0.0)
+        out = await self._run(cfg, [{"framework": "GDPR", "text": "x", "dense_score": 0.01}])
+        assert out["requires_expert_review"] is False
+        assert "weak_evidence_warning" not in json.loads(out["result_json"])
+
+    async def test_no_gate_when_dense_scores_absent(self):
+        # Chunks without dense_score (e.g. older callers) must not trip the gate.
+        cfg = SNCConfig(enabled=True, weak_evidence_dense_score=0.25)
+        out = await self._run(cfg, [{"framework": "GDPR", "text": "x"}])
+        assert out["requires_expert_review"] is False
+        assert "weak_evidence_warning" not in json.loads(out["result_json"])

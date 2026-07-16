@@ -122,6 +122,15 @@ class Settings(BaseSettings):
     """Trust threshold above which the system admits and skips CoVe."""
     snc_theta_low: float = 0.50
     """Trust threshold below which the system abstains and flags for expert review."""
+    snc_min_modal_agreement: int = 2
+    """Consensus floor: the modal answer must be corroborated by at least this many
+    of the K samples, else the system abstains regardless of the numeric trust.
+    Guards against K mutually-divergent high-confidence answers clearing theta_low."""
+    snc_weak_evidence_dense_score: float = 0.25
+    """Retrieval support gate: when the BEST retrieved chunk's dense (cosine) score is
+    below this, the evidence is considered weak - the served answer is flagged for
+    expert review and its confidence capped (an answer should not sound authoritative
+    on thin evidence). Conservative: fires only when dense scores are present. 0 disables."""
 
     # ─── Streaming ────────────────────────────────────────────
     sse_keepalive_interval: int = 15

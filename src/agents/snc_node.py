@@ -90,7 +90,21 @@ def _config_from_settings() -> SNCConfig:
         theta_high=getattr(s, "snc_theta_high", 0.85),
         theta_low=getattr(s, "snc_theta_low", 0.50),
         enabled=getattr(s, "snc_enabled", True),
+        min_modal_agreement=getattr(s, "snc_min_modal_agreement", 2),
+        weak_evidence_dense_score=getattr(s, "snc_weak_evidence_dense_score", 0.25),
     )
+
+
+def _best_dense_score(chunks: list | None) -> float | None:
+    """Highest dense (cosine) score among retrieved chunks, or None if none carry one.
+    hybrid_search exposes per-retriever raw scores; a None means that chunk was not
+    returned by the dense retriever and is ignored here."""
+    scores = [
+        c.get("dense_score")
+        for c in (chunks or [])
+        if isinstance(c, dict) and isinstance(c.get("dense_score"), int | float)
+    ]
+    return max(scores) if scores else None
 
 
 # ─── Async LangGraph node ────────────────────────────────────────
@@ -161,8 +175,46 @@ async def async_snc_governance_node(state: dict) -> dict:
     surfaced["confidence_score"] = decision.trust
     surfaced["snc_trust"] = decision.trust
     surfaced["snc_action"] = decision.action
+
+    # Re-run the grounding guard on the answer ACTUALLY SERVED (the SNC modal
+    # resample), not just the pre-SNC first draft. The guard in the agent node only
+    # saw the initial draft; the modal answer is a DIFFERENT sample and may carry an
+    # ungrounded citation that would otherwise reach the user unflagged. This is the
+    # product's core promise (no citation absent from the evidence) enforced at the
+    # real point of delivery. Deferred import avoids any import-cycle with nodes.py.
+    from src.agents.nodes import _apply_grounding_guard
+
+    surfaced = _apply_grounding_guard(surfaced, state.get("retrieved_chunks"))
+
+    # Retrieval support gate: even with agreeing samples and grounded citations, an
+    # answer built on WEAK evidence (best dense score below threshold) must not sound
+    # authoritative. Flag for review and cap confidence. Fires only when dense scores
+    # are present and the threshold is enabled (> 0).
+    weak_evidence = False
+    if cfg.weak_evidence_dense_score > 0:
+        best = _best_dense_score(state.get("retrieved_chunks"))
+        if best is not None and best < cfg.weak_evidence_dense_score:
+            weak_evidence = True
+            surfaced["requires_expert_review"] = True
+            surfaced["weak_evidence_warning"] = (
+                f"best retrieved evidence score {best:.3f} < "
+                f"{cfg.weak_evidence_dense_score}; review needed"
+            )
+            try:
+                surfaced["confidence_score"] = min(
+                    float(surfaced.get("confidence_score", 0.5)), 0.6
+                )
+            except (ValueError, TypeError):
+                surfaced["confidence_score"] = 0.6
+
+    surfaced["snc_trust"] = decision.trust  # keep raw trust even if guard/gate cap confidence
     state["result_json"] = json.dumps(surfaced, ensure_ascii=False)
-    state["requires_expert_review"] = decision.action == "ABSTAIN"
+    # Expert review if SNC abstained OR the grounding guard OR the support gate flagged it.
+    state["requires_expert_review"] = (
+        (decision.action == "ABSTAIN")
+        or bool(surfaced.get("requires_expert_review"))
+        or weak_evidence
+    )
     state["snc_audit"] = state["snc_decision"]
 
     logger.info(

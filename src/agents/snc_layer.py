@@ -32,6 +32,15 @@ class SNCConfig:
     theta_high: float = 0.85
     theta_low: float = 0.50
     enabled: bool = True
+    # Consensus floor: the modal answer must be corroborated by at least this many
+    # samples, else abstain regardless of the numeric trust. Guards K divergent
+    # high-confidence answers (each self-graded ~0.95) that can otherwise clear
+    # theta_low on entropy alone. Default 2 = "at least one other sample agrees".
+    min_modal_agreement: int = 2
+    # Retrieval support gate: if the best retrieved dense (cosine) score is below
+    # this, the evidence is weak -> flag the served answer for review and cap its
+    # confidence. Fires only when dense scores are present (conservative). 0 disables.
+    weak_evidence_dense_score: float = 0.25
 
 
 # ----- Normalization helpers -----
@@ -206,6 +215,14 @@ async def snc_governance(
     elif trust >= cfg.theta_low:
         action = "ADMIT_MID"
     else:
+        action = "ABSTAIN"
+
+    # Consensus floor: if the modal answer is corroborated by NO other sample (its
+    # cluster is a singleton while the others also diverge), there is no agreement
+    # to admit - abstain regardless of the numeric trust. The trust score itself is
+    # left unchanged for audit transparency; only the ACTION is overridden.
+    modal_size = len(cluster_sizes[modal_key])
+    if len(samples) >= cfg.min_modal_agreement and modal_size < cfg.min_modal_agreement:
         action = "ABSTAIN"
 
     logger.info(

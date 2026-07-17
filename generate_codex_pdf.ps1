@@ -63,7 +63,9 @@ $args = @(
     "--virtual-time-budget=60000",
     "--run-all-compositor-stages-before-draw",
     "--disable-features=PaintHolding",
-    "--default-background-color=000000",
+    # White page background: the codex is a light "warm paper" document; a black
+    # default made every non-painted margin/gap render black in the PDF.
+    "--default-background-color=ffffff",
     $url
 )
 

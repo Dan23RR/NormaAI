@@ -27,7 +27,8 @@ type LeadPayload = {
   role?: unknown
   source?: unknown
   lead_ref?: unknown
-  website?: unknown // honeypot - humans never fill it
+  contact_time?: unknown // honeypot - humans never fill it (autofill-safe name)
+  website?: unknown // legacy honeypot key (pages cached during a deploy still send it)
 }
 
 function clean(v: unknown, max = 200): string {
@@ -74,7 +75,9 @@ export async function POST(req: NextRequest) {
   // Honeypot: pretend success so bots stop retrying, deliver nothing.
   // Logged first: a human whose browser autofilled the hidden field would
   // otherwise vanish without a trace ("NEVER lose a lead" applies here too).
-  if (clean(body.website)) {
+  // Read both the new autofill-safe key and the legacy one, so a page cached
+  // mid-deploy is still protected.
+  if (clean(body.contact_time) || clean(body.website)) {
     console.log(
       JSON.stringify({
         event: 'lead_honeypot',

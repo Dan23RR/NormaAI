@@ -446,7 +446,7 @@ function CodexForm() {
       role: String(fd.get('role') || '').trim() || undefined,
       source: 'codex_download',
       lead_ref: leadRef,
-      website: String(fd.get('website') || ''), // honeypot
+      contact_time: String(fd.get('contact_time') || ''), // honeypot (autofill-safe name)
     }
 
     if (!payload.email || !/.+@.+\..+/.test(payload.email)) {
@@ -555,10 +555,13 @@ function CodexForm() {
       onSubmit={handleSubmit}
       noValidate
     >
-      {/* Honeypot: invisible to humans, bots fill it and get silently dropped */}
+      {/* Honeypot: invisible to humans, bots fill it and get silently dropped.
+          Field name deliberately NOT "website"/"url"/"email" etc - those are
+          autofill categories and Chrome would fill them for real users, tripping
+          the trap. "contact_time" matches no autofill heuristic. */}
       <input
         type="text"
-        name="website"
+        name="contact_time"
         tabIndex={-1}
         autoComplete="off"
         aria-hidden="true"

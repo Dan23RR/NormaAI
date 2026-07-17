@@ -343,7 +343,7 @@
               + '<input type="text" id="org" autocomplete="organization" aria-label="Nome impresa" placeholder="Nome impresa">'
               + '<input type="email" id="email" autocomplete="email" aria-label="Email aziendale" placeholder="email@impresa.it" required>'
             + '</div>'
-            + '<input class="hp" type="text" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">'
+            + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
             + '<button class="btn btn-cta" type="submit">Ricevi l’analisi + il Codex →</button>'
             + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel (founder). Niente newsletter, niente cessione a terzi. '
               + 'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo tema (legittimo interesse, GDPR Art. 6.1.f). <a href="https://normaai.org/privacy">privacy</a>.</p>'
@@ -365,14 +365,14 @@
       ev.preventDefault();
       var email = ($('email').value||'').trim();
       var org = ($('org').value||'').trim();
-      var hp = ($('website').value||'').trim();
+      var hp = ($('contact_time').value||'').trim();
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.style.color = '#ffb4a2'; return; }
       var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio...';
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', website:hp })
+        body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', contact_time:hp })
       }).then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(data){
         $('cta').classList.add('done');

@@ -13,8 +13,8 @@ packages = [{include = "src"}]
 python = ">=3.11,<3.13"
 
 # Web framework
-fastapi = "^0.115.0"
-uvicorn = {extras = ["standard"], version = "^0.32.0"}
+fastapi = "^0.139.2"
+uvicorn = {extras = ["standard"], version = "^0.51.0"}
 
 # LLM & Agents
 langchain = "^0.3.12"
@@ -25,19 +25,19 @@ langchain-openai = {version = "^0.3.0", optional = true}
 langgraph = "^0.2.60"
 
 # Vector DB
-qdrant-client = "^1.12.1"
-fastembed = "^0.4.2"
+qdrant-client = "^1.18.0"
+fastembed = "^0.8.0"
 
 # Document processing
-beautifulsoup4 = "^4.12.3"
+beautifulsoup4 = "^4.15.0"
 lxml = "^5.3.0"
 httpx = "^0.28.0"
 SPARQLWrapper = "^2.0.0"
-docling = "^2.31.0"
+docling = "^2.114.0"
 
 # Utils
-pydantic = {extras = ["email"], version = "^2.10.3"}
-pydantic-settings = "^2.7.0"
+pydantic = {extras = ["email"], version = "^2.13.4"}
+pydantic-settings = "^2.14.2"
 python-dotenv = "^1.0.1"
 structlog = "^24.4.0"
 tenacity = "^9.0.0"
@@ -50,21 +50,21 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 
 # Database ORM
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
-asyncpg = "^0.30.0"
-alembic = "^1.14.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.51"}
+asyncpg = "^0.31.0"
+alembic = "^1.18.5"
 
 # File upload support
-python-multipart = "^0.0.12"
+python-multipart = "^0.0.32"
 
 # Rate limiting
-slowapi = "^0.1.9"
+slowapi = "^0.1.10"
 
 # Report generation
 fpdf2 = "^2.8.0"
 
 # Transactional email (Resend - Codex/lead delivery)
-resend = "^2.4.0"
+resend = "^2.34.0"
 
 # Observability
 arize-phoenix = {version = "^8.0.0", optional = true}
@@ -72,8 +72,8 @@ opentelemetry-api = {version = "^1.28.0", optional = true}
 opentelemetry-sdk = {version = "^1.28.0", optional = true}
 opentelemetry-instrumentation-fastapi = {version = "^0.49b0", optional = true}
 opentelemetry-exporter-otlp-proto-grpc = {version = "^1.28.0", optional = true}
-prometheus-client = {version = "^0.21.0", optional = true}
-sentry-sdk = {extras = ["fastapi"], version = "^2.19.0", optional = true}
+prometheus-client = {version = "^0.25.0", optional = true}
+sentry-sdk = {extras = ["fastapi"], version = "^2.66.0", optional = true}
 
 [tool.poetry.extras]
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi", "opentelemetry-exporter-otlp-proto-grpc", "prometheus-client", "sentry-sdk"]
@@ -83,7 +83,7 @@ openrouter = ["langchain-openai"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pytest-asyncio = "^0.24.0"
-ruff = "^0.8.4"
+ruff = "^0.15.22"
 mypy = "^1.13.0"
 httpx = "^0.28.0"
 pytest-cov = "^6.0.0"

@@ -131,6 +131,13 @@
     font-size:9pt;
     page-break-inside:avoid; break-inside:avoid;
   }
+  /* Long tables (e.g. the glossary) MUST flow across pages: avoid on a
+     taller-than-page table pushes it whole to the next page and strands the
+     chapter header alone on a near-blank page. Rows stay unbreakable and the
+     thead repeats on each page. */
+  table.flow{ page-break-inside:auto; break-inside:auto; }
+  table.flow thead{ display:table-header-group; }
+  table.flow tr{ page-break-inside:avoid; break-inside:avoid; }
   thead th{
     text-align:left; padding:5pt 7pt;
     background:var(--surface-2); color:var(--ink-2);
@@ -227,6 +234,7 @@
     .no-print{ display:none; }
     h2{ page-break-after:avoid; }
     table{ page-break-inside:avoid; }
+    table.flow{ page-break-inside:auto; }
     .box{ page-break-inside:avoid; }
   }
 </style>
@@ -757,7 +765,7 @@
   <div class="page-header"><div class="mark">N</div><span>Cap. 07 · Glossario operativo</span></div>
   <h1 class="chapter"><span class="num">Capitolo 07</span>Glossario operativo</h1>
 
-  <table>
+  <table class="flow">
     <thead><tr><th>Termine</th><th>Forma estesa</th><th>Riferimento</th></tr></thead>
     <tbody>
       <tr><td><strong>AI Act</strong></td><td>EU Artificial Intelligence Act</td><td>Reg. (UE) 2024/1689</td></tr>

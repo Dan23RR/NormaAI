@@ -63,9 +63,10 @@ $args = @(
     "--virtual-time-budget=60000",
     "--run-all-compositor-stages-before-draw",
     "--disable-features=PaintHolding",
-    # White page background: the codex is a light "warm paper" document; a black
-    # default made every non-painted margin/gap render black in the PDF.
-    "--default-background-color=ffffff",
+    # Page background = SAME warm-paper tone as the document body (#FAF9F5).
+    # The browser fills the print margins with this color; anything different
+    # from the body background shows a visible seam at the page edges.
+    "--default-background-color=faf9f5",
     $url
 )
 

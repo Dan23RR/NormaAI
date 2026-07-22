@@ -35,10 +35,10 @@
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
   body{
-    background:
-      radial-gradient(1200px 600px at 20% -10%, rgba(217,119,87,0.05), transparent 60%),
-      radial-gradient(900px 500px at 100% 110%, rgba(203,162,58,0.04), transparent 60%),
-      var(--bg);
+    /* Flat, single-tone background: print margins are filled by the browser's
+       default background color (set to the same #FAF9F5 in the generator), so
+       any gradient here would show a visible seam at the page edges. */
+    background:var(--bg);
     min-height:100vh;
   }
 
@@ -58,10 +58,7 @@
     width:210mm; height:297mm; margin:0 auto;
     padding:28mm 22mm 22mm;
     display:flex; flex-direction:column; justify-content:space-between;
-    background:
-      radial-gradient(800px 500px at 80% 0%, rgba(217,119,87,0.12), transparent 60%),
-      radial-gradient(600px 600px at 0% 100%, rgba(203,162,58,0.09), transparent 60%),
-      var(--bg);
+    background:var(--bg);
     page-break-after:always;
     break-after:page;
   }

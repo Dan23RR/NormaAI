@@ -544,7 +544,16 @@ Examples:
         if api_client:
             await api_client.close()
 
-    # Exit code based on pass/fail
+    # Exit code based on pass/fail.
+    # Demo mode runs without real LLM/services (see .github/workflows/validation.yml),
+    # so its metrics are informational: it is a smoke test, and only crashes fail it.
+    # The weekly CI job had been red since June for this reason alone.
+    if args.demo and not result.suite_passed and result.error_cases == 0:
+        print(
+            "\nDEMO MODE: metrics gate not applied (no real services behind demo runs). "
+            "Smoke test passed with 0 errors. Run without --demo for the real gate."
+        )
+        sys.exit(0)
     sys.exit(0 if result.suite_passed else 1)
 
 

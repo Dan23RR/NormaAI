@@ -90,7 +90,7 @@ pytest-cov = "^6.0.0"
 factory-boy = "^3.3.1"
 # Marketing PDF generator (G6.12): reportlab for native PDF construction.
 # Installed in dev group because the PDF is a build artifact, not a runtime asset.
-reportlab = "^4.4.0"
+reportlab = "^5.0.0"
 pypdf = "^5.0.0"
 
 [build-system]

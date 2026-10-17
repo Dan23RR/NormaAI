@@ -119,8 +119,10 @@ two real customers on the instance before this.
   OpenRouter, etc.). The server `.env` is gitignored in both repos.
 - **Claims vs reality (#5)**: README/landing should not promise more than is
   enabled. After steps 1-2 (anti-hallucination prompts fixed) and step 2 (RLS),
-  the "verified citations / multi-tenant" claims become true; keep "real-time"
-  honest until #3 is built.
+  the "verified citations / multi-tenant" claims become true. The README no
+  longer says "real-time"; the landing and /metodo now say "aggiornati ogni 6
+  ore", which holds only with `ACQUISITION_SCHEDULER_ENABLED=true` on the
+  production API (#3).
 - **Brand (#4)**: resolve before broad outreach (see
   `Brand_Risk_Assessment_2026-06-13.md`).
 

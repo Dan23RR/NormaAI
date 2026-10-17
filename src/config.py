@@ -67,7 +67,8 @@ class Settings(BaseSettings):
     # OFF by default: the periodic EUR-Lex/Normattiva refresh loop only runs
     # when explicitly enabled (so a single-process deploy can opt in, while
     # tests/CI and multi-replica deploys - where a dedicated worker should own
-    # it - leave it off). Without this, "updated nightly" never actually ran.
+    # it - leave it off). The public "aggiornati ogni 6 ore" copy holds only
+    # where this is on (interval: eurlex_crawl_interval_hours).
     acquisition_scheduler_enabled: bool = False
 
     # ─── Normattiva Open Data ─────────────────────────────────

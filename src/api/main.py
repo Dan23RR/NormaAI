@@ -70,7 +70,7 @@ tags_metadata = [
 DESCRIPTION = """
 ## EU Regulatory Intelligence Monitor
 
-NormaAI monitors **7 EU regulatory frameworks** in real-time and provides AI-powered compliance intelligence:
+NormaAI monitors **7 EU regulatory frameworks** and provides AI-powered compliance intelligence:
 
 | Framework | Status |
 |-----------|--------|
@@ -86,7 +86,7 @@ NormaAI monitors **7 EU regulatory frameworks** in real-time and provides AI-pow
 - **Q&A** - Ask questions about EU regulations with cited answers
 - **Gap Analysis** - Compliance assessment with scoring per framework
 - **Monitor** - Impact analysis of regulatory changes on your company
-- **Crawl** - Real-time EUR-Lex data via SPARQL endpoint
+- **Crawl** - EUR-Lex data via the SPARQL endpoint, refreshed by scheduled polling (every 6 hours by default, when the acquisition scheduler is enabled)
 """
 
 # ─── App ──────────────────────────────────────────────────────────

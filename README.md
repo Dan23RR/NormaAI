@@ -1,6 +1,6 @@
 # NormaAI - EU Regulatory Intelligence Platform
 
-> AI-powered compliance monitoring across 7 EU regulatory frameworks with real-time EUR-Lex integration, anti-hallucination verification, and Italian legislation support.
+> AI-powered compliance monitoring across 7 EU regulatory frameworks with EUR-Lex integration (scheduled polling, every 6 hours by default), anti-hallucination verification, and Italian legislation support.
 
 [![CI](https://github.com/Dan23RR/NormaAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Dan23RR/NormaAI/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -12,7 +12,7 @@
 
 ## Overview
 
-NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-powered compliance intelligence for enterprises:
+NormaAI monitors 7 major EU regulatory frameworks and provides AI-powered compliance intelligence for enterprises:
 
 | Framework | Full Name | Status |
 |-----------|-----------|--------|
@@ -28,8 +28,8 @@ NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-p
 
 - **Regulatory Q&A** - Ask questions about EU regulations, get cited answers grounded in official texts
 - **Gap Analysis** - Compliance assessment with per-requirement scoring and remediation plans
-- **Impact Monitor** - Real-time analysis of regulatory changes on your company
-- **EUR-Lex Crawler** - Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text)
+- **Impact Monitor** - Analysis of how a regulatory change affects your company
+- **EUR-Lex Crawler** - Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text), refreshed by scheduled polling every 6 hours (`EURLEX_CRAWL_INTERVAL_HOURS`) when `ACQUISITION_SCHEDULER_ENABLED=true`; the scheduler is off by default, and the corpus then stays as of the last seed
 - **Normattiva Crawler** - Italian implementing legislation via Open Data API (D.Lgs., Leggi)
 - **CoVe Anti-Hallucination** - 5-phase Chain-of-Verification pipeline for citation accuracy
 - **SSE Streaming** - Real-time streamed responses with verification progress events

@@ -234,11 +234,11 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">Copertura normativa</p>
           <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[40px]">
-            7 framework. Aggiornati ogni notte da EUR-Lex.
+            7 framework. Aggiornati da EUR-Lex ogni 6 ore.
           </h2>
           <p className="mt-4 max-w-2xl leading-relaxed text-night-2">
-            La crawler SPARQL ufficiale ingerisce direttive, regolamenti e implementing acts non
-            appena pubblicati nella Gazzetta Ufficiale UE. Il diritto italiano arriva da
+            La crawler SPARQL ufficiale controlla EUR-Lex ogni 6 ore e indicizza nuovi atti ed
+            emendamenti: direttive, regolamenti e implementing acts. Il diritto italiano arriva da
             Normattiva via Open Data API.
           </p>
           <div className="mt-10 grid gap-3 md:grid-cols-2 lg:grid-cols-3">

@@ -113,7 +113,7 @@ export default function MetodoPage() {
             <StatCard
               n={`${VERIFIED.frameworks}`}
               label="framework EU coperti"
-              sub={`${VERIFIED.celexSeeds} atti CELEX nei seed EUR-Lex, sync notturna`}
+              sub={`${VERIFIED.celexSeeds} atti CELEX nei seed EUR-Lex, polling ogni 6 ore`}
             />
             <StatCard
               n={`${VERIFIED.covePhases} fasi`}

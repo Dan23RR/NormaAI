@@ -70,7 +70,7 @@ tags_metadata = [
 DESCRIPTION = """
 ## EU Regulatory Intelligence Monitor
 
-NormaAI monitors **7 EU regulatory frameworks** and provides AI-powered compliance intelligence:
+NormaAI monitors **8 EU regulatory frameworks** and provides AI-powered compliance intelligence:
 
 | Framework | Status |
 |-----------|--------|
@@ -81,6 +81,7 @@ NormaAI monitors **7 EU regulatory frameworks** and provides AI-powered complian
 | **NIS2** - Network & Information Security | Active |
 | **EU Taxonomy** - Sustainable Finance Classification | Active |
 | **GDPR** - General Data Protection | Active |
+| **CRA** - Cyber Resilience Act | Active |
 
 ### Core capabilities
 - **Q&A** - Ask questions about EU regulations with cited answers

@@ -346,9 +346,9 @@ class TestGapAnalysisEndpoint:
 
     @patch("src.agents.graph.arun_gap_analysis", new_callable=AsyncMock)
     def test_gap_analysis_all_valid_frameworks(self, mock_gap, client, auth_headers):
-        """All 7 supported frameworks should be accepted."""
+        """All 8 supported frameworks should be accepted."""
         mock_gap.return_value = {"overall_score": 50.0, "confidence_score": 0.9}
-        for fw in ["CSRD", "CSDDD", "AI_ACT", "DORA", "NIS2", "TAXONOMY", "GDPR"]:
+        for fw in ["CSRD", "CSDDD", "AI_ACT", "DORA", "NIS2", "TAXONOMY", "GDPR", "CRA"]:
             response = client.post(
                 "/api/v1/gap-analysis",
                 json={

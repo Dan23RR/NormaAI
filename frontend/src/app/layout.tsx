@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   title:
     'NormaAI - Compliance EU con citazioni primary-source verificate | CSRD, AI Act, DORA, NIS2',
   description:
-    'Il copilota normativo difendibile in audit per i 7 framework UE. Q&A con citazione primary source EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA per intermediari piccoli, NIS2, GDPR.',
+    'Il copilota normativo difendibile in audit per gli 8 framework UE. Q&A con citazione primary source EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA per intermediari piccoli, NIS2, GDPR.',
   keywords: [
     'CSRD',
     'CSDDD',
@@ -49,6 +49,8 @@ export const metadata: Metadata = {
     'NIS2',
     'EU Taxonomy',
     'GDPR',
+    'CRA',
+    'Cyber Resilience Act',
     'compliance EU',
     'EUR-Lex',
     'compliance officer',
@@ -60,7 +62,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'NormaAI - Compliance EU con citazioni primary-source verificate',
     description:
-      'Il copilota normativo difendibile in audit per i 7 framework UE. Citazione primary source EUR-Lex in 30 secondi.',
+      'Il copilota normativo difendibile in audit per gli 8 framework UE. Citazione primary source EUR-Lex in 30 secondi.',
     url: SITE_URL,
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     type: 'website',
@@ -87,7 +89,7 @@ const jsonLd = {
       logo: `${SITE_URL}/og-image.png`,
       email: 'info@normaai.org',
       description:
-        'Regulatory intelligence AI per i 7 framework EU (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR) con citazioni EUR-Lex verificate.',
+        'Regulatory intelligence AI per gli 8 framework EU (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR, CRA) con citazioni EUR-Lex verificate.',
     },
     {
       '@type': 'SoftwareApplication',

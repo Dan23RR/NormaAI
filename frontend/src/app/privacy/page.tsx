@@ -97,8 +97,8 @@ export default function PrivacyPage() {
       <LegalSection title="7. Trasparenza AI (Art. 50 AI Act)">
         <p>
           NormaAI utilizza il modello Gemini 2.5 Flash (Google) per generare analisi normative.
-          La knowledge base contiene testi di 7 framework normativi EU (CSRD, CSDDD, AI Act,
-          DORA, NIS2, EU Taxonomy, GDPR). Tutti gli output sono generati da intelligenza
+          La knowledge base contiene testi di 8 framework normativi EU (CSRD, CSDDD, AI Act,
+          DORA, NIS2, EU Taxonomy, GDPR, CRA). Tutti gli output sono generati da intelligenza
           artificiale e richiedono verifica da parte di professionisti qualificati.
         </p>
       </LegalSection>

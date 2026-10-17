@@ -108,7 +108,7 @@ export default function Home() {
               <em className="italic text-clay">verificate</em>.
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-night-2">
-              Il copilota normativo difendibile in audit per chi gestisce 7 framework EU. Citazioni
+              Il copilota normativo difendibile in audit per chi gestisce 8 framework EU. Citazioni
               primary source da EUR-Lex SPARQL, verificate con Chain-of-Verification, integrazione
               Normattiva per il diritto italiano.
             </p>
@@ -192,7 +192,7 @@ export default function Home() {
               Per chi gestisce compliance UE e non si può permettere allucinazioni.
             </h2>
             <p className="mt-5 leading-relaxed text-night-2">
-              Tre profili. Tre pitch diversi. Una piattaforma sotto il cofano: Q&A su 7 framework UE
+              Tre profili. Tre pitch diversi. Una piattaforma sotto il cofano: Q&A su 8 framework UE
               con citazione primary source EUR-Lex in 30 secondi, pipeline anti-hallucination 5 fasi,
               327/327 test citazioni passing.
             </p>
@@ -202,8 +202,8 @@ export default function Home() {
               tag="Compliance officer interno"
               tagColor="#C2613F"
               audience="Mid-market 250-1.000 dip."
-              pain="1 persona, 7 framework UE. Il CFO chiede 'siamo a posto con X?' e tu devi rispondere con citazione articolo, non opinione."
-              solution="Copilota normativo da staff-augmentation. Q&A con citazione EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA, NIS2, GDPR, EU Taxonomy, CSDDD."
+              pain="1 persona, 8 framework UE. Il CFO chiede 'siamo a posto con X?' e tu devi rispondere con citazione articolo, non opinione."
+              solution="Copilota normativo da staff-augmentation. Q&A con citazione EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA, NIS2, GDPR, EU Taxonomy, CSDDD, CRA."
               cta="Codex Post-Omnibus →"
               ctaHref="#codex"
             />
@@ -229,12 +229,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─────────────────── 7 FRAMEWORK ─────────────────── */}
+      {/* ─────────────────── 8 FRAMEWORK ─────────────────── */}
       <section id="framework" className="border-t border-line">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">Copertura normativa</p>
           <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[40px]">
-            7 framework. Aggiornati da EUR-Lex ogni 6 ore.
+            8 framework. Aggiornati da EUR-Lex ogni 6 ore.
           </h2>
           <p className="mt-4 max-w-2xl leading-relaxed text-night-2">
             La crawler SPARQL ufficiale controlla EUR-Lex ogni 6 ore e indicizza nuovi atti ed

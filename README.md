@@ -1,18 +1,18 @@
 # NormaAI - EU Regulatory Intelligence Platform
 
-> AI-powered compliance monitoring across 7 EU regulatory frameworks with EUR-Lex integration (scheduled polling, every 6 hours by default), anti-hallucination verification, and Italian legislation support.
+> AI-powered compliance monitoring across 8 EU regulatory frameworks with EUR-Lex integration (scheduled polling, every 6 hours by default), anti-hallucination verification, and Italian legislation support.
 
 [![CI](https://github.com/Dan23RR/NormaAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Dan23RR/NormaAI/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-> 🇮🇹 **In breve**: NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE. Risponde a domande sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 7 framework UE (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR), pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
+> 🇮🇹 **In breve**: NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE. Risponde a domande sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 8 framework UE (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR, CRA), pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
 >
 > *La documentazione tecnica completa è in inglese, qui sotto.*
 
 ## Overview
 
-NormaAI monitors 7 major EU regulatory frameworks and provides AI-powered compliance intelligence for enterprises:
+NormaAI monitors 8 major EU regulatory frameworks and provides AI-powered compliance intelligence for enterprises:
 
 | Framework | Full Name | Status |
 |-----------|-----------|--------|
@@ -23,6 +23,7 @@ NormaAI monitors 7 major EU regulatory frameworks and provides AI-powered compli
 | **NIS2** | Network and Information Security Directive | Active |
 | **EU Taxonomy** | Sustainable Finance Taxonomy Regulation | Active |
 | **GDPR** | General Data Protection Regulation | Active |
+| **CRA** | Cyber Resilience Act | Active |
 
 ### Core Capabilities
 

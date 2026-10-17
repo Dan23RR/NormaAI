@@ -32,6 +32,12 @@ const VERIFIED = {
 
 const ADRS = [
   {
+    id: 'ADR-005',
+    date: '2026-10-17',
+    title: 'Claim pubblico: 8 framework (CRA incluso)',
+    body: 'Il CRA entra nel claim pubblico, che passa da "7 framework" a "8 framework" su landing, metadati, informativa privacy e README. Condizione di ADR-004 soddisfatta: seed del corpus CRA verificato in produzione.',
+  },
+  {
     id: 'ADR-004',
     date: '2026-06-12',
     title: 'CRA (Cyber Resilience Act) come 8° framework',

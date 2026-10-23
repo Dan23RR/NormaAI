@@ -3,19 +3,26 @@ Qdrant Hybrid Indexer - Dense + BM25 sparse vectors for EU regulations.
 
 Implements hybrid search with Reciprocal Rank Fusion (RRF):
 - Dense vectors: FastEmbed (paraphrase-multilingual-mpnet-base-v2, 768 dim) for semantic similarity
-- Sparse vectors: BM25-style term frequency for keyword matching
+- Sparse vectors: hashed term frequencies with Qdrant's IDF modifier (BM25-style)
 - RRF fusion: combines both rankings without tuning weights
 
 Why hybrid:
 - Dense catches "sustainability reporting obligations" ≈ "CSRD compliance requirements"
 - Sparse catches exact terms: "Article 29", "CELEX 32022L2464", "€10M threshold"
 - RRF is robust and doesn't require weight calibration
+
+Point ids are deterministic (UUID5 of celex|lang|article|chunk_index|sha1(text))
+so re-indexing an act overwrites its chunks instead of duplicating them, and
+``reindex_act`` replaces one act (CELEX + language) atomically enough for a
+seed: delete its points, then upsert the new ones. A dedicated metadata point
+(``CORPUS_META_ID``) records when the corpus was built and from which acts.
 """
 
 import hashlib
 import logging
 import math
 import os
+import uuid
 from collections import Counter
 from datetime import UTC, datetime
 
@@ -26,6 +33,7 @@ from qdrant_client.models import (
     Filter,
     IsEmptyCondition,
     MatchValue,
+    Modifier,
     NamedSparseVector,
     NamedVector,
     PayloadField,
@@ -37,14 +45,77 @@ from qdrant_client.models import (
 
 logger = logging.getLogger(__name__)
 
+# ─── Deterministic ids ───────────────────────────────────────────────
+# Fixed namespace so the same (act, language, article, position, text) always
+# maps to the same Qdrant point id across machines and re-seeds.
+NORMAAI_ID_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_DNS, "normaai.org")
+CORPUS_META_KEY = "normaai-corpus-meta"
+CORPUS_META_ID = str(uuid.uuid5(NORMAAI_ID_NAMESPACE, CORPUS_META_KEY))
+CORPUS_META_KIND = "corpus_meta"
+# The meta point is never a search hit: it carries a sentinel org_id (so the
+# fail-closed tenant filter drops it) AND hybrid_search excludes its kind.
+CORPUS_META_ORG = "__corpus_meta__"
+
+# Payload fields with a keyword index (filtering / per-act deletes).
+PAYLOAD_INDEX_FIELDS: tuple[str, ...] = (
+    "framework",
+    "frameworks",
+    "celex",
+    "lang",
+    "chunk_type",
+    "effective_date",
+    "superseded_by",
+    "content_hash",
+    "org_id",
+)
+
+
+def point_id_key(
+    celex: str,
+    lang: str,
+    article: str,
+    chunk_index: int,
+    text: str,
+    org_id: str | None = None,
+) -> str:
+    """The string that is hashed into a point id.
+
+    ``celex|lang|article|chunk_index|sha1(text)[:12]``. Tenant uploads
+    (``org_id`` set) get the org prefixed so two tenants uploading the same
+    document can never overwrite each other's points.
+    """
+    digest = hashlib.sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
+    key = f"{celex}|{lang}|{article}|{chunk_index}|{digest}"
+    return f"{org_id}|{key}" if org_id else key
+
+
+def make_point_id(
+    celex: str,
+    lang: str,
+    article: str,
+    chunk_index: int,
+    text: str,
+    org_id: str | None = None,
+) -> str:
+    """Deterministic Qdrant point id (UUID5 string) for a chunk."""
+    return str(
+        uuid.uuid5(
+            NORMAAI_ID_NAMESPACE,
+            point_id_key(celex, lang, article, chunk_index, text, org_id=org_id),
+        )
+    )
+
 
 def _text_to_sparse_vector(text: str, vocab_size: int = 30000) -> SparseVector:
     """
-    Convert text to a BM25-style sparse vector.
+    Convert text to a hashed term-frequency sparse vector.
 
     Uses term hashing to avoid maintaining a global vocabulary.
     Each term is hashed to a fixed index in [0, vocab_size).
-    Value = TF * IDF approximation (log(1 + tf)).
+    Value = log(1 + tf). The IDF side of BM25 is NOT computed here: the
+    collection's sparse vector config carries ``Modifier.IDF``, so Qdrant
+    weights every query term by its corpus-wide inverse document frequency at
+    search time (and keeps it current as points are added or removed).
 
     Hash collisions are handled by summing values at the same index,
     ensuring all indices are unique (required by Qdrant).
@@ -75,10 +146,13 @@ class HybridIndexer:
     Manages the Qdrant collection for EU regulatory documents.
 
     Collection schema:
-    - Vector "dense": 768-dim BGE embeddings (semantic)
-    - Vector "bm25": sparse term-frequency vectors (keyword)
-    - Payload: celex, framework, chunk_type, article_number, section_title, text,
+    - Vector "dense": 768-dim multilingual embeddings (semantic)
+    - Vector "bm25": sparse hashed term-frequency vectors, IDF modifier (keyword)
+    - Payload: text, celex, source_celex, framework, frameworks, lang, article,
+               paragraph, title, eli, url, consolidated_as_of, chunk_index,
+               chunk_type, article_number, section_title, hierarchy, char_count,
                effective_date, superseded_by, content_hash, indexed_at, org_id
+    - One metadata point (CORPUS_META_ID) with kind="corpus_meta"
     """
 
     DEFAULT_COLLECTION_NAME = "eu_regulations"
@@ -97,6 +171,8 @@ class HybridIndexer:
         self.embedding_model_name = embedding_model
         self.embedding_dim = embedding_dim
         self._embedder = None  # Lazy init
+        # None = not checked yet; set by setup_collection on an existing collection.
+        self.sparse_idf_enabled: bool | None = None
 
     @property
     def embedder(self):
@@ -115,8 +191,18 @@ class HybridIndexer:
             )
         return self._embedder
 
+    # ─── Collection lifecycle ───────────────────────────────────
+
     def setup_collection(self, recreate: bool = False) -> None:
-        """Create or verify the hybrid collection exists."""
+        """Create the hybrid collection, or verify an existing one (idempotent).
+
+        A fresh collection gets the sparse vectors with Qdrant's IDF modifier.
+        An existing collection is left untouched (unless ``recreate``) and
+        inspected: a missing IDF modifier, a dense size that does not match the
+        configured embedding dimension, or a corpus built with another
+        embedding model each log a clear warning telling the operator to
+        re-create and reseed - the collection keeps serving in the meantime.
+        """
         collections = [c.name for c in self.client.get_collections().collections]
 
         if self.COLLECTION_NAME in collections:
@@ -125,6 +211,7 @@ class HybridIndexer:
                 self.client.delete_collection(self.COLLECTION_NAME)
             else:
                 logger.info("collection_exists: %s", self.COLLECTION_NAME)
+                self._verify_existing_collection()
                 return
 
         self.client.create_collection(
@@ -135,47 +222,175 @@ class HybridIndexer:
                     distance=Distance.COSINE,
                 )
             },
-            sparse_vectors_config={"bm25": SparseVectorParams()},
+            sparse_vectors_config={"bm25": SparseVectorParams(modifier=Modifier.IDF)},
         )
+        self.sparse_idf_enabled = True
 
         # Create payload indices for metadata filtering
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="framework",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="celex",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="chunk_type",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="effective_date",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="superseded_by",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="content_hash",
-            field_schema="keyword",
-        )
-        self.client.create_payload_index(
-            collection_name=self.COLLECTION_NAME,
-            field_name="org_id",
-            field_schema="keyword",
+        for field_name in PAYLOAD_INDEX_FIELDS:
+            self.client.create_payload_index(
+                collection_name=self.COLLECTION_NAME,
+                field_name=field_name,
+                field_schema="keyword",
+            )
+
+        logger.info(f"Created hybrid collection {self.COLLECTION_NAME} (sparse modifier: idf)")
+
+    def _verify_existing_collection(self) -> None:
+        """Compare an existing collection with the configuration; warn on drift."""
+        reseed_hint = "re-create and reseed with: python -m src.pipeline --action seed --recreate"
+        try:
+            info = self.client.get_collection(self.COLLECTION_NAME)
+            params = info.config.params
+        except Exception as e:
+            logger.warning("collection_verification_skipped: %s", e)
+            return
+
+        sparse_cfg = getattr(params, "sparse_vectors", None)
+        bm25 = sparse_cfg.get("bm25") if isinstance(sparse_cfg, dict) else None
+        modifier = getattr(bm25, "modifier", None)
+        modifier_name = getattr(modifier, "value", modifier)
+        self.sparse_idf_enabled = str(modifier_name).lower() == "idf"
+        if not self.sparse_idf_enabled:
+            logger.warning(
+                "collection_sparse_modifier_missing: collection %s was created without the "
+                "IDF modifier on the 'bm25' sparse vectors (found: %s). Keyword search works "
+                "but is not IDF-weighted; %s",
+                self.COLLECTION_NAME,
+                modifier_name,
+                reseed_hint,
+            )
+
+        dense_cfg = getattr(params, "vectors", None)
+        dense = dense_cfg.get("dense") if isinstance(dense_cfg, dict) else None
+        dense_size = getattr(dense, "size", None)
+        if isinstance(dense_size, int) and dense_size != self.embedding_dim:
+            logger.warning(
+                "collection_dense_size_mismatch: collection %s has %d-dim dense vectors but "
+                "EMBEDDING_DIMENSION=%d; %s",
+                self.COLLECTION_NAME,
+                dense_size,
+                self.embedding_dim,
+                reseed_hint,
+            )
+
+        meta = self.get_corpus_info()
+        built_with = meta.get("embedding_model") if meta else None
+        if built_with and built_with != self.embedding_model_name:
+            logger.warning(
+                "collection_embedding_model_mismatch: corpus was built with %s but "
+                "EMBEDDING_MODEL=%s; vectors live in a model-specific space - %s",
+                built_with,
+                self.embedding_model_name,
+                reseed_hint,
+            )
+
+    # ─── Indexing ───────────────────────────────────────────────
+
+    def _build_point(
+        self,
+        chunk,
+        dense_vec,
+        fallback_index: int,
+        org_id: str | None,
+        contextual: bool,
+    ) -> PointStruct:
+        """Build the Qdrant point for a chunk (deterministic id + full payload)."""
+        meta = getattr(chunk, "metadata", None) or {}
+        text = getattr(chunk, "text", "") or ""
+        celex = meta.get("celex", "") or ""
+        lang = meta.get("lang") or "EN"
+        article = meta.get("article") or meta.get("article_number") or ""
+        chunk_index = meta.get("chunk_index")
+        if not isinstance(chunk_index, int):
+            chunk_index = fallback_index
+        framework = meta.get("framework", "") or ""
+        frameworks = meta.get("frameworks")
+        if not frameworks:
+            frameworks = [framework] if framework else []
+
+        payload = {
+            "text": text,
+            "celex": celex,
+            "source_celex": meta.get("source_celex") or celex,
+            "framework": framework,
+            "frameworks": list(frameworks),
+            "lang": lang,
+            "article": article,
+            "paragraph": meta.get("paragraph"),
+            "title": meta.get("title"),
+            "eli": meta.get("eli"),
+            "url": meta.get("url"),
+            "consolidated_as_of": meta.get("consolidated_as_of"),
+            "chunk_index": chunk_index,
+            "chunk_type": meta.get("chunk_type", ""),
+            "article_number": meta.get("article_number", "") or article,
+            "section_title": meta.get("section_title", ""),
+            "hierarchy": meta.get("hierarchy", ""),
+            "part": meta.get("part"),
+            "act_title": meta.get("act_title"),
+            "source": meta.get("source"),
+            "char_count": meta.get("char_count", len(text)),
+            "effective_date": meta.get("effective_date", None),
+            "superseded_by": meta.get("superseded_by", None),
+            "content_hash": hashlib.sha256(text.encode()).hexdigest(),
+            "indexed_at": datetime.now(UTC).isoformat(),
+            "org_id": org_id,
+        }
+        if contextual:
+            payload["has_context"] = meta.get("has_context", False)
+
+        return PointStruct(
+            id=make_point_id(celex, lang, article, chunk_index, text, org_id=org_id),
+            vector={
+                "dense": dense_vec.tolist() if hasattr(dense_vec, "tolist") else list(dense_vec),
+                "bm25": _text_to_sparse_vector(text),  # sparse always on the ORIGINAL text
+            },
+            payload=payload,
         )
 
-        logger.info(f"Created hybrid collection {self.COLLECTION_NAME}")
+    def _index(
+        self,
+        chunks: list,
+        batch_size: int,
+        org_id: str | None,
+        contextual: bool,
+    ) -> int:
+        total_indexed = 0
+        total_chunks = len(chunks)
+        label = "contextual chunks" if contextual else "chunks"
+
+        for batch_start in range(0, total_chunks, batch_size):
+            batch_end = min(batch_start + batch_size, total_chunks)
+            batch_chunks = chunks[batch_start:batch_end]
+
+            # Dense embeddings for THIS BATCH ONLY (avoids OOM). Contextual
+            # chunks embed the prefixed text; the payload keeps the original.
+            if contextual:
+                batch_texts = [getattr(c, "contextualized_text", c.text) for c in batch_chunks]
+            else:
+                batch_texts = [c.text for c in batch_chunks]
+            batch_dense = list(self.embedder.embed(batch_texts))
+
+            points = [
+                self._build_point(chunk, dense_vec, batch_start + i, org_id, contextual)
+                for i, (chunk, dense_vec) in enumerate(zip(batch_chunks, batch_dense, strict=False))
+            ]
+
+            self.client.upsert(
+                collection_name=self.COLLECTION_NAME,
+                points=points,
+            )
+            total_indexed += len(points)
+
+            progress = (batch_end / total_chunks) * 100
+            logger.info(
+                f"  Indexed batch {batch_start}-{batch_end} "
+                f"({total_indexed}/{total_chunks} {label}, {progress:.0f}%)"
+            )
+
+        logger.info(f"Indexing complete: {total_indexed} {label} into {self.COLLECTION_NAME}")
+        return total_indexed
 
     def index_chunks(
         self,
@@ -187,7 +402,8 @@ class HybridIndexer:
         Index a list of LegalChunk objects into Qdrant.
 
         Processes embeddings in small batches to avoid OOM errors.
-        At 768-dim, batch_size=32 uses ~200MB RAM.
+        At 768-dim, batch_size=32 uses ~200MB RAM. Point ids are deterministic,
+        so indexing the same chunks twice overwrites instead of duplicating.
 
         Args:
             chunks: List of LegalChunk objects
@@ -196,78 +412,7 @@ class HybridIndexer:
 
         Returns number of chunks indexed.
         """
-        total_indexed = 0
-        total_chunks = len(chunks)
-
-        for batch_start in range(0, total_chunks, batch_size):
-            batch_end = min(batch_start + batch_size, total_chunks)
-            batch_chunks = chunks[batch_start:batch_end]
-
-            # Generate dense embeddings for THIS BATCH ONLY (avoids OOM)
-            batch_texts = [c.text for c in batch_chunks]
-            batch_dense = list(self.embedder.embed(batch_texts))
-
-            points = []
-            for i, (chunk, dense_vec) in enumerate(zip(batch_chunks, batch_dense, strict=False)):
-                global_idx = batch_start + i
-
-                # Create unique ID from celex + global chunk index
-                point_id = int(
-                    hashlib.md5(
-                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode(),
-                        usedforsecurity=False,
-                    ).hexdigest()[:16],
-                    16,
-                )
-
-                # Generate sparse BM25 vector
-                sparse_vec = _text_to_sparse_vector(chunk.text)
-
-                # Compute content hash for deduplication
-                content_hash = hashlib.sha256(chunk.text.encode()).hexdigest()
-
-                point = PointStruct(
-                    id=point_id,
-                    vector={
-                        "dense": dense_vec.tolist()
-                        if hasattr(dense_vec, "tolist")
-                        else list(dense_vec),
-                        "bm25": sparse_vec,
-                    },
-                    payload={
-                        "text": chunk.text,
-                        "celex": chunk.metadata.get("celex", ""),
-                        "framework": chunk.metadata.get("framework", ""),
-                        "chunk_type": chunk.metadata.get("chunk_type", ""),
-                        "article_number": chunk.metadata.get("article_number", ""),
-                        "section_title": chunk.metadata.get("section_title", ""),
-                        "hierarchy": chunk.metadata.get("hierarchy", ""),
-                        "char_count": chunk.metadata.get("char_count", 0),
-                        "effective_date": chunk.metadata.get("effective_date", None),
-                        "superseded_by": chunk.metadata.get("superseded_by", None),
-                        "content_hash": content_hash,
-                        "indexed_at": datetime.now(UTC).isoformat(),
-                        "org_id": org_id,
-                    },
-                )
-                points.append(point)
-
-            # Upload batch to Qdrant
-            self.client.upsert(
-                collection_name=self.COLLECTION_NAME,
-                points=points,
-            )
-            total_indexed += len(points)
-
-            # Progress logging
-            progress = (batch_end / total_chunks) * 100
-            logger.info(
-                f"  Indexed batch {batch_start}-{batch_end} "
-                f"({total_indexed}/{total_chunks} chunks, {progress:.0f}%)"
-            )
-
-        logger.info(f"Indexing complete: {total_indexed} chunks into {self.COLLECTION_NAME}")
-        return total_indexed
+        return self._index(chunks, batch_size, org_id, contextual=False)
 
     def index_contextual_chunks(
         self,
@@ -290,79 +435,118 @@ class HybridIndexer:
         Returns:
             Number of chunks indexed
         """
-        total_indexed = 0
-        total_chunks = len(chunks)
+        return self._index(chunks, batch_size, org_id, contextual=True)
 
-        for batch_start in range(0, total_chunks, batch_size):
-            batch_end = min(batch_start + batch_size, total_chunks)
-            batch_chunks = chunks[batch_start:batch_end]
+    def delete_act_points(self, celex: str, lang: str | None = None) -> None:
+        """Delete every shared-corpus point of an act (optionally one language).
 
-            # Embed the CONTEXTUALIZED text (with regulatory prefix)
-            batch_texts = [getattr(c, "contextualized_text", c.text) for c in batch_chunks]
-            batch_dense = list(self.embedder.embed(batch_texts))
-
-            points = []
-            for i, (chunk, dense_vec) in enumerate(zip(batch_chunks, batch_dense, strict=False)):
-                global_idx = batch_start + i
-
-                point_id = int(
-                    hashlib.md5(
-                        f"{chunk.metadata.get('celex', '')}_{global_idx}".encode(),
-                        usedforsecurity=False,
-                    ).hexdigest()[:16],
-                    16,
-                )
-
-                # Sparse vector uses ORIGINAL text (exact keyword matching)
-                original_text = getattr(chunk, "text", "")
-                sparse_vec = _text_to_sparse_vector(original_text)
-
-                # Compute content hash for deduplication
-                content_hash = hashlib.sha256(original_text.encode()).hexdigest()
-
-                point = PointStruct(
-                    id=point_id,
-                    vector={
-                        "dense": dense_vec.tolist()
-                        if hasattr(dense_vec, "tolist")
-                        else list(dense_vec),
-                        "bm25": sparse_vec,
-                    },
-                    payload={
-                        "text": original_text,
-                        "celex": chunk.metadata.get("celex", ""),
-                        "framework": chunk.metadata.get("framework", ""),
-                        "chunk_type": chunk.metadata.get("chunk_type", ""),
-                        "article_number": chunk.metadata.get("article_number", ""),
-                        "section_title": chunk.metadata.get("section_title", ""),
-                        "hierarchy": chunk.metadata.get("hierarchy", ""),
-                        "char_count": chunk.metadata.get("char_count", len(original_text)),
-                        "has_context": chunk.metadata.get("has_context", False),
-                        "effective_date": chunk.metadata.get("effective_date", None),
-                        "superseded_by": chunk.metadata.get("superseded_by", None),
-                        "content_hash": content_hash,
-                        "indexed_at": datetime.now(UTC).isoformat(),
-                        "org_id": org_id,
-                    },
-                )
-                points.append(point)
-
-            self.client.upsert(
-                collection_name=self.COLLECTION_NAME,
-                points=points,
-            )
-            total_indexed += len(points)
-
-            progress = (batch_end / total_chunks) * 100
-            logger.info(
-                f"  Indexed batch {batch_start}-{batch_end} "
-                f"({total_indexed}/{total_chunks} contextual chunks, {progress:.0f}%)"
-            )
-
-        logger.info(
-            f"Contextual indexing complete: {total_indexed} chunks into {self.COLLECTION_NAME}"
+        ``celex`` is the act's CELEX as stored in the payload (the original id,
+        not the consolidated one), so re-seeding a newer consolidated text
+        removes the previous version too. A falsy celex is a no-op - a bug can
+        never wipe the collection. The metadata point is untouched.
+        """
+        if not celex:
+            return
+        must = [FieldCondition(key="celex", match=MatchValue(value=celex))]
+        if lang:
+            must.append(FieldCondition(key="lang", match=MatchValue(value=lang)))
+        self.client.delete(
+            collection_name=self.COLLECTION_NAME,
+            points_selector=Filter(must=must),
         )
-        return total_indexed
+        logger.info(f"Deleted existing points for {celex} [{lang or 'all languages'}]")
+
+    def reindex_act(
+        self,
+        celex: str,
+        lang: str,
+        chunks: list,
+        batch_size: int = 32,
+        org_id: str | None = None,
+    ) -> int:
+        """Replace the indexed chunks of one act + language with ``chunks``.
+
+        Delete-then-upsert: stale chunks of a previous text version disappear,
+        unchanged chunks keep their deterministic id. With no chunks nothing is
+        deleted (an empty download must not erase a good index) and 0 is
+        returned.
+        """
+        if not chunks:
+            logger.warning(f"reindex_act: no chunks for {celex} [{lang}] - index left untouched")
+            return 0
+        self.delete_act_points(celex, lang)
+        return self.index_contextual_chunks(chunks, batch_size=batch_size, org_id=org_id)
+
+    # ─── Corpus metadata ────────────────────────────────────────
+
+    def write_corpus_meta(
+        self,
+        acts: list[dict],
+        corpus_as_of: str | None = None,
+        embedding_model: str | None = None,
+        extra: dict | None = None,
+    ) -> dict:
+        """Upsert the corpus metadata point and return its payload.
+
+        ``acts`` is the list of indexed acts (dicts with celex, lang, chunks,
+        source_celex, consolidated_as_of, ...). ``corpus_as_of`` defaults to
+        today's UTC date: the law as published on EUR-Lex on the seed day.
+        """
+        now = datetime.now(UTC)
+        payload = {
+            "kind": CORPUS_META_KIND,
+            "corpus_as_of": corpus_as_of or now.date().isoformat(),
+            "acts": acts,
+            "embedding_model": embedding_model or self.embedding_model_name,
+            "built_at": now.isoformat(),
+            "org_id": CORPUS_META_ORG,
+        }
+        if extra:
+            payload.update(extra)
+        # A placeholder unit vector: the point exists for its payload only and
+        # is excluded from every search (sentinel org_id + kind filter).
+        dense = [1.0] + [0.0] * (self.embedding_dim - 1)
+        self.client.upsert(
+            collection_name=self.COLLECTION_NAME,
+            points=[
+                PointStruct(
+                    id=CORPUS_META_ID,
+                    vector={"dense": dense, "bm25": SparseVector(indices=[], values=[])},
+                    payload=payload,
+                )
+            ],
+        )
+        logger.info(
+            f"Corpus metadata written: as_of={payload['corpus_as_of']} "
+            f"acts={len(acts)} model={payload['embedding_model']}"
+        )
+        return payload
+
+    def get_corpus_info(self) -> dict | None:
+        """Payload of the corpus metadata point, or None when it is missing.
+
+        Never raises: an unreachable Qdrant or a collection seeded before the
+        metadata point existed both yield None, so callers can treat "unknown"
+        uniformly.
+        """
+        try:
+            records = self.client.retrieve(
+                collection_name=self.COLLECTION_NAME,
+                ids=[CORPUS_META_ID],
+                with_payload=True,
+                with_vectors=False,
+            )
+        except Exception as e:
+            logger.warning("corpus_meta_read_failed: %s", e)
+            return None
+        if not isinstance(records, list) or not records:
+            return None
+        payload = getattr(records[0], "payload", None)
+        if not isinstance(payload, dict) or payload.get("kind") != CORPUS_META_KIND:
+            return None
+        return dict(payload)
+
+    # ─── Search ─────────────────────────────────────────────────
 
     def _search_compat(
         self, collection_name: str, query_vector, query_filter, limit: int, with_payload: bool
@@ -421,6 +605,7 @@ class HybridIndexer:
         include_superseded: bool = False,
         org_id: str | None = None,
         allow_all_orgs: bool = False,
+        lang_filter: str | list[str] | None = None,
     ) -> list[dict]:
         """
         Hybrid search with Reciprocal Rank Fusion.
@@ -436,18 +621,22 @@ class HybridIndexer:
             rrf_k: RRF constant (default 60)
             include_superseded: If False (default), exclude chunks superseded by newer regulations
             org_id: If provided, filter to chunks belonging to this org or shared (org_id is null)
+            lang_filter: Restrict to one language ("IT") or several; None = all languages
         """
         # Generate query vectors
         query_dense = list(self.embedder.embed([query]))[0]
         query_sparse = _text_to_sparse_vector(query)
 
-        # Build filter
-        search_filter = self._build_filter(
-            framework_filter,
-            chunk_type_filter,
-            include_superseded=include_superseded,
-            org_id=org_id,
-            allow_all_orgs=allow_all_orgs,
+        # Build filter (the corpus metadata point is never a hit)
+        search_filter = self._with_meta_exclusion(
+            self._build_filter(
+                framework_filter,
+                chunk_type_filter,
+                include_superseded=include_superseded,
+                org_id=org_id,
+                allow_all_orgs=allow_all_orgs,
+                lang=lang_filter,
+            )
         )
 
         dense_vec = query_dense.tolist() if hasattr(query_dense, "tolist") else list(query_dense)
@@ -506,6 +695,14 @@ class HybridIndexer:
                         "chunk_type": payload.get("chunk_type", ""),
                         "article_number": payload.get("article_number", ""),
                         "section_title": payload.get("section_title", ""),
+                        # Additive provenance fields (None when a point predates them).
+                        "lang": payload.get("lang"),
+                        "article": payload.get("article") or payload.get("article_number", ""),
+                        "paragraph": payload.get("paragraph"),
+                        "title": payload.get("title"),
+                        "eli": payload.get("eli"),
+                        "url": payload.get("url"),
+                        "consolidated_as_of": payload.get("consolidated_as_of"),
                         # Additive: raw per-retriever cosine/BM25 score.
                         # None = the chunk was not returned by that retriever.
                         "dense_score": dense_score_map.get(point_id),
@@ -536,12 +733,42 @@ class HybridIndexer:
         return sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
 
     @staticmethod
+    def _framework_condition(framework: str) -> Filter:
+        """Match a framework on the primary ``framework`` key OR the ``frameworks`` list.
+
+        An act listed under several frameworks (Omnibus I amends CSRD and
+        CSDDD) is indexed once with ``framework`` = primary and ``frameworks`` =
+        all of them; points indexed before ``frameworks`` existed still match
+        via ``framework``.
+        """
+        return Filter(
+            should=[
+                FieldCondition(key="framework", match=MatchValue(value=framework)),
+                FieldCondition(key="frameworks", match=MatchValue(value=framework)),
+            ]
+        )
+
+    @staticmethod
+    def _with_meta_exclusion(flt: Filter | None) -> Filter:
+        """Add a must_not on the corpus metadata point to a (possibly None) filter."""
+        exclusion = FieldCondition(key="kind", match=MatchValue(value=CORPUS_META_KIND))
+        if flt is None:
+            return Filter(must_not=[exclusion])
+        return Filter(
+            must=flt.must,
+            should=flt.should,
+            min_should=getattr(flt, "min_should", None),
+            must_not=list(flt.must_not or []) + [exclusion],
+        )
+
+    @staticmethod
     def _build_filter(
         framework: str | list[str] | None = None,
         chunk_type: str | None = None,
         include_superseded: bool = False,
         org_id: str | None = None,
         allow_all_orgs: bool = False,
+        lang: str | list[str] | None = None,
     ) -> Filter | None:
         """Build Qdrant filter from optional parameters.
 
@@ -553,24 +780,30 @@ class HybridIndexer:
 
         Framework filtering: accepts a single string or a list of strings.
         A list uses OR logic (match any of the provided frameworks).
+
+        Language filtering: a single code or a list (OR); None = every language.
         """
         conditions = []
         if framework:
-            if isinstance(framework, list) and len(framework) > 1:
+            frameworks = framework if isinstance(framework, list) else [framework]
+            if len(frameworks) > 1:
                 # OR filter: match any of the listed frameworks
                 conditions.append(
-                    Filter(
-                        should=[
-                            FieldCondition(key="framework", match=MatchValue(value=fw))
-                            for fw in framework
-                        ]
-                    )
+                    Filter(should=[HybridIndexer._framework_condition(fw) for fw in frameworks])
                 )
             else:
-                fw_val = framework[0] if isinstance(framework, list) else framework
-                conditions.append(FieldCondition(key="framework", match=MatchValue(value=fw_val)))
+                conditions.append(HybridIndexer._framework_condition(frameworks[0]))
         if chunk_type:
             conditions.append(FieldCondition(key="chunk_type", match=MatchValue(value=chunk_type)))
+        if lang:
+            langs = lang if isinstance(lang, list) else [lang]
+            lang_conditions = [
+                FieldCondition(key="lang", match=MatchValue(value=code.upper())) for code in langs
+            ]
+            if len(lang_conditions) > 1:
+                conditions.append(Filter(should=lang_conditions))
+            else:
+                conditions.append(lang_conditions[0])
 
         # Temporal: exclude superseded chunks by default. is_empty (not is_null)
         # because in-force chunks leave superseded_by unset and Qdrant drops null
@@ -598,6 +831,8 @@ class HybridIndexer:
         if conditions:
             return Filter(must=conditions)
         return None
+
+    # ─── Maintenance ────────────────────────────────────────────
 
     def delete_org_chunks(self, org_id: str) -> None:
         """Delete every chunk owned by an org (GDPR Art. 17 erasure).
@@ -644,7 +879,12 @@ class HybridIndexer:
         return count
 
     def get_collection_stats(self) -> dict:
-        """Get collection info for monitoring."""
+        """Get collection info for monitoring.
+
+        ``points_count`` includes the corpus metadata point once a seed has
+        written it (one point). ``sparse_idf`` reports whether the sparse
+        vectors carry the IDF modifier (None = not verified yet).
+        """
         info = self.client.get_collection(self.COLLECTION_NAME)
         stats = {
             "points_count": info.points_count,
@@ -656,4 +896,6 @@ class HybridIndexer:
         # indexed_vectors_count available in newer versions
         if hasattr(info, "indexed_vectors_count") and info.indexed_vectors_count is not None:
             stats["indexed_vectors_count"] = info.indexed_vectors_count
+        if self.sparse_idf_enabled is not None:
+            stats["sparse_idf"] = self.sparse_idf_enabled
         return stats

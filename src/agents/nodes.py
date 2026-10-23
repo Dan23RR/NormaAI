@@ -329,11 +329,20 @@ def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
                 ungrounded += 1
 
     # Per-citation verdict, served to the client as `grounded` on citation events.
-    for cit in citations:
-        if isinstance(cit, dict):
-            cit["grounded"] = _citation_is_grounded(
-                cit, chunks, grounded_fw, evidence_norm, substantive
-            )
+    # Written on COPIES: the citation dicts may be shared with the SNC samples
+    # (shallow-copied modal answer), which must stay as the model produced them.
+    if citations:
+        result["citations"] = [
+            {
+                **cit,
+                "grounded": _citation_is_grounded(
+                    cit, chunks, grounded_fw, evidence_norm, substantive
+                ),
+            }
+            if isinstance(cit, dict)
+            else cit
+            for cit in citations
+        ]
 
     if ungrounded:
         result["requires_expert_review"] = True

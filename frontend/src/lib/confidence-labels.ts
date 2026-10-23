@@ -1,14 +1,11 @@
 /**
- * Enterprise confidence label mapping.
+ * Qualitative labels for the model's confidence.
  *
- * RULE: Never expose numerical AI confidence scores to end users.
- * Map to qualitative labels with blue/neutral palette (not traffic lights).
- *
- * Palette rationale:
- * - Blue = informative (not "approved" like green would imply)
- * - Amber = caution / needs attention
- * - Orange = action required
- * - Never green (implies certification) or red (implies legal failure)
+ * RULE: the numeric confidence score is never shown to the person. It is
+ * mapped to a label, and the label uses the design tokens (DESIGN.md):
+ * `union` for an answer that rests on the sources, `warn` when a check is
+ * advised. Never `ok` (reads as a certification) and never `bad` (reads as
+ * a legal failure).
  */
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low'
@@ -17,14 +14,23 @@ export interface ConfidenceLabelConfig {
   level: ConfidenceLevel
   label: string
   sublabel: string
+  /** Text colour class. */
   color: string
+  /** Background class (tinted). */
   bg: string
+  /** Border class (tinted). */
   border: string
 }
 
 const THRESHOLDS = {
   high: 0.85,
   medium: 0.65,
+} as const
+
+const TONE = {
+  union: { color: 'text-union', bg: 'bg-union/10', border: 'border-union/20' },
+  warn: { color: 'text-warn', bg: 'bg-warn/10', border: 'border-warn/20' },
+  neutral: { color: 'text-ink-2', bg: 'bg-surface-3', border: 'border-rule' },
 } as const
 
 /**
@@ -36,47 +42,38 @@ export function getConfidenceLabel(score: number): ConfidenceLabelConfig {
     return {
       level: 'high',
       label: 'Alta affidabilità',
-      sublabel: 'Basata su fonti normative dirette',
-      color: 'text-blue-400',
-      bg: 'bg-blue-400/10',
-      border: 'border-blue-400/20',
+      sublabel: 'La risposta poggia su passaggi normativi diretti',
+      ...TONE.union,
     }
   }
   if (score >= THRESHOLDS.medium) {
     return {
       level: 'medium',
       label: 'Affidabilità media',
-      sublabel: 'Fonti parziali - verifica raccomandata',
-      color: 'text-amber-400',
-      bg: 'bg-amber-400/10',
-      border: 'border-amber-400/20',
+      sublabel: 'Fonti parziali: verifica consigliata',
+      ...TONE.warn,
     }
   }
   return {
     level: 'low',
     label: 'Richiede verifica',
-    sublabel: 'Analisi preliminare - revisione esperto necessaria',
-    color: 'text-orange-400',
-    bg: 'bg-orange-400/10',
-    border: 'border-orange-400/20',
+    sublabel: 'Analisi preliminare: serve la revisione di un esperto',
+    ...TONE.warn,
   }
 }
 
 /**
- * Map an overall compliance score to a qualitative assessment.
- * Same logic as confidence but for gap analysis overall scores (0-100).
- *
- * NEVER show the numeric score to the user.
+ * Map an overall compliance score (0-100) to a qualitative assessment.
+ * Same logic as the confidence label, for gap analysis results.
+ * The numeric score is NEVER shown to the user.
  */
 export function getComplianceLabel(score: number): ConfidenceLabelConfig {
   if (score >= 70) {
     return {
       level: 'high',
       label: 'Buon livello di conformità',
-      sublabel: 'L\'organizzazione presenta un solido grado di adempimento',
-      color: 'text-blue-400',
-      bg: 'bg-blue-400/10',
-      border: 'border-blue-400/20',
+      sublabel: "L'organizzazione presenta un solido grado di adempimento",
+      ...TONE.union,
     }
   }
   if (score >= 40) {
@@ -84,34 +81,30 @@ export function getComplianceLabel(score: number): ConfidenceLabelConfig {
       level: 'medium',
       label: 'Conformità parziale',
       sublabel: 'Aree significative richiedono intervento',
-      color: 'text-amber-400',
-      bg: 'bg-amber-400/10',
-      border: 'border-amber-400/20',
+      ...TONE.warn,
     }
   }
   return {
     level: 'low',
     label: 'Gap significativi rilevati',
     sublabel: 'Azione prioritaria necessaria su più requisiti',
-    color: 'text-orange-400',
-    bg: 'bg-orange-400/10',
-    border: 'border-orange-400/20',
+    ...TONE.warn,
   }
 }
 
 /**
- * Compliance status colors - blue/neutral palette (no traffic lights).
+ * Compliance status colours on the design tokens.
  *
- * COMPLIANT = blue (informative, not "approved")
- * PARTIALLY_COMPLIANT = amber (caution)
- * NON_COMPLIANT = orange (action needed, not "failed")
- * IN_EVOLUTION = sky (in progress)
- * NOT_APPLICABLE = slate (neutral)
+ * COMPLIANT = union (informative, not "approved")
+ * PARTIALLY_COMPLIANT = warn (caution)
+ * NON_COMPLIANT = warn (action needed, not "failed")
+ * IN_EVOLUTION = union (in progress)
+ * NOT_APPLICABLE = neutral
  */
 export const COMPLIANCE_STATUS_COLORS = {
-  COMPLIANT: { color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Conforme' },
-  PARTIALLY_COMPLIANT: { color: 'text-amber-400', bg: 'bg-amber-400/10', label: 'Parziale' },
-  NON_COMPLIANT: { color: 'text-orange-400', bg: 'bg-orange-400/10', label: 'Non conforme' },
-  NOT_APPLICABLE: { color: 'text-slate-500', bg: 'bg-slate-500/10', label: 'N/A' },
-  IN_EVOLUTION: { color: 'text-sky-400', bg: 'bg-sky-400/10', label: 'In evoluzione' },
+  COMPLIANT: { color: TONE.union.color, bg: TONE.union.bg, label: 'Conforme' },
+  PARTIALLY_COMPLIANT: { color: TONE.warn.color, bg: TONE.warn.bg, label: 'Parziale' },
+  NON_COMPLIANT: { color: TONE.warn.color, bg: TONE.warn.bg, label: 'Non conforme' },
+  NOT_APPLICABLE: { color: TONE.neutral.color, bg: TONE.neutral.bg, label: 'Non applicabile' },
+  IN_EVOLUTION: { color: TONE.union.color, bg: TONE.union.bg, label: 'In evoluzione' },
 } as const

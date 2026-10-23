@@ -1,15 +1,25 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useId, useState } from 'react'
+import { ChevronDown, AlertTriangle } from 'lucide-react'
 import type { CompanyProfile } from '@/lib/types'
 import { FRAMEWORKS } from '@/lib/types'
 import { isDemoMode } from '@/lib/auth'
-import { ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
+import { Field, Input, Textarea, describedBy } from '@/components/ui/Field'
+import { frameworkLabel } from '@/components/ui/Badge'
+import { cn } from '@/lib/cn'
 
 interface Props {
   value: CompanyProfile
   onChange: (profile: CompanyProfile) => void
+  /** When true the profile is needed (gap analysis, monitoring): the panel opens and the name is mandatory. */
   required?: boolean
+  /** Prefix for the control ids, so two instances of the form can live on one page. */
+  idPrefix?: string
+  /** Open the panel at first render (defaults to `required`). */
+  defaultExpanded?: boolean
+  className?: string
 }
 
 interface ValidationErrors {
@@ -93,12 +103,37 @@ export function validateProfile(profile: CompanyProfile, required: boolean): Val
   return errors
 }
 
-export default function CompanyProfileForm({ value, onChange, required }: Props) {
-  const [expanded, setExpanded] = useState(!!required)
+/** One line that says what will be sent with the question. */
+export function profileSummary(profile: CompanyProfile): string | null {
+  const name = profile.name.trim()
+  if (!name) return null
+  const parts = [name]
+  if (profile.sector.trim()) parts.push(profile.sector.trim())
+  if (profile.employee_count > 0) parts.push(`${profile.employee_count.toLocaleString('it-IT')} dipendenti`)
+  if (profile.jurisdictions.length) parts.push(profile.jurisdictions.join(', '))
+  return parts.join(', ')
+}
+
+/**
+ * The optional company profile: a collapsible panel with the facts that
+ * let the answer speak about this company (size, sector, countries,
+ * frameworks already in scope). Same validation and storage as before.
+ */
+export default function CompanyProfileForm({
+  value,
+  onChange,
+  required,
+  idPrefix = 'cp',
+  defaultExpanded,
+  className,
+}: Props) {
+  const [expanded, setExpanded] = useState(defaultExpanded ?? !!required)
   const [touched, setTouched] = useState<Set<string>>(new Set())
+  const panelId = `${idPrefix}-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}-panel`
 
   const errors = validateProfile(value, !!required)
   const hasErrors = Object.keys(errors).length > 0
+  const showWarning = hasErrors && touched.size > 0
 
   const update = useCallback((field: keyof CompanyProfile, val: unknown) => {
     onChange({ ...value, [field]: val })
@@ -108,120 +143,119 @@ export default function CompanyProfileForm({ value, onChange, required }: Props)
     setTouched((prev) => new Set(prev).add(field))
   }, [])
 
-  const showError = (field: keyof ValidationErrors) =>
-    touched.has(field) && errors[field]
+  const errorFor = (field: keyof ValidationErrors) => (touched.has(field) ? errors[field] : undefined)
+
+  const summary = profileSummary(value)
+  const ids = {
+    name: `${idPrefix}-name`,
+    sector: `${idPrefix}-sector`,
+    employees: `${idPrefix}-employees`,
+    revenue: `${idPrefix}-revenue`,
+    jurisdictions: `${idPrefix}-jurisdictions`,
+    docs: `${idPrefix}-docs`,
+  }
 
   return (
-    <div className={`bg-surface border rounded-xl overflow-hidden ${
-      hasErrors && touched.size > 0 ? 'border-yellow-500/30' : 'border-white/[0.06]'
-    }`}>
+    <Card className={cn(showWarning && 'border-warn/60', className)}>
       <button
         type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/[0.02] transition"
+        onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
+        aria-controls={panelId}
+        className="flex w-full items-start justify-between gap-3 rounded-lg px-4 py-3 text-left hover:bg-surface-2"
       >
-        <span className="flex items-center gap-2">
-          Company Profile {required && <span className="text-red-400">*</span>}
-          {hasErrors && touched.size > 0 && (
-            <AlertCircle size={14} className="text-yellow-400" />
-          )}
+        <span className="min-w-0">
+          <span className="flex items-center gap-2 text-body font-medium text-ink">
+            Profilo aziendale{required ? '' : ' (opzionale)'}
+            {showWarning && <AlertTriangle className="h-4 w-4 shrink-0 text-warn" aria-label="Il profilo contiene errori" />}
+          </span>
+          <span className="mt-0.5 block truncate text-caption text-ink-3" title={summary ?? undefined}>
+            {summary ?? 'Settore, dimensione e Paesi per una risposta sul vostro caso.'}
+          </span>
         </span>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <ChevronDown
+          className={cn('mt-1 h-4 w-4 shrink-0 text-ink-3 transition-transform', expanded && 'rotate-180')}
+          aria-hidden="true"
+        />
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-white/[0.04]">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-            <div>
-              <label htmlFor="cp-name" className="block text-xs text-slate-500 mb-1">Company name</label>
-              <input
-                id="cp-name"
+        <div id={panelId} className="space-y-4 border-t border-rule px-4 pb-4 pt-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nome dell'azienda" htmlFor={ids.name} required={required} error={errorFor('name')}>
+              <Input
+                id={ids.name}
                 type="text"
                 value={value.name}
                 onChange={(e) => update('name', e.target.value)}
                 onBlur={() => markTouched('name')}
                 maxLength={200}
-                className={`w-full px-3 py-2 bg-surface2 border rounded-lg text-sm text-white focus:outline-none transition ${
-                  showError('name') ? 'border-red-400/50 focus:border-red-400' : 'border-white/[0.06] focus:border-accent/40'
-                }`}
-                placeholder="e.g. Acme Srl"
-                aria-invalid={!!showError('name')}
-                aria-describedby={showError('name') ? 'cp-name-error' : undefined}
+                placeholder="Acme Srl"
+                autoComplete="organization"
+                invalid={!!errorFor('name')}
+                aria-describedby={describedBy(ids.name, { error: errorFor('name') })}
               />
-              {showError('name') && (
-                <p id="cp-name-error" className="text-[11px] text-red-400 mt-1" role="alert">{errors.name}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="cp-sector" className="block text-xs text-slate-500 mb-1">Sector</label>
-              <input
-                id="cp-sector"
+            </Field>
+            <Field label="Settore" htmlFor={ids.sector}>
+              <Input
+                id={ids.sector}
                 type="text"
                 value={value.sector}
                 onChange={(e) => update('sector', e.target.value)}
                 onBlur={() => markTouched('sector')}
                 maxLength={100}
-                className="w-full px-3 py-2 bg-surface2 border border-white/[0.06] rounded-lg text-sm text-white focus:outline-none focus:border-accent/40 transition"
-                placeholder="e.g. Manufacturing"
+                placeholder="Manifattura"
               />
-            </div>
-            <div>
-              <label htmlFor="cp-employees" className="block text-xs text-slate-500 mb-1">Employees</label>
-              <input
-                id="cp-employees"
+            </Field>
+            <Field label="Dipendenti" htmlFor={ids.employees} error={errorFor('employee_count')}>
+              <Input
+                id={ids.employees}
                 type="number"
+                inputMode="numeric"
                 value={value.employee_count || ''}
                 onChange={(e) => update('employee_count', Math.max(0, parseInt(e.target.value) || 0))}
                 onBlur={() => markTouched('employee_count')}
                 min={0}
                 max={10000000}
-                className={`w-full px-3 py-2 bg-surface2 border rounded-lg text-sm text-white focus:outline-none transition ${
-                  showError('employee_count') ? 'border-red-400/50 focus:border-red-400' : 'border-white/[0.06] focus:border-accent/40'
-                }`}
-                placeholder="e.g. 2500"
-                aria-invalid={!!showError('employee_count')}
+                placeholder="2500"
+                className="tabular"
+                invalid={!!errorFor('employee_count')}
+                aria-describedby={describedBy(ids.employees, { error: errorFor('employee_count') })}
               />
-              {showError('employee_count') && (
-                <p className="text-[11px] text-red-400 mt-1" role="alert">{errors.employee_count}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="cp-revenue" className="block text-xs text-slate-500 mb-1">Revenue (EUR)</label>
-              <input
-                id="cp-revenue"
+            </Field>
+            <Field label="Fatturato netto (euro)" htmlFor={ids.revenue} error={errorFor('revenue_eur')}>
+              <Input
+                id={ids.revenue}
                 type="number"
+                inputMode="numeric"
                 value={value.revenue_eur || ''}
                 onChange={(e) => update('revenue_eur', Math.max(0, parseInt(e.target.value) || 0))}
                 onBlur={() => markTouched('revenue_eur')}
                 min={0}
-                className={`w-full px-3 py-2 bg-surface2 border rounded-lg text-sm text-white focus:outline-none transition ${
-                  showError('revenue_eur') ? 'border-red-400/50 focus:border-red-400' : 'border-white/[0.06] focus:border-accent/40'
-                }`}
-                placeholder="e.g. 200000000"
-                aria-invalid={!!showError('revenue_eur')}
+                placeholder="200000000"
+                className="tabular"
+                invalid={!!errorFor('revenue_eur')}
+                aria-describedby={describedBy(ids.revenue, { error: errorFor('revenue_eur') })}
               />
-              {showError('revenue_eur') && (
-                <p className="text-[11px] text-red-400 mt-1" role="alert">{errors.revenue_eur}</p>
-              )}
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="cp-jurisdictions" className="block text-xs text-slate-500 mb-1">Jurisdictions (comma-separated)</label>
-            <input
-              id="cp-jurisdictions"
+          <Field label="Paesi" htmlFor={ids.jurisdictions} help="Codici separati da virgola, per esempio IT, DE, FR.">
+            <Input
+              id={ids.jurisdictions}
               type="text"
               value={value.jurisdictions.join(', ')}
-              onChange={(e) => update('jurisdictions', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-              className="w-full px-3 py-2 bg-surface2 border border-white/[0.06] rounded-lg text-sm text-white focus:outline-none focus:border-accent/40 transition"
-              placeholder="e.g. IT, DE, FR"
+              onChange={(e) => update('jurisdictions', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+              placeholder="IT, DE, FR"
+              aria-describedby={describedBy(ids.jurisdictions, { help: true })}
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-xs text-slate-500 mb-2">Applicable frameworks</label>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Framework selection">
+          <div className="space-y-1.5">
+            <p id={`${idPrefix}-frameworks-label`} className="text-small font-medium text-ink">
+              Normative già in ambito
+            </p>
+            <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`${idPrefix}-frameworks-label`}>
               {FRAMEWORKS.map((fw) => {
                 const selected = value.applicable_frameworks.includes(fw.value)
                 return (
@@ -230,42 +264,44 @@ export default function CompanyProfileForm({ value, onChange, required }: Props)
                     type="button"
                     onClick={() => {
                       const updated = selected
-                        ? value.applicable_frameworks.filter(f => f !== fw.value)
+                        ? value.applicable_frameworks.filter((f) => f !== fw.value)
                         : [...value.applicable_frameworks, fw.value]
                       update('applicable_frameworks', updated)
                       markTouched('applicable_frameworks')
                     }}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${
-                      selected
-                        ? 'border-accent/40 bg-accent/10 text-accent'
-                        : 'border-white/[0.06] text-slate-500 hover:text-slate-300'
-                    }`}
                     aria-pressed={selected}
+                    className={cn(
+                      'rounded-md border px-2.5 py-1 text-small font-medium transition-colors',
+                      selected
+                        ? 'border-union bg-union/10 text-union'
+                        : 'border-rule-2 text-ink-2 hover:bg-surface-2 hover:text-ink',
+                    )}
                   >
-                    {fw.value}
+                    {frameworkLabel(fw.value)}
                   </button>
                 )
               })}
             </div>
-            {showError('applicable_frameworks') && (
-              <p className="text-[11px] text-red-400 mt-1.5" role="alert">{errors.applicable_frameworks}</p>
+            {errorFor('applicable_frameworks') && (
+              <p className="text-caption text-bad" role="alert">
+                {errors.applicable_frameworks}
+              </p>
             )}
           </div>
 
-          <div>
-            <label htmlFor="cp-docs" className="block text-xs text-slate-500 mb-1">Existing compliance documents</label>
-            <textarea
-              id="cp-docs"
+          <Field label="Documenti di conformità già in uso" htmlFor={ids.docs}>
+            <Textarea
+              id={ids.docs}
               value={value.existing_documents}
               onChange={(e) => update('existing_documents', e.target.value)}
               rows={2}
               maxLength={2000}
-              className="w-full px-3 py-2 bg-surface2 border border-white/[0.06] rounded-lg text-sm text-white focus:outline-none focus:border-accent/40 resize-none transition"
-              placeholder="e.g. Annual sustainability report, GDPR compliance manual..."
+              placeholder="Per esempio: bilancio di sostenibilità 2025, registro dei trattamenti."
+              className="min-h-[72px] resize-y"
             />
-          </div>
+          </Field>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

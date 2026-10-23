@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
   DEMO_STATS,
-  KNOWLEDGE_BASE_META,
-  DEMO_ROLES,
-  DEMO_AUDIT_EVENTS,
+  DEMO_USER,
+  DEMO_CLIENTS,
+  getMockGapAnalysis,
+  getMockMonitorResponse,
+  mockDelay,
 } from '../mock-data'
+
+const BACKEND_FRAMEWORKS = ['CSRD', 'CSDDD', 'AI_ACT', 'DORA', 'NIS2', 'TAXONOMY', 'GDPR', 'CRA']
 
 describe('DEMO_STATS', () => {
   it('has correct structure', () => {
@@ -21,7 +25,7 @@ describe('DEMO_STATS', () => {
   it('has valid endpoint metrics', () => {
     const endpoints = DEMO_STATS.metrics.endpoints
     expect(Object.keys(endpoints).length).toBeGreaterThan(0)
-    for (const [key, val] of Object.entries(endpoints)) {
+    for (const val of Object.values(endpoints)) {
       expect(val.count).toBeGreaterThan(0)
       expect(val.avg_latency_ms).toBeGreaterThan(0)
       expect(val.max_latency_ms).toBeGreaterThanOrEqual(val.avg_latency_ms)
@@ -29,80 +33,69 @@ describe('DEMO_STATS', () => {
   })
 })
 
-describe('KNOWLEDGE_BASE_META', () => {
-  it('has a valid date string', () => {
-    const d = new Date(KNOWLEDGE_BASE_META.updated_at)
-    expect(d.getTime()).not.toBeNaN()
-  })
-
-  it('has positive counts', () => {
-    expect(KNOWLEDGE_BASE_META.chunks_count).toBeGreaterThan(0)
-    expect(KNOWLEDGE_BASE_META.frameworks_count).toBeGreaterThan(0)
-  })
-
-  it('frameworks count matches array length', () => {
-    expect(KNOWLEDGE_BASE_META.frameworks.length).toBe(KNOWLEDGE_BASE_META.frameworks_count)
-  })
-
-  it('contains all expected EU frameworks', () => {
-    expect(KNOWLEDGE_BASE_META.frameworks).toContain('CSRD')
-    expect(KNOWLEDGE_BASE_META.frameworks).toContain('GDPR')
-    expect(KNOWLEDGE_BASE_META.frameworks).toContain('DORA')
+describe('DEMO_USER', () => {
+  it('is an admin so the demo shows every surface', () => {
+    expect(DEMO_USER.role).toBe('admin')
+    expect(DEMO_USER.email).toContain('@')
   })
 })
 
-describe('DEMO_ROLES', () => {
-  it('has unique IDs', () => {
-    const ids = DEMO_ROLES.map(r => r.id)
+describe('DEMO_CLIENTS', () => {
+  it('has unique ids and the fields the clients API returns', () => {
+    const ids = DEMO_CLIENTS.map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
+    for (const client of DEMO_CLIENTS) {
+      expect(client.name.length).toBeGreaterThan(0)
+      expect(typeof client.employee_count).toBe('number')
+      expect(typeof client.revenue_eur).toBe('number')
+      expect(Array.isArray(client.jurisdictions)).toBe(true)
+      expect(Array.isArray(client.applicable_frameworks)).toBe(true)
+      expect(new Date(client.created_at).getTime()).not.toBeNaN()
+      expect(new Date(client.updated_at).getTime()).not.toBeNaN()
+    }
   })
 
-  it('each role has valid permissions array', () => {
-    for (const role of DEMO_ROLES) {
-      expect(Array.isArray(role.permissions)).toBe(true)
-      expect(role.permissions.length).toBeGreaterThan(0)
-      for (const perm of role.permissions) {
-        expect(typeof perm).toBe('string')
-        expect(perm).toMatch(/^[a-z_]+\.[a-z_]+$/)
+  it('uses the framework keys the backend accepts', () => {
+    for (const client of DEMO_CLIENTS) {
+      for (const fw of client.applicable_frameworks) {
+        expect(BACKEND_FRAMEWORKS).toContain(fw)
       }
     }
   })
+})
 
-  it('admin role has the most permissions', () => {
-    const admin = DEMO_ROLES.find(r => r.name === 'Administrator')
-    expect(admin).toBeDefined()
-    for (const role of DEMO_ROLES) {
-      expect(admin!.permissions.length).toBeGreaterThanOrEqual(role.permissions.length)
+describe('getMockGapAnalysis', () => {
+  it('returns a consistent status summary for every framework', () => {
+    for (const fw of BACKEND_FRAMEWORKS) {
+      const result = getMockGapAnalysis(fw)
+      expect(result.framework).toBe(fw)
+      expect(result.requirements.length).toBeGreaterThan(0)
+      expect(result.overall_score).toBeGreaterThanOrEqual(0)
+      expect(result.overall_score).toBeLessThanOrEqual(100)
+      const counted = Object.values(result.status_summary).reduce((a, b) => a + b, 0)
+      expect(counted).toBe(result.requirements.length)
+      expect(result.top_recommendations.length).toBeGreaterThan(0)
     }
+  })
+
+  it('falls back to sample data for an unknown framework', () => {
+    const result = getMockGapAnalysis('UNKNOWN')
+    expect(result.requirements.length).toBeGreaterThan(0)
   })
 })
 
-describe('DEMO_AUDIT_EVENTS', () => {
-  it('has events', () => {
-    expect(DEMO_AUDIT_EVENTS.length).toBeGreaterThan(0)
+describe('getMockMonitorResponse', () => {
+  it('returns an applicability and required actions', () => {
+    const result = getMockMonitorResponse('Modifica delle soglie CSRD')
+    expect(['YES', 'NO', 'CONDITIONAL']).toContain(result.applicability)
+    expect(Array.isArray(result.required_actions)).toBe(true)
   })
+})
 
-  it('all events have valid timestamps', () => {
-    for (const event of DEMO_AUDIT_EVENTS) {
-      const d = new Date(event.timestamp)
-      expect(d.getTime()).not.toBeNaN()
-    }
-  })
-
-  it('all events have required fields', () => {
-    for (const event of DEMO_AUDIT_EVENTS) {
-      expect(event.id).toBeDefined()
-      expect(event.user_id).toBeDefined()
-      expect(event.user_name).toBeDefined()
-      expect(event.action).toBeDefined()
-      expect(event.resource_type).toBeDefined()
-      expect(event.details).toBeDefined()
-      expect(event.ip_address).toBeDefined()
-    }
-  })
-
-  it('events have unique IDs', () => {
-    const ids = DEMO_AUDIT_EVENTS.map(e => e.id)
-    expect(new Set(ids).size).toBe(ids.length)
+describe('mockDelay', () => {
+  it('resolves after the given time', async () => {
+    const start = Date.now()
+    await mockDelay(10)
+    expect(Date.now() - start).toBeGreaterThanOrEqual(5)
   })
 })

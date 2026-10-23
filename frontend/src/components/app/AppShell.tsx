@@ -43,8 +43,15 @@ const THEME_KEY = 'normaai.theme'
 
 function useTheme() {
   const [dark, setDark] = useState(false)
+  // The class on <html> is the source of truth; Impostazioni toggles it too,
+  // so the icon follows the class instead of its own copy of the state.
   useEffect(() => {
-    setDark(document.documentElement.classList.contains('dark'))
+    const root = document.documentElement
+    const sync = () => setDark(root.classList.contains('dark'))
+    sync()
+    const observer = new MutationObserver(sync)
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
   }, [])
   const toggle = useCallback(() => {
     const next = !document.documentElement.classList.contains('dark')
@@ -54,7 +61,6 @@ function useTheme() {
     } catch {
       /* preference stays for this page only */
     }
-    setDark(next)
   }, [])
   return { dark, toggle }
 }

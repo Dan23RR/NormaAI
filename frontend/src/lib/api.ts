@@ -215,7 +215,7 @@ class ApiClient {
       if (refreshed) {
         headers['Authorization'] = `Bearer ${getAccessToken()}`
         const retry = await fetch(`${this.baseUrl}${path}`, { ...options, headers })
-        if (retry.ok) return retry.json()
+        if (retry.ok) return retry.status === 204 ? (undefined as T) : retry.json()
       }
       clearTokens()
       window.location.href = '/login'
@@ -227,6 +227,8 @@ class ApiClient {
       throw new Error(error.detail || `Richiesta fallita (${res.status}).`)
     }
 
+    // 204 No Content (e.g. DELETE) has no body to parse.
+    if (res.status === 204) return undefined as T
     return res.json()
   }
 

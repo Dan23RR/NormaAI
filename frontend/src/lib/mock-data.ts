@@ -5,8 +5,7 @@
 
 import type {
   User, TokenPair, QAResponse, GapAnalysisResponse,
-  MonitorResponse, SystemStats, ComplianceStatus, AuditEvent, Role, WorkflowItem,
-  ClientComplianceScore, ClientComplianceHistory,
+  MonitorResponse, SystemStats, ComplianceStatus,
 } from './types'
 
 // ─── Auth Mocks ─────────────────────────────────────────────
@@ -24,15 +23,6 @@ export const DEMO_TOKENS: TokenPair = {
   refresh_token: 'demo.refresh.token',
   token_type: 'bearer',
   expires_in: 3600,
-}
-
-// ─── Knowledge Base Freshness ───────────────────────────────
-
-export const KNOWLEDGE_BASE_META = {
-  updated_at: '2026-02-28',
-  chunks_count: 14823,
-  frameworks_count: 7,
-  frameworks: ['CSRD', 'CSDDD', 'AI Act', 'DORA', 'NIS2', 'EU Taxonomy', 'GDPR'],
 }
 
 // ─── System Stats Mock ──────────────────────────────────────
@@ -64,221 +54,709 @@ export const DEMO_STATS: SystemStats = {
 }
 
 // ─── Q&A Mocks ──────────────────────────────────────────────
+//
+// Demo answers for "Chiedi". They mirror what the real backend returns from
+// POST /api/v1/qa, plus the optional fields the SSE citation events carry
+// (verified, celex, url, article). Every quoted passage is the official
+// Italian text on EUR-Lex; a citation to a text that is not yet in the
+// corpus (the Omnibus I directive, the ESRS) is left unverified on purpose,
+// so the demo shows the honest state too. Facts follow the public pages
+// and ADR-003: CSRD after Omnibus I (Dir. (UE) 2026/470) applies above
+// 1.000 employees AND 450 million euro net turnover; CSDDD transposition
+// 2028-07-26 and first application 2029; AI Act art. 50 from 2026-08-02.
 
-const QA_RESPONSES: Record<string, QAResponse> = {
+type DemoCitation = QAResponse['citations'][number] & {
+  verified?: boolean
+  celex?: string
+  url?: string
+  article?: string
+  title?: string
+}
+
+export type DemoQAResponse = Omit<QAResponse, 'citations'> & {
+  citations: DemoCitation[]
+  abstention_reason?: string
+  suggested_questions?: string[]
+  /** Example corpus date of the demo (the real one travels in the response metadata). */
+  corpus_as_of?: string
+}
+
+/** The example corpus date shown by the demo. Not a real corpus. */
+export const DEMO_CORPUS_AS_OF = '2026-02-28'
+
+const AI_ACT_ART50_QUOTE =
+  'I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate siano informate del fatto che stanno interagendo con un sistema di IA'
+
+const AI_ACT_ART9_QUOTE =
+  'In relazione ai sistemi di IA ad alto rischio è istituito, attuato, documentato e mantenuto un sistema di gestione dei rischi.'
+
+const CSRD_ART19A_QUOTE =
+  "includono nella relazione sulla gestione le informazioni necessarie alla comprensione dell'impatto dell'impresa sulle questioni di sostenibilità, nonché le informazioni necessarie alla comprensione del modo in cui le questioni di sostenibilità influiscono sull'andamento dell'impresa, sui suoi risultati e sulla sua situazione"
+
+const CSDDD_ART5_QUOTE =
+  'Gli Stati membri provvedono affinché le società esercitino il dovere di diligenza in materia di diritti umani e di ambiente basato sul rischio di cui agli articoli da 7 a 16 («dovere di diligenza»)'
+
+const DORA_ART6_QUOTE =
+  'Le entità finanziarie dispongono di un quadro per la gestione dei rischi informatici solido, completo e ben documentato, che fa parte del loro sistema generale di gestione dei rischi'
+
+const DORA_ART19_QUOTE =
+  "Le entità finanziarie segnalano all'autorità competente pertinente di cui all'articolo 46 i gravi incidenti connessi alle TIC"
+
+const NIS2_ART23_4A_QUOTE =
+  "senza indebito ritardo, e comunque entro 24 ore dalla conoscenza dell'incidente significativo, un preallarme"
+
+const OMNIBUS_NOT_IN_CORPUS =
+  "Il testo della Direttiva (UE) 2026/470 (Omnibus I) non è ancora nel corpus: la citazione che la riguarda va verificata su EUR-Lex prima di decidere."
+
+const QA_RESPONSES: Record<string, DemoQAResponse> = {
   csrd: {
-    answer: "In base al Regolamento CSRD (Direttiva 2022/2464), le imprese con oltre 250 dipendenti, un fatturato netto superiore a 50 milioni di euro o un totale di bilancio superiore a 25 milioni di euro sono obbligate a presentare la rendicontazione di sostenibilità. Tuttavia, con il pacchetto Omnibus I proposto nel febbraio 2025, la soglia per i dipendenti potrebbe essere innalzata a 1.000, riducendo significativamente il numero di imprese coinvolte.\n\nPer la vostra azienda con 2.500 dipendenti, l'obbligo CSRD resta comunque applicabile indipendentemente dalla soglia adottata.",
+    answer:
+      "Dopo l'Omnibus I (Direttiva (UE) 2026/470, in vigore dal 18 marzo 2026) l'obbligo di rendicontazione di sostenibilità della CSRD riguarda solo le imprese che superano entrambe le soglie: più di 1.000 dipendenti in media nell'esercizio e un fatturato netto superiore a 450 milioni di euro [1]. Le due condizioni sono cumulative: non vale più il criterio «due su tre» previsto in origine dalla Direttiva (UE) 2022/2464.\n\nUn'impresa sotto una delle due soglie (per esempio 600 dipendenti, qualunque sia il fatturato) resta fuori dall'obbligo diretto. Le imprese ancora obbligate includono nella relazione sulla gestione le informazioni necessarie a comprendere il loro impatto sulle questioni di sostenibilità e il modo in cui queste influiscono sull'andamento dell'impresa [2]: è da questo obbligo che nascono le richieste di dati lungo la catena del valore, anche verso fornitori più piccoli.\n\nPer chi rientrava nella prima ondata (imprese già soggette alla direttiva sulle informazioni non finanziarie) l'Omnibus prevede un'esenzione transitoria per gli esercizi 2025 e 2026: verificate la vostra posizione sul testo consolidato.",
     citations: [
-      { framework: 'CSRD', reference: 'Art. 19a(1)', quote_snippet: 'Large undertakings shall include in the management report...' },
-      { framework: 'CSRD', reference: 'Art. 2(1)', quote_snippet: 'Undertakings which exceed at least two of the three following criteria...' },
-      { framework: 'CSRD', reference: 'Omnibus I Proposal', quote_snippet: 'The employee threshold is proposed to be raised to 1,000...' },
+      {
+        framework: 'CSRD',
+        title: 'Direttiva (UE) 2026/470 (Omnibus I)',
+        reference: "art. 1, nuove soglie dell'art. 19 bis della Direttiva 2013/34/UE",
+        quote_snippet: '',
+        celex: '32026L0470',
+        verified: false,
+      },
+      {
+        framework: 'CSRD',
+        reference: 'art. 19 bis, par. 1, della Direttiva 2013/34/UE (inserito dalla Direttiva (UE) 2022/2464)',
+        quote_snippet: CSRD_ART19A_QUOTE,
+        celex: '32022L2464',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.78,
+    requires_expert_review: true,
+    related_frameworks: ['CSDDD', 'TAXONOMY', 'ESRS'],
+    caveats: [OMNIBUS_NOT_IN_CORPUS],
+  },
+  csddd: {
+    answer:
+      "La CSDDD (Direttiva (UE) 2024/1760) impone alle imprese più grandi un dovere di diligenza sui diritti umani e sull'ambiente lungo la catena di attività: integrarlo nelle politiche aziendali, individuare e valutare gli impatti negativi effettivi e potenziali, prevenirli o farli cessare e renderne conto [1]. Le imprese devono anche dare alle persone e alle organizzazioni interessate la possibilità di presentare reclami [2].\n\nL'Omnibus I (Direttiva (UE) 2026/470) ha riscritto calendario e perimetro: il recepimento negli Stati membri è dovuto entro il 26 luglio 2028 e la prima applicazione alle imprese scatta nel 2029 [3]. Lo stesso atto ha ristretto l'ambito soggettivo, eliminato l'obbligo di adottare un piano di transizione climatica e rimosso il regime armonizzato di responsabilità civile.\n\nPrima di pianificare, verificate le soglie sul testo consolidato: gli orientamenti della Commissione sono attesi per luglio 2027.",
+    citations: [
+      {
+        framework: 'CSDDD',
+        reference: 'art. 5, par. 1',
+        quote_snippet: CSDDD_ART5_QUOTE,
+        celex: '32024L1760',
+        verified: true,
+      },
+      {
+        framework: 'CSDDD',
+        reference: 'art. 14, par. 1',
+        quote_snippet: 'la possibilità di presentare loro reclami qualora nutrano legittime preoccupazioni riguardo agli impatti negativi effettivi o potenziali',
+        celex: '32024L1760',
+        verified: true,
+      },
+      {
+        framework: 'CSDDD',
+        title: 'Direttiva (UE) 2026/470 (Omnibus I)',
+        reference: "modifiche all'art. 37 della Direttiva (UE) 2024/1760 (recepimento e applicazione)",
+        quote_snippet: '',
+        celex: '32026L0470',
+        verified: false,
+      },
+    ],
+    confidence_score: 0.8,
+    requires_expert_review: true,
+    related_frameworks: ['CSRD', 'TAXONOMY'],
+    caveats: [OMNIBUS_NOT_IN_CORPUS],
+  },
+  ai_act: {
+    answer:
+      "Il Regolamento (UE) 2024/1689 (AI Act) gradua gli obblighi in base al rischio. Alcune pratiche sono vietate, per esempio i sistemi che usano tecniche subliminali o manipolative per distorcere il comportamento delle persone [1]. Sono ad alto rischio i sistemi elencati nell'allegato III (tra cui valutazione del merito di credito, selezione del personale, infrastrutture critiche) e quelli che sono componenti di sicurezza di prodotti regolamentati [2]: per questi il fornitore istituisce un sistema di gestione dei rischi [3], oltre a governance dei dati, documentazione tecnica, trasparenza e sorveglianza umana.\n\nPer i sistemi destinati a interagire con le persone valgono gli obblighi di trasparenza dell'articolo 50: chi fornisce un chatbot lo progetta in modo che le persone sappiano di parlare con un'IA [4]. Il regolamento si applica dal 2 agosto 2026 [5]. Le sanzioni per le pratiche vietate arrivano a 35 milioni di euro o al 7% del fatturato mondiale annuo, se superiore [6].",
+    citations: [
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 5, par. 1, lett. a)',
+        quote_snippet: "l'immissione sul mercato, la messa in servizio o l'uso di un sistema di IA che utilizza tecniche subliminali che agiscono senza che una persona ne sia consapevole o tecniche volutamente manipolative o ingannevoli",
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 6, par. 2',
+        quote_snippet: "Oltre ai sistemi di IA ad alto rischio di cui al paragrafo 1, sono considerati ad alto rischio anche i sistemi di IA di cui all'allegato III.",
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 9, par. 1',
+        quote_snippet: AI_ACT_ART9_QUOTE,
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 50, par. 1',
+        quote_snippet: AI_ACT_ART50_QUOTE,
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 113',
+        quote_snippet: 'Esso si applica a decorrere dal 2 agosto 2026.',
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 99, par. 3',
+        quote_snippet: "La non conformità al divieto delle pratiche di IA di cui all'articolo 5 è soggetta a sanzioni amministrative pecuniarie fino a 35 000 000 EUR o, se l'autore del reato è un'impresa, fino al 7 % del fatturato mondiale totale annuo dell'esercizio precedente, se superiore.",
+        celex: '32024R1689',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.93,
+    requires_expert_review: false,
+    related_frameworks: ['GDPR', 'DORA'],
+    caveats: [
+      "L'applicazione degli obblighi per i sistemi ad alto rischio dell'allegato III è stata rinviata al 2 dicembre 2027 dal pacchetto Omnibus digitale: verificate il calendario aggiornato prima di pianificare.",
+    ],
+  },
+  ai_act_art50: {
+    answer:
+      "Sì. L'articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un sistema di IA destinato a interagire direttamente con le persone a progettarlo in modo che le persone sappiano di parlare con un'IA, salvo che sia evidente dal contesto per una persona ragionevolmente informata, attenta e avveduta [1]. Per un assistente virtuale sul sito aziendale la via più semplice è una dichiarazione esplicita all'avvio della conversazione.\n\nL'obbligo si applica dal 2 agosto 2026 [2]. Se l'assistente genera testi, audio o immagini sintetiche valgono anche gli obblighi di marcatura dei contenuti artificiali previsti dallo stesso articolo. Le sanzioni per la violazione degli obblighi di trasparenza arrivano a 15 milioni di euro o al 3% del fatturato mondiale annuo, se superiore [3]; per le PMI e le start-up si applica il minore dei due importi.",
+    citations: [
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 50, par. 1',
+        quote_snippet: AI_ACT_ART50_QUOTE,
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 113',
+        quote_snippet: 'Esso si applica a decorrere dal 2 agosto 2026.',
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 99, par. 4',
+        quote_snippet: "è soggetta a sanzioni amministrative pecuniarie fino a 15 000 000 EUR o, se l'autore del reato è un'impresa, fino al 3 % del fatturato mondiale totale annuo dell'esercizio precedente, se superiore",
+        celex: '32024R1689',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.94,
+    requires_expert_review: false,
+    related_frameworks: ['GDPR'],
+    caveats: [],
+  },
+  gdpr: {
+    answer:
+      "Il Regolamento (UE) 2016/679 (GDPR) fissa i principi del trattamento dei dati personali. Il trattamento è lecito solo se ricorre almeno una base giuridica: consenso, contratto, obbligo legale, interessi vitali, interesse pubblico o legittimo interesse [1]. I dati devono essere adeguati, pertinenti e limitati a quanto necessario rispetto alle finalità [2].\n\nGli interessati hanno diritto di accesso, rettifica, cancellazione, portabilità e opposizione (articoli da 15 a 21). In caso di violazione dei dati, il titolare notifica l'autorità di controllo senza ingiustificato ritardo e, ove possibile, entro 72 ore [3]. La nomina di un responsabile della protezione dei dati è obbligatoria, tra l'altro, per le autorità e gli organismi pubblici e quando le attività principali comportano un monitoraggio regolare e sistematico su larga scala [4].\n\nLe sanzioni per le violazioni più gravi arrivano a 20 milioni di euro o al 4% del fatturato mondiale annuo, se superiore [5].",
+    citations: [
+      {
+        framework: 'GDPR',
+        reference: 'art. 6, par. 1',
+        quote_snippet: 'Il trattamento è lecito solo se e nella misura in cui ricorre almeno una delle seguenti condizioni',
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 5, par. 1, lett. c)',
+        quote_snippet: 'adeguati, pertinenti e limitati a quanto necessario rispetto alle finalità per le quali sono trattati («minimizzazione dei dati»)',
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 33, par. 1',
+        quote_snippet: "il titolare del trattamento notifica la violazione all'autorità di controllo competente a norma dell'articolo 55 senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 37, par. 1',
+        quote_snippet: 'Il titolare del trattamento e il responsabile del trattamento designano sistematicamente un responsabile della protezione dei dati ogniqualvolta',
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 83, par. 5',
+        quote_snippet: "fino a 20 000 000 EUR, o per le imprese, fino al 4 % del fatturato mondiale totale annuo dell'esercizio precedente, se superiore",
+        celex: '32016R0679',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.94,
+    requires_expert_review: false,
+    related_frameworks: ['AI_ACT', 'NIS2'],
+    caveats: [],
+  },
+  dora: {
+    answer:
+      "Il Regolamento (UE) 2022/2554 (DORA) si applica dal 17 gennaio 2025 [1] e impone alle entità finanziarie un quadro per la gestione dei rischi informatici solido, completo e documentato [2]. Gli incidenti gravi connessi alle TIC vanno segnalati all'autorità competente [3] con una notifica iniziale, una relazione intermedia e una relazione finale, nei termini fissati dalle norme tecniche di regolamentazione.\n\nLe entità diverse dalle microimprese e da quelle a regime semplificato effettuano test avanzati di penetrazione guidati dalla minaccia (TLPT) almeno ogni tre anni [4]. Il rischio derivante dai fornitori terzi di servizi TIC va gestito come parte integrante del rischio informatico, con clausole contrattuali minime obbligatorie [5].",
+    citations: [
+      {
+        framework: 'DORA',
+        reference: 'art. 64',
+        quote_snippet: 'Esso si applica a decorrere dal 17 gennaio 2025.',
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 6, par. 1',
+        quote_snippet: DORA_ART6_QUOTE,
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 19, par. 1',
+        quote_snippet: DORA_ART19_QUOTE,
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 26, par. 1',
+        quote_snippet: 'effettuano test avanzati mediante TLPT almeno ogni tre anni',
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 28, par. 1',
+        quote_snippet: "Le entità finanziarie gestiscono i rischi informatici derivanti da terzi come parte integrante dei rischi informatici nell'ambito del quadro per la gestione dei rischi informatici",
+        celex: '32022R2554',
+        verified: true,
+      },
     ],
     confidence_score: 0.92,
     requires_expert_review: false,
-    related_frameworks: ['CSDDD', 'EU Taxonomy'],
-    caveats: ['La proposta Omnibus I è ancora in fase di negoziazione e potrebbe subire modifiche.'],
-  },
-  dora: {
-    answer: "DORA (Digital Operational Resilience Act, Regulation 2022/2554) impone obblighi stringenti in materia di resilienza operativa digitale per tutte le entità finanziarie dell'UE. I principali obblighi includono:\n\n1. **ICT Risk Management Framework** - Implementare un framework completo per la gestione dei rischi ICT [DORA, Art. 6-16]\n2. **Incident Reporting** - Segnalazione di incidenti ICT gravi alle autorità competenti entro 4 ore dalla classificazione [DORA, Art. 17-23]\n3. **Digital Resilience Testing** - Eseguire test di resilienza annuali e TLPT ogni 3 anni per entità significative [DORA, Art. 24-27]\n4. **ICT Third-Party Risk** - Gestione del rischio dei fornitori ICT con clausole contrattuali obbligatorie [DORA, Art. 28-44]\n5. **Information Sharing** - Partecipazione a sistemi di condivisione delle informazioni sulle minacce [DORA, Art. 45]\n\nDORA è applicabile dal 17 gennaio 2025.",
-    citations: [
-      { framework: 'DORA', reference: 'Art. 6', quote_snippet: 'Financial entities shall have in place an ICT risk management framework...' },
-      { framework: 'DORA', reference: 'Art. 19(1)', quote_snippet: 'Financial entities shall report major ICT-related incidents...' },
-      { framework: 'DORA', reference: 'Art. 26(1)', quote_snippet: 'Financial entities shall carry out advanced testing by means of TLPT...' },
-      { framework: 'DORA', reference: 'Art. 28(1)', quote_snippet: 'Financial entities shall manage ICT third-party risk as an integral component of ICT risk...' },
-    ],
-    confidence_score: 0.95,
-    requires_expert_review: false,
     related_frameworks: ['NIS2'],
-    caveats: [],
+    caveats: [
+      "I termini di notifica degli incidenti (notifica iniziale, relazione intermedia e relazione finale) sono fissati dalle norme tecniche di regolamentazione che integrano l'articolo 19, non dal regolamento.",
+    ],
   },
   nis2: {
-    answer: "Ai sensi della Direttiva NIS2 (2022/2555), gli obblighi di segnalazione degli incidenti prevedono un processo in tre fasi:\n\n1. **Early warning** - Entro 24 ore dal rilevamento dell'incidente significativo, notifica al CSIRT nazionale o all'autorità competente [NIS2, Art. 23(4)(a)]\n2. **Incident notification** - Entro 72 ore, fornire una valutazione iniziale con severità, impatto e indicatori di compromissione [NIS2, Art. 23(4)(b)]\n3. **Final report** - Entro 1 mese dalla notifica, report finale dettagliato con root cause analysis, misure di mitigazione e impatto transfrontaliero [NIS2, Art. 23(4)(d)]\n\nUn incidente è considerato \"significativo\" se causa gravi interruzioni operative, perdite finanziarie rilevanti o danni a persone fisiche o giuridiche [NIS2, Art. 23(3)].",
+    answer:
+      "La Direttiva (UE) 2022/2555 (NIS2) prevede per i soggetti essenziali e importanti una notifica degli incidenti significativi in tre tempi: un preallarme entro 24 ore dalla conoscenza dell'incidente [1], una notifica con la valutazione iniziale di gravità e impatto entro 72 ore [2] e una relazione finale entro un mese dalla notifica [3].\n\nUn incidente è significativo quando ha causato o può causare una grave perturbazione operativa dei servizi o perdite finanziarie per il soggetto, oppure quando si è ripercosso o può ripercuotersi su altre persone causando perdite considerevoli [4]. In Italia la direttiva è recepita dal D.Lgs. 138/2024.",
     citations: [
-      { framework: 'NIS2', reference: 'Art. 23(1)', quote_snippet: 'Essential and important entities shall notify without undue delay...' },
-      { framework: 'NIS2', reference: 'Art. 23(4)', quote_snippet: 'The early warning shall be submitted within 24 hours...' },
-      { framework: 'NIS2', reference: 'Art. 21(2)', quote_snippet: 'Cybersecurity risk-management measures shall include policies on risk analysis...' },
+      {
+        framework: 'NIS2',
+        reference: 'art. 23, par. 4, lett. a)',
+        quote_snippet: NIS2_ART23_4A_QUOTE,
+        celex: '32022L2555',
+        verified: true,
+      },
+      {
+        framework: 'NIS2',
+        reference: 'art. 23, par. 4, lett. b)',
+        quote_snippet: "senza indebito ritardo, e comunque entro 72 ore dalla conoscenza dell'incidente significativo, una notifica dell'incidente",
+        celex: '32022L2555',
+        verified: true,
+      },
+      {
+        framework: 'NIS2',
+        reference: 'art. 23, par. 4, lett. d)',
+        quote_snippet: "una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)",
+        celex: '32022L2555',
+        verified: true,
+      },
+      {
+        framework: 'NIS2',
+        reference: 'art. 23, par. 3',
+        quote_snippet: 'ha causato o è in grado di causare una grave perturbazione operativa dei servizi o perdite finanziarie per il soggetto interessato',
+        celex: '32022L2555',
+        verified: true,
+      },
     ],
-    confidence_score: 0.89,
+    confidence_score: 0.9,
     requires_expert_review: false,
     related_frameworks: ['DORA', 'GDPR'],
-    caveats: ['I termini possono variare in base alla trasposizione nazionale.'],
-  },
-  ai_act: {
-    answer: "L'AI Act (Regolamento 2024/1689) introduce un sistema di classificazione basato sul rischio per i sistemi di intelligenza artificiale nell'UE:\n\n1. **Rischio inaccettabile** - Sistemi vietati: scoring sociale, manipolazione subliminale, sorveglianza biometrica di massa [AI Act, Art. 5]\n2. **Alto rischio** - Sistemi soggetti a requisiti stringenti: credit scoring, recruitment, infrastrutture critiche [AI Act, Art. 6, Annex III]\n3. **Rischio limitato** - Obblighi di trasparenza: chatbot, deepfake, sistemi di raccomandazione [AI Act, Art. 50]\n4. **Rischio minimo** - Nessun obbligo specifico, codici di condotta volontari\n\nI sistemi ad alto rischio devono implementare: gestione del rischio [Art. 9], governance dei dati [Art. 10], documentazione tecnica [Art. 11], trasparenza [Art. 13], supervisione umana [Art. 14] e accuratezza/robustezza [Art. 15].\n\nLe sanzioni arrivano fino a 35 milioni di euro o il 7% del fatturato globale [AI Act, Art. 99].",
-    citations: [
-      { framework: 'AI Act', reference: 'Art. 6', quote_snippet: 'A high-risk AI system is one that is intended to be used as a safety component...' },
-      { framework: 'AI Act', reference: 'Art. 9(1)', quote_snippet: 'A risk management system shall be established and maintained...' },
-      { framework: 'AI Act', reference: 'Art. 13(1)', quote_snippet: 'High-risk AI systems shall be designed to ensure transparency...' },
-      { framework: 'AI Act', reference: 'Art. 99(3)', quote_snippet: 'Up to EUR 35 million or 7% of worldwide annual turnover...' },
-    ],
-    confidence_score: 0.91,
-    requires_expert_review: false,
-    related_frameworks: ['GDPR', 'DORA'],
-    caveats: ['L\'AI Act è in fase di attuazione progressiva: i divieti dal febbraio 2025, i requisiti per sistemi ad alto rischio dal agosto 2026.'],
-  },
-  gdpr: {
-    answer: "Il GDPR (Regolamento 2016/679) stabilisce i principi fondamentali per il trattamento dei dati personali nell'UE:\n\n1. **Liceità, correttezza e trasparenza** - Base giuridica obbligatoria (consenso, contratto, obbligo legale, interesse legittimo, etc.) [GDPR, Art. 6]\n2. **Limitazione della finalità** - Dati raccolti per finalità determinate, esplicite e legittime [GDPR, Art. 5(1)(b)]\n3. **Minimizzazione** - Solo dati adeguati, pertinenti e limitati al necessario [GDPR, Art. 5(1)(c)]\n4. **Diritti degli interessati** - Accesso [Art. 15], rettifica [Art. 16], cancellazione [Art. 17], portabilità [Art. 20], opposizione [Art. 21]\n5. **Data Protection Officer** - Obbligatorio per autorità pubbliche e trattamenti su larga scala [GDPR, Art. 37]\n6. **Notifica data breach** - Entro 72 ore all'autorità di controllo [GDPR, Art. 33], senza ritardo agli interessati se rischio elevato [Art. 34]\n\nLe sanzioni arrivano fino a 20 milioni di euro o il 4% del fatturato globale [GDPR, Art. 83(5)].",
-    citations: [
-      { framework: 'GDPR', reference: 'Art. 6(1)', quote_snippet: 'Processing shall be lawful only if and to the extent that at least one condition applies...' },
-      { framework: 'GDPR', reference: 'Art. 33(1)', quote_snippet: 'The controller shall notify the supervisory authority within 72 hours...' },
-      { framework: 'GDPR', reference: 'Art. 37(1)', quote_snippet: 'The controller and the processor shall designate a data protection officer...' },
-    ],
-    confidence_score: 0.94,
-    requires_expert_review: false,
-    related_frameworks: ['AI Act', 'NIS2'],
-    caveats: [],
+    caveats: ['I termini possono essere precisati dalla normativa nazionale di recepimento.'],
   },
   taxonomy: {
-    answer: "Il Regolamento EU Taxonomy (2020/852) stabilisce un sistema di classificazione per le attività economiche sostenibili:\n\n1. **6 obiettivi ambientali** - Mitigazione cambiamento climatico, adattamento, acque, economia circolare, inquinamento, biodiversità [Taxonomy, Art. 9]\n2. **Contributo sostanziale** - L'attività deve contribuire sostanzialmente ad almeno uno dei 6 obiettivi [Taxonomy, Art. 3(a)]\n3. **Do No Significant Harm (DNSH)** - Non deve arrecare danno significativo agli altri obiettivi [Taxonomy, Art. 3(b)]\n4. **Garanzie minime di salvaguardia** - Rispetto delle linee guida OCSE e dei principi UN [Taxonomy, Art. 3(c), Art. 18]\n5. **Obblighi di disclosure** - Le imprese soggette al CSRD devono dichiarare la % di fatturato, CapEx e OpEx allineati alla Taxonomy [Taxonomy, Art. 8]\n\nI criteri tecnici di screening sono definiti negli atti delegati della Commissione.",
+    answer:
+      "Il Regolamento (UE) 2020/852 (Tassonomia) stabilisce quando un'attività economica è ecosostenibile: deve contribuire in modo sostanziale ad almeno uno dei sei obiettivi ambientali, non arrecare un danno significativo agli altri, rispettare le garanzie minime di salvaguardia ed essere conforme ai criteri di vaglio tecnico [1]. I sei obiettivi sono la mitigazione e l'adattamento ai cambiamenti climatici, l'uso sostenibile delle acque e delle risorse marine, l'economia circolare, la prevenzione dell'inquinamento e la biodiversità [2].\n\nLe garanzie minime di salvaguardia sono procedure che assicurano l'allineamento con le linee guida OCSE per le imprese multinazionali e con i principi guida delle Nazioni Unite su imprese e diritti umani [3]. Le imprese soggette alla rendicontazione di sostenibilità pubblicano la quota di fatturato, investimenti e spese operative associata ad attività ecosostenibili [4].",
     citations: [
-      { framework: 'EU Taxonomy', reference: 'Art. 3', quote_snippet: 'An economic activity shall qualify as environmentally sustainable where...' },
-      { framework: 'EU Taxonomy', reference: 'Art. 8(1)', quote_snippet: 'Any undertaking subject to CSRD shall disclose the proportion of turnover...' },
-      { framework: 'EU Taxonomy', reference: 'Art. 18', quote_snippet: 'Minimum safeguards shall be procedures implemented to ensure alignment...' },
-    ],
-    confidence_score: 0.87,
-    requires_expert_review: false,
-    related_frameworks: ['CSRD', 'CSDDD'],
-    caveats: ['I criteri tecnici di screening vengono aggiornati periodicamente dalla Commissione Europea.'],
-  },
-  csddd: {
-    answer: "La Corporate Sustainability Due Diligence Directive (CSDDD, Direttiva 2024/1760) impone obblighi di dovuta diligenza sulla catena del valore:\n\n1. **Ambito di applicazione** - Imprese UE con >1.000 dipendenti e >€450M di fatturato netto, o imprese extra-UE con >€450M di fatturato nell'UE [CSDDD, Art. 2]\n2. **Due diligence obbligatoria** - Identificare, prevenire, mitigare e rendere conto degli impatti negativi sui diritti umani e sull'ambiente [CSDDD, Art. 7-8]\n3. **Piano di transizione climatica** - Adozione di un piano compatibile con l'Accordo di Parigi (1.5°C) [CSDDD, Art. 22]\n4. **Meccanismo di reclamo** - Procedura accessibile per segnalare impatti negativi [CSDDD, Art. 14]\n5. **Responsabilità civile** - Le imprese sono responsabili per i danni causati dalla mancata due diligence [CSDDD, Art. 29]\n\nLe sanzioni includono multe fino al 5% del fatturato netto globale [CSDDD, Art. 27].",
-    citations: [
-      { framework: 'CSDDD', reference: 'Art. 2(1)', quote_snippet: 'This Directive shall apply to companies with more than 1,000 employees...' },
-      { framework: 'CSDDD', reference: 'Art. 7', quote_snippet: 'Member States shall ensure that companies take appropriate measures to identify...' },
-      { framework: 'CSDDD', reference: 'Art. 22', quote_snippet: 'Companies shall adopt a transition plan for climate change mitigation...' },
-    ],
-    confidence_score: 0.90,
-    requires_expert_review: false,
-    related_frameworks: ['CSRD', 'EU Taxonomy'],
-    caveats: ['La proposta Omnibus I potrebbe innalzare le soglie e posticipare i termini di trasposizione.'],
-  },
-  cross_ai_gdpr: {
-    answer: "**Sotto l'AI Act:**\nI sistemi di AI utilizzati per il credit scoring sono classificati come **alto rischio** [AI Act, Art. 6, Annex III §5(b)]. Questo comporta obblighi di: gestione del rischio [Art. 9], governance dei dati di training [Art. 10], trasparenza verso l'utente [Art. 13], e supervisione umana [Art. 14]. Il deployer deve eseguire una valutazione d'impatto sui diritti fondamentali [Art. 27].\n\n**Sotto il GDPR:**\nIl credit scoring basato su AI costituisce un **processo decisionale automatizzato** soggetto all'Art. 22 GDPR. L'interessato ha diritto a: non essere soggetto a decisioni basate unicamente su trattamento automatizzato [Art. 22(1)], ottenere l'intervento umano [Art. 22(3)], e ricevere informazioni significative sulla logica del trattamento [Art. 13(2)(f)].\n\n**Interazione tra i due framework:**\nL'Art. 2(7) dell'AI Act stabilisce che il GDPR resta pienamente applicabile. In pratica, per un sistema di credit scoring basato su AI servono ENTRAMBE le conformità: la DPIA del GDPR [Art. 35] e la valutazione d'impatto AI Act [Art. 27], la supervisione umana sia per Art. 22 GDPR che per Art. 14 AI Act.",
-    citations: [
-      { framework: 'AI Act', reference: 'Art. 6, Annex III', quote_snippet: 'AI systems intended to be used for credit scoring shall be considered high-risk...' },
-      { framework: 'AI Act', reference: 'Art. 27', quote_snippet: 'Deployers of high-risk AI systems shall perform a fundamental rights impact assessment...' },
-      { framework: 'GDPR', reference: 'Art. 22(1)', quote_snippet: 'The data subject shall have the right not to be subject to a decision based solely on automated processing...' },
-      { framework: 'GDPR', reference: 'Art. 35(3)', quote_snippet: 'A data protection impact assessment shall be required in particular for systematic evaluation of personal aspects...' },
+      {
+        framework: 'TAXONOMY',
+        reference: 'art. 3',
+        quote_snippet: "un'attività economica è considerata ecosostenibile se: a) contribuisce in modo sostanziale al raggiungimento di uno o più degli obiettivi ambientali di cui all'articolo 9",
+        celex: '32020R0852',
+        verified: true,
+      },
+      {
+        framework: 'TAXONOMY',
+        reference: 'art. 9',
+        quote_snippet: "a) la mitigazione dei cambiamenti climatici; b) l'adattamento ai cambiamenti climatici; c) l'uso sostenibile e la protezione delle acque e delle risorse marine; d) la transizione verso un'economia circolare; e) la prevenzione e la riduzione dell'inquinamento; f) la protezione e il ripristino della biodiversità e degli ecosistemi",
+        celex: '32020R0852',
+        verified: true,
+      },
+      {
+        framework: 'TAXONOMY',
+        reference: 'art. 18, par. 1',
+        quote_snippet: "sono procedure attuate da un'impresa che svolge un'attività economica al fine di garantire l'allineamento con le linee guida OCSE destinate alle imprese multinazionali e con i principi guida delle Nazioni Unite su imprese e diritti umani",
+        celex: '32020R0852',
+        verified: true,
+      },
+      {
+        framework: 'TAXONOMY',
+        reference: 'art. 8, par. 1',
+        quote_snippet: "includono nella dichiarazione di carattere non finanziario o nella dichiarazione consolidata di carattere non finanziario informazioni su come e in che misura le attività dell'impresa sono associate ad attività economiche considerate ecosostenibili",
+        celex: '32020R0852',
+        verified: true,
+      },
     ],
     confidence_score: 0.88,
     requires_expert_review: false,
+    related_frameworks: ['CSRD', 'CSDDD'],
+    caveats: ['I criteri di vaglio tecnico sono negli atti delegati della Commissione e vengono aggiornati nel tempo.'],
+  },
+  cross_ai_gdpr: {
+    answer:
+      "Sotto l'AI Act: i sistemi di IA usati per valutare l'affidabilità creditizia delle persone fisiche o stabilirne il merito di credito sono ad alto rischio, salvo quelli usati per individuare frodi finanziarie [1]. Il fornitore istituisce un sistema di gestione dei rischi [2]; il deployer, se è un ente creditizio, effettua prima dell'uso una valutazione dell'impatto sui diritti fondamentali [3].\n\nSotto il GDPR: una decisione di credito presa unicamente in modo automatizzato ricade nell'articolo 22: l'interessato ha il diritto di non esservi sottoposto quando produce effetti giuridici o incide in modo analogo significativamente sulla sua persona [4], e una valutazione sistematica e globale di aspetti personali basata su trattamento automatizzato richiede una valutazione d'impatto sulla protezione dei dati [5].\n\nI due regimi si sommano: servono sia la valutazione d'impatto GDPR sia quella sui diritti fondamentali dell'AI Act, e la sorveglianza umana richiesta dall'AI Act va coordinata con l'intervento umano previsto dall'articolo 22 del GDPR.",
+    citations: [
+      {
+        framework: 'AI_ACT',
+        reference: 'allegato III, punto 5, lett. b)',
+        quote_snippet: "i sistemi di IA destinati a essere utilizzati per valutare l'affidabilità creditizia delle persone fisiche o per stabilire il loro merito di credito, a eccezione dei sistemi di IA utilizzati allo scopo di individuare frodi finanziarie",
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 9, par. 1',
+        quote_snippet: AI_ACT_ART9_QUOTE,
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 27, par. 1',
+        quote_snippet: "effettuano una valutazione dell'impatto sui diritti fondamentali che l'uso di tale sistema può produrre",
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 22, par. 1',
+        quote_snippet: "L'interessato ha il diritto di non essere sottoposto a una decisione basata unicamente sul trattamento automatizzato, compresa la profilazione, che produca effetti giuridici che lo riguardano o che incida in modo analogo significativamente sulla sua persona.",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 35, par. 3, lett. a)',
+        quote_snippet: 'una valutazione sistematica e globale di aspetti personali relativi a persone fisiche, basata su un trattamento automatizzato, compresa la profilazione, e sulla quale si fondano decisioni che hanno effetti giuridici o incidono in modo analogo significativamente su dette persone fisiche',
+        celex: '32016R0679',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.89,
+    requires_expert_review: false,
     related_frameworks: ['DORA'],
-    caveats: ['L\'interazione precisa tra AI Act e GDPR per il credit scoring sarà chiarita dalle linee guida dell\'AI Office e dell\'EDPB.'],
+    caveats: ["Gli orientamenti dell'AI Office e dell'EDPB sul rapporto tra AI Act e GDPR nel credit scoring sono in evoluzione."],
   },
   cross_dora_nis2: {
-    answer: "**Sotto DORA:**\nDORA (Reg. 2022/2554) è la lex specialis per la resilienza operativa digitale del settore finanziario. Obblighi chiave: framework ICT risk management [Art. 6], incident reporting entro 4 ore [Art. 19], TLPT testing ogni 3 anni [Art. 26], gestione rischio fornitori ICT [Art. 28-44].\n\n**Sotto NIS2:**\nLa Direttiva NIS2 (2022/2555) copre la cybersecurity per settori essenziali e importanti. Obblighi chiave: misure di gestione del rischio [Art. 21], incident reporting in 3 fasi (24h/72h/1 mese) [Art. 23], governance della sicurezza [Art. 20].\n\n**Rapporto tra i due framework:**\nL'Art. 4 della NIS2 stabilisce la **clausola lex specialis**: quando un atto settoriale dell'UE (come DORA) impone requisiti almeno equivalenti, le disposizioni NIS2 non si applicano a quelle entità. Per le **entità finanziarie soggette a DORA, gli obblighi NIS2 sono sostituiti da DORA** [NIS2, Art. 4(2)]. Tuttavia:\n- Se l'entità finanziaria opera anche in settori coperti da NIS2 (es. cloud provider), può essere soggetta a entrambi\n- I CSIRT nazionali NIS2 collaborano con le autorità finanziarie per l'information sharing [DORA, Art. 45]",
+    answer:
+      "Sotto DORA: il Regolamento (UE) 2022/2554 è l'atto settoriale per la resilienza operativa digitale delle entità finanziarie: quadro di gestione dei rischi informatici [1], segnalazione degli incidenti gravi [2], test TLPT e gestione dei fornitori terzi.\n\nSotto NIS2: la Direttiva (UE) 2022/2555 copre i soggetti essenziali e importanti con misure di gestione dei rischi e la notifica degli incidenti significativi in tre fasi (24 ore, 72 ore, un mese) [3].\n\nRapporto tra i due: quando un atto settoriale dell'Unione impone misure di gestione dei rischi o di notifica con effetto almeno equivalente, le disposizioni corrispondenti della NIS2 non si applicano a quei soggetti [4]; DORA è considerato un atto settoriale di questo tipo per le entità finanziarie che rientrano in NIS2 [5]. Un'entità finanziaria che opera anche in un settore NIS2 non coperto da DORA può restare soggetta a entrambi.",
     citations: [
-      { framework: 'DORA', reference: 'Art. 6(1)', quote_snippet: 'Financial entities shall have a sound, comprehensive ICT risk management framework...' },
-      { framework: 'NIS2', reference: 'Art. 4(2)', quote_snippet: 'Where a sector-specific act requires measures at least equivalent in effect, those provisions shall apply...' },
-      { framework: 'DORA', reference: 'Art. 19(1)', quote_snippet: 'Financial entities shall classify and report major ICT-related incidents...' },
-      { framework: 'NIS2', reference: 'Art. 23(4)', quote_snippet: 'The early warning, incident notification and final report shall contain...' },
+      {
+        framework: 'DORA',
+        reference: 'art. 6, par. 1',
+        quote_snippet: DORA_ART6_QUOTE,
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 19, par. 1',
+        quote_snippet: DORA_ART19_QUOTE,
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'NIS2',
+        reference: 'art. 23, par. 4, lett. a)',
+        quote_snippet: NIS2_ART23_4A_QUOTE,
+        celex: '32022L2555',
+        verified: true,
+      },
+      {
+        framework: 'NIS2',
+        reference: 'art. 4, par. 1',
+        quote_snippet: "le pertinenti disposizioni della presente direttiva, comprese le disposizioni relative alla vigilanza e all'esecuzione di cui al capo VII, non si applicano a tali soggetti",
+        celex: '32022L2555',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 1, par. 2',
+        quote_snippet: "il presente regolamento è considerato un atto giuridico settoriale dell'Unione ai fini dell'articolo 4 di detta direttiva",
+        celex: '32022R2554',
+        verified: true,
+      },
     ],
-    confidence_score: 0.93,
+    confidence_score: 0.92,
     requires_expert_review: false,
     related_frameworks: ['GDPR'],
-    caveats: ['La clausola lex specialis è soggetta a valutazione caso per caso da parte delle autorità nazionali.'],
+    caveats: ["La valutazione dell'effetto «almeno equivalente» spetta alle autorità nazionali, caso per caso."],
   },
   // ─── Article-specific responses ──────────────────────────
   gdpr_art17: {
-    answer: "**Art. 17 GDPR - Diritto alla cancellazione (\"diritto all'oblio\")**\n\nL'Art. 17 del GDPR (Reg. 2016/679) stabilisce il diritto dell'interessato di ottenere dal titolare del trattamento la cancellazione dei dati personali che lo riguardano senza ingiustificato ritardo. Il titolare ha l'obbligo di cancellare i dati personali quando:\n\n1. **Finalità esaurita** - I dati non sono più necessari rispetto alle finalità per cui sono stati raccolti [Art. 17(1)(a)]\n2. **Revoca del consenso** - L'interessato revoca il consenso su cui si basa il trattamento e non esiste altra base giuridica [Art. 17(1)(b)]\n3. **Opposizione al trattamento** - L'interessato si oppone al trattamento ex Art. 21 e non sussistono motivi legittimi prevalenti [Art. 17(1)(c)]\n4. **Trattamento illecito** - I dati sono stati trattati illecitamente [Art. 17(1)(d)]\n5. **Obbligo legale** - La cancellazione è necessaria per adempiere un obbligo legale UE o nazionale [Art. 17(1)(e)]\n\n**Eccezioni** [Art. 17(3)]: Il diritto alla cancellazione non si applica quando il trattamento è necessario per l'esercizio del diritto alla libertà di espressione, per motivi di interesse pubblico nel settore della sanità, o per l'accertamento/esercizio/difesa di un diritto in sede giudiziaria.\n\n**Obbligo di comunicazione ai terzi** [Art. 17(2)]: Se il titolare ha reso pubblici i dati, deve adottare misure ragionevoli per informare i terzi che trattano tali dati della richiesta di cancellazione.",
+    answer:
+      "L'articolo 17 del GDPR dà all'interessato il diritto di ottenere dal titolare la cancellazione dei dati personali che lo riguardano senza ingiustificato ritardo [1], quando ricorre uno dei motivi previsti:\n\n1. i dati non sono più necessari rispetto alle finalità per cui erano stati raccolti;\n2. l'interessato revoca il consenso e non esiste altra base giuridica;\n3. l'interessato si oppone al trattamento e non prevale alcun motivo legittimo;\n4. i dati sono stati trattati illecitamente;\n5. la cancellazione è imposta da un obbligo legale dell'Unione o dello Stato membro.\n\nSe il titolare ha reso pubblici i dati, adotta misure ragionevoli per informare gli altri titolari che li trattano della richiesta di cancellazione [2]. Il diritto non si applica quando il trattamento è necessario per esercitare la libertà di espressione e di informazione, per adempiere un obbligo legale, per motivi di interesse pubblico in ambito sanitario, per fini di archiviazione o ricerca, o per accertare, esercitare o difendere un diritto in sede giudiziaria [3].",
     citations: [
-      { framework: 'GDPR', reference: 'Art. 17(1)', quote_snippet: 'The data subject shall have the right to obtain from the controller the erasure of personal data...' },
-      { framework: 'GDPR', reference: 'Art. 17(2)', quote_snippet: 'The controller shall take reasonable steps to inform controllers processing the personal data...' },
-      { framework: 'GDPR', reference: 'Art. 17(3)', quote_snippet: 'The right to erasure shall not apply to the extent that processing is necessary for exercising the right of freedom of expression...' },
-    ],
-    confidence_score: 0.96,
-    requires_expert_review: false,
-    related_frameworks: ['AI Act', 'CSDDD'],
-    caveats: ['Le eccezioni all\'Art. 17(3) vanno valutate caso per caso con supporto legale.'],
-  },
-  gdpr_art13: {
-    answer: "**Art. 13 GDPR - Informazioni da fornire in caso di raccolta presso l'interessato**\n\nL'Art. 13 del GDPR (Reg. 2016/679) stabilisce gli obblighi informativi del titolare quando i dati personali sono raccolti direttamente dall'interessato. Il titolare deve fornire le seguenti informazioni al momento della raccolta:\n\n1. **Identità del titolare** - Nome e dati di contatto del titolare e del DPO [Art. 13(1)(a-b)]\n2. **Finalità e base giuridica** - Le finalità del trattamento e la base giuridica [Art. 13(1)(c)]\n3. **Destinatari** - I destinatari o le categorie di destinatari dei dati [Art. 13(1)(e)]\n4. **Trasferimenti extra-UE** - L'intenzione di trasferire dati verso paesi terzi [Art. 13(1)(f)]\n5. **Periodo di conservazione** - Il periodo di conservazione o i criteri per determinarlo [Art. 13(2)(a)]\n6. **Diritti dell'interessato** - Accesso, rettifica, cancellazione, limitazione, portabilità, opposizione [Art. 13(2)(b)]\n7. **Processo decisionale automatizzato** - Informazioni significative sulla logica utilizzata e sulle conseguenze previste [Art. 13(2)(f)]\n\nLe informazioni devono essere fornite in forma **concisa, trasparente, intelligibile e facilmente accessibile**, con un linguaggio semplice e chiaro [Art. 12(1)].",
-    citations: [
-      { framework: 'GDPR', reference: 'Art. 13(1)', quote_snippet: 'Where personal data relating to a data subject are collected from the data subject, the controller shall provide the following information...' },
-      { framework: 'GDPR', reference: 'Art. 13(2)', quote_snippet: 'The controller shall provide the data subject with the following further information necessary to ensure fair and transparent processing...' },
-      { framework: 'GDPR', reference: 'Art. 12(1)', quote_snippet: 'The controller shall take appropriate measures to provide any information referred to in Articles 13 and 14 in a concise, transparent, intelligible and easily accessible form...' },
+      {
+        framework: 'GDPR',
+        reference: 'art. 17, par. 1',
+        quote_snippet: "L'interessato ha il diritto di ottenere dal titolare del trattamento la cancellazione dei dati personali che lo riguardano senza ingiustificato ritardo",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 17, par. 2',
+        quote_snippet: "adotta le misure ragionevoli, anche tecniche, per informare i titolari del trattamento che stanno trattando i dati personali della richiesta dell'interessato di cancellare qualsiasi link, copia o riproduzione dei suoi dati personali",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 17, par. 3, lett. a)',
+        quote_snippet: "I paragrafi 1 e 2 non si applicano nella misura in cui il trattamento sia necessario: a) per l'esercizio del diritto alla libertà di espressione e di informazione",
+        celex: '32016R0679',
+        verified: true,
+      },
     ],
     confidence_score: 0.95,
     requires_expert_review: false,
-    related_frameworks: ['AI Act'],
+    related_frameworks: ['AI_ACT'],
+    caveats: ['Le eccezioni del paragrafo 3 vanno valutate caso per caso, con il supporto del responsabile della protezione dei dati.'],
+  },
+  gdpr_art13: {
+    answer:
+      "L'articolo 13 del GDPR elenca le informazioni che il titolare fornisce all'interessato nel momento in cui raccoglie i dati direttamente da lui [1]: identità e contatti del titolare e del responsabile della protezione dei dati, finalità e base giuridica, destinatari, eventuale trasferimento verso Paesi terzi. A queste si aggiungono le informazioni necessarie a un trattamento corretto e trasparente [2]: periodo di conservazione, diritti dell'interessato, diritto di reclamo all'autorità di controllo e, se esiste un processo decisionale automatizzato, la logica utilizzata e le conseguenze previste.\n\nL'informativa va data in forma concisa, trasparente, intelligibile e facilmente accessibile, con un linguaggio semplice e chiaro [3].",
+    citations: [
+      {
+        framework: 'GDPR',
+        reference: 'art. 13, par. 1',
+        quote_snippet: "In caso di raccolta presso l'interessato di dati che lo riguardano, il titolare del trattamento fornisce all'interessato, nel momento in cui i dati personali sono ottenuti, le seguenti informazioni",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 13, par. 2',
+        quote_snippet: "fornisce all'interessato le seguenti ulteriori informazioni necessarie per garantire un trattamento corretto e trasparente",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 12, par. 1',
+        quote_snippet: 'in forma concisa, trasparente, intelligibile e facilmente accessibile, con un linguaggio semplice e chiaro',
+        celex: '32016R0679',
+        verified: true,
+      },
+    ],
+    confidence_score: 0.95,
+    requires_expert_review: false,
+    related_frameworks: ['AI_ACT'],
     caveats: [],
   },
   ai_act_art9: {
-    answer: "**Art. 9 AI Act - Sistema di gestione dei rischi**\n\nL'Art. 9 del Regolamento AI Act (2024/1689) stabilisce l'obbligo per i provider di sistemi di AI ad alto rischio di istituire, implementare, documentare e mantenere un **sistema di gestione dei rischi** durante l'intero ciclo di vita del sistema.\n\nIl sistema di gestione dei rischi deve includere:\n\n1. **Identificazione e analisi dei rischi** - Identificare e analizzare i rischi noti e ragionevolmente prevedibili per la salute, la sicurezza e i diritti fondamentali [Art. 9(2)(a)]\n2. **Stima e valutazione** - Stimare e valutare i rischi che possono emergere dall'uso conforme e dall'uso improprio ragionevolmente prevedibile [Art. 9(2)(b)]\n3. **Misure di gestione** - Adottare misure di gestione del rischio appropriate, incluse la progettazione e lo sviluppo del sistema [Art. 9(4)]\n4. **Test** - Testare il sistema per identificare le misure più appropriate [Art. 9(5-7)]\n5. **Rischi residui** - I rischi residui devono essere comunicati agli utenti [Art. 9(4)(c)]\n\nIl sistema di gestione dei rischi è un **processo iterativo continuo** che deve essere aggiornato regolarmente durante l'intero ciclo di vita del sistema AI [Art. 9(1)]. Le misure devono tenere conto degli effetti e della possibile interazione con altri sistemi AI [Art. 9(8)].",
+    answer:
+      "L'articolo 9 dell'AI Act impone, per i sistemi di IA ad alto rischio, un sistema di gestione dei rischi istituito, attuato, documentato e mantenuto [1]. Non è un adempimento una tantum: è un processo iterativo continuo, pianificato ed eseguito lungo l'intero ciclo di vita del sistema, con riesame e aggiornamento sistematici [2].\n\nIl processo comprende l'individuazione e l'analisi dei rischi noti e ragionevolmente prevedibili per salute, sicurezza e diritti fondamentali, la stima dei rischi legati all'uso conforme e all'uso improprio ragionevolmente prevedibile e l'adozione di misure adeguate. I sistemi sono sottoposti a prova per individuare le misure di gestione dei rischi più appropriate [3].",
     citations: [
-      { framework: 'AI Act', reference: 'Art. 9(1)', quote_snippet: 'A risk management system shall be established, implemented, documented and maintained in relation to high-risk AI systems...' },
-      { framework: 'AI Act', reference: 'Art. 9(2)', quote_snippet: 'The risk management system shall be a continuous iterative process planned and run throughout the entire lifecycle...' },
-      { framework: 'AI Act', reference: 'Art. 9(4)', quote_snippet: 'Risk management measures shall give due consideration to the effects and possible interactions resulting from combined application...' },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 9, par. 1',
+        quote_snippet: AI_ACT_ART9_QUOTE,
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 9, par. 2',
+        quote_snippet: "Il sistema di gestione dei rischi è inteso come un processo iterativo continuo pianificato ed eseguito nel corso dell'intero ciclo di vita di un sistema di IA ad alto rischio, che richiede un riesame e un aggiornamento sistematici periodici.",
+        celex: '32024R1689',
+        verified: true,
+      },
+      {
+        framework: 'AI_ACT',
+        reference: 'art. 9, par. 5',
+        quote_snippet: 'I sistemi di IA ad alto rischio sono sottoposti a prova al fine di individuare le misure di gestione dei rischi più appropriate e mirate.',
+        celex: '32024R1689',
+        verified: true,
+      },
     ],
     confidence_score: 0.93,
     requires_expert_review: false,
     related_frameworks: ['GDPR'],
-    caveats: ['I dettagli implementativi saranno chiariti dagli standard armonizzati e dalle linee guida dell\'AI Office.'],
+    caveats: ["Le norme armonizzate e gli orientamenti dell'AI Office preciseranno le modalità attuative."],
   },
   gdpr_art9: {
-    answer: "**Art. 9 GDPR - Trattamento di categorie particolari di dati personali**\n\nL'Art. 9 del GDPR (Reg. 2016/679) disciplina il trattamento delle **categorie particolari di dati personali** (cd. \"dati sensibili\").\n\n**Art. 9(1) - Divieto generale:**\nE' vietato trattare dati personali che rivelino:\n- **Origine razziale o etnica**\n- **Opinioni politiche**\n- **Convinzioni religiose o filosofiche**\n- **Appartenenza sindacale**\n- **Dati genetici**\n- **Dati biometrici** (per identificare in modo univoco una persona)\n- **Dati relativi alla salute**\n- **Dati relativi alla vita sessuale o all'orientamento sessuale**\n\n**Art. 9(2) - Eccezioni al divieto:**\nIl trattamento e' consentito quando:\n1. **Consenso esplicito** dell'interessato per finalita' specifiche [Art. 9(2)(a)]\n2. **Diritto del lavoro e sicurezza sociale** - necessario per adempiere obblighi in materia di diritto del lavoro [Art. 9(2)(b)]\n3. **Interessi vitali** - protezione degli interessi vitali dell'interessato quando incapace di prestare consenso [Art. 9(2)(c)]\n4. **Attivita' di fondazioni/associazioni** - trattamento da parte di organismi senza scopo di lucro [Art. 9(2)(d)]\n5. **Dati resi manifestamente pubblici** dall'interessato [Art. 9(2)(e)]\n6. **Azione in giudizio** - accertamento, esercizio o difesa di un diritto [Art. 9(2)(f)]\n7. **Interesse pubblico rilevante** - sulla base del diritto UE o nazionale [Art. 9(2)(g)]\n8. **Finalita' di medicina preventiva o del lavoro** - diagnosi, assistenza sanitaria [Art. 9(2)(h)]\n9. **Sanita' pubblica** - interesse pubblico nel settore della sanita' [Art. 9(2)(i)]\n10. **Archiviazione, ricerca scientifica, statistica** [Art. 9(2)(j)]\n\n**Art. 9(4):** Gli Stati membri possono introdurre ulteriori condizioni, anche limitazioni, per il trattamento di dati genetici, biometrici o relativi alla salute.\n\nLe violazioni dell'Art. 9 sono soggette alle sanzioni massime: fino a **20 milioni di euro** o il **4% del fatturato globale** [Art. 83(5)].",
+    answer:
+      "L'articolo 9 del GDPR vieta di trattare dati personali che rivelino origine razziale o etnica, opinioni politiche, convinzioni religiose o filosofiche o appartenenza sindacale, e di trattare dati genetici, dati biometrici intesi a identificare in modo univoco una persona, dati sulla salute o sulla vita e sull'orientamento sessuale [1].\n\nIl divieto cade solo nei casi elencati dal paragrafo 2, tra cui il consenso esplicito dell'interessato per finalità specifiche [2], gli obblighi in materia di diritto del lavoro e sicurezza sociale, gli interessi vitali, i dati resi manifestamente pubblici, la difesa di un diritto in sede giudiziaria, i motivi di interesse pubblico rilevante e le finalità di medicina, sanità pubblica, archiviazione e ricerca.\n\nGli Stati membri possono introdurre condizioni ulteriori, anche limitazioni, per i dati genetici, biometrici e relativi alla salute [3].",
     citations: [
-      { framework: 'GDPR', reference: 'Art. 9(1)', quote_snippet: 'Processing of personal data revealing racial or ethnic origin, political opinions, religious or philosophical beliefs, trade union membership, genetic data, biometric data, data concerning health or sex life or sexual orientation shall be prohibited.' },
-      { framework: 'GDPR', reference: 'Art. 9(2)', quote_snippet: 'Paragraph 1 shall not apply if one of the following applies: the data subject has given explicit consent...' },
-      { framework: 'GDPR', reference: 'Art. 9(4)', quote_snippet: 'Member States may maintain or introduce further conditions, including limitations, with regard to the processing of genetic data, biometric data or data concerning health.' },
+      {
+        framework: 'GDPR',
+        reference: 'art. 9, par. 1',
+        quote_snippet: "È vietato trattare dati personali che rivelino l'origine razziale o etnica, le opinioni politiche, le convinzioni religiose o filosofiche, o l'appartenenza sindacale, nonché trattare dati genetici, dati biometrici intesi a identificare in modo univoco una persona fisica, dati relativi alla salute o alla vita sessuale o all'orientamento sessuale della persona.",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 9, par. 2, lett. a)',
+        quote_snippet: "l'interessato ha prestato il proprio consenso esplicito al trattamento di tali dati personali per una o più finalità specifiche",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 9, par. 4',
+        quote_snippet: 'Gli Stati membri possono mantenere o introdurre ulteriori condizioni, comprese limitazioni, con riguardo al trattamento di dati genetici, dati biometrici o dati relativi alla salute.',
+        celex: '32016R0679',
+        verified: true,
+      },
     ],
-    confidence_score: 0.96,
+    confidence_score: 0.95,
     requires_expert_review: false,
-    related_frameworks: ['AI Act', 'NIS2'],
-    caveats: ['Le eccezioni dell\'Art. 9(2) richiedono una valutazione caso per caso. Consultare il DPO per l\'applicazione concreta.'],
+    related_frameworks: ['AI_ACT'],
+    caveats: ['Le eccezioni del paragrafo 2 vanno valutate caso per caso: coinvolgete il responsabile della protezione dei dati.'],
   },
   dora_art30: {
-    answer: "**Art. 30 DORA - Disposizioni contrattuali chiave per i fornitori ICT**\n\nL'Art. 30 del Regolamento DORA (2022/2554) stabilisce le **clausole contrattuali obbligatorie** che le entità finanziarie devono includere nei contratti con i fornitori di servizi ICT di terze parti.\n\nI contratti devono includere:\n\n1. **Descrizione delle funzioni** - Descrizione chiara e completa di tutte le funzioni e i servizi ICT [Art. 30(2)(a)]\n2. **Ubicazione dei dati** - Indicazione delle località di trattamento e conservazione dei dati, con obbligo di notifica preventiva in caso di modifica [Art. 30(2)(b)]\n3. **Disponibilità e qualità** - Disposizioni su disponibilità, autenticità, integrità e riservatezza dei dati [Art. 30(2)(c)]\n4. **Diritti di accesso e audit** - Diritti di accesso, ispezione e audit illimitati da parte dell'entità finanziaria e delle autorità [Art. 30(2)(e)]\n5. **Livelli di servizio** - SLA chiari con indicatori quantitativi e qualitativi [Art. 30(3)]\n6. **Incident reporting** - Obblighi di assistenza e notifica in caso di incidenti ICT [Art. 30(2)(f)]\n7. **Exit strategy** - Piani e periodi di transizione adeguati per garantire la continuità in caso di cessazione [Art. 30(2)(g)]\n8. **Subappalto** - Condizioni per il subappalto, incluso il diritto di opporsi [Art. 30(2)(a)]\n\nPer i fornitori che supportano **funzioni critiche o importanti**, si applicano requisiti aggiuntivi più stringenti [Art. 30(3)].",
+    answer:
+      "L'articolo 30 di DORA fissa il contenuto minimo dei contratti con i fornitori terzi di servizi TIC. Ogni accordo contiene almeno [1]: la descrizione completa delle funzioni e dei servizi, le ubicazioni di trattamento e conservazione dei dati con preavviso in caso di cambiamento, le garanzie su disponibilità, integrità e riservatezza, l'assistenza in caso di incidente, i diritti di accesso, ispezione e audit, le condizioni di recesso e le strategie di uscita.\n\nQuando i servizi supportano funzioni essenziali o importanti si aggiungono elementi ulteriori [2]: livelli di servizio con obiettivi quantitativi e qualitativi, obblighi di notifica, partecipazione ai test di resilienza, condizioni per il subappalto. Il tutto rientra nella gestione del rischio informatico derivante da terzi, parte integrante del quadro di gestione dei rischi [3].",
     citations: [
-      { framework: 'DORA', reference: 'Art. 30(2)', quote_snippet: 'The contractual arrangements on the use of ICT services shall include at least the following key contractual provisions...' },
-      { framework: 'DORA', reference: 'Art. 30(3)', quote_snippet: 'When contractual arrangements relate to ICT services supporting critical or important functions, the contracts shall also include...' },
-      { framework: 'DORA', reference: 'Art. 28(2)', quote_snippet: 'Financial entities shall manage ICT third-party risk as an integral component of ICT risk...' },
+      {
+        framework: 'DORA',
+        reference: 'art. 30, par. 2',
+        quote_snippet: "Gli accordi contrattuali relativi all'uso di servizi TIC comprendono almeno gli elementi seguenti",
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 30, par. 3',
+        quote_snippet: "Gli accordi contrattuali relativi all'uso di servizi TIC a supporto di funzioni essenziali o importanti comprendono, oltre agli elementi di cui al paragrafo 2, almeno gli elementi seguenti",
+        celex: '32022R2554',
+        verified: true,
+      },
+      {
+        framework: 'DORA',
+        reference: 'art. 28, par. 1',
+        quote_snippet: "Le entità finanziarie gestiscono i rischi informatici derivanti da terzi come parte integrante dei rischi informatici nell'ambito del quadro per la gestione dei rischi informatici",
+        celex: '32022R2554',
+        verified: true,
+      },
     ],
-    confidence_score: 0.94,
+    confidence_score: 0.93,
     requires_expert_review: false,
     related_frameworks: ['NIS2'],
-    caveats: ['Le clausole contrattuali devono essere riviste alla luce degli standard tecnici di regolamentazione (RTS) dell\'EBA.'],
+    caveats: ['Le norme tecniche di regolamentazione sulla politica per i fornitori TIC precisano i contenuti contrattuali.'],
   },
   gdpr_dpo: {
-    answer: "**Art. 37-39 GDPR - Il Data Protection Officer (DPO)**\n\nIl DPO è una figura chiave del GDPR (Reg. 2016/679), obbligatoria in specifiche circostanze e dotata di garanzie di indipendenza.\n\n**Quando è obbligatorio nominare un DPO** [Art. 37(1)]:\n1. Il trattamento è effettuato da un'**autorità pubblica o un organismo pubblico** (eccetto le autorità giurisdizionali) [Art. 37(1)(a)]\n2. Le attività principali consistono in trattamenti che richiedono il **monitoraggio regolare e sistematico su larga scala** degli interessati [Art. 37(1)(b)]\n3. Le attività principali consistono nel trattamento su larga scala di **categorie particolari di dati** (Art. 9) o dati relativi a condanne penali (Art. 10) [Art. 37(1)(c)]\n\n**Requisiti del DPO** [Art. 37(5)]:\n- Qualità professionali e conoscenza specialistica della normativa e delle prassi in materia di protezione dati\n- Può essere un dipendente interno o un consulente esterno con contratto di servizi [Art. 37(6)]\n- Può essere condiviso da un gruppo di imprese, purché facilmente raggiungibile [Art. 37(2-4)]\n\n**Posizione e indipendenza** [Art. 38]:\n- Il titolare deve garantire che il DPO sia **tempestivamente e adeguatamente coinvolto** in tutte le questioni relative alla protezione dati [Art. 38(1)]\n- Il DPO **non riceve istruzioni** per quanto riguarda l'esecuzione dei suoi compiti [Art. 38(3)]\n- **Non può essere rimosso o penalizzato** per l'adempimento dei suoi compiti [Art. 38(3)]\n- Riferisce direttamente al **vertice gerarchico** del titolare o del responsabile [Art. 38(3)]\n\n**Compiti del DPO** [Art. 39]:\n1. Informare e fornire consulenza al titolare e ai dipendenti sugli obblighi GDPR [Art. 39(1)(a)]\n2. Sorvegliare l'osservanza del GDPR e delle policy interne [Art. 39(1)(b)]\n3. Fornire pareri sulla DPIA e sorvegliarne lo svolgimento [Art. 39(1)(c)]\n4. Cooperare con l'autorità di controllo [Art. 39(1)(d)]\n5. Fungere da punto di contatto con il Garante [Art. 39(1)(e)]",
+    answer:
+      "Il responsabile della protezione dei dati (DPO) va designato sistematicamente [1] quando il trattamento è svolto da un'autorità o un organismo pubblico, quando le attività principali richiedono un monitoraggio regolare e sistematico degli interessati su larga scala, oppure quando consistono nel trattamento su larga scala di categorie particolari di dati o di dati relativi a condanne penali.\n\nIl DPO è indipendente: non riceve istruzioni sull'esecuzione dei suoi compiti e non può essere rimosso o penalizzato per averli svolti [2]; riferisce al vertice gerarchico del titolare. I suoi compiti comprendono informare e consigliare il titolare e i dipendenti sugli obblighi in materia di protezione dei dati [3], sorvegliare l'osservanza del regolamento, fornire pareri sulla valutazione d'impatto e fungere da punto di contatto con l'autorità di controllo.",
     citations: [
-      { framework: 'GDPR', reference: 'Art. 37(1)', quote_snippet: 'The controller and the processor shall designate a data protection officer in any case where the processing is carried out by a public authority or body...' },
-      { framework: 'GDPR', reference: 'Art. 38(3)', quote_snippet: 'The data protection officer shall not receive any instructions regarding the exercise of those tasks. He or she shall not be dismissed or penalised for performing his tasks...' },
-      { framework: 'GDPR', reference: 'Art. 39(1)', quote_snippet: 'The data protection officer shall have at least the following tasks: to inform and advise the controller...' },
+      {
+        framework: 'GDPR',
+        reference: 'art. 37, par. 1',
+        quote_snippet: 'Il titolare del trattamento e il responsabile del trattamento designano sistematicamente un responsabile della protezione dei dati ogniqualvolta',
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 38, par. 3',
+        quote_snippet: "Il responsabile della protezione dei dati non è rimosso o penalizzato dal titolare del trattamento o dal responsabile del trattamento per l'adempimento dei propri compiti.",
+        celex: '32016R0679',
+        verified: true,
+      },
+      {
+        framework: 'GDPR',
+        reference: 'art. 39, par. 1, lett. a)',
+        quote_snippet: 'informare e fornire consulenza al titolare del trattamento o al responsabile del trattamento nonché ai dipendenti che eseguono il trattamento in merito agli obblighi derivanti dal presente regolamento',
+        celex: '32016R0679',
+        verified: true,
+      },
     ],
-    confidence_score: 0.96,
+    confidence_score: 0.95,
     requires_expert_review: false,
-    related_frameworks: ['NIS2', 'AI Act'],
-    caveats: ['Le linee guida WP243 del WP29 (ora EDPB) forniscono ulteriori chiarimenti sull\'interpretazione dei criteri di obbligatorietà.'],
+    related_frameworks: ['NIS2', 'AI_ACT'],
+    caveats: ["Le linee guida dell'EDPB (già WP29, WP243) precisano i criteri di «larga scala» e «monitoraggio regolare e sistematico»."],
   },
   cross_csrd_csddd: {
-    answer: "**Sotto il CSRD (Scope 3 / ESRS E1):**\nIl CSRD (Direttiva 2022/2464) richiede la disclosure delle emissioni Scope 1, 2 e **Scope 3** (emissioni indirette della catena del valore) tramite lo standard ESRS E1. Per le imprese del settore energetico, lo Scope 3 è tipicamente il componente più significativo: include emissioni upstream (estrazione, trasporto materie prime) e downstream (uso dei prodotti venduti). L'ESRS E1-6 richiede obiettivi di riduzione coerenti con il percorso 1.5°C [CSRD, Art. 19a; ESRS E1].\n\n**Sotto la CSDDD (Due Diligence sulla Supply Chain):**\nLa CSDDD (Direttiva 2024/1760) impone obblighi di **due diligence sulla catena del valore** per impatti negativi sui diritti umani e l'ambiente [CSDDD, Art. 7-8]. Per il settore energetico, questo include: condizioni lavorative nelle miniere di materie prime, impatto ambientale delle infrastrutture energetiche, e diritti delle comunità locali. L'Art. 22 richiede un **piano di transizione climatica** allineato a 1.5°C.\n\n**Interazione CSRD + CSDDD per Scope 3:**\nI due framework si rafforzano reciprocamente:\n- Lo **Scope 3 CSRD** quantifica le emissioni della catena del valore (reporting)\n- La **due diligence CSDDD** richiede azioni concrete per mitigare gli impatti (azione)\n- Il piano di transizione è richiesto da entrambi (ESRS E1-1 per CSRD, Art. 22 per CSDDD)\n- La mappatura della catena del valore CSDDD alimenta direttamente il calcolo Scope 3\n\nPer un'azienda con 2.500 dipendenti nel settore energy, entrambi i framework sono applicabili e devono essere affrontati in modo integrato.",
+    answer:
+      "Sotto la CSRD: le imprese obbligate includono nella relazione sulla gestione le informazioni necessarie a comprendere il loro impatto sulle questioni di sostenibilità [1]; gli ESRS (Regolamento delegato (UE) 2023/2772) precisano le metriche e, per il clima, richiedono di comunicare le emissioni lorde di gas serra di ambito 1, 2 e 3 [2]: le emissioni della catena del valore entrano quindi nel reporting.\n\nSotto la CSDDD: il dovere di diligenza richiede di integrare la diligenza nelle politiche, individuare e valutare gli impatti negativi effettivi e potenziali lungo la catena di attività, prevenirli o farli cessare [3]. Dopo l'Omnibus I la prima applicazione è prevista nel 2029 [4].\n\nInsieme: la mappatura della catena di attività fatta per la CSDDD alimenta il calcolo dell'ambito 3 richiesto dagli ESRS; conviene costruire un unico processo di raccolta dati sui fornitori che serva entrambi gli obblighi.",
     citations: [
-      { framework: 'CSRD', reference: 'ESRS E1-6', quote_snippet: 'The undertaking shall disclose its gross Scope 1, 2, and 3 GHG emissions...' },
-      { framework: 'CSRD', reference: 'Art. 19a(2)', quote_snippet: 'The sustainability reporting shall contain information on the due diligence process...' },
-      { framework: 'CSDDD', reference: 'Art. 7-8', quote_snippet: 'Companies shall take appropriate measures to identify actual and potential adverse impacts...' },
-      { framework: 'CSDDD', reference: 'Art. 22', quote_snippet: 'Companies shall adopt a transition plan for climate change mitigation aligned with 1.5°C...' },
+      {
+        framework: 'CSRD',
+        reference: 'art. 19 bis, par. 1, della Direttiva 2013/34/UE (inserito dalla Direttiva (UE) 2022/2464)',
+        quote_snippet: CSRD_ART19A_QUOTE,
+        celex: '32022L2464',
+        verified: true,
+      },
+      {
+        framework: 'ESRS',
+        reference: 'ESRS E1-6, par. 44',
+        quote_snippet: '',
+        celex: '32023R2772',
+        verified: false,
+      },
+      {
+        framework: 'CSDDD',
+        reference: 'art. 5, par. 1',
+        quote_snippet: CSDDD_ART5_QUOTE,
+        celex: '32024L1760',
+        verified: true,
+      },
+      {
+        framework: 'CSDDD',
+        title: 'Direttiva (UE) 2026/470 (Omnibus I)',
+        reference: "modifiche all'art. 37 della Direttiva (UE) 2024/1760 (recepimento e applicazione)",
+        quote_snippet: '',
+        celex: '32026L0470',
+        verified: false,
+      },
     ],
-    confidence_score: 0.90,
-    requires_expert_review: false,
-    related_frameworks: ['EU Taxonomy'],
-    caveats: ['L\'interazione CSRD-CSDDD è soggetta alle modifiche del pacchetto Omnibus I in fase di negoziazione.'],
+    confidence_score: 0.8,
+    requires_expert_review: true,
+    related_frameworks: ['TAXONOMY'],
+    caveats: ['Le citazioni [2] e [4] non sono ancora verificate nel corpus: controllatele su EUR-Lex prima di decidere.'],
   },
 }
 
+const DEMO_SUGGESTED_QUESTIONS = [
+  "Quali sono gli obblighi principali della CSRD dopo l'Omnibus I?",
+  "Un chatbot sul sito aziendale deve dichiarare di essere un'IA?",
+  'Quali incidenti vanno notificati entro 24 ore secondo la NIS2?',
+  'DORA e NIS2: quale si applica a una banca?',
+]
+
 const LANGUAGE_NAMES: Record<string, string> = { en: 'English', it: 'italiano', de: 'Deutsch', fr: 'français', es: 'español' }
 
-export function getMockQAResponse(question: string, language: string = 'it'): QAResponse {
+export function getMockQAResponse(question: string, language: string = 'it'): DemoQAResponse {
   const q = question.toLowerCase()
 
   // Article-specific detection (check first - most specific)
-  let response: QAResponse
+  let response: DemoQAResponse
 
   // Extract article number from various patterns: "Art. 17", "Art.17", "Art 17", "Articolo 17", "Article 17", standalone "17"
   const artNumMatch = q.match(/(?:art(?:\.?|icol[eo]|icle)\s*)(\d+)/i) || q.match(/\b(\d{1,3})\b/)
   const artNum = artNumMatch ? parseInt(artNumMatch[1]) : 0
-  const hasGdpr = q.includes('gdpr') || q.includes('protezione dati') || q.includes('data protection') || q.includes('privacy')
-  const hasAiAct = q.includes('ai act') || q.includes('intelligenza artificiale')
+  const hasGdpr = q.includes('gdpr') || q.includes('protezione dati') || q.includes('protezione dei dati') || q.includes('data protection') || q.includes('privacy')
+  const hasAiAct = q.includes('ai act') || q.includes('intelligenza artificiale') || q.includes('artificial intelligence') || /\bun.ia\b/.test(q) || /\bsistem[ai] di ia\b/.test(q)
   const hasDora = q.includes('dora')
 
   if ((artNum === 17 && hasGdpr) || q.includes('diritto alla cancellazione') || q.includes("diritto all'oblio") || q.includes('right to erasure') || q.includes('right to be forgotten'))
@@ -294,6 +772,10 @@ export function getMockQAResponse(question: string, language: string = 'it'): QA
   else if (q.includes('dati sensibili') || q.includes('categorie particolari') || q.includes('special categories') || q.includes('dati biometrici') || q.includes('dati genetici'))
     response = QA_RESPONSES.gdpr_art9
 
+  // Transparency for systems that talk to people (the landing's own example)
+  else if (q.includes('chatbot') || q.includes('assistente virtuale') || q.includes('deepfake') || (hasAiAct && (artNum === 50 || q.includes('trasparenza') || q.includes('transparency') || q.includes('dichiarare'))))
+    response = QA_RESPONSES.ai_act_art50
+
   // Cross-framework detection (check next - more specific than single framework)
   else if ((q.includes('ai act') || q.includes('artificial intelligence')) && (q.includes('gdpr') || q.includes('data protection') || q.includes('credit scor')))
     response = QA_RESPONSES.cross_ai_gdpr
@@ -305,40 +787,43 @@ export function getMockQAResponse(question: string, language: string = 'it'): QA
     response = QA_RESPONSES.cross_csrd_csddd
 
   // DPO-specific (before generic GDPR)
-  else if (q.includes('dpo') || q.includes('data protection officer') || q.includes('responsabile protezione') || ((q.includes('gdpr') || q.includes('protezione dati')) && (q.includes('art. 37') || q.includes('art.37') || q.includes('art 37') || q.includes('art. 38') || q.includes('art. 39'))))
+  else if (q.includes('dpo') || q.includes('data protection officer') || q.includes('responsabile protezione') || q.includes('responsabile della protezione') || ((q.includes('gdpr') || q.includes('protezione dati')) && (q.includes('art. 37') || q.includes('art.37') || q.includes('art 37') || q.includes('art. 38') || q.includes('art. 39'))))
     response = QA_RESPONSES.gdpr_dpo
 
   // Single framework
-  else if (q.includes('ai act') || q.includes('artificial intelligence') || q.includes('intelligenza artificiale') || q.includes('alto rischio'))
+  else if (hasAiAct || q.includes('alto rischio') || q.includes('high-risk'))
     response = QA_RESPONSES.ai_act
-  else if (q.includes('gdpr') || q.includes('data protection') || q.includes('protezione dati') || q.includes('privacy') || q.includes('dati personali'))
+  else if (hasGdpr || q.includes('dati personali'))
     response = QA_RESPONSES.gdpr
   else if (q.includes('dora') || q.includes('digital operational') || q.includes('resilience') || q.includes('resilienza'))
     response = QA_RESPONSES.dora
   else if (q.includes('nis2') || q.includes('nis 2') || q.includes('incident reporting') || q.includes('cybersecurity') || q.includes('sicurezza informatica') || q.includes('meldepflicht'))
     response = QA_RESPONSES.nis2
-  else if (q.includes('taxonomy') || q.includes('tassonomia') || q.includes('attività sostenibil'))
+  else if (q.includes('taxonomy') || q.includes('tassonomia') || q.includes('attività sostenibil') || q.includes('ecosostenibil'))
     response = QA_RESPONSES.taxonomy
-  else if (q.includes('csddd') || q.includes('due diligence') || q.includes('catena del valore') || q.includes('supply chain'))
+  else if (q.includes('csddd') || q.includes('due diligence') || q.includes('dovere di diligenza') || q.includes('catena del valore') || q.includes('supply chain'))
     response = QA_RESPONSES.csddd
-  else if (q.includes('csrd') || q.includes('sustainability reporting') || q.includes('rendicontazione'))
+  else if (q.includes('csrd') || q.includes('sustainability reporting') || q.includes('rendicontazione') || q.includes('omnibus'))
     response = QA_RESPONSES.csrd
   else {
-    // Fallback: honest "not covered"
+    // Honest "not covered": the demo abstains instead of inventing an answer.
     response = {
-      answer: "La tua domanda non corrisponde a uno degli scenari pre-configurati della modalità demo. In modalità live (con backend attivo), NormaAI analizza la tua domanda tramite ricerca semantica su 14.503 chunks di regolamenti EU e genera una risposta con citazioni precise.\n\nProva con una di queste domande:\n- \"Quali sono gli obblighi principali del CSRD?\"\n- \"AI Act e GDPR: overlap per credit scoring\"\n- \"DORA e NIS2: differenze per il settore finanziario\"\n- \"CSRD e CSDDD: obblighi supply chain e Scope 3\"",
+      answer:
+        'La demo copre alcuni scenari di esempio e questa domanda non rientra tra quelli. Con il backend attivo NormaAI cerca nel corpus di EUR-Lex e Normattiva e risponde con le citazioni, oppure si astiene quando il testo non basta.',
       citations: [],
       confidence_score: 0.0,
       requires_expert_review: false,
-      related_frameworks: ['CSRD', 'DORA', 'AI_ACT', 'NIS2', 'GDPR', 'CSDDD', 'TAXONOMY'],
-      caveats: ['Questa è una risposta demo. Attiva il backend per risposte personalizzate con RAG.'],
+      related_frameworks: [],
+      caveats: [],
+      abstention_reason: 'demo_not_covered',
+      suggested_questions: DEMO_SUGGESTED_QUESTIONS,
     }
   }
 
   // Language-aware: add caveat when not Italian (mock responses are in IT)
   if (language && language !== 'it') {
     const langName = LANGUAGE_NAMES[language] || language.toUpperCase()
-    return {
+    response = {
       ...response,
       caveats: [
         ...(response.caveats || []),
@@ -347,7 +832,7 @@ export function getMockQAResponse(question: string, language: string = 'it'): QA
     }
   }
 
-  return response
+  return { ...response, corpus_as_of: DEMO_CORPUS_AS_OF }
 }
 
 // ─── Gap Analysis Mocks - framework-specific ────────────────
@@ -713,10 +1198,10 @@ export function getMockMonitorResponse(changeText?: string): MonitorResponse {
 // ─── Clients Mock ──────────────────────────────────────────
 
 export const DEMO_CLIENTS = [
-  { id: 'demo-c1', name: 'EnergiePlus GmbH', sector: 'Energy', employee_count: 5000, revenue_eur: 800_000_000, jurisdictions: ['DE', 'AT', 'PL'], applicable_frameworks: ['CSRD', 'CSDDD', 'EU Taxonomy', 'NIS2'] },
-  { id: 'demo-c2', name: 'Banca Meridiana S.p.A.', sector: 'Financial Services', employee_count: 3200, revenue_eur: 1_200_000_000, jurisdictions: ['IT', 'ES'], applicable_frameworks: ['DORA', 'NIS2', 'GDPR', 'CSRD'] },
-  { id: 'demo-c3', name: 'MedTech Innovations B.V.', sector: 'Healthcare / Technology', employee_count: 1800, revenue_eur: 350_000_000, jurisdictions: ['NL', 'DE', 'FR'], applicable_frameworks: ['AI_ACT', 'GDPR', 'CSRD'] },
-  { id: 'demo-c4', name: 'LogiTrans Europe S.A.', sector: 'Transport & Logistics', employee_count: 4500, revenue_eur: 600_000_000, jurisdictions: ['FR', 'BE', 'LU', 'DE'], applicable_frameworks: ['CSRD', 'NIS2', 'CSDDD', 'EU Taxonomy'] },
+  { id: 'demo-c1', name: 'EnergiePlus GmbH', sector: 'Energy', employee_count: 5000, revenue_eur: 800_000_000, jurisdictions: ['DE', 'AT', 'PL'], applicable_frameworks: ['CSRD', 'CSDDD', 'TAXONOMY', 'NIS2'], created_at: '2026-01-12T09:30:00Z', updated_at: '2026-03-02T15:10:00Z' },
+  { id: 'demo-c2', name: 'Banca Meridiana S.p.A.', sector: 'Financial Services', employee_count: 3200, revenue_eur: 1_200_000_000, jurisdictions: ['IT', 'ES'], applicable_frameworks: ['DORA', 'NIS2', 'GDPR', 'CSRD'], created_at: '2026-01-20T11:00:00Z', updated_at: '2026-02-27T10:45:00Z' },
+  { id: 'demo-c3', name: 'MedTech Innovations B.V.', sector: 'Healthcare / Technology', employee_count: 1800, revenue_eur: 350_000_000, jurisdictions: ['NL', 'DE', 'FR'], applicable_frameworks: ['AI_ACT', 'GDPR', 'CSRD'], created_at: '2026-02-03T14:20:00Z', updated_at: '2026-02-20T09:05:00Z' },
+  { id: 'demo-c4', name: 'LogiTrans Europe S.A.', sector: 'Transport & Logistics', employee_count: 4500, revenue_eur: 600_000_000, jurisdictions: ['FR', 'BE', 'LU', 'DE'], applicable_frameworks: ['CSRD', 'NIS2', 'CSDDD', 'TAXONOMY'], created_at: '2026-02-10T08:15:00Z', updated_at: '2026-03-01T17:30:00Z' },
 ]
 
 // ─── Processors Mock ────────────────────────────────────────
@@ -745,296 +1230,8 @@ export const DEMO_ALERT_SUMMARY = {
   by_framework: { CSRD: 1, DORA: 1, AI_ACT: 1, NIS2: 1, TAXONOMY: 1 } as Record<string, number>,
 }
 
-// ─── Audit Trail Mocks ─────────────────────────────────────
-
-export const DEMO_AUDIT_EVENTS: AuditEvent[] = [
-  { id: 'audit-001', timestamp: '2026-03-02T14:32:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'qa.query', resource_type: 'qa', details: 'Q&A query: "Obblighi CSRD per aziende con >250 dipendenti"', ip_address: '192.168.1.100', framework: 'CSRD' },
-  { id: 'audit-002', timestamp: '2026-03-02T14:28:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'gap_analysis.run', resource_type: 'gap_analysis', resource_id: 'ga-001', details: 'Gap Analysis DORA - Score: 72%', ip_address: '192.168.1.100', framework: 'DORA' },
-  { id: 'audit-003', timestamp: '2026-03-02T13:55:00Z', user_id: 'user-002', user_name: 'Maria Bianchi', user_email: 'maria@company.eu', action: 'report.generate', resource_type: 'report', resource_id: 'rpt-001', details: 'Report HTML generato - CSRD Compliance Report', ip_address: '10.0.0.45', framework: 'CSRD' },
-  { id: 'audit-004', timestamp: '2026-03-02T13:42:00Z', user_id: 'user-002', user_name: 'Maria Bianchi', user_email: 'maria@company.eu', action: 'monitor.analyze', resource_type: 'monitor', details: 'Impact analysis: Omnibus I Package soglie CSRD', ip_address: '10.0.0.45', framework: 'CSRD' },
-  { id: 'audit-005', timestamp: '2026-03-02T12:15:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'client.create', resource_type: 'client', resource_id: 'cli-001', details: 'Nuovo client: Banca Meridiana S.p.A.', ip_address: '192.168.1.100' },
-  { id: 'audit-006', timestamp: '2026-03-02T11:30:00Z', user_id: 'user-003', user_name: 'Luca Verdi', user_email: 'luca@company.eu', action: 'alert.dismiss', resource_type: 'alert', resource_id: 'alert-002', details: 'Alert NIS2 marcato come risolto', ip_address: '10.0.0.22', framework: 'NIS2' },
-  { id: 'audit-007', timestamp: '2026-03-02T10:05:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'auth.login', resource_type: 'auth', details: 'Login demo mode', ip_address: '192.168.1.100' },
-  { id: 'audit-008', timestamp: '2026-03-01T16:48:00Z', user_id: 'user-002', user_name: 'Maria Bianchi', user_email: 'maria@company.eu', action: 'qa.query', resource_type: 'qa', details: 'Q&A query: "GDPR Art. 17 diritto alla cancellazione"', ip_address: '10.0.0.45', framework: 'GDPR' },
-  { id: 'audit-009', timestamp: '2026-03-01T15:20:00Z', user_id: 'user-003', user_name: 'Luca Verdi', user_email: 'luca@company.eu', action: 'gap_analysis.run', resource_type: 'gap_analysis', resource_id: 'ga-002', details: 'Gap Analysis NIS2 - Score: 85%', ip_address: '10.0.0.22', framework: 'NIS2' },
-  { id: 'audit-010', timestamp: '2026-03-01T14:00:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'document.upload', resource_type: 'document', resource_id: 'doc-001', details: 'Upload documento: Politica_ICT_Risk_v2.pdf', ip_address: '192.168.1.100' },
-  { id: 'audit-011', timestamp: '2026-03-01T11:30:00Z', user_id: 'user-002', user_name: 'Maria Bianchi', user_email: 'maria@company.eu', action: 'report.export', resource_type: 'report', resource_id: 'rpt-002', details: 'Export PDF - Gap Analysis AI Act Report', ip_address: '10.0.0.45', framework: 'AI_ACT' },
-  { id: 'audit-012', timestamp: '2026-03-01T09:15:00Z', user_id: 'user-003', user_name: 'Luca Verdi', user_email: 'luca@company.eu', action: 'auth.login', resource_type: 'auth', details: 'Login standard', ip_address: '10.0.0.22' },
-  { id: 'audit-013', timestamp: '2026-02-28T17:30:00Z', user_id: 'demo-user-001', user_name: 'Demo User', user_email: 'demo@normaai.eu', action: 'client.update', resource_type: 'client', resource_id: 'cli-001', details: 'Aggiornato profilo: Banca Meridiana S.p.A.', ip_address: '192.168.1.100' },
-  { id: 'audit-014', timestamp: '2026-02-28T15:00:00Z', user_id: 'user-002', user_name: 'Maria Bianchi', user_email: 'maria@company.eu', action: 'monitor.analyze', resource_type: 'monitor', details: 'Impact analysis: DORA ICT third-party risk requirements', ip_address: '10.0.0.45', framework: 'DORA' },
-  { id: 'audit-015', timestamp: '2026-02-28T10:45:00Z', user_id: 'user-003', user_name: 'Luca Verdi', user_email: 'luca@company.eu', action: 'system.config_change', resource_type: 'system', details: 'Configurazione alert: soglia CRITICAL modificata', ip_address: '10.0.0.22' },
-]
-
-// ─── RBAC Mock Data ─────────────────────────────────────────
-
-export const DEMO_ROLES: Role[] = [
-  {
-    id: 'role-admin',
-    name: 'Administrator',
-    description: 'Accesso completo a tutte le funzionalità e configurazioni di sistema',
-    permissions: [
-      'qa.query', 'qa.export',
-      'gap_analysis.run', 'gap_analysis.approve',
-      'monitor.analyze', 'monitor.configure',
-      'reports.generate', 'reports.export', 'reports.approve',
-      'alerts.view', 'alerts.manage', 'alerts.configure',
-      'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
-      'documents.view', 'documents.upload', 'documents.delete',
-      'audit.view', 'audit.export',
-      'admin.users', 'admin.roles', 'admin.system', 'admin.sso',
-    ],
-    user_count: 2,
-    is_system: true,
-    created_at: '2025-01-15T00:00:00Z',
-  },
-  {
-    id: 'role-compliance-officer',
-    name: 'Compliance Officer',
-    description: 'Analisi, approvazione gap analysis e report, gestione alert',
-    permissions: [
-      'qa.query', 'qa.export',
-      'gap_analysis.run', 'gap_analysis.approve',
-      'monitor.analyze',
-      'reports.generate', 'reports.export', 'reports.approve',
-      'alerts.view', 'alerts.manage',
-      'clients.view', 'clients.edit',
-      'documents.view', 'documents.upload',
-      'audit.view', 'audit.export',
-    ],
-    user_count: 3,
-    is_system: true,
-    created_at: '2025-01-15T00:00:00Z',
-  },
-  {
-    id: 'role-analyst',
-    name: 'Analyst',
-    description: 'Esecuzione analisi Q&A e gap analysis, generazione report (no approvazione)',
-    permissions: [
-      'qa.query', 'qa.export',
-      'gap_analysis.run',
-      'monitor.analyze',
-      'reports.generate', 'reports.export',
-      'alerts.view',
-      'clients.view',
-      'documents.view', 'documents.upload',
-      'audit.view',
-    ],
-    user_count: 5,
-    is_system: true,
-    created_at: '2025-01-15T00:00:00Z',
-  },
-  {
-    id: 'role-viewer',
-    name: 'Viewer',
-    description: 'Sola lettura - visualizzazione report, alert e audit trail',
-    permissions: [
-      'qa.query',
-      'alerts.view',
-      'clients.view',
-      'documents.view',
-      'audit.view',
-    ],
-    user_count: 8,
-    is_system: true,
-    created_at: '2025-01-15T00:00:00Z',
-  },
-  {
-    id: 'role-auditor',
-    name: 'External Auditor',
-    description: 'Accesso audit trail e report per revisori esterni - nessuna modifica',
-    permissions: [
-      'audit.view', 'audit.export',
-      'reports.export',
-      'clients.view',
-    ],
-    user_count: 1,
-    is_system: false,
-    created_at: '2026-02-10T00:00:00Z',
-  },
-]
-
-// ─── Client Compliance Mock Data ────────────────────────────
-
-export const DEMO_CLIENT_COMPLIANCE: Record<string, {
-  scores: ClientComplianceScore[]
-  history: ClientComplianceHistory[]
-}> = {
-  'Banca Meridiana S.p.A.': {
-    scores: [
-      { framework: 'DORA', score: 72, previous_score: 45, trend: 'up', last_assessed: '2026-03-01' },
-      { framework: 'NIS2', score: 85, previous_score: 78, trend: 'up', last_assessed: '2026-03-01' },
-      { framework: 'GDPR', score: 91, previous_score: 88, trend: 'up', last_assessed: '2026-02-15' },
-      { framework: 'CSRD', score: 34, previous_score: 20, trend: 'up', last_assessed: '2026-02-20' },
-    ],
-    history: [
-      { month: 'Ott 2025', scores: { DORA: 28, NIS2: 55, GDPR: 82, CSRD: 10 } },
-      { month: 'Nov 2025', scores: { DORA: 35, NIS2: 62, GDPR: 84, CSRD: 15 } },
-      { month: 'Dic 2025', scores: { DORA: 40, NIS2: 70, GDPR: 86, CSRD: 18 } },
-      { month: 'Gen 2026', scores: { DORA: 45, NIS2: 75, GDPR: 88, CSRD: 20 } },
-      { month: 'Feb 2026', scores: { DORA: 58, NIS2: 78, GDPR: 88, CSRD: 25 } },
-      { month: 'Mar 2026', scores: { DORA: 72, NIS2: 85, GDPR: 91, CSRD: 34 } },
-    ],
-  },
-  'TechCo Italia S.r.l.': {
-    scores: [
-      { framework: 'AI_ACT', score: 65, previous_score: 40, trend: 'up', last_assessed: '2026-03-01' },
-      { framework: 'GDPR', score: 88, previous_score: 85, trend: 'up', last_assessed: '2026-02-28' },
-      { framework: 'NIS2', score: 52, previous_score: 48, trend: 'up', last_assessed: '2026-02-25' },
-      { framework: 'CSRD', score: 28, previous_score: 15, trend: 'up', last_assessed: '2026-02-20' },
-    ],
-    history: [
-      { month: 'Ott 2025', scores: { AI_ACT: 15, GDPR: 78, NIS2: 30, CSRD: 5 } },
-      { month: 'Nov 2025', scores: { AI_ACT: 22, GDPR: 80, NIS2: 35, CSRD: 8 } },
-      { month: 'Dic 2025', scores: { AI_ACT: 30, GDPR: 82, NIS2: 40, CSRD: 12 } },
-      { month: 'Gen 2026', scores: { AI_ACT: 40, GDPR: 85, NIS2: 48, CSRD: 15 } },
-      { month: 'Feb 2026', scores: { AI_ACT: 55, GDPR: 85, NIS2: 48, CSRD: 20 } },
-      { month: 'Mar 2026', scores: { AI_ACT: 65, GDPR: 88, NIS2: 52, CSRD: 28 } },
-    ],
-  },
-  'Assicurazioni Alfa S.p.A.': {
-    scores: [
-      { framework: 'DORA', score: 80, previous_score: 72, trend: 'up', last_assessed: '2026-02-28' },
-      { framework: 'GDPR', score: 94, previous_score: 92, trend: 'up', last_assessed: '2026-03-01' },
-      { framework: 'CSRD', score: 55, previous_score: 42, trend: 'up', last_assessed: '2026-02-15' },
-    ],
-    history: [
-      { month: 'Ott 2025', scores: { DORA: 50, GDPR: 85, CSRD: 25 } },
-      { month: 'Nov 2025', scores: { DORA: 58, GDPR: 87, CSRD: 30 } },
-      { month: 'Dic 2025', scores: { DORA: 65, GDPR: 90, CSRD: 35 } },
-      { month: 'Gen 2026', scores: { DORA: 72, GDPR: 92, CSRD: 42 } },
-      { month: 'Feb 2026', scores: { DORA: 76, GDPR: 92, CSRD: 48 } },
-      { month: 'Mar 2026', scores: { DORA: 80, GDPR: 94, CSRD: 55 } },
-    ],
-  },
-}
-
 // ─── Delay helper ───────────────────────────────────────────
 
 export function mockDelay(ms: number = 1500): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-// ─── Workflow Mock Data ─────────────────────────────────────
-
-export const DEMO_WORKFLOW_ITEMS: WorkflowItem[] = [
-  {
-    id: 'wf-001',
-    title: 'Gap critico: ICT Risk Management Framework assente',
-    description: 'DORA Art. 6 richiede un framework di gestione del rischio ICT documentato e approvato dal management body. Attualmente non \u00e8 presente alcuna policy formalizzata.',
-    source: 'gap_analysis',
-    framework: 'DORA',
-    status: 'ai_generated',
-    priority: 'P1',
-    assigned_to: null,
-    assigned_to_name: null,
-    created_at: '2026-03-02T10:00:00Z',
-    updated_at: '2026-03-02T10:00:00Z',
-    deadline: '2026-04-15',
-    client_name: 'Banca Meridiana S.p.A.',
-    approval_chain: [
-      { role: 'Analyst', user: 'Luca Verdi', status: 'pending', date: null },
-      { role: 'Team Lead', user: 'Maria Bianchi', status: 'pending', date: null },
-      { role: 'Head of Compliance', user: 'Paolo Rossi', status: 'pending', date: null },
-    ],
-  },
-  {
-    id: 'wf-002',
-    title: 'Reporting CSRD: doppia materialit\u00e0 non implementata',
-    description: 'CSRD richiede double materiality assessment (ESRS 1 \u00a738-42). L\'azienda effettua solo materialit\u00e0 finanziaria.',
-    source: 'gap_analysis',
-    framework: 'CSRD',
-    status: 'under_review',
-    priority: 'P1',
-    assigned_to: 'user-002',
-    assigned_to_name: 'Maria Bianchi',
-    created_at: '2026-03-01T14:00:00Z',
-    updated_at: '2026-03-02T09:30:00Z',
-    deadline: '2026-06-30',
-    client_name: 'TechCo Italia S.r.l.',
-    approval_chain: [
-      { role: 'Analyst', user: 'Luca Verdi', status: 'approved', date: '2026-03-01T16:00:00Z' },
-      { role: 'Team Lead', user: 'Maria Bianchi', status: 'pending', date: null },
-      { role: 'Head of Compliance', user: 'Paolo Rossi', status: 'pending', date: null },
-    ],
-  },
-  {
-    id: 'wf-003',
-    title: 'NIS2: procedura incident reporting da definire',
-    description: 'Art. 23 NIS2 richiede notifica entro 24h per early warning e 72h per full notification. Nessuna procedura documentata.',
-    source: 'gap_analysis',
-    framework: 'NIS2',
-    status: 'validated',
-    priority: 'P2',
-    assigned_to: 'user-003',
-    assigned_to_name: 'Luca Verdi',
-    created_at: '2026-02-28T11:00:00Z',
-    updated_at: '2026-03-01T15:00:00Z',
-    deadline: '2026-05-30',
-    client_name: 'Banca Meridiana S.p.A.',
-    approval_chain: [
-      { role: 'Analyst', user: 'Luca Verdi', status: 'approved', date: '2026-02-28T14:00:00Z' },
-      { role: 'Team Lead', user: 'Maria Bianchi', status: 'approved', date: '2026-03-01T15:00:00Z' },
-      { role: 'Head of Compliance', user: 'Paolo Rossi', status: 'pending', date: null },
-    ],
-  },
-  {
-    id: 'wf-004',
-    title: 'AI Act: registro sistema AI ad alto rischio',
-    description: 'Art. 49 AI Act richiede registrazione nella banca dati EU per sistemi AI ad alto rischio prima dell\'immissione sul mercato.',
-    source: 'monitor',
-    framework: 'AI_ACT',
-    status: 'approved',
-    priority: 'P2',
-    assigned_to: 'user-002',
-    assigned_to_name: 'Maria Bianchi',
-    created_at: '2026-02-25T09:00:00Z',
-    updated_at: '2026-02-28T17:00:00Z',
-    deadline: '2026-09-01',
-    client_name: 'TechCo Italia S.r.l.',
-    approval_chain: [
-      { role: 'Analyst', user: 'Luca Verdi', status: 'approved', date: '2026-02-25T14:00:00Z' },
-      { role: 'Team Lead', user: 'Maria Bianchi', status: 'approved', date: '2026-02-26T10:00:00Z' },
-      { role: 'Head of Compliance', user: 'Paolo Rossi', status: 'approved', date: '2026-02-28T17:00:00Z' },
-    ],
-  },
-  {
-    id: 'wf-005',
-    title: 'GDPR: DPIA non aggiornata per nuovo trattamento',
-    description: 'Art. 35 GDPR richiede DPIA per il nuovo sistema di profilazione clienti. DPIA esistente risale al 2023 e non copre il nuovo trattamento.',
-    source: 'qa',
-    framework: 'GDPR',
-    status: 'ai_generated',
-    priority: 'P1',
-    assigned_to: null,
-    assigned_to_name: null,
-    created_at: '2026-03-02T11:30:00Z',
-    updated_at: '2026-03-02T11:30:00Z',
-    deadline: '2026-03-31',
-    client_name: 'Banca Meridiana S.p.A.',
-    approval_chain: [
-      { role: 'Analyst', user: '', status: 'pending', date: null },
-      { role: 'Team Lead', user: '', status: 'pending', date: null },
-      { role: 'Head of Compliance', user: '', status: 'pending', date: null },
-    ],
-  },
-  {
-    id: 'wf-006',
-    title: 'DORA: test di resilienza digitale pianificazione',
-    description: 'Art. 24-27 DORA richiede programma di test di resilienza operativa digitale, inclusi TLPT (threat-led penetration testing).',
-    source: 'gap_analysis',
-    framework: 'DORA',
-    status: 'under_review',
-    priority: 'P2',
-    assigned_to: 'user-003',
-    assigned_to_name: 'Luca Verdi',
-    created_at: '2026-02-27T10:00:00Z',
-    updated_at: '2026-03-01T11:00:00Z',
-    deadline: '2026-07-15',
-    client_name: 'Banca Meridiana S.p.A.',
-    approval_chain: [
-      { role: 'Analyst', user: 'Luca Verdi', status: 'approved', date: '2026-02-27T16:00:00Z' },
-      { role: 'Team Lead', user: 'Maria Bianchi', status: 'pending', date: null },
-      { role: 'Head of Compliance', user: 'Paolo Rossi', status: 'pending', date: null },
-    ],
-  },
-]

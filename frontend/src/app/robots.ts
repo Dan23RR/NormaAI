@@ -1,8 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-// Until normaai.org points to Vercel, the canonical host is the staging URL.
-// Set NEXT_PUBLIC_SITE_URL on Vercel when the custom domain goes live.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai-psi.vercel.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai.org'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -10,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dashboard/', '/login', '/api/'],
+        disallow: ['/app/', '/login', '/api/'],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

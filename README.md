@@ -117,8 +117,40 @@ alembic upgrade head
 ### 7. Seed Regulatory Data
 
 ```bash
-python -m src.pipeline --action seed
+python -m src.pipeline --action seed                       # every tracked act, EN + IT
+python -m src.pipeline --action seed --acts AI_ACT --lang IT   # a subset (CELEX ids or framework names)
+python -m src.pipeline --action seed --recreate            # drop + rebuild the Qdrant collection
 ```
+
+**What the corpus contains.** The seed iterates the act registry in
+`src/crawler/eurlex/client.py` (`TRACKED_ACTS`, 17 acts): the basic acts of
+the 8 frameworks (CSRD, CSDDD, AI Act, DORA, NIS2, Taxonomy, GDPR, CRA), the
+amending acts that change their timelines (Stop-the-Clock Directive (EU)
+2025/794, Omnibus I Directive (EU) 2026/470, Digital Omnibus on AI Regulation
+(EU) 2026/1744) and the delegated/implementing acts cited in the product
+(ESRS Set 1 2023/2772, DORA RTS 2024/1773 and 2024/1774, DORA ITS 2024/2956,
+Taxonomy Environmental Delegated Act 2023/2486, CRA Implementing Regulation
+2025/2392). For each act the pipeline:
+
+- downloads the **latest CELLAR consolidated text** when one exists (the law
+  as amended; `EURLEX_PREFER_CONSOLIDATED=true`), falling back to the original
+  OJ publication offline or for acts that have none (amending acts);
+- downloads **English and Italian** (`CORPUS_LANGUAGES=EN,IT`) and tags every
+  chunk with `lang`;
+- chunks per legal unit (preamble, `Recital N`, `Art. N` with its title and
+  chapter, `Annex I` sections) keeping paragraph/point numbers glued to their
+  text, with `celex`, `source_celex`, `eli`, `url`, `consolidated_as_of`,
+  `paragraph` and `chunk_index` on every chunk;
+- re-indexes each (act, language) in place: point ids are deterministic
+  (`UUID5(celex|lang|article|chunk_index|sha1(text))`), so re-running the
+  seed never duplicates chunks;
+- writes a corpus metadata point (`corpus_as_of`, acts, embedding model) that
+  `HybridIndexer.get_corpus_info()` exposes.
+
+Normattiva (Italian implementing acts) is seeded in the same run when
+`DATA_SOURCE=both`. The sparse vectors use Qdrant's IDF modifier: a collection
+created before this change logs a warning at startup and must be rebuilt with
+`--recreate`.
 
 ### 8. Run the Server
 

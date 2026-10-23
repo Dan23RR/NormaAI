@@ -57,6 +57,13 @@ docker compose restart qdrant
 
 - Il circuit breaker qdrant si richiude da solo (recovery 30s) dopo che il servizio torna su.
 - Collection corrotta/persa → re-seed: `python -m src.pipeline --action seed` (~minuti, usa EUR-Lex).
+  Il seed è idempotente (id dei chunk deterministici, re-index per atto/lingua): rilanciarlo non duplica nulla.
+  Un singolo atto o framework: `--acts 32022L2464` / `--acts DORA`; una sola lingua: `--lang IT`.
+- Log di avvio `collection_sparse_modifier_missing` o `collection_embedding_model_mismatch` → la collection è
+  stata creata con la vecchia configurazione (sparse senza IDF o altro modello di embedding): ricreala con
+  `python -m src.pipeline --action seed --recreate`.
+- `python -m src.pipeline --action stats` mostra `corpus.corpus_as_of` (data del seed) e gli atti indicizzati
+  (CELEX, lingua, versione consolidata).
 - I dati Qdrant sono **ricostruibili** dal crawl: non è una perdita dati permanente.
 
 ## 4. LLM provider down (Gemini/Anthropic)

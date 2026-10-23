@@ -72,6 +72,15 @@ async def get_stats(user: CurrentUser | None = Depends(get_optional_user)):
         try:
             qdrant_stats = app_state.indexer.get_collection_stats()
             stats["qdrant"] = qdrant_stats
+            # Corpus metadata point written by the seed: the date the UI shows
+            # as "Corpus al ...". Missing on collections seeded before it existed.
+            corpus = app_state.indexer.get_corpus_info()
+            if isinstance(corpus, dict):
+                stats["corpus_as_of"] = corpus.get("corpus_as_of")
+                stats["corpus"] = {
+                    key: corpus.get(key)
+                    for key in ("corpus_as_of", "acts", "embedding_model", "built_at")
+                }
         except Exception as e:
             logger.warning("qdrant_stats_fetch_failed", error=str(e))
             stats["qdrant"] = {"status": "unavailable"}

@@ -58,12 +58,12 @@ class TestConfigFromSettings:
     def test_reads_defaults_from_settings(self):
         cfg = _config_from_settings()
         assert isinstance(cfg, SNCConfig)
-        # Matches the Settings defaults (src/config.py).
+        # Matches the Settings defaults (src/config.py): SNC is OPT-IN.
         assert cfg.k == 3
         assert cfg.temperature == pytest.approx(0.7)
         assert cfg.theta_high == pytest.approx(0.85)
         assert cfg.theta_low == pytest.approx(0.50)
-        assert cfg.enabled is True
+        assert cfg.enabled is False
 
     def test_uses_getattr_fallbacks_when_settings_missing_fields(self):
         # An object lacking the snc_* attributes must still produce a config
@@ -77,7 +77,17 @@ class TestConfigFromSettings:
         assert cfg.temperature == pytest.approx(0.7)
         assert cfg.theta_high == pytest.approx(0.85)
         assert cfg.theta_low == pytest.approx(0.50)
+        assert cfg.enabled is False
+
+    def test_enabled_when_settings_opt_in(self):
+        class OptIn:
+            snc_enabled = True
+            snc_k = 4
+
+        with patch.object(snc_node, "get_settings", return_value=OptIn()):
+            cfg = _config_from_settings()
         assert cfg.enabled is True
+        assert cfg.k == 4
 
 
 # ─── _build_user_message ──────────────────────────────────────────────

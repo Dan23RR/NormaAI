@@ -89,7 +89,7 @@ def _config_from_settings() -> SNCConfig:
         temperature=getattr(s, "snc_temperature", 0.7),
         theta_high=getattr(s, "snc_theta_high", 0.85),
         theta_low=getattr(s, "snc_theta_low", 0.50),
-        enabled=getattr(s, "snc_enabled", True),
+        enabled=getattr(s, "snc_enabled", False),
         min_modal_agreement=getattr(s, "snc_min_modal_agreement", 2),
         weak_evidence_dense_score=getattr(s, "snc_weak_evidence_dense_score", 0.25),
     )

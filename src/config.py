@@ -113,7 +113,10 @@ class Settings(BaseSettings):
     # applies a closed-form thermodynamic trust score to drive a three-way
     # routing decision (ADMIT_HIGH / ADMIT_MID / ABSTAIN). Sits between the
     # agent nodes and the existing confidence_check -> CoVe gate.
-    snc_enabled: bool = True
+    # OFF by default (opt-in with SNC_ENABLED=true): it costs K-1 extra LLM
+    # calls per request and, when the resamples fail, turns a transient
+    # provider error into an abstention. Enable it deliberately per deploy.
+    snc_enabled: bool = False
     snc_k: int = 3
     """Number of stochastic samples for trust calibration (>= 2)."""
     snc_temperature: float = 0.7
@@ -322,6 +325,17 @@ def validate_settings_or_exit() -> Settings:
         )
     else:
         _config_logger.info("CoVe: DISABLED")
+
+    # SNC trust layer (K-sample behavioral clustering)
+    if settings.snc_enabled:
+        _config_logger.info(
+            "SNC trust layer: ENABLED | K: %d | theta_high: %.2f | theta_low: %.2f",
+            settings.snc_k,
+            settings.snc_theta_high,
+            settings.snc_theta_low,
+        )
+    else:
+        _config_logger.info("SNC trust layer: DISABLED (set SNC_ENABLED=true to activate)")
 
     # Streaming
     _config_logger.info(

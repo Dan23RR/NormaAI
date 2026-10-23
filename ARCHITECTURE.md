@@ -124,6 +124,11 @@ behaviorally, compute a closed-form trust score, and route three ways:
 - Abstention becomes a first-class outcome - in a legal product, "I'm not sure"
   beats a confident error
 - Config: `SNC_ENABLED`, `SNC_K`, `SNC_THETA_HIGH`, `SNC_THETA_LOW`
+- **Off by default** (`SNC_ENABLED=false`, since 2026-10): the layer is opt-in
+  per deployment because of its LLM cost and because a failed resample batch
+  (provider/network error) degrades into an abstention. When the resamples fail
+  the abstention is reported as `snc_degraded` (not `snc_low_trust`) and is
+  never cached.
 
 ### ADR-5: JWT RS256 with Refresh Token Rotation
 

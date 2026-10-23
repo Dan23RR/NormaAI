@@ -11,6 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.rate_limit import client_ip_key, limiter, settings_limit
 from src.audit import AuditAction, AuditOutcome, audit_log, get_client_ip
 from src.auth.dependencies import CurrentUser, get_current_user
 from src.auth.security import (
@@ -18,8 +19,9 @@ from src.auth.security import (
     create_token_pair,
     decode_token,
     hash_password,
+    hash_password_async,
     token_blacklist,
-    verify_password,
+    verify_password_async,
 )
 from src.db.engine import RLS_GUC, get_db_session
 from src.db.models import Organization, User
@@ -62,6 +64,7 @@ class UserResponse(BaseModel):
 
 
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings_limit("auth_rate_limit_register"), key_func=client_ip_key)
 async def register(
     payload: RegisterRequest,
     request: Request,
@@ -97,7 +100,7 @@ async def register(
         org_id=org.id,
         email=payload.email,
         name=payload.name,
-        hashed_password=hash_password(payload.password),
+        hashed_password=await hash_password_async(payload.password),
         role="admin",
     )
     db.add(user)
@@ -122,10 +125,11 @@ async def register(
         ip_address=client_ip,
         detail=f"New org: {payload.organization_name}",
     )
-    return create_token_pair(user.id, org.id, user.role)
+    return create_token_pair(user.id, org.id, user.role, email=user.email)
 
 
 @router.post("/login", response_model=TokenPair)
+@limiter.limit(settings_limit("auth_rate_limit_login"), key_func=client_ip_key)
 async def login(
     payload: LoginRequest,
     request: Request,
@@ -152,8 +156,9 @@ async def login(
 
     # Constant-time comparison: always run bcrypt (against a valid dummy hash on
     # the unknown-email path) so neither timing nor status code reveals whether
-    # the email exists.
-    password_valid = verify_password(
+    # the email exists. Runs in a worker thread so the slow hash never blocks
+    # the event loop.
+    password_valid = await verify_password_async(
         payload.password, user.hashed_password if user else _DUMMY_PASSWORD_HASH
     )
 
@@ -186,10 +191,11 @@ async def login(
         org_id=str(user.org_id),
         ip_address=client_ip,
     )
-    return create_token_pair(user.id, user.org_id, user.role)
+    return create_token_pair(user.id, user.org_id, user.role, email=user.email)
 
 
 @router.post("/refresh", response_model=TokenPair)
+@limiter.limit(settings_limit("auth_rate_limit_refresh"), key_func=client_ip_key)
 async def refresh_token(
     payload: RefreshRequest,
     request: Request,
@@ -253,7 +259,9 @@ async def refresh_token(
     )
 
     # Issue new pair with same family
-    return create_token_pair(user.id, user.org_id, user.role, family=token_data.family)
+    return create_token_pair(
+        user.id, user.org_id, user.role, family=token_data.family, email=user.email
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -16,7 +16,6 @@ import os
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.config import get_settings
@@ -47,7 +46,7 @@ from src.api.middleware import (
     metrics,  # noqa: F401
     register_middleware,
 )
-from src.api.rate_limit import limiter  # noqa: F401
+from src.api.rate_limit import limiter, rate_limit_exceeded_handler
 
 # ─── API Tags ─────────────────────────────────────────────────────
 tags_metadata = [
@@ -102,7 +101,7 @@ app = FastAPI(
 
 # ─── Rate Limiter ─────────────────────────────────────────────────
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ─── CORS ─────────────────────────────────────────────────────────
 _cors_settings = get_settings()

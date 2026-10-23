@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user
+from src.auth.dependencies import CurrentUser, get_current_user, require_staff
 
 logger = structlog.get_logger()
 
@@ -49,7 +49,7 @@ def _require_qdrant():
 @router.post("/crawl")
 @limiter.limit("2/minute")
 async def trigger_crawl(
-    request: Request, payload: CrawlRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request, payload: CrawlRequest, user: CurrentUser = Depends(require_staff)
 ):
     """
     **Trigger a EUR-Lex regulatory crawl.**
@@ -57,12 +57,13 @@ async def trigger_crawl(
     - `full_crawl`: Re-download and re-index all 9 core regulations
     - `amendment_check`: Check for new amendments to tracked regulations (default)
 
-    Requires authentication.
+    Staff only (settings.staff_emails): the crawl re-indexes the SHARED
+    regulatory corpus every tenant reads from, so no customer admin may run it.
     """
     audit_log(
         AuditAction.CRAWL_TRIGGERED,
-        user_id=str(user.user_id) if user else None,
-        org_id=str(user.org_id) if user else None,
+        user_id=str(user.user_id),
+        org_id=str(user.org_id),
         ip_address=get_client_ip(request),
         resource="/api/v1/crawl",
         detail=f"{payload.crawl_type.value}, days_back={payload.days_back}",

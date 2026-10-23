@@ -7,17 +7,28 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.auth.security import decode_token, token_blacklist
+from src.config import get_settings
 
 security_scheme = HTTPBearer(auto_error=False)
+
+STAFF_ONLY_DETAIL = "Operazione riservata al personale NormaAI."
 
 
 class CurrentUser:
     """Authenticated user context extracted from JWT."""
 
-    def __init__(self, user_id: uuid.UUID, org_id: uuid.UUID, role: str):
+    def __init__(
+        self,
+        user_id: uuid.UUID,
+        org_id: uuid.UUID,
+        role: str,
+        email: str | None = None,
+    ):
         self.user_id = user_id
         self.org_id = org_id
         self.role = role
+        # From the access token's ``email`` claim; None on legacy tokens.
+        self.email = email
 
     @property
     def is_admin(self) -> bool:
@@ -26,6 +37,15 @@ class CurrentUser:
     @property
     def is_viewer(self) -> bool:
         return self.role == "viewer"
+
+
+def is_staff(user: CurrentUser) -> bool:
+    """NormaAI personnel = the token's email claim is in settings.staff_emails.
+
+    Fail-closed: a token without an email claim (minted before the claim
+    existed) is never staff - a fresh login fixes that.
+    """
+    return get_settings().is_staff_email(user.email)
 
 
 async def get_current_user(
@@ -73,6 +93,7 @@ async def get_current_user(
         user_id=uuid.UUID(payload.sub),
         org_id=uuid.UUID(payload.org_id),
         role=payload.role,
+        email=payload.email,
     )
 
 
@@ -88,6 +109,17 @@ async def get_optional_user(
         if e.status_code == status.HTTP_401_UNAUTHORIZED:
             return None
         raise
+
+
+async def require_staff(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """Dependency: the caller must be NormaAI staff (settings.staff_emails).
+
+    Guards operations that touch the SHARED regulatory corpus (crawl /
+    re-index) or create new tenants, which no customer admin should run.
+    """
+    if not is_staff(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=STAFF_ONLY_DETAIL)
+    return user
 
 
 def require_role(*allowed_roles: str) -> Callable[..., Awaitable[CurrentUser]]:

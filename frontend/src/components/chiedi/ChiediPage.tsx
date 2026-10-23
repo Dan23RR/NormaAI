@@ -82,6 +82,23 @@ export function ChiediPage() {
   const { profile, setProfile } = useCompanyProfile()
 
   const [demo] = useState(() => isDemoMode())
+  // Before the first answer, the corpus date comes from /api/v1/stats.
+  const [statsCorpus, setStatsCorpus] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    if (demo) return
+    let alive = true
+    api
+      .get<{ corpus_as_of?: string | null }>('/api/v1/stats')
+      .then((stats) => {
+        if (alive && stats?.corpus_as_of) setStatsCorpus(stats.corpus_as_of)
+      })
+      .catch(() => {
+        /* the meta line simply stays empty */
+      })
+    return () => {
+      alive = false
+    }
+  }, [demo])
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadMessages(t('errors.reloaded')))
   // The answer language follows the interface unless overridden here.
   const [override, setOverride] = useState<Language | null>(() => loadLanguage())
@@ -385,7 +402,7 @@ export function ChiediPage() {
     for (let i = answers.length - 1; i >= 0; i--) if (answers[i].corpusAsOf) return answers[i].corpusAsOf
     return undefined
   }, [answers])
-  const corpusLabel = formatCorpusDate(corpusAsOf, ctx.locale)
+  const corpusLabel = formatCorpusDate(corpusAsOf ?? statsCorpus, ctx.locale)
   const last = answers[answers.length - 1]
   const liveText = !last
     ? ''

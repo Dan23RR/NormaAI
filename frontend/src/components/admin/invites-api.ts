@@ -5,27 +5,33 @@ import { ApiError } from '@/lib/api-error'
 import { isDemoMode } from '@/lib/auth'
 
 /**
- * Invitations, against the contract the backend is adding on its own branch:
- * - POST /api/v1/auth/invites {email, organization_id?} -> {code, email, expires_at}
- * - GET  /api/v1/auth/invites -> [{code, email, organization_id, used, expires_at, created_at}]
+ * Invitations, against the backend contract in src/auth/router.py:
+ * - POST /api/v1/auth/invites {email, role?, expires_in_days?} -> 201, the
+ *   invite plus `code` (plaintext, shown only in that response)
+ * - GET  /api/v1/auth/invites -> the caller's organization's invites, no code
  * An older backend answers 404: the page says so (ApiError 'invitesUnavailable')
  * instead of failing silently. In the demo the invitations live in
  * sessionStorage, declared as such.
  */
 
+export type InviteRole = 'member' | 'viewer' | 'admin'
+export type InviteStatus = 'pending' | 'used' | 'expired'
+
+export const INVITE_ROLES: InviteRole[] = ['member', 'viewer', 'admin']
+
 export interface Invite {
-  code: string
+  id: string
   email: string
-  organization_id?: string | null
-  used: boolean
-  expires_at: string
+  organization_id: string | null
+  role: InviteRole
+  status: InviteStatus
   created_at: string
+  expires_at: string
+  used_at: string | null
 }
 
-export interface CreatedInvite {
+export interface CreatedInvite extends Invite {
   code: string
-  email: string
-  expires_at: string
 }
 
 export function isInvitesUnavailable(err: unknown): boolean {
@@ -37,26 +43,40 @@ function isNotFound(err: unknown): boolean {
   return err instanceof Error && /not found|\b404\b/i.test(err.message)
 }
 
+function asRole(value: unknown): InviteRole {
+  return value === 'admin' || value === 'viewer' ? value : 'member'
+}
+
+function asStatus(r: Record<string, unknown>): InviteStatus {
+  if (r.status === 'used' || r.status === 'expired' || r.status === 'pending') return r.status
+  if (r.used === true || typeof r.used_at === 'string') return 'used'
+  return 'pending'
+}
+
+export function normalizeInvite(raw: unknown): Invite {
+  const r = (raw ?? {}) as Record<string, unknown>
+  return {
+    id: String(r.id ?? r.code ?? ''),
+    email: String(r.email ?? ''),
+    organization_id: typeof r.organization_id === 'string' ? r.organization_id : null,
+    role: asRole(r.role),
+    status: asStatus(r),
+    created_at: typeof r.created_at === 'string' ? r.created_at : '',
+    expires_at: typeof r.expires_at === 'string' ? r.expires_at : '',
+    used_at: typeof r.used_at === 'string' ? r.used_at : null,
+  }
+}
+
 export function normalizeInvites(res: unknown): Invite[] {
   const list = Array.isArray(res)
     ? res
     : (res as { data?: unknown; invites?: unknown } | null)?.data ?? (res as { invites?: unknown } | null)?.invites
   if (!Array.isArray(list)) return []
-  return list.map((raw) => {
-    const r = (raw ?? {}) as Record<string, unknown>
-    return {
-      code: String(r.code ?? ''),
-      email: String(r.email ?? ''),
-      organization_id: typeof r.organization_id === 'string' ? r.organization_id : null,
-      used: Boolean(r.used),
-      expires_at: typeof r.expires_at === 'string' ? r.expires_at : '',
-      created_at: typeof r.created_at === 'string' ? r.created_at : '',
-    }
-  })
+  return list.map(normalizeInvite)
 }
 
 const DEMO_INVITES_KEY = 'normaai_demo_invites'
-const DEMO_EXPIRY_DAYS = 7
+const DEMO_EXPIRY_DAYS = 14
 
 function readDemoInvites(): Invite[] {
   try {
@@ -92,22 +112,28 @@ export async function listInvites(): Promise<Invite[]> {
   }
 }
 
-export async function createInvite(email: string): Promise<CreatedInvite> {
+export async function createInvite(email: string, role: InviteRole = 'member'): Promise<CreatedInvite> {
   if (isDemoMode()) {
     const now = new Date()
-    const invite: Invite = {
-      code: demoCode(),
+    const code = demoCode()
+    const invite: CreatedInvite = {
+      id: `demo-${code}`,
+      code,
       email,
       organization_id: null,
-      used: false,
+      role,
+      status: 'pending',
       created_at: now.toISOString(),
       expires_at: new Date(now.getTime() + DEMO_EXPIRY_DAYS * 86_400_000).toISOString(),
+      used_at: null,
     }
     writeDemoInvites([invite, ...readDemoInvites()])
-    return { code: invite.code, email: invite.email, expires_at: invite.expires_at }
+    return invite
   }
   try {
-    return await api.post<CreatedInvite>('/api/v1/auth/invites', { email })
+    const res = await api.post<unknown>('/api/v1/auth/invites', { email, role })
+    const r = (res ?? {}) as Record<string, unknown>
+    return { ...normalizeInvite(r), code: String(r.code ?? '') }
   } catch (err) {
     if (isNotFound(err)) throw new ApiError('invitesUnavailable')
     throw err
@@ -117,7 +143,8 @@ export async function createInvite(email: string): Promise<CreatedInvite> {
 export type InviteState = 'used' | 'expired' | 'active'
 
 export function inviteState(invite: Invite, now: number = Date.now()): InviteState {
-  if (invite.used) return 'used'
+  if (invite.status === 'used') return 'used'
+  if (invite.status === 'expired') return 'expired'
   const expiry = Date.parse(invite.expires_at)
   if (!Number.isNaN(expiry) && expiry < now) return 'expired'
   return 'active'
@@ -128,6 +155,10 @@ const STATE_TONE: Record<InviteState, BadgeTone> = { used: 'ok', expired: 'neutr
 export function inviteStatus(invite: Invite, t: Translate, now: number = Date.now()): { label: string; tone: BadgeTone } {
   const state = inviteState(invite, now)
   return { label: t(`admin.invites.status.${state}`), tone: STATE_TONE[state] }
+}
+
+export function inviteRoleLabel(role: InviteRole, t: Translate): string {
+  return t(`admin.invites.roles.${role}`)
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/

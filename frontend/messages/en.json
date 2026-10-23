@@ -233,7 +233,21 @@
     "terms": "By signing in you accept the <terms>Terms of service</terms> and the <privacy>Privacy policy</privacy>.",
     "claim": "Every answer shows the passage of law behind it.",
     "article": "Art. 50(1)",
-    "asideNote": "Open source on GitHub. Data in Europe."
+    "asideNote": "Open source on GitHub. Data in Europe.",
+    "verifyEmail": {
+      "title": "Email confirmation",
+      "verifying": "Confirming your address.",
+      "verifiedTitle": "Email confirmed",
+      "verifiedBody": "{email} is confirmed. You can use NormaAI.",
+      "alreadyTitle": "Email already confirmed",
+      "alreadyBody": "{email} was already confirmed.",
+      "failedTitle": "Confirmation failed",
+      "failedBody": "The link is invalid or has expired. Sign in and request a new link, or write to info@normaai.org.",
+      "missingTitle": "The confirmation code is missing",
+      "missingBody": "Open the link you received by email: it carries the code.",
+      "goToApp": "Open the application",
+      "goToLogin": "Sign in"
+    }
   },
   "app": {
     "nav": {
@@ -1274,6 +1288,14 @@
       "errors": {
         "emailRequired": "Enter the email of the person to invite.",
         "emailInvalid": "The email does not look valid: check that it has the form name@domain.com."
+      },
+      "colRole": "Role",
+      "role": "Role",
+      "roleHelp": "Viewers read without editing; admins manage invitations and settings.",
+      "roles": {
+        "member": "Member",
+        "viewer": "Viewer",
+        "admin": "Admin"
       }
     },
     "system": {

@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { Copy, MailPlus } from 'lucide-react'
-import { Badge, Button, EmptyState, Field, Input, Skeleton, TBody, TD, TH, THead, TR, Table, useToast } from '@/components/ui'
+import { Badge, Button, EmptyState, Field, Input, Select, Skeleton, TBody, TD, TH, THead, TR, Table, useToast } from '@/components/ui'
 import { formatIsoDate, formatIsoDateTime } from '@/components/clienti/format'
 import { useErrorText } from '@/i18n/errors'
 import {
+  INVITE_ROLES,
   createInvite,
+  inviteRoleLabel,
   inviteStatus,
   isInvitesUnavailable,
   listInvites,
   validateInviteEmail,
   type CreatedInvite,
   type Invite,
+  type InviteRole,
 } from './invites-api'
 
 type ListState =
@@ -29,6 +32,7 @@ export function InvitesSection({ demoMode }: { demoMode: boolean }) {
   const errorText = useErrorText()
   const { toast } = useToast()
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState<InviteRole>('member')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -70,7 +74,7 @@ export function InvitesSection({ demoMode }: { demoMode: boolean }) {
     setCreating(true)
     setCreateError(null)
     try {
-      const invite = await createInvite(email.trim())
+      const invite = await createInvite(email.trim(), role)
       setCreated(invite)
       setEmail('')
       toast({ kind: 'ok', title: t('createdTitle'), description: invite.email })
@@ -120,6 +124,21 @@ export function InvitesSection({ demoMode }: { demoMode: boolean }) {
                 invalid={!!emailError}
                 aria-describedby={emailError ? 'invite-email-error' : undefined}
               />
+            </Field>
+            <Field label={t('role')} htmlFor="invite-role" help={t('roleHelp')} className="w-full sm:max-w-[200px]">
+              <Select
+                id="invite-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as InviteRole)}
+                disabled={creating}
+                aria-describedby="invite-role-help"
+              >
+                {INVITE_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {inviteRoleLabel(r, tRoot)}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <Button
               type="submit"
@@ -182,34 +201,24 @@ export function InvitesSection({ demoMode }: { demoMode: boolean }) {
           <THead>
             <TR>
               <TH>{t('colEmail')}</TH>
-              <TH>{t('colCode')}</TH>
+              <TH>{t('colRole')}</TH>
               <TH>{t('colStatus')}</TH>
               <TH className="hidden md:table-cell">{t('colCreated')}</TH>
               <TH className="hidden sm:table-cell">{t('colExpires')}</TH>
-              <TH>
-                <span className="sr-only">{t('colActions')}</span>
-              </TH>
             </TR>
           </THead>
           <TBody>
             {list.invites.map((invite) => {
               const status = inviteStatus(invite, tRoot)
               return (
-                <TR key={`${invite.code}-${invite.email}`}>
+                <TR key={invite.id || `${invite.email}-${invite.created_at}`}>
                   <TD className="font-medium">{invite.email}</TD>
-                  <TD>
-                    <code className="font-mono text-small">{invite.code}</code>
-                  </TD>
+                  <TD className="text-ink-2">{inviteRoleLabel(invite.role, tRoot)}</TD>
                   <TD>
                     <Badge tone={status.tone}>{status.label}</Badge>
                   </TD>
                   <TD className="hidden tabular text-ink-2 md:table-cell">{formatIsoDate(invite.created_at) ?? missing}</TD>
                   <TD className="hidden tabular text-ink-2 sm:table-cell">{formatIsoDate(invite.expires_at) ?? missing}</TD>
-                  <TD className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => copy(invite.code)} iconLeft={<Copy className="h-4 w-4" aria-hidden="true" />}>
-                      {t('copyCode')}
-                    </Button>
-                  </TD>
                 </TR>
               )
             })}

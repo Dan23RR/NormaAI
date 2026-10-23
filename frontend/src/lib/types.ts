@@ -177,11 +177,12 @@ export interface Alert {
   created_at: string
 }
 
+// Shape of GET /api/v1/alerts/summary (src/api/routers/alerts.py).
 export interface AlertSummary {
   total: number
-  unread: number
-  by_severity: Record<Severity, number>
-  by_framework: Record<string, number>
+  total_unread: number
+  by_severity: { severity: Severity; count: number }[]
+  by_framework: { framework: string; count: number }[]
 }
 
 // ─── Report Types ───────────────────────────────────────────

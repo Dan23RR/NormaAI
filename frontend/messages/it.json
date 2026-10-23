@@ -233,7 +233,21 @@
     "terms": "Accedendo accetti i <terms>Termini di servizio</terms> e la <privacy>Privacy</privacy>.",
     "claim": "Ogni risposta mostra il passaggio di legge che la sostiene.",
     "article": "art. 50, par. 1",
-    "asideNote": "Codice aperto su GitHub. Dati in Europa."
+    "asideNote": "Codice aperto su GitHub. Dati in Europa.",
+    "verifyEmail": {
+      "title": "Conferma dell’email",
+      "verifying": "Sto confermando il tuo indirizzo.",
+      "verifiedTitle": "Email confermata",
+      "verifiedBody": "L’indirizzo {email} è confermato. Puoi usare NormaAI.",
+      "alreadyTitle": "Email già confermata",
+      "alreadyBody": "L’indirizzo {email} era già confermato.",
+      "failedTitle": "Conferma non riuscita",
+      "failedBody": "Il link non è valido o è scaduto. Accedi e richiedi un nuovo link, oppure scrivi a info@normaai.org.",
+      "missingTitle": "Manca il codice di conferma",
+      "missingBody": "Apri il link che hai ricevuto via email: contiene il codice necessario.",
+      "goToApp": "Vai all’applicazione",
+      "goToLogin": "Accedi"
+    }
   },
   "app": {
     "nav": {
@@ -1274,6 +1288,14 @@
       "errors": {
         "emailRequired": "Inserisci l’email della persona da invitare.",
         "emailInvalid": "L’email non sembra valida: controlla che abbia la forma nome@dominio.it."
+      },
+      "colRole": "Ruolo",
+      "role": "Ruolo",
+      "roleHelp": "Chi legge non modifica; chi amministra gestisce inviti e impostazioni.",
+      "roles": {
+        "member": "Membro",
+        "viewer": "Lettura",
+        "admin": "Amministratore"
       }
     },
     "system": {

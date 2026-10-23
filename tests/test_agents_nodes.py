@@ -199,6 +199,65 @@ class TestRetrieveNode:
         assert "Knowledge base retrieval failed" in out["error"]
         assert "qdrant down" in out["error"]
 
+    def test_search_exception_writes_honest_failure_payload(self):
+        # The failure IS the result: result_json carries the machine-readable
+        # code the HTTP layer maps to 503, with zero confidence + review.
+        indexer = MagicMock()
+        indexer.hybrid_search.side_effect = RuntimeError("qdrant down")
+        with patch("src.api.app_state.app_state.indexer", indexer):
+            out = retrieve_node({"query": "CSRD requirements"})
+        payload = json.loads(out["result_json"])
+        assert payload["error_code"] == "retrieval_unavailable"
+        assert payload["confidence_score"] == 0.0
+        assert payload["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.0
+        assert out["requires_review"] is True
+
+
+# ─── Agents skip the LLM when the knowledge base failed ──────────
+
+
+class TestAgentsSkipOnRetrievalFailure:
+    _FAILED_STATE = {
+        "query": "q",
+        "task_type": "qa",
+        "error": f"{nodes.RETRIEVAL_ERROR_PREFIX}: qdrant down",
+        "retrieved_chunks": [],
+        "result_json": json.dumps({"error": "x", "error_code": "retrieval_unavailable"}),
+    }
+
+    def test_sync_agents_do_not_call_llm(self):
+        with patch.object(nodes, "call_llm") as llm:
+            assert qa_bot_node(dict(self._FAILED_STATE)) == {}
+            assert gap_analyst_node(dict(self._FAILED_STATE)) == {}
+            assert monitor_agent_node(dict(self._FAILED_STATE)) == {}
+        llm.assert_not_called()
+
+    async def test_async_agents_do_not_call_llm(self):
+        with patch.object(nodes, "acall_llm", new=AsyncMock()) as llm:
+            assert await async_qa_bot_node(dict(self._FAILED_STATE)) == {}
+            assert await async_gap_analyst_node(dict(self._FAILED_STATE)) == {}
+            assert await async_monitor_agent_node(dict(self._FAILED_STATE)) == {}
+        llm.assert_not_awaited()
+
+    def test_other_errors_do_not_block_the_agent(self):
+        # Only a retrieval failure short-circuits; e.g. the empty-query marker
+        # must not stop the agent from running.
+        llm_result = {"answer": "ok", "confidence_score": 0.9, "citations": []}
+        with patch.object(nodes, "call_llm", return_value=llm_result):
+            out = qa_bot_node({"query": "", "error": "No query provided"})
+        assert json.loads(out["result_json"])["answer"] == "ok"
+
+    def test_pack_llm_result_mirrors_llm_error_into_state(self):
+        out = _pack_llm_result(
+            {"error": "LLM error (gemini): boom", "error_code": "llm_provider_error"}
+        )
+        assert out["error"] == "LLM error (gemini): boom"
+        assert out["confidence_score"] == 0.0
+        assert out["requires_review"] is True
+        # A real answer does not touch the error channel.
+        assert "error" not in _pack_llm_result({"answer": "x", "confidence_score": 0.9})
+
 
 # ─── _apply_grounding_guard ───────────────────────────────────────
 
@@ -647,11 +706,20 @@ class TestAsyncSimpleResponseNode:
         # Cache hit does NOT escalate.
         assert "complexity_tier" not in out
 
-    async def test_cache_hit_default_confidence(self):
-        # Cached payload missing confidence_score -> default 0.8.
+    async def test_cache_hit_missing_confidence_is_zero_and_reviewed(self):
+        # Cached payload missing confidence_score -> 0.0 + review (a cache hit
+        # must not fabricate the 0.8 it used to report).
         with patch("src.cache.response_cache.get", new=AsyncMock(return_value={"answer": "c"})):
             out = await async_simple_response_node({"query": "Q", "task_type": "qa"})
-        assert out["confidence_score"] == 0.8
+        assert out["confidence_score"] == 0.0
+        assert out["requires_review"] is True
+
+    async def test_cache_hit_honours_cached_review_flag(self):
+        cached = {"answer": "c", "confidence_score": 0.95, "requires_expert_review": True}
+        with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
+            out = await async_simple_response_node({"query": "Q", "task_type": "qa"})
+        assert out["confidence_score"] == 0.95
+        assert out["requires_review"] is True
 
     async def test_cache_miss_escalates_to_medium(self):
         with patch("src.cache.response_cache.get", new=AsyncMock(return_value=None)):

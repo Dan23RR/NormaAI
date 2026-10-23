@@ -25,7 +25,7 @@ Nothing here touches a real LLM / Qdrant / network / DB.
 
 import json
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import src.agents.graph as graph_mod
 from src.agents.graph import (
@@ -375,20 +375,41 @@ class TestExtractResult:
         assert out == {"answer": "A", "confidence_score": 0.9}
 
     def test_non_dict_json_wrapped(self):
-        # A JSON array is valid JSON but not a dict -> wrapped as raw_response.
+        # A JSON array is valid JSON but not a dict -> wrapped as raw_response
+        # with NO invented confidence (0.0, used to be a made-up 0.5) and
+        # flagged for expert review.
         state = {"result_json": json.dumps([1, 2, 3])}
         out = _extract_result(state)
         assert out["raw_response"] == "[1, 2, 3]"
-        assert out["confidence_score"] == 0.5
+        assert out["confidence_score"] == 0.0
+        assert out["requires_expert_review"] is True
 
     def test_malformed_json_wrapped(self):
         state = {"result_json": "not json {{{"}
         out = _extract_result(state)
         assert out["raw_response"] == "not json {{{"
-        assert out["confidence_score"] == 0.5
+        assert out["confidence_score"] == 0.0
+        assert out["requires_expert_review"] is True
 
     def test_missing_result_json_defaults_to_empty_dict(self):
         assert _extract_result({}) == {}
+
+    def test_graph_review_verdict_is_surfaced_in_result(self):
+        # confidence_check_node writes requires_review into the STATE channel;
+        # the result dict must carry it so JSON and SSE report the real state.
+        state = {
+            "result_json": json.dumps({"answer": "A", "confidence_score": 0.6}),
+            "requires_review": True,
+        }
+        out = _extract_result(state)
+        assert out["requires_expert_review"] is True
+
+    def test_result_flag_not_cleared_when_graph_did_not_flag(self):
+        state = {
+            "result_json": json.dumps({"answer": "A", "requires_expert_review": True}),
+            "requires_review": False,
+        }
+        assert _extract_result(state)["requires_expert_review"] is True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -555,6 +576,80 @@ class TestCoVeGate:
         assert out["answer"] == "CoVe-revised answer"
         assert out["confidence_score"] == 0.42
 
+    def test_cove_gate_skipped_when_agent_returned_an_error(self):
+        # An LLM failure (error dict, confidence 0.0) must NOT be sent through
+        # CoVe: there is nothing to verify, and the error must reach the caller
+        # untouched so the HTTP layer can map it to an honest status.
+        def _failing_agent(state):
+            result = {
+                "error": "LLM error (gemini): boom",
+                "error_code": "llm_provider_error",
+                "confidence_score": 0.0,
+                "requires_expert_review": True,
+            }
+            return {
+                "result_json": json.dumps(result),
+                "confidence_score": 0.0,
+                "requires_review": True,
+                "error": result["error"],
+            }
+
+        with (
+            _patched_graph(confidence=0.5, fake_cove=True),
+            patch.object(graph_mod, "qa_bot_node", _failing_agent),
+        ):
+            graph_mod._sync_graph_instance = None  # rebuild with the failing agent
+            out = graph_mod.run_qa("query", cove_enabled=True)
+        assert out["error_code"] == "llm_provider_error"
+        assert "cove_applied" not in out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Retrieval failure: the knowledge base is down -> honest 503 payload, no LLM call
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRetrievalFailure:
+    async def test_arun_qa_surfaces_retrieval_failure_without_calling_the_llm(self):
+        # The REAL async qa node and SNC node run; only retrieve (mirroring the
+        # real failure branch) and the LLM call are replaced, to prove the
+        # failure payload reaches the caller and the LLM is never invoked.
+        from src.agents import nodes as nodes_mod
+
+        def _broken_retrieve(state):
+            error = f"{nodes_mod.RETRIEVAL_ERROR_PREFIX}: qdrant down"
+            return {
+                "retrieved_chunks": [],
+                "error": error,
+                "result_json": json.dumps(
+                    {
+                        "error": error,
+                        "error_code": "retrieval_unavailable",
+                        "confidence_score": 0.0,
+                        "requires_expert_review": True,
+                    }
+                ),
+                "confidence_score": 0.0,
+                "requires_review": True,
+            }
+
+        llm = AsyncMock(return_value={"answer": "must not run", "confidence_score": 0.9})
+        prev_async = graph_mod._async_graph_instance
+        with (
+            patch.object(graph_mod, "retrieve_node", _broken_retrieve),
+            patch.object(nodes_mod, "acall_llm", llm),
+        ):
+            graph_mod._async_graph_instance = None
+            try:
+                out = await graph_mod.arun_qa("What does CSRD require?", org_id="t1")
+            finally:
+                graph_mod._async_graph_instance = prev_async
+
+        assert out["error_code"] == "retrieval_unavailable"
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.0
+        llm.assert_not_awaited()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Error handling in _run_graph / _arun_graph
@@ -565,8 +660,19 @@ class TestErrorHandling:
     def test_run_graph_rejects_non_dict_state(self):
         out = graph_mod._run_graph("not a dict")
         assert out["error"] == "Invalid input for analysis."
+        assert out["error_code"] == "invalid_input"
         assert out["confidence_score"] == 0.0
         assert out["requires_expert_review"] is True
+
+    def test_error_envelopes_carry_machine_readable_codes(self):
+        class Boom:
+            def invoke(self, state):
+                raise TimeoutError("slow")
+
+        with patch.object(graph_mod, "_get_sync_graph", return_value=Boom()):
+            out = graph_mod._run_graph({"query": "x"})
+        assert out["error_code"] == "graph_timeout"
+        assert _ERROR_RESPONSE["error_code"] == "internal_error"
 
     def test_run_graph_handles_unexpected_exception(self):
         # A graph whose invoke raises a generic Exception -> _ERROR_RESPONSE.

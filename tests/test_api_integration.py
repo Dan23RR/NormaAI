@@ -422,6 +422,78 @@ class TestErrorHandling:
             headers=auth_headers,
         )
         assert response.status_code == 500
+        # Italian detail for the UI, no raw exception text.
+        assert "Errore interno" in response.json()["detail"]
+
+    @pytest.mark.parametrize(
+        "error_code, status, snippet",
+        [
+            ("llm_timeout", 504, "tempo massimo"),
+            ("llm_circuit_open", 503, "non disponibile"),
+            ("llm_not_configured", 503, "non è configurato"),
+            ("retrieval_unavailable", 503, "Qdrant"),
+            ("llm_rate_limited", 503, "Limite di richieste"),
+            ("llm_auth", 502, "credenziali"),
+            ("llm_provider_error", 502, "errore"),
+            ("graph_error", 500, "Errore interno"),
+        ],
+    )
+    def test_agent_error_dict_is_an_honest_http_error(
+        self, client, auth_headers, error_code, status, snippet
+    ):
+        """An error payload from the graph must NOT come back as HTTP 200 with
+        ``status: success``: it is mapped to 503/502/504/500 with an Italian
+        ``detail`` and the upstream English text is not leaked."""
+        error_result = {
+            "error": "LLM error (gemini): upstream stack trace",
+            "error_code": error_code,
+            "confidence_score": 0.0,
+            "requires_expert_review": True,
+        }
+        with patch("src.agents.graph.arun_qa", new=AsyncMock(return_value=error_result)):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "What is CSRD compliance?"},
+                headers=auth_headers,
+            )
+        assert response.status_code == status
+        body = response.json()
+        assert "status" not in body  # no success envelope
+        assert snippet.lower() in body["detail"].lower()
+        assert "stack trace" not in body["detail"]
+
+    def test_gap_analysis_and_monitor_error_dicts_are_honest_too(self, client, auth_headers):
+        error_result = {"error": "LLM timed out after 120s", "error_code": "llm_timeout"}
+        with patch("src.agents.graph.arun_gap_analysis", new=AsyncMock(return_value=error_result)):
+            r = client.post(
+                "/api/v1/gap-analysis",
+                json={"framework": "CSRD", "company_profile": {"name": "Test"}},
+                headers=auth_headers,
+            )
+        assert r.status_code == 504
+
+        with patch("src.agents.graph.arun_monitor_check", new=AsyncMock(return_value=error_result)):
+            r = client.post(
+                "/api/v1/monitor",
+                json={
+                    "regulation_change": "Major regulatory change affecting all sectors",
+                    "company_profile": {"name": "Test"},
+                },
+                headers=auth_headers,
+            )
+        assert r.status_code == 504
+
+    def test_legacy_error_dict_without_code_is_not_a_200(self, client, auth_headers):
+        with patch(
+            "src.agents.graph.arun_qa",
+            new=AsyncMock(return_value={"error": "Rate limited by gemini API."}),
+        ):
+            r = client.post(
+                "/api/v1/qa",
+                json={"question": "What is CSRD compliance?"},
+                headers=auth_headers,
+            )
+        assert r.status_code == 503
 
     @patch("src.agents.graph.arun_gap_analysis", new_callable=AsyncMock)
     def test_gap_analysis_error_returns_500(self, mock_gap, client, auth_headers):
@@ -499,6 +571,8 @@ class TestServiceDegradation:
                 headers=auth_headers,
             )
             assert response.status_code == 503
+            assert "Qdrant" in response.json()["detail"]
+            assert "Riprova" in response.json()["detail"]
         finally:
             app_state.qdrant_available = original
 
@@ -515,6 +589,8 @@ class TestServiceDegradation:
                 headers=auth_headers,
             )
             assert response.status_code == 503
+            assert "GOOGLE_API_KEY" in response.json()["detail"]
+            assert "non è configurato" in response.json()["detail"]
         finally:
             app_state.llm_available = original
 

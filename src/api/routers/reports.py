@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.api.errors import raise_for_result
 from src.api.rate_limit import limiter
 from src.audit import AuditAction, audit_log, get_client_ip
 from src.auth.dependencies import CurrentUser, get_current_user
@@ -128,17 +129,9 @@ async def generate_gap_report(
         profile_dict = payload.company_profile.model_dump()
         gap_data = await arun_gap_analysis(payload.framework.value, profile_dict)
 
-        # Check for agent errors
-        if isinstance(gap_data, dict) and gap_data.get("error"):
-            logger.warning(
-                "gap_analysis_returned_error",
-                framework=payload.framework.value,
-                error=gap_data["error"],
-            )
-            raise HTTPException(
-                status_code=502,
-                detail=f"Gap analysis failed: {gap_data['error']}",
-            )
+        # An agent error is an honest upstream HTTP error (503/502/504), with
+        # the Italian detail the UI shows; the raw message is only logged.
+        raise_for_result(gap_data, endpoint="reports.gap_analysis")
 
         # Normalise gap_data: ensure it has the expected structure
         gap_data = _normalise_gap_data(gap_data, payload.framework.value)

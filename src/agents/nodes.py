@@ -346,15 +346,38 @@ def citation_grounding_rate(result: dict, retrieved_chunks: list | None) -> floa
 
 
 def _pack_llm_result(result: dict, state: AgentState | None = None) -> dict:
-    """Pack LLM result into graph state format, applying the grounding guard."""
+    """Pack LLM result into graph state format, applying the grounding guard.
+
+    An LLM failure (``error`` in the result) is also mirrored into the state's
+    ``error`` channel so downstream gates (SNC, CoVe) do not spend more LLM calls
+    verifying an error payload and the caller can map it to an honest status.
+    """
     if state is not None:
         result = _apply_grounding_guard(result, state.get("retrieved_chunks"))
     confidence = extract_confidence(result)
-    return {
+    packed = {
         "result_json": json.dumps(result, ensure_ascii=False),
         "confidence_score": confidence,
         "requires_review": confidence < 0.8 or bool(result.get("requires_expert_review")),
     }
+    if isinstance(result, dict) and result.get("error"):
+        packed["error"] = str(result["error"])
+    return packed
+
+
+# Prefix of the state ``error`` written by retrieve_node on a Qdrant failure.
+RETRIEVAL_ERROR_PREFIX = "Knowledge base retrieval failed"
+
+
+def _retrieval_failed(state: AgentState) -> bool:
+    """True when retrieve_node could not reach the knowledge base.
+
+    The agents must NOT answer in that case: an answer with zero regulatory
+    evidence is not the grounded answer the product promises, and the retrieval
+    error payload already sitting in ``result_json`` must reach the client as an
+    honest 503 instead of being overwritten by an evidence-free LLM answer.
+    """
+    return str(state.get("error") or "").startswith(RETRIEVAL_ERROR_PREFIX)
 
 
 # ─── Synchronous Nodes (for tests & sync graph) ──────────────────
@@ -424,20 +447,41 @@ def retrieve_node(state: AgentState) -> dict:
         return {"retrieved_chunks": results}
     except Exception as e:
         logger.error(f"Retrieval failed: {e}")
-        return {"retrieved_chunks": [], "error": f"Knowledge base retrieval failed: {str(e)}"}
+        error = f"{RETRIEVAL_ERROR_PREFIX}: {str(e)}"
+        # The failure is the result: the agents skip the LLM (see _retrieval_failed)
+        # and src.api.errors maps error_code -> HTTP 503 for the client.
+        failure_payload = {
+            "error": error,
+            "error_code": "retrieval_unavailable",
+            "confidence_score": 0.0,
+            "requires_expert_review": True,
+        }
+        return {
+            "retrieved_chunks": [],
+            "error": error,
+            "result_json": json.dumps(failure_payload),
+            "confidence_score": 0.0,
+            "requires_review": True,
+        }
 
 
 def monitor_agent_node(state: AgentState) -> dict:
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_monitor_prompt(state)
     return _pack_llm_result(call_llm(system_prompt, user_msg), state)
 
 
 def gap_analyst_node(state: AgentState) -> dict:
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_gap_prompt(state)
     return _pack_llm_result(call_llm(system_prompt, user_msg), state)
 
 
 def qa_bot_node(state: AgentState) -> dict:
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_qa_prompt(state)
     return _pack_llm_result(call_llm(system_prompt, user_msg), state)
 
@@ -447,18 +491,24 @@ def qa_bot_node(state: AgentState) -> dict:
 
 async def async_monitor_agent_node(state: AgentState) -> dict:
     """Async monitor agent: uses acall_llm() → .ainvoke() (non-blocking)."""
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_monitor_prompt(state)
     return _pack_llm_result(await acall_llm(system_prompt, user_msg), state)
 
 
 async def async_gap_analyst_node(state: AgentState) -> dict:
     """Async gap analyst: uses acall_llm() → .ainvoke() (non-blocking)."""
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_gap_prompt(state)
     return _pack_llm_result(await acall_llm(system_prompt, user_msg), state)
 
 
 async def async_qa_bot_node(state: AgentState) -> dict:
     """Async QA bot: uses acall_llm() → .ainvoke() (non-blocking)."""
+    if _retrieval_failed(state):
+        return {}
     system_prompt, user_msg = _build_qa_prompt(state)
     return _pack_llm_result(await acall_llm(system_prompt, user_msg), state)
 
@@ -558,10 +608,13 @@ async def async_simple_response_node(state: AgentState) -> dict:
                     SIMPLE_RESPONSE_CACHE_HITS.inc()
             except Exception:
                 pass
+            # Serve the cached entry with ITS confidence (0.0 when it has none) and
+            # its own review flag - a cache hit must not fabricate a 0.8 score.
+            confidence = extract_confidence(cached)
             return {
                 "result_json": json.dumps(cached, ensure_ascii=False),
-                "confidence_score": cached.get("confidence_score", 0.8),
-                "requires_review": False,
+                "confidence_score": confidence,
+                "requires_review": confidence < 0.8 or bool(cached.get("requires_expert_review")),
             }
     except Exception as e:
         logger.warning("simple_response_cache_error: %s", e)

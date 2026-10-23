@@ -12,6 +12,10 @@ one:
 5. optionally runs the CoVe orchestrator (which emits its own ``DoneEvent`` and
    the generator ``return``s early), otherwise emits a final ``DoneEvent``
 6. on any exception, emits a single non-recoverable ``ErrorEvent``
+7. an agent result carrying ``error``/``error_code`` becomes a terminal,
+   non-recoverable ``ErrorEvent`` (Italian message) with no tokens and no done;
+   a CoVe failure is a recoverable ``ErrorEvent`` followed by a done with
+   ``cove_applied=False`` / ``requires_review=True``
 
 Every external dependency is mocked. The agent graph functions and the CoVe
 orchestrator are imported *function-locally* inside generators.py, so they are
@@ -136,7 +140,10 @@ class TestQaStreamHappyPath:
         assert citations[0].celex == "32022L2464"
         assert citations[0].article == "Art. 19a"
         assert citations[0].title == "CSRD"
-        assert citations[0].verified is False
+        # No verifier ran on this citation: the flag is ABSENT, not a fake False.
+        assert citations[0].verified is None
+        # An explicit url in the result is kept as-is.
+        assert citations[0].url == "https://eur-lex.europa.eu/eli/32022L2464"
 
         # Final DoneEvent, no CoVe.
         done = [e for e in events if isinstance(e, DoneEvent)]
@@ -212,20 +219,95 @@ class TestQaStreamHappyPath:
         done = [e for e in events if isinstance(e, DoneEvent)][0]
         assert done.total_tokens == 0
 
-    async def test_default_confidence_when_falsy(self):
-        # confidence_score is 0 (falsy) -> code substitutes the 0.85 default.
+    async def test_zero_confidence_is_reported_as_zero(self):
+        # confidence_score 0 used to be rewritten to a 0.85 default. A zero
+        # score is a real score: it stays 0.0 (and the LLM's own review flag
+        # is honoured as-is).
         result = {"answer": "hi", "citations": [], "confidence_score": 0}
         with patch(GRAPH_QA, AsyncMock(return_value=result)):
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
         done = [e for e in events if isinstance(e, DoneEvent)][0]
-        assert done.confidence_score == pytest.approx(0.85)
+        assert done.confidence_score == 0.0
 
-    async def test_missing_confidence_uses_default(self):
+    async def test_missing_confidence_is_zero_and_forces_review(self):
+        # Nothing scored this answer: no default may stand in. 0.0 + review.
         result = {"answer": "hi", "citations": []}
         with patch(GRAPH_QA, AsyncMock(return_value=result)):
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
         done = [e for e in events if isinstance(e, DoneEvent)][0]
-        assert done.confidence_score == pytest.approx(0.85)
+        assert done.confidence_score == 0.0
+        assert done.requires_review is True
+
+    async def test_unparseable_confidence_is_zero_and_forces_review(self):
+        result = {"answer": "hi", "citations": [], "confidence_score": "high"}
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.confidence_score == 0.0
+        assert done.requires_review is True
+
+    async def test_requires_review_reflects_result_flag(self):
+        result = {
+            "answer": "hi",
+            "citations": [],
+            "confidence_score": 0.95,
+            "requires_expert_review": True,
+        }
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.95)
+
+
+# ------------------------------------------------------------------ #
+#  qa_stream_generator - agent returned an error dict (no exception)  #
+# ------------------------------------------------------------------ #
+
+
+class TestQaAgentErrorResult:
+    """The graph never raises: LLM/retrieval failures come back as a dict with
+    ``error``/``error_code``. These must become a terminal ``error`` event with
+    an Italian message - never streamed as tokens, never followed by ``done``."""
+
+    @pytest.mark.parametrize(
+        "error_code, snippet",
+        [
+            ("llm_timeout", "tempo massimo"),
+            ("llm_circuit_open", "non disponibile"),
+            ("llm_provider_error", "errore"),
+            ("retrieval_unavailable", "Qdrant"),
+        ],
+    )
+    async def test_error_dict_emits_terminal_error_event(self, error_code, snippet):
+        result = {
+            "error": "LLM error (gemini): upstream boom",
+            "error_code": error_code,
+            "confidence_score": 0.0,
+            "requires_expert_review": True,
+        }
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=True))
+
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1
+        assert errors[0].recoverable is False
+        assert errors[0].error_code == error_code
+        assert snippet.lower() in errors[0].message.lower()
+        # The upstream English message is not leaked to the client.
+        assert "upstream boom" not in errors[0].message
+        # No tokens, no done: the error payload is not an answer.
+        assert not [e for e in events if isinstance(e, TokenEvent)]
+        assert not [e for e in events if isinstance(e, DoneEvent)]
+
+    async def test_legacy_error_dict_without_code_still_fails_honestly(self):
+        result = {"error": "LLM timed out after 120s", "confidence_score": 0.0}
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1
+        assert errors[0].error_code == "llm_timeout"
+        assert not [e for e in events if isinstance(e, DoneEvent)]
 
 
 # ------------------------------------------------------------------ #
@@ -234,8 +316,10 @@ class TestQaStreamHappyPath:
 
 
 class TestQaCitationMapping:
-    async def test_celex_falls_back_to_reference(self):
-        # No "celex" key -> uses "reference".
+    async def test_reference_is_not_passed_off_as_celex(self):
+        # No "celex" and no framework: the article reference is NOT smuggled
+        # into the celex field (the UI shows celex as the identifier badge),
+        # and no URL is invented for it.
         result = {
             "answer": "x",
             "citations": [{"reference": "REF-123", "title": "Doc"}],
@@ -244,11 +328,11 @@ class TestQaCitationMapping:
         with patch(GRAPH_QA, AsyncMock(return_value=result)):
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
         cit = [e for e in events if isinstance(e, CitationEvent)][0]
-        # celex falls back to reference; article also reads "reference".
-        assert cit.celex == "REF-123"
+        assert cit.celex == ""
         assert cit.article == "REF-123"
+        assert cit.url is None
 
-    async def test_url_default_built_from_celex(self):
+    async def test_url_built_from_celex_defaults_to_italian_eurlex(self):
         result = {
             "answer": "x",
             "citations": [{"celex": "32024R1689"}],
@@ -257,7 +341,60 @@ class TestQaCitationMapping:
         with patch(GRAPH_QA, AsyncMock(return_value=result)):
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
         cit = [e for e in events if isinstance(e, CitationEvent)][0]
-        assert cit.url == "https://eur-lex.europa.eu/eli/32024R1689"
+        assert cit.url == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+
+    async def test_url_uses_english_eurlex_when_language_is_en(self):
+        result = {
+            "answer": "x",
+            "citations": [{"celex": "32024R1689"}],
+            "confidence_score": 0.7,
+        }
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(
+                qa_stream_generator("q", None, _fake_user(), enable_cove=False, language="en")
+            )
+        cit = [e for e in events if isinstance(e, CitationEvent)][0]
+        assert cit.url == "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689"
+
+    async def test_framework_only_citation_links_to_primary_act(self):
+        # The qa_bot prompt emits {framework, reference, quote_snippet} with no
+        # CELEX: the link resolves through the seeded primary act of the framework.
+        result = {
+            "answer": "x",
+            "citations": [{"framework": "CSRD", "reference": "Art. 19a(1)"}],
+            "confidence_score": 0.7,
+        }
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
+        cit = [e for e in events if isinstance(e, CitationEvent)][0]
+        assert cit.celex == "32022L2464"
+        assert cit.url == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022L2464"
+        assert cit.title == "CSRD"
+        assert cit.article == "Art. 19a(1)"
+
+    async def test_verified_and_grounded_only_from_pipeline_booleans(self):
+        result = {
+            "answer": "x",
+            "citations": [
+                {"celex": "32022L2464", "verified": True, "grounded": True},
+                {"celex": "32022L2464", "verified": "yes", "grounded": None},
+            ],
+            "confidence_score": 0.7,
+        }
+        with patch(GRAPH_QA, AsyncMock(return_value=result)):
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=False))
+        cits = [e for e in events if isinstance(e, CitationEvent)]
+        assert cits[0].verified is True and cits[0].grounded is True
+        # Non-boolean "verification" values are not trusted -> omitted.
+        assert cits[1].verified is None and cits[1].grounded is None
+
+    def test_absent_verified_is_omitted_from_the_wire_format(self):
+        from src.api.streaming.sse import format_sse
+
+        wire = format_sse(CitationEvent(celex="32022L2464", article="Art. 1", title="CSRD"))
+        assert '"verified"' not in wire
+        assert '"url"' not in wire
+        assert '"urn"' not in wire
 
     async def test_urn_preserved(self):
         result = {
@@ -365,9 +502,12 @@ class TestQaCoveEnabled:
             await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=True))
         assert arun.await_args.kwargs["cove_enabled"] is True
 
-    async def test_cove_failure_falls_back_to_normal_done(self):
-        # If the CoVe block raises, it is caught/logged and the generator
-        # falls through to emit its OWN final DoneEvent with cove_applied=True.
+    async def test_cove_failure_is_reported_and_done_says_not_applied(self):
+        # If the CoVe block raises, the generator still finishes the draft -
+        # but honestly: a RECOVERABLE error event says verification failed, and
+        # the final DoneEvent carries cove_applied=False (CoVe never ran) and
+        # requires_review=True (the answer is unverified). It used to claim
+        # cove_applied=True from the *request* flag.
         result = {"answer": "draft", "citations": [], "confidence_score": 0.66}
 
         with (
@@ -376,15 +516,34 @@ class TestQaCoveEnabled:
         ):
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=True))
 
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1
+        assert errors[0].recoverable is True
+        assert errors[0].error_code == "cove_failed"
+
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        # cove_applied reflects the *request* flag even on fallback.
-        assert done[0].cove_applied is True
+        assert done[0].cove_applied is False
+        assert done[0].requires_review is True
         assert done[0].confidence_score == pytest.approx(0.66)
-        # No fatal ErrorEvent - the fallback is graceful.
-        assert not [e for e in events if isinstance(e, ErrorEvent)]
-        # Draft tokens were still emitted before the fallback.
+        # Draft tokens were still emitted before the fallback, error precedes done.
         assert [e for e in events if isinstance(e, TokenEvent)]
+        assert events.index(errors[0]) < events.index(done[0])
+
+    async def test_cove_terminal_error_is_not_followed_by_done(self):
+        # The orchestrator ends with a NON-recoverable error (pipeline crash):
+        # the generator must not append a DoneEvent claiming completion.
+        cove_patch, _cls = _patch_cove(
+            [
+                PhaseChangeEvent(phase="planning", message="planning..."),
+                ErrorEvent(message="CoVe pipeline error: boom", recoverable=False),
+            ]
+        )
+        result = {"answer": "draft", "citations": [], "confidence_score": 0.5}
+        with patch(GRAPH_QA, AsyncMock(return_value=result)), cove_patch:
+            events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=True))
+        assert not [e for e in events if isinstance(e, DoneEvent)]
+        assert [e for e in events if isinstance(e, ErrorEvent)][-1].recoverable is False
 
 
 # ------------------------------------------------------------------ #
@@ -472,24 +631,63 @@ class TestGapAnalysisStream:
         tokens = [e for e in events if isinstance(e, TokenEvent)]
         assert "".join(t.content for t in tokens) == "answer-as-summary"
 
-    async def test_default_requires_review_true(self):
-        # Gap analysis defaults requires_review to True when absent.
+    async def test_requires_review_reflects_result_flag_not_a_default(self):
+        # The flag mirrors the pipeline's own verdict: absent -> False, set -> True.
         result = {"summary": "s", "confidence_score": 0.8}
         with patch(GRAPH_GAP, AsyncMock(return_value=result)):
             events = await _collect(
                 gap_analysis_stream_generator("CSRD", {}, _fake_user(), enable_cove=False)
             )
         done = [e for e in events if isinstance(e, DoneEvent)][0]
-        assert done.requires_review is True
+        assert done.requires_review is False
 
-    async def test_default_confidence_080(self):
+        flagged = {"summary": "s", "confidence_score": 0.8, "requires_expert_review": True}
+        with patch(GRAPH_GAP, AsyncMock(return_value=flagged)):
+            events = await _collect(
+                gap_analysis_stream_generator("CSRD", {}, _fake_user(), enable_cove=False)
+            )
+        assert [e for e in events if isinstance(e, DoneEvent)][0].requires_review is True
+
+    async def test_zero_confidence_not_rewritten_to_080(self):
         result = {"summary": "s", "confidence_score": 0}
         with patch(GRAPH_GAP, AsyncMock(return_value=result)):
             events = await _collect(
                 gap_analysis_stream_generator("CSRD", {}, _fake_user(), enable_cove=False)
             )
         done = [e for e in events if isinstance(e, DoneEvent)][0]
-        assert done.confidence_score == pytest.approx(0.80)
+        assert done.confidence_score == 0.0
+
+    async def test_structured_gap_result_streams_a_digest_not_a_python_repr(self):
+        # The gap agent returns the prompt's JSON shape (no summary/answer):
+        # the streamed text must be a readable digest, not str(dict).
+        result = {
+            "framework": "CSRD",
+            "overall_score": 45.0,
+            "status_summary": {"compliant": 2, "non_compliant": 5},
+            "requirements": [],
+            "confidence_score": 0.8,
+        }
+        with patch(GRAPH_GAP, AsyncMock(return_value=result)):
+            events = await _collect(
+                gap_analysis_stream_generator("CSRD", {}, _fake_user(), enable_cove=False)
+            )
+        text = "".join(e.content for e in events if isinstance(e, TokenEvent))
+        assert "45.0%" in text
+        assert "2 compliant" in text
+        assert "{'" not in text
+
+    async def test_agent_error_dict_emits_terminal_error(self):
+        result = {"error": "Rate limited by gemini API.", "error_code": "llm_rate_limited"}
+        with patch(GRAPH_GAP, AsyncMock(return_value=result)):
+            events = await _collect(
+                gap_analysis_stream_generator("CSRD", {}, _fake_user(), enable_cove=False)
+            )
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1
+        assert errors[0].recoverable is False
+        assert errors[0].error_code == "llm_rate_limited"
+        assert not [e for e in events if isinstance(e, DoneEvent)]
+        assert not [e for e in events if isinstance(e, TokenEvent)]
 
     async def test_cove_enabled_passthrough_and_early_return(self):
         cove_done = DoneEvent(
@@ -516,7 +714,7 @@ class TestGapAnalysisStream:
         cls.assert_called_once()
         assert cls.call_args.kwargs["config"].enabled is True
 
-    async def test_cove_failure_falls_back(self):
+    async def test_cove_failure_falls_back_honestly(self):
         result = {"summary": "draft", "confidence_score": 0.6}
         with (
             patch(GRAPH_GAP, AsyncMock(return_value=result)),
@@ -527,8 +725,10 @@ class TestGapAnalysisStream:
             )
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        assert done[0].cove_applied is True
-        assert not [e for e in events if isinstance(e, ErrorEvent)]
+        assert done[0].cove_applied is False
+        assert done[0].requires_review is True
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1 and errors[0].recoverable is True
 
     async def test_agent_exception_emits_error_event(self):
         with patch(GRAPH_GAP, AsyncMock(side_effect=ValueError("gap failed"))):
@@ -587,14 +787,27 @@ class TestMonitorStream:
         tokens = [e for e in events if isinstance(e, TokenEvent)]
         assert "".join(t.content for t in tokens) == "answer-impact"
 
-    async def test_default_confidence_090(self):
+    async def test_zero_confidence_not_rewritten_to_090(self):
         result = {"impact_summary": "s", "confidence_score": 0}
         with patch(GRAPH_MONITOR, AsyncMock(return_value=result)):
             events = await _collect(
                 monitor_stream_generator("change", {}, _fake_user(), enable_cove=False)
             )
         done = [e for e in events if isinstance(e, DoneEvent)][0]
-        assert done.confidence_score == pytest.approx(0.90)
+        assert done.confidence_score == 0.0
+
+    async def test_agent_error_dict_emits_terminal_error(self):
+        result = {
+            "error": "Knowledge base retrieval failed: x",
+            "error_code": "retrieval_unavailable",
+        }
+        with patch(GRAPH_MONITOR, AsyncMock(return_value=result)):
+            events = await _collect(
+                monitor_stream_generator("change", {}, _fake_user(), enable_cove=False)
+            )
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1 and errors[0].recoverable is False
+        assert not [e for e in events if isinstance(e, DoneEvent)]
 
     async def test_default_requires_review_false(self):
         result = {"impact_summary": "s", "confidence_score": 0.8}
@@ -625,7 +838,7 @@ class TestMonitorStream:
         assert done[0].revised_text == "revised impact"
         cls.assert_called_once()
 
-    async def test_cove_failure_falls_back(self):
+    async def test_cove_failure_falls_back_honestly(self):
         result = {"impact_summary": "draft", "confidence_score": 0.6}
         with (
             patch(GRAPH_MONITOR, AsyncMock(return_value=result)),
@@ -636,8 +849,10 @@ class TestMonitorStream:
             )
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        assert done[0].cove_applied is True
-        assert not [e for e in events if isinstance(e, ErrorEvent)]
+        assert done[0].cove_applied is False
+        assert done[0].requires_review is True
+        errors = [e for e in events if isinstance(e, ErrorEvent)]
+        assert len(errors) == 1 and errors[0].recoverable is True
 
     async def test_agent_exception_emits_error_event(self):
         with patch(GRAPH_MONITOR, AsyncMock(side_effect=RuntimeError("monitor down"))):

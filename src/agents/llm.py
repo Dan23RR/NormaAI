@@ -111,7 +111,12 @@ def get_llm(temperature: float | None = None):
 
 
 def _make_error_response(error_msg: str) -> dict:
-    """Build a standardized error response dict."""
+    """Build a standardized error response dict.
+
+    ``error`` is the human-readable (English, log-oriented) message; ``error_code``
+    is the machine-readable class the HTTP layer maps to an honest status code
+    (see src.api.errors.ERROR_CODE_STATUS).
+    """
     from src.config import get_settings
 
     settings = get_settings()
@@ -121,20 +126,40 @@ def _make_error_response(error_msg: str) -> dict:
         or "api_key" in error_msg.lower()
         or "invalid" in error_msg.lower()
     ):
+        code = "llm_auth"
         detail = f"Invalid API key for {settings.llm_provider}. Check your .env file."
-    elif "timeout" in error_msg.lower():
+    elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+        code = "llm_timeout"
         detail = f"LLM timed out after {settings.llm_timeout_seconds}s. Try a simpler query."
     elif "rate" in error_msg.lower() or "quota" in error_msg.lower() or "429" in error_msg:
+        code = "llm_rate_limited"
         detail = f"Rate limited by {settings.llm_provider} API. Wait a moment and retry."
     elif "overloaded" in error_msg.lower() or "503" in error_msg:
+        code = "llm_overloaded"
         detail = f"{settings.llm_provider} is temporarily overloaded. Retry in 30 seconds."
     elif "circuit" in error_msg.lower():
+        code = "llm_circuit_open"
         detail = "LLM service is temporarily unavailable. The system is recovering."
     else:
+        code = "llm_provider_error"
         detail = f"LLM error ({settings.llm_provider}): {error_msg}"
 
     return {
         "error": detail,
+        "error_code": code,
+        "confidence_score": 0.0,
+        "requires_expert_review": True,
+    }
+
+
+def _missing_key_response(settings) -> dict:
+    """Error dict for a provider whose API key is not configured."""
+    key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
+        settings.llm_provider, "ANTHROPIC_API_KEY"
+    )
+    return {
+        "error": f"{key_name} not configured. Add it to your .env file.",
+        "error_code": "llm_not_configured",
         "confidence_score": 0.0,
         "requires_expert_review": True,
     }
@@ -150,14 +175,7 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
     settings = get_settings()
 
     if not settings.active_api_key:
-        key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
-            settings.llm_provider, "ANTHROPIC_API_KEY"
-        )
-        return {
-            "error": f"{key_name} not configured. Add it to your .env file.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _missing_key_response(settings)
 
     # Circuit check inside its own guard: an OPEN circuit must degrade to the
     # standardized error dict (what every caller expects), not raise
@@ -228,14 +246,7 @@ async def acall_llm(
     settings = get_settings()
 
     if not settings.active_api_key:
-        key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
-            settings.llm_provider, "ANTHROPIC_API_KEY"
-        )
-        return {
-            "error": f"{key_name} not configured. Add it to your .env file.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _missing_key_response(settings)
 
     # Circuit check inside its own guard (see call_llm): an OPEN circuit degrades
     # to the standardized error dict instead of raising into the agent graph.

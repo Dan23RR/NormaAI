@@ -372,7 +372,28 @@ class TestGapAnalysis:
 
     def test_gap_analysis_502_when_agent_returns_error(self, client, auth_headers, profile):
         """An {"error": ...} dict from the agent surfaces as a 502 (upstream
-        failure), not a generic 500."""
+        provider failure) with an Italian detail, not a generic 500 - and the
+        raw upstream text is not leaked."""
+
+        async def _fake_arun(framework, profile_dict):
+            return {
+                "error": "LLM error (gemini): model exploded",
+                "error_code": "llm_provider_error",
+            }
+
+        with patch("src.agents.graph.arun_gap_analysis", _fake_arun):
+            r = client.post(
+                "/api/v1/reports/gap-analysis",
+                json={"framework": "CSRD", "company_profile": profile},
+                headers=auth_headers,
+            )
+
+        assert r.status_code == 502
+        assert "provider LLM" in r.json()["detail"]
+        assert "model exploded" not in r.json()["detail"]
+
+    def test_gap_analysis_504_when_agent_timed_out(self, client, auth_headers, profile):
+        """A timeout is a 504, even for a legacy error dict without error_code."""
 
         async def _fake_arun(framework, profile_dict):
             return {"error": "model timed out"}
@@ -384,8 +405,8 @@ class TestGapAnalysis:
                 headers=auth_headers,
             )
 
-        assert r.status_code == 502
-        assert "model timed out" in r.json()["detail"]
+        assert r.status_code == 504
+        assert "tempo massimo" in r.json()["detail"]
 
     def test_gap_analysis_500_on_generator_failure(self, client, auth_headers, profile):
         """An unexpected error inside PDF generation is masked as a generic 500

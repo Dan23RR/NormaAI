@@ -11,6 +11,9 @@ import {
 // production that would point every visitor at their own machine.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
+export const NETWORK_ERROR =
+  'Il server non risponde. Riprova tra un minuto; se il problema continua, scrivi a info@normaai.org.'
+
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
   console.error('NEXT_PUBLIC_API_URL must start with http:// or https://')
@@ -197,10 +200,15 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...options,
-      headers,
-    })
+    let res: Response
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        ...options,
+        headers,
+      })
+    } catch {
+      throw new Error(NETWORK_ERROR)
+    }
 
     if (res.status === 401) {
       const refreshed = await this.refreshAccessToken()
@@ -211,12 +219,12 @@ class ApiClient {
       }
       clearTokens()
       window.location.href = '/login'
-      throw new Error('Unauthorized')
+      throw new Error('Sessione scaduta. Accedi di nuovo.')
     }
 
     if (!res.ok) {
       const error: ApiError = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      throw new Error(error.detail || `Request failed: ${res.status}`)
+      throw new Error(error.detail || `Richiesta fallita (${res.status}).`)
     }
 
     return res.json()
@@ -224,20 +232,18 @@ class ApiClient {
 
   // ─── Auth endpoints ─────────────────────────────────────
 
+  // Real credentials always reach the backend: a leftover demo flag in
+  // localStorage must never hijack a real login.
   async login(email: string, password: string): Promise<TokenPair> {
-    if (isDemoMode()) {
-      await mockDelay(500)
-      setTokens(DEMO_TOKENS.access_token, DEMO_TOKENS.refresh_token)
-      return DEMO_TOKENS
-    }
-
     const res = await fetch(`${this.baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+    }).catch(() => {
+      throw new Error(NETWORK_ERROR)
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Login failed' }))
+      const err = await res.json().catch(() => ({ detail: 'Accesso non riuscito.' }))
       throw new Error(err.detail)
     }
     const data: TokenPair = await res.json()
@@ -245,20 +251,28 @@ class ApiClient {
     return data
   }
 
-  async register(email: string, password: string, name: string, orgName: string): Promise<TokenPair> {
-    if (isDemoMode()) {
-      await mockDelay(500)
-      setTokens(DEMO_TOKENS.access_token, DEMO_TOKENS.refresh_token)
-      return DEMO_TOKENS
-    }
-
+  async register(
+    email: string,
+    password: string,
+    name: string,
+    orgName: string,
+    inviteCode?: string,
+  ): Promise<TokenPair> {
     const res = await fetch(`${this.baseUrl}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name, organization_name: orgName }),
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        organization_name: orgName || undefined,
+        ...(inviteCode ? { invite_code: inviteCode } : {}),
+      }),
+    }).catch(() => {
+      throw new Error(NETWORK_ERROR)
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Registration failed' }))
+      const err = await res.json().catch(() => ({ detail: 'Registrazione non riuscita.' }))
       throw new Error(err.detail)
     }
     const data: TokenPair = await res.json()

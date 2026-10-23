@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { Play, KeyRound } from 'lucide-react'
+import { Logo } from '@/components/Logo'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, describedBy } from '@/components/ui/Field'
+import { LawQuote } from '@/components/ui/LawQuote'
+import { eurlexUrl } from '@/lib/sources'
 
-export default function LoginPage() {
+type Mode = 'login' | 'register'
+
+function LoginForm() {
   const { login, register, loginDemo } = useAuth()
   const router = useRouter()
-  const [isRegister, setIsRegister] = useState(false)
+  const params = useSearchParams()
+  const next = params.get('next') || '/app'
+  const [mode, setMode] = useState<Mode>(params.get('invite') ? 'register' : 'login')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -16,187 +25,192 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [orgName, setOrgName] = useState('')
+  const [inviteCode, setInviteCode] = useState(params.get('invite') || '')
+
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/app'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-
     try {
-      if (isRegister) {
-        await register(email, password, name, orgName)
+      if (mode === 'register') {
+        await register(email, password, name, orgName, inviteCode.trim() || undefined)
       } else {
         await login(email, password)
       }
-      router.push('/dashboard')
+      router.push(safeNext)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Qualcosa non ha funzionato. Riprova.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDemoLogin = () => {
+  const handleDemo = () => {
     loginDemo()
-    router.push('/dashboard')
+    router.push('/app')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent2 flex items-center justify-center text-white font-extrabold text-lg">
-              N
-            </div>
-            <span className="text-2xl font-bold tracking-tight">
-              NormaAI <span className="font-light text-slate-400">Intelligence</span>
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">EU Regulatory Compliance Platform</p>
+    <div className="w-full max-w-md">
+      <h1 className="text-h2">{mode === 'register' ? 'Crea il tuo account' : 'Accedi a NormaAI'}</h1>
+      <p className="mt-2 text-body text-ink-2">
+        {mode === 'register'
+          ? 'Serve un codice di invito. Se non lo hai, richiedi una demo dalla pagina principale.'
+          : 'Usa l’email e la password del tuo account.'}
+      </p>
+
+      {error && (
+        <div className="mt-5 rounded-md border border-bad/30 bg-bad/5 px-3 py-2.5 text-small text-bad" role="alert">
+          {error}
         </div>
+      )}
 
-        {/* Card */}
-        <div className="bg-surface border border-white/[0.08] rounded-xl p-8">
-          <h2 className="text-lg font-semibold mb-6">
-            {isRegister ? 'Create account' : 'Sign in'}
-          </h2>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm" role="alert">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isRegister && (
-              <>
-                <div>
-                  <label htmlFor="login-name" className="block text-sm text-slate-400 mb-1.5">Full name</label>
-                  <input
-                    id="login-name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    autoComplete="name"
-                    className="w-full px-3 py-2.5 bg-surface2 border border-white/[0.08] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-accent/50 transition"
-                    placeholder="Mario Rossi"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="login-org" className="block text-sm text-slate-400 mb-1.5">Organization</label>
-                  <input
-                    id="login-org"
-                    type="text"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    required
-                    autoComplete="organization"
-                    className="w-full px-3 py-2.5 bg-surface2 border border-white/[0.08] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-accent/50 transition"
-                    placeholder="Acme Srl"
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label htmlFor="login-email" className="block text-sm text-slate-400 mb-1.5">Email</label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+        {mode === 'register' && (
+          <>
+            <Field label="Codice di invito" htmlFor="invite" required>
+              <Input
+                id="invite"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
                 required
-                autoComplete="email"
-                className="w-full px-3 py-2.5 bg-surface2 border border-white/[0.08] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-accent/50 transition"
-                placeholder="you@company.com"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="Il codice ricevuto via email"
               />
-            </div>
-
-            <div>
-              <label htmlFor="login-password" className="block text-sm text-slate-400 mb-1.5">Password</label>
-              <input
-                id="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
-                className="w-full px-3 py-2.5 bg-surface2 border border-white/[0.08] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-accent/50 transition"
-                placeholder="Min. 8 characters"
+            </Field>
+            <Field label="Nome e cognome" htmlFor="name" required>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
+            </Field>
+            <Field
+              label="Organizzazione"
+              htmlFor="org"
+              help="Lascia vuoto se l'invito ti aggiunge a un'organizzazione esistente."
+            >
+              <Input
+                id="org"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                autoComplete="organization"
+                aria-describedby={describedBy('org', { help: true })}
               />
-            </div>
+            </Field>
+          </>
+        )}
+        <Field label="Email" htmlFor="email" required>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            inputMode="email"
+          />
+        </Field>
+        <Field
+          label="Password"
+          htmlFor="password"
+          required
+          help={mode === 'register' ? 'Almeno 8 caratteri.' : undefined}
+        >
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+            aria-describedby={mode === 'register' ? describedBy('password', { help: true }) : undefined}
+          />
+        </Field>
+        <Button type="submit" loading={loading} className="w-full" size="lg">
+          {mode === 'register' ? 'Crea l’account' : 'Accedi'}
+        </Button>
+      </form>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-lg bg-gradient-to-r from-accent to-accent2 text-white font-medium hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {isRegister ? 'Create account' : 'Sign in'}
+      <p className="mt-4 text-small text-ink-2">
+        {mode === 'register' ? (
+          <>
+            Hai già un account?{' '}
+            <button type="button" className="text-union hover:underline" onClick={() => { setMode('login'); setError('') }}>
+              Accedi
             </button>
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <span className="text-xs text-slate-600">oppure</span>
-            <div className="flex-1 h-px bg-white/[0.06]" />
-          </div>
-
-          {/* Demo button */}
-          <button
-            onClick={handleDemoLogin}
-            className="w-full py-2.5 rounded-lg border border-green-500/30 bg-green-500/5 text-green-400 font-medium hover:bg-green-500/10 transition flex items-center justify-center gap-2"
-          >
-            <Play size={16} />
-            Entra in modalità Demo
-          </button>
-          <p className="text-[11px] text-slate-600 text-center mt-2">
-            Esplora la dashboard con dati di esempio, senza bisogno del backend
-          </p>
-
-          {/* SSO */}
-          <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <span className="text-xs text-slate-600">SSO Enterprise</span>
-            <div className="flex-1 h-px bg-white/[0.06]" />
-          </div>
-
-          <button
-            onClick={() => alert('SSO integration requires backend configuration. Contact admin to set up SAML/OIDC provider.')}
-            className="w-full py-2.5 rounded-lg border border-white/[0.08] bg-white/[0.02] text-slate-300 font-medium hover:bg-white/[0.05] transition flex items-center justify-center gap-2"
-          >
-            <KeyRound size={16} />
-            Sign in with SSO
-          </button>
-          <div className="flex justify-center gap-4 mt-2">
-            {['Okta', 'Azure AD', 'Google'].map(provider => (
-              <span key={provider} className="text-[10px] text-slate-600">{provider}</span>
-            ))}
-          </div>
-
-          <p className="text-[10px] text-slate-600 text-center mt-4">
-            Accedendo accetti i{' '}
-            <a href="/terms" className="text-accent hover:underline">Termini di Servizio</a>
-            {' '}e la{' '}
-            <a href="/privacy" className="text-accent hover:underline">Privacy Policy</a>.
-          </p>
-
-          <div className="mt-5 text-center text-sm text-slate-500">
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => { setIsRegister(!isRegister); setError('') }}
-              className="text-accent hover:underline"
-            >
-              {isRegister ? 'Sign in' : 'Create one'}
+          </>
+        ) : (
+          <>
+            Hai un codice di invito?{' '}
+            <button type="button" className="text-union hover:underline" onClick={() => { setMode('register'); setError('') }}>
+              Crea l’account
             </button>
-          </div>
-        </div>
+            . Password dimenticata? Scrivi a{' '}
+            <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union hover:underline">
+              info@normaai.org
+            </a>
+            .
+          </>
+        )}
+      </p>
+
+      <div className="mt-8 border-t border-rule pt-6">
+        <Button variant="secondary" className="w-full" onClick={handleDemo}>
+          Apri la demo con dati di esempio
+        </Button>
+        <p className="mt-2 text-caption text-ink-3">
+          Nessun account necessario. Risposte, clienti e analisi sono esempi, non il corpus reale.
+        </p>
       </div>
+
+      <p className="mt-6 text-caption text-ink-3">
+        Accedendo accetti i{' '}
+        <Link href="/terms" className="underline">
+          Termini di servizio
+        </Link>{' '}
+        e la{' '}
+        <Link href="/privacy" className="underline">
+          Privacy
+        </Link>
+        .
+      </p>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <div className="grid min-h-screen bg-surface lg:grid-cols-12">
+      <aside className="hidden flex-col justify-between border-r border-rule bg-surface-2 p-10 lg:col-span-5 lg:flex">
+        <Logo size="lg" />
+        <div className="max-w-md">
+          <p className="text-h3 text-ink">
+            Ogni risposta mostra il passaggio di legge che la sostiene.
+          </p>
+          <LawQuote
+            className="mt-6"
+            quote="siano informate del fatto che stanno interagendo con un sistema di IA"
+            before="I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate"
+            act="Regolamento (UE) 2024/1689"
+            article="art. 50, par. 1"
+            celex="32024R1689"
+            url={eurlexUrl('32024R1689')}
+            origin="EUR-Lex"
+          />
+        </div>
+        <p className="text-caption text-ink-3">Codice aperto su GitHub. Dati in Europa.</p>
+      </aside>
+      <main className="flex items-center justify-center px-6 py-12 lg:col-span-7">
+        <div className="w-full max-w-md">
+          <div className="mb-8 lg:hidden">
+            <Logo />
+          </div>
+          <Suspense fallback={null}>
+            <LoginForm />
+          </Suspense>
+        </div>
+      </main>
     </div>
   )
 }

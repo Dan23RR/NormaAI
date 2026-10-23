@@ -5,11 +5,18 @@ const nextConfig = {
   poweredByHeader: false, // don't advertise the framework
   async redirects() {
     return [
-      {
-        source: '/dashboard/overview',
-        destination: '/dashboard',
-        permanent: true,
-      },
+      // The application moved from /dashboard to /app (v2); old links keep working.
+      { source: '/dashboard', destination: '/app', permanent: true },
+      { source: '/dashboard/overview', destination: '/app', permanent: true },
+      { source: '/dashboard/qa', destination: '/app/chiedi', permanent: true },
+      { source: '/dashboard/gap-analysis', destination: '/app/clienti', permanent: true },
+      { source: '/dashboard/monitor', destination: '/app/monitoraggio', permanent: true },
+      { source: '/dashboard/alerts', destination: '/app/monitoraggio', permanent: true },
+      { source: '/dashboard/clients', destination: '/app/clienti', permanent: true },
+      { source: '/dashboard/clients/:id', destination: '/app/clienti/:id', permanent: true },
+      { source: '/dashboard/reports', destination: '/app/report', permanent: true },
+      { source: '/dashboard/admin', destination: '/app/admin', permanent: true },
+      { source: '/dashboard/:path*', destination: '/app', permanent: false },
     ]
   },
   async headers() {
@@ -17,20 +24,7 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",  // Next.js requires inline scripts; nonce via middleware in production
-              "style-src 'self' 'unsafe-inline'",   // Tailwind injects inline styles
-              "img-src 'self' data: blob:",
-              "font-src 'self'",
-              "connect-src 'self' http://localhost:8000 https://*.normaai.eu",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
-          },
+          // The Content-Security-Policy is set in src/middleware.ts (single source).
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',

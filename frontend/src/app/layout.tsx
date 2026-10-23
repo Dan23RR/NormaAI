@@ -1,27 +1,25 @@
 import type { Metadata, Viewport } from 'next'
-import { Source_Serif_4, Inter, Geist_Mono } from 'next/font/google'
+import { Literata, Public_Sans, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 import { LocaleProvider } from '@/hooks/useLocale'
+import { ToastProvider } from '@/components/ui/Toast'
 import { CookieBanner } from '@/components/CookieBanner'
 
-// Editorial serif for public-page headlines (warm-paper theme).
-// Self-hosted by next/font: no external request, no layout shift.
-const serif = Source_Serif_4({
-  subsets: ['latin'],
-  weight: ['400', '600'],
+// Self-hosted by next/font: no external request, no layout shift, CSP
+// font-src 'self' stays intact. Literata carries the text of the law and
+// the headings (optical sizes on), Public Sans carries the interface.
+const serif = Literata({
+  subsets: ['latin', 'latin-ext'],
+  axes: ['opsz'],
   style: ['normal', 'italic'],
   variable: '--font-serif',
   display: 'swap',
 })
 
-// Self-hosted by next/font (variable fonts). Replaces the old globals.css
-// @import from Google Fonts, which was both invalid CSS position (after
-// @tailwind - Turbopack rejects it) and blocked at runtime by the CSP
-// font-src 'self'. Self-hosting serves them from our own origin: CSP-compliant.
-const sans = Inter({
-  subsets: ['latin'],
+const sans = Public_Sans({
+  subsets: ['latin', 'latin-ext'],
   variable: '--font-sans',
   display: 'swap',
 })
@@ -32,35 +30,34 @@ const mono = Geist_Mono({
   display: 'swap',
 })
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai-psi.vercel.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai.org'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title:
-    'NormaAI - Compliance EU con citazioni primary-source verificate | CSRD, AI Act, DORA, NIS2',
+  title: {
+    default: 'NormaAI: risposte sul diritto UE con la fonte esatta',
+    template: '%s | NormaAI',
+  },
   description:
-    'Il copilota normativo difendibile in audit per i 7 framework UE. Q&A con citazione primary source EUR-Lex in 30 secondi. CSRD post-Omnibus, AI Act, DORA per intermediari piccoli, NIS2, GDPR.',
+    "Domande su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia UE con l'articolo citato e il passaggio di legge verificabile su EUR-Lex e Normattiva.",
   keywords: [
     'CSRD',
     'CSDDD',
     'AI Act',
     'DORA',
     'NIS2',
-    'EU Taxonomy',
+    'Tassonomia UE',
     'GDPR',
-    'compliance EU',
+    'compliance UE',
     'EUR-Lex',
+    'Normattiva',
     'compliance officer',
-    'mid-market',
-    'ESG',
-    'Omnibus',
-    'consulenza ESG Italia',
+    'consulenza ESG',
   ],
   openGraph: {
-    title: 'NormaAI - Compliance EU con citazioni primary-source verificate',
+    title: 'NormaAI: risposte sul diritto UE con la fonte esatta',
     description:
-      'Il copilota normativo difendibile in audit per i 7 framework UE. Citazione primary source EUR-Lex in 30 secondi.',
+      "Ogni risposta cita l'atto, l'articolo e il passaggio di legge, con il link al testo ufficiale. Se il testo non basta, il sistema lo dice.",
     url: SITE_URL,
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
     type: 'website',
@@ -71,11 +68,16 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  // Warm paper - matches the public landing background.
-  themeColor: '#FAF9F5',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
+    { media: '(prefers-color-scheme: dark)', color: '#0B1220' },
+  ],
 }
 
-// Structured data for rich results (Organization + SoftwareApplication).
+// Applies the saved theme before first paint. Light is the default; dark
+// only when the person chose it (or chose "system" on a dark OS).
+const themeScript = `try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -87,7 +89,7 @@ const jsonLd = {
       logo: `${SITE_URL}/og-image.png`,
       email: 'info@normaai.org',
       description:
-        'Regulatory intelligence AI per i 7 framework EU (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR) con citazioni EUR-Lex verificate.',
+        'Risposte sul diritto UE (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia, GDPR) con la fonte esatta su EUR-Lex e Normattiva.',
     },
     {
       '@type': 'SoftwareApplication',
@@ -96,12 +98,12 @@ const jsonLd = {
       operatingSystem: 'Web',
       url: SITE_URL,
       description:
-        'Q&A normativo con citazioni primary-source EUR-Lex, gap analysis multi-framework e monitoraggio delle modifiche regolatorie EU. Pipeline anti-allucinazione Chain-of-Verification.',
+        "Domande e risposte sul diritto UE con citazione dell'atto, dell'articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze.",
       offers: {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'EUR',
-        description: 'Pilot su richiesta - Codex Post-Omnibus 2025-2029 gratuito',
+        description: 'Accesso su invito. Codex Post-Omnibus 2025-2029 gratuito.',
       },
       provider: { '@id': `${SITE_URL}/#org` },
     },
@@ -110,16 +112,18 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="it" className={`dark ${serif.variable} ${sans.variable} ${mono.variable}`}>
-      <body className="font-sans">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+    <html lang="it" className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
         <AuthProvider>
           <LocaleProvider>
-            {children}
-            <CookieBanner />
+            <ToastProvider>
+              {children}
+              <CookieBanner />
+            </ToastProvider>
           </LocaleProvider>
         </AuthProvider>
         {/* Cookieless, GDPR-friendly (no personal data, no consent needed).

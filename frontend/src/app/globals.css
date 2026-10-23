@@ -2,83 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fonts are self-hosted via next/font (see src/app/layout.tsx): Inter
-   (--font-sans), Geist Mono (--font-mono), Source Serif 4 (--font-serif). */
+/* Design tokens (DESIGN.md). RGB channels so Tailwind can apply opacity.
+   Fonts are self-hosted through next/font in src/app/layout.tsx:
+   Public Sans (--font-sans), Literata (--font-serif), Geist Mono (--font-mono). */
 
-/* ── Base ───────────────────────────────────────────────────────────── */
-
-html, body {
-  margin: 0;
-  background: #0a0d12;
-  color: #e6ebf2;
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
-  font-feature-settings: 'cv11', 'ss01', 'ss03';
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-/* ── Warm paper theme (public pages: landing, legali, codex) ─────────
-   Editorial look on warm ivory, inspired by Anthropic's visual grammar.
-   Public pages opt in by adding .paper-bg to <body>; the dashboard keeps
-   the dark defaults above. */
-body.paper-bg {
-  background: #FAF9F5;
-  color: #141413;
-  font-size: 15px;
-  line-height: 1.6;
-}
-body.paper-bg ::selection {
-  background: rgba(217, 119, 87, 0.22);
-  color: #141413;
-}
-body.paper-bg ::-webkit-scrollbar-track {
-  background: #F0EEE6;
-}
-body.paper-bg ::-webkit-scrollbar-thumb {
-  background: #D2CCBC;
-}
-body.paper-bg ::-webkit-scrollbar-thumb:hover {
-  background: #B9B2A0;
-}
-/* Visible, brand-coherent keyboard focus on paper */
-body.paper-bg :focus-visible {
-  outline: 2px solid #D97757;
-  outline-offset: 2px;
-  border-radius: 2px;
+:root {
+  color-scheme: light;
+  --canvas: 241 242 244;
+  --surface: 255 255 255;
+  --surface-2: 247 248 249;
+  --surface-3: 236 238 241;
+  --ink: 12 27 51;
+  --ink-2: 61 75 97;
+  --ink-3: 107 119 136;
+  --rule: 216 220 227;
+  --rule-2: 195 201 211;
+  --union: 10 58 156;
+  --union-deep: 7 43 117;
+  --union-ink: 255 255 255;
+  --mark: 255 234 122;
+  --mark-deep: 245 196 0;
+  --ok: 19 122 75;
+  --warn: 154 91 0;
+  --bad: 163 38 46;
 }
 
-/* ── Scrollbar (coerent with surface scale) ─────────────────────────── */
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0e1218;
-}
-::-webkit-scrollbar-thumb {
-  background: #2a3140;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3d4659;
-}
-
-/* ── Animations ─────────────────────────────────────────────────────── */
-
-@keyframes pulse-slow {
-  0%, 100% { opacity: 0.4; }
-  50%      { opacity: 1; }
-}
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.dark {
+  color-scheme: dark;
+  --canvas: 11 18 32;
+  --surface: 17 26 43;
+  --surface-2: 22 33 58;
+  --surface-3: 30 43 71;
+  --ink: 232 236 243;
+  --ink-2: 179 188 203;
+  --ink-3: 127 138 156;
+  --rule: 37 49 73;
+  --rule-2: 56 70 99;
+  --union: 127 163 255;
+  --union-deep: 160 188 255;
+  --union-ink: 11 18 32;
+  --mark: 230 200 74;
+  --mark-deep: 245 196 0;
+  --ok: 74 196 134;
+  --warn: 230 160 60;
+  --bad: 240 110 118;
 }
 
-/* ── Selection (subtle brand) ───────────────────────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
 
-::selection {
-  background: rgba(91, 140, 255, 0.25);
-  color: #ffffff;
+  body {
+    @apply bg-canvas font-sans text-body text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--mark));
+    color: rgb(12 27 51);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--union));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* The highlighter: reserved for quoted passages of law. */
+  mark {
+    background: rgb(var(--mark));
+    color: rgb(12 27 51);
+    padding: 0.05em 0.15em;
+    border-radius: 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-serif font-medium text-ink;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    @apply underline-offset-4;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--rule-2));
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-3));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }

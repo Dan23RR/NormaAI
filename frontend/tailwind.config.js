@@ -1,121 +1,73 @@
 /** @type {import('tailwindcss').Config} */
-// NormaAI brand tokens - mirrors dashboard/styles.css :root variables.
-// Updated 2026-04-28 (G4.3): aligned to dashboard mockup design system.
-// Aliases bg/surface/text/text-muted/accent/accent2 mantenuti per
-// backward-compat con le 31 pagine dashboard esistenti.
+// NormaAI design tokens (see DESIGN.md). The colour values live in
+// src/app/globals.css as RGB channels, light on :root and dark on .dark,
+// so every colour here keeps Tailwind's opacity modifier: bg-union/10.
+const rgb = (name) => `rgb(var(--${name}) / <alpha-value>)`
 
 module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Surface scale (dark backend stack)
-        bg: '#0a0d12',
-        'bg-2': '#0e1218',
-        surface: '#11161e',
-        'surface-2': '#161c26',
-        'surface-3': '#1d2531',
-        // Backward-compat alias
-        surface2: '#161c26',
-
-        // Borders
-        border: 'rgba(255, 255, 255, 0.06)',
-        'border-2': 'rgba(255, 255, 255, 0.10)',
-        'border-3': 'rgba(255, 255, 255, 0.16)',
-
-        // Ink (typography)
-        ink: '#e6ebf2',
-        'ink-2': '#aab3c0',
-        'ink-3': '#6f7a8a',
-        'ink-4': '#4b5566',
-        // Backward-compat aliases
-        text: '#e6ebf2',
-        'text-muted': '#aab3c0',
-
-        // Brand (NormaAI blue, not indigo)
-        accent: '#5b8cff',
-        accent2: '#3a6cff',
-        'accent-soft': 'rgba(91, 140, 255, 0.10)',
-
-        // Semantic
-        good: '#34d399',
-        'good-soft': 'rgba(52, 211, 153, 0.10)',
-        warn: '#f4b740',
-        'warn-soft': 'rgba(244, 183, 64, 0.10)',
-        bad: '#ef4f63',
-        'bad-soft': 'rgba(239, 79, 99, 0.10)',
-        info: '#67c8ff',
-
-        // Per-framework hue
-        'fw-csrd': '#34d399',
-        'fw-csddd': '#5fbcff',
-        'fw-ai_act': '#b08bff',
-        'fw-dora': '#ff8c5a',
-        'fw-nis2': '#f4b740',
-        'fw-taxonomy': '#4ad6c2',
-        'fw-gdpr': '#ef4f63',
-
-        // ── "Warm paper" palette (public pages: landing, legali, codex) ──
-        // Editoriale su carta calda, ispirata alla grammatica visiva
-        // Anthropic (#FAF9F5 / #141413 / clay #D97757). La dashboard
-        // continua a usare la scala dark qui sopra: token additivi,
-        // nessuna collisione di nome.
-        paper: '#FAF9F5',
-        'paper-2': '#F0EEE6',
-        'paper-3': '#E8E4D9',
-        night: '#141413',
-        'night-2': '#5E5D59',
-        'night-3': '#87867F',
-        coal: '#0F0F0E',
-        'coal-2': '#1B1B19',
-        clay: '#D97757',
-        'clay-deep': '#C2613F',
-        'clay-soft': 'rgba(217, 119, 87, 0.10)',
-        line: '#E3DFD3',
-        'line-2': '#D2CCBC',
+        canvas: rgb('canvas'),
+        surface: { DEFAULT: rgb('surface'), 2: rgb('surface-2'), 3: rgb('surface-3') },
+        ink: { DEFAULT: rgb('ink'), 2: rgb('ink-2'), 3: rgb('ink-3') },
+        rule: { DEFAULT: rgb('rule'), 2: rgb('rule-2') },
+        union: { DEFAULT: rgb('union'), deep: rgb('union-deep'), ink: rgb('union-ink') },
+        mark: { DEFAULT: rgb('mark'), deep: rgb('mark-deep') },
+        ok: rgb('ok'),
+        warn: rgb('warn'),
+        bad: rgb('bad'),
+        // Framework hues: category labels only (dark text on a light tint).
+        fw: {
+          csrd: '#1F7A53',
+          csddd: '#1D6FB8',
+          aiact: '#6D4AB8',
+          dora: '#B9541F',
+          nis2: '#8A5A00',
+          taxonomy: '#0F766E',
+          gdpr: '#B42A45',
+          cra: '#9A3D7A',
+          esrs: '#5B5CA5',
+        },
       },
       fontFamily: {
-        sans: [
-          'var(--font-sans)',
-          'system-ui',
-          '-apple-system',
-          'Segoe UI',
-          'Roboto',
-          'sans-serif',
-        ],
-        serif: [
-          'var(--font-serif)',
-          'Georgia',
-          'Times New Roman',
-          'serif',
-        ],
-        mono: [
-          'var(--font-mono)',
-          'JetBrains Mono',
-          'Menlo',
-          'Consolas',
-          'monospace',
-        ],
+        sans: ['var(--font-sans)', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'Times New Roman', 'serif'],
+        mono: ['var(--font-mono)', 'Menlo', 'Consolas', 'monospace'],
+      },
+      fontSize: {
+        caption: ['12px', { lineHeight: '1.4' }],
+        small: ['13px', { lineHeight: '1.45' }],
+        body: ['15px', { lineHeight: '1.5' }],
+        read: ['16px', { lineHeight: '1.55' }],
+        h4: ['17px', { lineHeight: '1.4' }],
+        h3: ['20px', { lineHeight: '1.3' }],
+        h2: ['24px', { lineHeight: '1.2' }],
+        h1: ['32px', { lineHeight: '1.15' }],
+        display: ['44px', { lineHeight: '1.1', letterSpacing: '-0.01em' }],
+        'display-lg': ['56px', { lineHeight: '1.05', letterSpacing: '-0.015em' }],
       },
       borderRadius: {
-        xs: '4px',
-        sm: '6px',
-        md: '10px',
-        lg: '14px',
-        xl: '20px',
+        sm: '4px',
+        md: '6px',
+        lg: '10px',
+        xl: '14px',
       },
       boxShadow: {
-        soft: '0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.20)',
-        pop: '0 24px 48px rgba(0,0,0,0.45), 0 2px 0 rgba(255,255,255,0.04) inset',
+        // Two uses only: the document in the hero and dialogs.
+        doc: '0 1px 2px rgba(12, 27, 51, 0.06), 0 12px 32px -12px rgba(12, 27, 51, 0.18)',
+        pop: '0 2px 4px rgba(12, 27, 51, 0.08), 0 24px 48px -16px rgba(12, 27, 51, 0.35)',
       },
-      backgroundImage: {
-        'app-radial':
-          'radial-gradient(1200px 600px at 20% -10%, rgba(91,140,255,0.06), transparent 60%), radial-gradient(900px 500px at 100% 110%, rgba(176,139,255,0.04), transparent 60%)',
+      maxWidth: {
+        site: '1120px',
+        app: '1200px',
+        prose: '72ch',
       },
       spacing: {
-        sidebar: '240px',
-        'sidebar-collapsed': '64px',
-        topbar: '56px',
+        rail: '232px',
+        'rail-collapsed': '64px',
       },
     },
   },

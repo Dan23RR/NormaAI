@@ -11,7 +11,7 @@ interface AuthContextType {
   loading: boolean
   demoMode: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, name: string, orgName: string) => Promise<void>
+  register: (email: string, password: string, name: string, orgName: string, inviteCode?: string) => Promise<void>
   loginDemo: () => void
   logout: () => void
 }
@@ -30,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Demo mode: return demo user directly
     if (isDemoMode()) {
       setUser(DEMO_USER)
       setDemo(true)
@@ -53,13 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser()
   }, [fetchUser])
 
+  // A real sign-in always leaves demo mode first: the demo flag must never
+  // route real credentials to the mock client.
   const login = async (email: string, password: string) => {
+    setDemoMode(false)
+    setDemo(false)
     await api.login(email, password)
     await fetchUser()
   }
 
-  const register = async (email: string, password: string, name: string, orgName: string) => {
-    await api.register(email, password, name, orgName)
+  const register = async (email: string, password: string, name: string, orgName: string, inviteCode?: string) => {
+    setDemoMode(false)
+    setDemo(false)
+    await api.register(email, password, name, orgName, inviteCode)
     await fetchUser()
   }
 

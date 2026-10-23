@@ -23,10 +23,17 @@ export function clearTokens() {
   localStorage.removeItem(DEMO_KEY)
 }
 
+/** Decodes a base64url segment (JWTs are base64url, which atob rejects). */
+function decodeBase64Url(segment: string): string {
+  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+  return atob(padded)
+}
+
 export function isTokenExpired(token: string): boolean {
   if (token === 'demo.jwt.token') return false
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
+    const payload = JSON.parse(decodeBase64Url(token.split('.')[1]))
     return payload.exp * 1000 < Date.now()
   } catch {
     return true

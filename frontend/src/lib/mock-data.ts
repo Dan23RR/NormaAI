@@ -880,7 +880,7 @@ const GAP_DATA: Record<string, { requirements: GapAnalysisResponse['requirements
     score: 55,
     requirements: [
       { requirement_id: 'DORA-001', description: 'ICT risk management framework', article_reference: 'Art. 6-16', status: 'PARTIALLY_COMPLIANT' as ComplianceStatus, evidence: 'IT risk policy 2024', gap_description: 'Exists but not DORA-aligned', remediation_effort: '4-6 weeks', priority: 'P1' as const, notes: '' },
-      { requirement_id: 'DORA-002', description: 'ICT incident classification & reporting', article_reference: 'Art. 17-23', status: 'PARTIALLY_COMPLIANT' as ComplianceStatus, evidence: 'Incident process exists', gap_description: 'Missing 4-hour initial notification', remediation_effort: '3-4 weeks', priority: 'P1' as const, notes: '' },
+      { requirement_id: 'DORA-002', description: 'ICT incident classification & reporting', article_reference: 'Art. 17-23', status: 'PARTIALLY_COMPLIANT' as ComplianceStatus, evidence: 'Incident process exists', gap_description: 'Missing the initial notification of major incidents within the deadlines of the technical standards (Art. 19; RTS under Art. 20: 4 hours from classification, 24 hours from detection)', remediation_effort: '3-4 weeks', priority: 'P1' as const, notes: '' },
       { requirement_id: 'DORA-003', description: 'Digital resilience testing programme', article_reference: 'Art. 24-27', status: 'COMPLIANT' as ComplianceStatus, evidence: 'Annual pentest reports', gap_description: '', remediation_effort: '', priority: 'P3' as const, notes: 'TLPT may be required every 3 years' },
       { requirement_id: 'DORA-004', description: 'ICT third-party risk management', article_reference: 'Art. 28-44', status: 'NON_COMPLIANT' as ComplianceStatus, evidence: '', gap_description: 'No register of ICT service providers, missing contractual clauses', remediation_effort: '8-10 weeks', priority: 'P1' as const, notes: '' },
       { requirement_id: 'DORA-005', description: 'Information sharing arrangements', article_reference: 'Art. 45', status: 'NOT_APPLICABLE' as ComplianceStatus, evidence: '', gap_description: '', remediation_effort: '', priority: 'P4' as const, notes: 'Voluntary provision' },
@@ -888,7 +888,7 @@ const GAP_DATA: Record<string, { requirements: GapAnalysisResponse['requirements
     ],
     recommendations: [
       'Align ICT risk management framework to DORA Art. 6 requirements',
-      'Implement 4-hour incident notification process per Art. 19',
+      'Implement the major-incident notification process (Art. 19) with the RTS deadlines: initial notification within 4 hours from classification and 24 hours from detection',
       'Create ICT third-party service provider register with risk assessment',
       'Add DORA-specific contractual clauses for all ICT providers',
       'Schedule TLPT assessment if entity qualifies as significant',
@@ -999,7 +999,7 @@ const MONITOR_SCENARIOS: Record<string, MonitorResponse> = {
     applicability: 'YES',
     applicability_reason: 'The company exceeds the proposed 1,000 employee threshold under the Omnibus I revision (Art. 19a CSRD). The change directly affects reporting obligations.',
     urgency: 'HIGH',
-    impact_summary: 'La proposta Omnibus I riduce significativamente il numero di imprese soggette al CSRD innalzando la soglia da 250 a 1.000 dipendenti. Per la vostra azienda con 2.500 dipendenti, l\'obbligo rimane, ma i tempi e i requisiti semplificati per le PMI cambiano il contesto competitivo.',
+    impact_summary: 'La Direttiva (UE) 2026/470 (Omnibus I, in vigore dal 18 marzo 2026) riduce il numero di imprese soggette alla CSRD: restano obbligate quelle con più di 1.000 dipendenti e più di 450 milioni di euro di ricavi netti, criteri cumulativi, per gli esercizi dal 1° gennaio 2027. Per la vostra azienda con 2.500 dipendenti l\'obbligo dipende anche dai ricavi; i requisiti semplificati per le PMI cambiano il contesto competitivo.',
     required_actions: [
       'Verificare le nuove soglie e confermare l\'applicabilità (1 giorno)',
       'Aggiornare la roadmap di compliance con le nuove scadenze (2-3 giorni)',
@@ -1010,7 +1010,7 @@ const MONITOR_SCENARIOS: Record<string, MonitorResponse> = {
     deadline: '2026-01-01',
     deadline_is_confirmed: false,
     cross_framework_impacts: [
-      'CSDDD: Soglia innalzata a 1.000 dipendenti nella proposta Omnibus I',
+      'CSDDD: soglie portate dalla Direttiva (UE) 2026/470 a oltre 5.000 dipendenti e 1,5 miliardi di euro di ricavi netti',
       'EU Taxonomy: Allineamento con le nuove soglie CSRD per la disclosure tassonomica',
     ],
     confidence_score: 0.88,
@@ -1088,7 +1088,7 @@ const MONITOR_SCENARIOS: Record<string, MonitorResponse> = {
 const MONITOR_EXTRA_SCENARIOS: Record<string, MonitorResponse> = {
   csddd: {
     applicability: 'YES',
-    applicability_reason: 'La CSDDD (Corporate Sustainability Due Diligence Directive) si applica alle imprese con oltre 1.000 dipendenti e €450M di fatturato netto. Con 2.500 dipendenti e €200M, l\'azienda potrebbe rientrare nel campo di applicazione a partire dalla seconda fase (2028).',
+    applicability_reason: 'La CSDDD (Direttiva (UE) 2024/1760, modificata dalla Direttiva (UE) 2026/470) si applica alle imprese con più di 5.000 dipendenti e più di 1,5 miliardi di euro di ricavi netti mondiali. Con 2.500 dipendenti e 200 milioni di euro l\'azienda resta fuori dall\'obbligo diretto; può ricevere richieste dai grandi clienti obbligati, che applicano la direttiva dal 26 luglio 2029 (recepimento entro il 26 luglio 2028).',
     urgency: 'MEDIUM',
     impact_summary: 'La CSDDD impone obblighi di due diligence sulla catena del valore per identificare, prevenire e mitigare impatti negativi sui diritti umani e sull\'ambiente. Le aziende devono mappare l\'intera supply chain, implementare un piano di transizione climatica e integrare la due diligence nella governance aziendale.',
     required_actions: [

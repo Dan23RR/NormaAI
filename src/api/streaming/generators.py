@@ -42,6 +42,10 @@ logger = structlog.get_logger()
 
 _CHUNK_SIZE = 80
 
+# Catch-all for unexpected exceptions: the raw text goes to the logs, never to
+# the browser (same masking as the JSON routers' generic 500).
+_INTERNAL_ERROR_MESSAGE = "Errore interno durante l'analisi. Riprova più tardi."
+
 _COVE_FAILED_MESSAGE = (
     "La verifica Chain-of-Verification non è stata completata: "
     "la risposta è servita senza verifica e richiede revisione esperta."
@@ -271,7 +275,9 @@ async def _stream_task(
         yield _done_event(result, text, cove_failed=cove_failed)
     except Exception as e:  # noqa: BLE001
         logger.error(f"{task}_stream_error", error=str(e), traceback=traceback.format_exc())
-        yield ErrorEvent(message=str(e), recoverable=False, error_code="internal_error")
+        yield ErrorEvent(
+            message=_INTERNAL_ERROR_MESSAGE, recoverable=False, error_code="internal_error"
+        )
 
 
 async def qa_stream_generator(

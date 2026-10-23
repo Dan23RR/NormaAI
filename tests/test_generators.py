@@ -560,7 +560,9 @@ class TestQaErrorHandling:
         errors = [e for e in events if isinstance(e, ErrorEvent)]
         assert len(errors) == 1
         assert errors[0].recoverable is False
-        assert "graph exploded" in errors[0].message
+        assert errors[0].error_code == "internal_error"
+        assert "graph exploded" not in errors[0].message  # internals are logged, not leaked
+        assert "Errore interno" in errors[0].message
         # No DoneEvent on a fatal failure.
         assert not [e for e in events if isinstance(e, DoneEvent)]
 
@@ -738,7 +740,9 @@ class TestGapAnalysisStream:
         errors = [e for e in events if isinstance(e, ErrorEvent)]
         assert len(errors) == 1
         assert errors[0].recoverable is False
-        assert "gap failed" in errors[0].message
+        assert errors[0].error_code == "internal_error"
+        assert "gap failed" not in errors[0].message  # internals are logged, not leaked
+        assert "Errore interno" in errors[0].message
 
 
 # ------------------------------------------------------------------ #
@@ -862,7 +866,9 @@ class TestMonitorStream:
         errors = [e for e in events if isinstance(e, ErrorEvent)]
         assert len(errors) == 1
         assert errors[0].recoverable is False
-        assert "monitor down" in errors[0].message
+        assert errors[0].error_code == "internal_error"
+        assert "monitor down" not in errors[0].message  # internals are logged, not leaked
+        assert "Errore interno" in errors[0].message
 
 
 # ------------------------------------------------------------------ #

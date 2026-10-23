@@ -49,12 +49,15 @@ Notes:
 - **alembic in the image**: the Dockerfile now `COPY`s `alembic/` + `alembic.ini`,
   so `run --rm app alembic upgrade head` works after a rebuild. (Before that fix it
   failed with *"No 'script_location' key"* because the config wasn't in the image.)
-- **schema came from `init_db.sql`, not alembic**: the first DB was created by
-  `scripts/init_db.sql` (mounted at `/docker-entrypoint-initdb.d/`), so `alembic
-  upgrade head` may hit *"relation already exists"*. If so, `alembic stamp head`
-  to record the version, then **run `scripts/setup_app_role.sql`** (§2) which
-  reconciles the RLS policies to the migration intent (init_db.sql's RLS is
-  partial - e.g. it enables RLS on `conversations` but creates no read policy).
+- **Alembic is the only source of the schema** (since migration 007):
+  `scripts/init_db.sql` now creates just the extensions, `alembic upgrade head`
+  builds everything else, and CI's `schema` job runs `alembic check` so models
+  and migrations cannot drift. A database born from the old `init_db.sql` and
+  `alembic stamp`ed is reconciled by 007 on its next `alembic upgrade head`
+  (missing tables, renamed columns, RLS policies) - never `stamp head` again.
+  Migrations must run as the `normaai` owner (`run --rm app`, base compose
+  files): `exec app` under the RLS overlay connects as `normaai_app`, which
+  cannot ALTER tables. `.github/workflows/deploy.yml` does all of this on push.
 - **health from the host**: the prod overlay removes the app's host port (Caddy
   fronts it), so `curl localhost:8000` from the host fails by design - probe via
   `docker exec normaai-app curl ...` or through Caddy (`https://api.normaai.org`).

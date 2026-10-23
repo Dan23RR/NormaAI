@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' " + (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'" + (process.env.NEXT_PUBLIC_API_URL ? ' ' + process.env.NEXT_PUBLIC_API_URL : '') + "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 

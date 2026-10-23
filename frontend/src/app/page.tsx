@@ -17,13 +17,12 @@ import {
 } from 'lucide-react'
 import { getAccessToken } from '@/lib/auth'
 
-// Lead submission target:
-// - NEXT_PUBLIC_API_URL set  -> FastAPI backend /api/v1/leads (full pipeline)
-// - unset (today's prod)     -> same-origin serverless /api/leads
-//   (NEVER default to localhost: in prod that posts to the visitor's own
-//   machine and silently kills the funnel.)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
-const LEADS_ENDPOINT = API_URL ? `${API_URL}/api/v1/leads` : '/api/leads'
+// Lead submission target: always the same-origin serverless route. It emails
+// the Codex through Resend and never depends on the backend being up, so the
+// funnel keeps working even while api.normaai.org is down or being rebuilt.
+// (NEVER default to localhost: in prod that posts to the visitor's own
+// machine and silently kills the funnel.)
+const LEADS_ENDPOINT = '/api/leads'
 
 // Public landing page (Italian, ICP Wave 2: H1 compliance officer mid-market / H2 studi legali generalisti / H3 CFO banche-assicurazioni piccole).
 // Warm-paper editorial theme (public pages only - dashboard stays dark).
@@ -177,7 +176,7 @@ export default function Home() {
               </div>
             </div>
             <p className="mt-3 text-center text-xs text-night-3">
-              Output reale dell'agente Q&A, citazioni gated da pipeline CoVe
+              Esempio di risposta con le fonti citate
             </p>
           </div>
         </div>
@@ -192,9 +191,9 @@ export default function Home() {
               Per chi gestisce compliance UE e non si può permettere allucinazioni.
             </h2>
             <p className="mt-5 leading-relaxed text-night-2">
-              Tre profili. Tre pitch diversi. Una piattaforma sotto il cofano: Q&A su 7 framework UE
-              con citazione primary source EUR-Lex in 30 secondi, pipeline anti-hallucination 5 fasi,
-              327/327 test citazioni passing.
+              Tre profili diversi, una piattaforma: domande e risposte sui framework UE con la
+              citazione della fonte primaria su EUR-Lex, e un sistema che si astiene quando il
+              testo di legge non sostiene la risposta.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
@@ -234,12 +233,11 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-20">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">Copertura normativa</p>
           <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[40px]">
-            7 framework. Aggiornati ogni notte da EUR-Lex.
+            I framework UE che contano, con la fonte primaria.
           </h2>
           <p className="mt-4 max-w-2xl leading-relaxed text-night-2">
-            La crawler SPARQL ufficiale ingerisce direttive, regolamenti e implementing acts non
-            appena pubblicati nella Gazzetta Ufficiale UE. Il diritto italiano arriva da
-            Normattiva via Open Data API.
+            I testi arrivano da EUR-Lex, la banca dati ufficiale del diritto UE, e da Normattiva per
+            il recepimento italiano. Ogni risposta indica la versione del corpus su cui è basata.
           </p>
           <div className="mt-10 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             <FwCard tag="CSRD" name="Corporate Sustainability Reporting" note="Post-Omnibus" />
@@ -266,8 +264,8 @@ export default function Home() {
             <UseCase
               n="01"
               title="Q&A regolatorio con citazioni"
-              body="Una domanda in linguaggio naturale, una risposta gated da CoVe (Chain-of-Verification). Cita articolo, comma, e quote testuale. Streaming SSE in tempo reale."
-              points={['Inglese + Italiano', 'Profilo aziendale opzionale', '< 8s end-to-end']}
+              body="Una domanda in linguaggio naturale, una risposta che cita articolo, comma e passaggio testuale della fonte. Se il testo di legge non basta, il sistema lo dice invece di inventare."
+              points={['Italiano e inglese', 'Profilo aziendale opzionale', 'Fonti EUR-Lex e Normattiva']}
             />
             <UseCase
               n="02"
@@ -309,8 +307,8 @@ export default function Home() {
             />
             <ProofRow
               icon={<Globe2 className="h-5 w-5" />}
-              title="EUR-Lex SPARQL ingestion notturna"
-              body="Endpoint ufficiale publications.europa.eu. Filtro temporale: chunk superseded sono esclusi di default per correttezza giuridica."
+              title="Testi ufficiali da EUR-Lex e Normattiva"
+              body="Endpoint ufficiale publications.europa.eu per gli atti UE, Open Data Normattiva per il recepimento italiano. La data di aggiornamento del corpus è sempre dichiarata."
             />
             <ProofRow
               icon={<GitBranch className="h-5 w-5" />}
@@ -319,8 +317,8 @@ export default function Home() {
             />
             <ProofRow
               icon={<CircuitBoard className="h-5 w-5" />}
-              title="327/327 test passati, suite completa verde"
-              body="Test suite eseguita davvero (real-run), non solo dichiarata: unit, DB/auth, cache, retrieval, agent, integrazioni esterne, API integration, monte-carlo. Verde in CI a ogni push."
+              title="Codice aperto e verificabile"
+              body="Codebase pubblica con licenza MIT e più di 1.500 test automatici eseguiti a ogni modifica: chiunque può controllare come nascono le risposte."
             />
             <ProofRow
               icon={<Zap className="h-5 w-5" />}
@@ -465,11 +463,8 @@ function CodexForm() {
 
       if (res.status === 201 || res.status === 200) {
         const data = await res.json().catch(() => ({}))
-        // Build absolute download URL: backend returns a relative path on /api/v1/...
-        let downloadUrl: string | undefined = data?.download_url
-        if (downloadUrl && downloadUrl.startsWith('/')) {
-          downloadUrl = `${API_URL}${downloadUrl}`
-        }
+        // The serverless route returns a same-origin path to the PDF.
+        const downloadUrl: string | undefined = data?.download_url
         setStatus({
           kind: 'success',
           message:

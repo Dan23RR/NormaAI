@@ -6,7 +6,10 @@ import {
   getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay,
 } from './mock-data'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+// Empty base URL = same-origin relative calls (/api/v1/...), which Vercel can
+// rewrite to the backend once it is live. Never default to localhost: in
+// production that would point every visitor at their own machine.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {

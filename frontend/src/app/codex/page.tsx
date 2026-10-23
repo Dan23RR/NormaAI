@@ -11,8 +11,8 @@ import {
   Loader2,
 } from 'lucide-react'
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+// Same-origin serverless route: works without the backend (see app/api/leads).
+const LEADS_ENDPOINT = '/api/leads'
 
 // Codex landing route (lead magnet).
 //
@@ -178,7 +178,7 @@ function CodexForm() {
     setStatus({ kind: 'submitting' })
 
     try {
-      const res = await fetch(`${API_URL}/api/v1/leads`, {
+      const res = await fetch(LEADS_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         // Track del lead_id senza modifiche allo schema /api/v1/leads (campo
@@ -192,11 +192,8 @@ function CodexForm() {
 
       if (res.status === 201 || res.status === 200) {
         const data = await res.json().catch(() => ({}))
-        // Build absolute download URL: backend returns a relative path on /api/v1/...
-        let downloadUrl: string | undefined = data?.download_url
-        if (downloadUrl && downloadUrl.startsWith('/')) {
-          downloadUrl = `${API_URL}${downloadUrl}`
-        }
+        // The serverless route returns a same-origin path to the PDF.
+        const downloadUrl: string | undefined = data?.download_url
         setStatus({
           kind: 'success',
           message:

@@ -48,11 +48,5 @@
       "destination": "/?codex=open#codex",
       "permanent": false
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "https://api.normaai.org/api/v1/:path*"
-    }
   ]
 }

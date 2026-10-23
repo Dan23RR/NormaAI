@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * Serverless lead capture - keeps the Codex funnel alive while the
- * FastAPI backend (api.normaai.org) is not deployed yet.
- *
- * The landing form posts here ONLY when NEXT_PUBLIC_API_URL is unset
- * (same-origin fallback). Once the backend is live, set that env var on
- * Vercel and traffic flows to /api/v1/leads with the full pipeline
- * (HMAC links, Postgres, suppression list) - this route stays as backup.
+ * Serverless lead capture. Every public form (landing, /codex, the static
+ * scope checkers) posts here, same-origin, so the funnel never depends on
+ * the FastAPI backend being up. Leads are emailed through Resend.
  *
  * Env (Vercel → Project Settings → Environment Variables, server-side):
  *   RESEND_API_KEY      optional - enables email notification + delivery

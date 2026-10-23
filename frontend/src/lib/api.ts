@@ -3,7 +3,7 @@ import type { TokenPair, ApiError, ApiResponse, QAResponse, GapAnalysisResponse,
 import {
   DEMO_TOKENS, DEMO_USER, DEMO_STATS, DEMO_PROCESSORS,
   DEMO_ALERTS, DEMO_ALERT_SUMMARY, DEMO_CLIENTS,
-  getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay,
+  getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay, DEMO_CORPUS_AS_OF,
 } from './mock-data'
 
 // Empty base URL = same-origin relative calls (/api/v1/...), which Vercel can
@@ -68,7 +68,7 @@ class ApiClient {
       return {
         status: 'success',
         data: getMockQAResponse(question, language),
-        metadata: { timestamp: new Date().toISOString(), model: 'demo-mode' },
+        metadata: { timestamp: new Date().toISOString(), model: 'demo-mode', corpus_as_of: DEMO_CORPUS_AS_OF },
       } as T
     }
 

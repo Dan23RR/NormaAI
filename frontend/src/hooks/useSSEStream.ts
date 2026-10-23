@@ -70,6 +70,8 @@ export interface DoneStats {
   confidence_score: number;
   requires_review: boolean;
   cove_applied: boolean;
+  /** Answer text after CoVe revision, when the backend ran it. */
+  revised_text?: string;
 }
 
 export interface DoneEvent {
@@ -78,6 +80,7 @@ export interface DoneEvent {
   confidence_score: number;
   requires_review: boolean;
   cove_applied: boolean;
+  revised_text?: string;
 }
 
 /**
@@ -258,6 +261,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
           confidence_score: event.confidence_score,
           requires_review: event.requires_review,
           cove_applied: event.cove_applied,
+          revised_text: event.revised_text,
         };
         setStats(doneStats);
         onDone?.(doneStats);
@@ -366,7 +370,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
           // Attempt reconnection for transient errors
           if (autoReconnect && retryCountRef.current < maxRetries) {
             retryCountRef.current++;
-            setError(`Connection lost. Reconnecting... (attempt ${retryCountRef.current}/${maxRetries})`);
+            setError(`Connessione interrotta. Nuovo tentativo ${retryCountRef.current} di ${maxRetries}.`);
             await new Promise((resolve) => setTimeout(resolve, retryDelay));
             await attemptStream();
           } else {

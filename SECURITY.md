@@ -25,9 +25,11 @@ Full details: [ARCHITECTURE.md](ARCHITECTURE.md) § Security Model.
 | Layer | Control |
 |---|---|
 | Transport | HTTPS/HSTS (Vercel frontend; TLS termination required in front of the API in production) |
-| AuthN | JWT RS256, 15-min access / 7-day refresh with family tracking; Redis blacklist **fail-closed in production** |
-| AuthZ | RBAC (admin/member/viewer) + PostgreSQL Row-Level Security per organization |
-| Brute force | Redis-backed lockout, 5 attempts / 5 min, keyed on email (fail-open by design during Redis outage - documented trade-off) |
+| AuthN | JWT RS256, 15-min access / 7-day refresh with family tracking; Redis blacklist **fail-closed in production**; bcrypt runs off the event loop |
+| Registration | Invite-only by default (`REGISTRATION_MODE=invite`): single-use, expiring codes stored hashed; `open` / `closed` modes; email verification (`REQUIRE_EMAIL_VERIFICATION` gates the intelligence endpoints) |
+| AuthZ | RBAC (admin/member/viewer) + PostgreSQL Row-Level Security per organization; staff allowlist (`STAFF_EMAILS`) for corpus crawl / re-index and cross-organization invites |
+| Brute force | Redis-backed lockout, 5 attempts / 5 min, keyed on email (bounded in-memory fallback during a Redis outage); per-IP rate limits on register (5/h), login (10/min), refresh (30/min) behind the trusted-proxy IP |
+| Abuse / cost | Daily LLM quota per organization (`LLM_DAILY_QUOTA_PER_ORG`, default 200; Redis INCR with in-memory fallback), `X-Quota-Remaining` header |
 | Input | Prompt-injection sanitization + typed profile validation + length caps |
 | Output | CoVe 5-phase verification; citations validated against EUR-Lex/Normattiva |
 | Secrets | `.env` + `*.pem` gitignored; gitleaks in pre-commit and CI (full history) |

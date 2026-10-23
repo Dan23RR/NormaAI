@@ -410,6 +410,22 @@ class TestAbstainResponseNode:
         assert payload["snc_audit"] == {}
         assert payload["requires_expert_review"] is True
 
+    def test_degraded_decision_gets_an_honest_reason_and_message(self):
+        # The resamples FAILED (provider errors): no disagreement was detected,
+        # so the payload must not claim one, and the reason must let the cache
+        # layer refuse to pin this transient failure.
+        decision = {"action": "ABSTAIN", "trust": 0.4, "degraded": True}
+        out = abstain_response_node({"confidence_score": 0.4, "snc_decision": decision})
+        payload = json.loads(out["result_json"])
+        assert payload["abstention_reason"] == "snc_degraded"
+        assert "provider" in payload["answer"].lower()
+        assert "incertezza significativa" not in payload["answer"].lower()
+        assert payload["requires_expert_review"] is True
+
+        from src.cache import is_cacheable_result
+
+        assert is_cacheable_result(payload)[0] is False
+
 
 # ─── End-to-end through REAL snc_governance (acall_llm mocked) ─────────
 #
@@ -616,6 +632,30 @@ class TestEndToEndGovernance:
         assert decision.action == "ABSTAIN"
         assert decision.trust == pytest.approx(0.8 * 0.5)
         assert decision.n_clusters == 1
+        # Flagged as degraded (a failure, not a measured disagreement) and the
+        # flag survives serialization into the audit blob.
+        assert decision.degraded is True
+        from src.agents.snc_layer import serialize_decision
+
+        assert serialize_decision(decision)["degraded"] is True
+
+    async def test_genuine_disagreement_is_not_degraded(self):
+        initial = {
+            "answer": "A",
+            "confidence_score": 0.9,
+            "citations": [{"framework": "GDPR", "article_number": "5"}],
+        }
+        r2 = {"answer": "B", "confidence_score": 0.9, "citations": [{"framework": "CSRD"}]}
+        r3 = {"answer": "C", "confidence_score": 0.9, "citations": [{"framework": "CSDDD"}]}
+        with patch("src.agents.snc_layer.acall_llm", AsyncMock(side_effect=[r2, r3])):
+            decision = await snc_governance(
+                initial_response=initial,
+                system_prompt="SYS",
+                user_message="USR",
+                config=_admit_high_settings(),
+            )
+        assert decision.action == "ABSTAIN"
+        assert decision.degraded is False
 
     async def test_error_dict_resamples_are_filtered_out(self):
         # Resamples that come back as {"error": ...} are dropped; if that leaves

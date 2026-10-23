@@ -7,6 +7,12 @@ TTL strategy:
 - Q&A responses: 1 hour (regulations don't change frequently)
 - Gap analysis: 30 minutes (company profile-dependent)
 - Monitor impact: 15 minutes (time-sensitive regulatory changes)
+
+Cache honesty: only GENUINE results are cached - real answers and abstentions
+that describe the corpus ("the knowledge base does not cover this"). A failure
+or an abstention caused by the pipeline's own transient state (provider/network
+errors, an SNC run whose resamples failed, stochastic disagreement) must not be
+pinned for an hour: the next request may well succeed. See is_cacheable_result.
 """
 
 import hashlib
@@ -16,6 +22,42 @@ import logging
 from src.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Abstention reasons that describe the CORPUS rather than a transient pipeline
+# condition; only these may be cached. SNC abstentions ("snc_low_trust",
+# "snc_degraded") are never cached: the first is stochastic, the second is a
+# provider failure in disguise.
+CACHEABLE_ABSTENTION_REASONS: frozenset[str] = frozenset(
+    {"corpus_not_covering", "no_relevant_sources"}
+)
+
+# Below this confidence a result is not worth pinning for the TTL.
+MIN_CACHEABLE_CONFIDENCE = 0.1
+
+
+def is_cacheable_result(result: object) -> tuple[bool, str]:
+    """Decide whether an agent result may be cached.
+
+    Returns ``(cacheable, reason)``; ``reason`` names the rule that rejected the
+    result (for logs) or is ``"ok"``.
+    """
+    if not isinstance(result, dict):
+        return False, "not_a_dict"
+    if result.get("error") or result.get("error_code"):
+        return False, "error_result"
+    if result.get("parse_warning") or "raw_response" in result:
+        # The LLM output could not be parsed: not a genuine structured answer.
+        return False, "unparsed_llm_output"
+    reason = result.get("abstention_reason")
+    if reason and str(reason) not in CACHEABLE_ABSTENTION_REASONS:
+        return False, f"abstention:{reason}"
+    try:
+        confidence = float(result.get("confidence_score", 1.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < MIN_CACHEABLE_CONFIDENCE:
+        return False, "low_confidence"
+    return True, "ok"
 
 
 class ResponseCache:
@@ -135,10 +177,11 @@ class ResponseCache:
         if not self._available or not self._client:
             return False
         try:
-            # Don't cache error responses or low-confidence results
-            if isinstance(result, dict):
-                if "error" in result or result.get("confidence_score", 1.0) < 0.1:
-                    return False
+            # Only genuine answers / corpus-coverage abstentions are cached.
+            cacheable, why = is_cacheable_result(result)
+            if not cacheable:
+                logger.info("cache_skip: %s reason=%s", task_type, why)
+                return False
 
             key = self._make_key(task_type, query, profile, org_id=org_id)
             ttl = self.TTL_MAP.get(task_type, 1800)

@@ -266,22 +266,38 @@ def snc_route_to_next(state: dict) -> str:
     return "confidence_check"
 
 
+_ABSTAIN_LOW_TRUST_ANSWER = (
+    "Non posso fornire una risposta sufficientemente affidabile su questa "
+    "domanda. La verifica automatica ha rilevato incertezza significativa "
+    "tra i candidati di risposta generati. Si raccomanda revisione esperta."
+)
+_ABSTAIN_DEGRADED_ANSWER = (
+    "La verifica automatica di affidabilità non è stata completata a causa di "
+    "un errore temporaneo del provider LLM: la risposta non è stata validata e "
+    "non viene fornita. Riprova più tardi oppure richiedi una revisione esperta."
+)
+
+
 def abstain_response_node(state: dict) -> dict:
     """Terminal node for ABSTAIN: return a structured abstention payload.
 
     The downstream serializer expects state['result_json']; we overwrite
     it with a JSON document that explicitly signals expert review.
+
+    Two honest reasons are distinguished: ``snc_low_trust`` (the K samples
+    genuinely disagreed) and ``snc_degraded`` (the resamples failed because of
+    provider/network errors, so nothing was verified). Neither is cached (see
+    src.cache.is_cacheable_result); the second also gets a message that does
+    not pretend a disagreement was detected.
     """
+    decision = state.get("snc_decision") or {}
+    degraded = bool(isinstance(decision, dict) and decision.get("degraded"))
     abstention_payload = {
-        "answer": (
-            "Non posso fornire una risposta sufficientemente affidabile su questa "
-            "domanda. La verifica automatica ha rilevato incertezza significativa "
-            "tra i candidati di risposta generati. Si raccomanda revisione esperta."
-        ),
+        "answer": _ABSTAIN_DEGRADED_ANSWER if degraded else _ABSTAIN_LOW_TRUST_ANSWER,
         "citations": [],
         "confidence_score": state.get("confidence_score", 0.0),
         "requires_expert_review": True,
-        "abstention_reason": "snc_low_trust",
+        "abstention_reason": "snc_degraded" if degraded else "snc_low_trust",
         "snc_audit": state.get("snc_audit", {}),
     }
     state["result_json"] = json.dumps(abstention_payload, ensure_ascii=False)

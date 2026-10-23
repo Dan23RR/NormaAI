@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.cache import ResponseCache
+from src.cache import CACHEABLE_ABSTENTION_REASONS, ResponseCache, is_cacheable_result
 
 # ------------------------------------------------------------------ #
 #  Fixtures                                                           #
@@ -240,3 +240,88 @@ class TestCacheRoundTrip:
 
         assert qa_result["answer"] == "QA answer"
         assert gap_result["answer"] == "Gap answer"
+
+
+# ------------------------------------------------------------------ #
+#  Cache honesty: failures and transient abstentions are never cached #
+# ------------------------------------------------------------------ #
+
+
+class TestCacheability:
+    """Only genuine answers and genuine "the corpus does not cover this"
+    abstentions may be cached. Errors and abstentions caused by provider /
+    network conditions used to be pinned for the full TTL (an hour for Q&A)."""
+
+    def test_genuine_answer_is_cacheable(self):
+        ok, why = is_cacheable_result(
+            {"answer": "CSRD applies.", "citations": [], "confidence_score": 0.9}
+        )
+        assert ok and why == "ok"
+
+    def test_corpus_coverage_abstention_is_cacheable(self):
+        for reason in CACHEABLE_ABSTENTION_REASONS:
+            ok, _ = is_cacheable_result(
+                {"answer": "Not covered.", "abstention_reason": reason, "confidence_score": 0.9}
+            )
+            assert ok, reason
+
+    def test_llm_answer_saying_corpus_lacks_information_is_cacheable(self):
+        # The qa_bot prompt makes the model SAY the database lacks the answer:
+        # a stable fact about the corpus, cached like any genuine answer.
+        ok, _ = is_cacheable_result(
+            {
+                "answer": "I don't have sufficient information in my regulatory database.",
+                "citations": [],
+                "confidence_score": 0.4,
+                "requires_expert_review": True,
+            }
+        )
+        assert ok
+
+    @pytest.mark.parametrize(
+        "result, expected_reason",
+        [
+            ({"error": "LLM timed out", "error_code": "llm_timeout"}, "error_result"),
+            ({"error": "legacy error without code", "confidence_score": 0.9}, "error_result"),
+            ({"answer": "x", "error_code": "retrieval_unavailable"}, "error_result"),
+            (
+                {"answer": "...", "abstention_reason": "snc_degraded", "confidence_score": 0.4},
+                "abstention:snc_degraded",
+            ),
+            (
+                {"answer": "...", "abstention_reason": "snc_low_trust", "confidence_score": 0.4},
+                "abstention:snc_low_trust",
+            ),
+            ({"answer": "raw text", "parse_warning": "not JSON"}, "unparsed_llm_output"),
+            ({"raw_response": "[1, 2]", "confidence_score": 0.0}, "unparsed_llm_output"),
+            ({"answer": "x", "confidence_score": 0.05}, "low_confidence"),
+            ({"answer": "x", "confidence_score": "n/a"}, "low_confidence"),
+            ("not a dict", "not_a_dict"),
+        ],
+    )
+    def test_failures_and_transient_abstentions_are_not_cacheable(self, result, expected_reason):
+        ok, why = is_cacheable_result(result)
+        assert ok is False
+        assert why == expected_reason
+
+    def test_set_refuses_network_caused_abstention(self, cache):
+        client = AsyncMock()
+        cache._client = client
+        cache._available = True
+        abstention = {
+            "answer": "La verifica automatica non è stata completata.",
+            "citations": [],
+            "confidence_score": 0.4,
+            "requires_expert_review": True,
+            "abstention_reason": "snc_degraded",
+        }
+        assert _run(cache.set("qa", "What is CSRD?", abstention)) is False
+        client.setex.assert_not_called()
+
+    def test_set_refuses_error_payload(self, cache):
+        client = AsyncMock()
+        cache._client = client
+        cache._available = True
+        error = {"error": "Rate limited", "error_code": "llm_rate_limited", "confidence_score": 0.0}
+        assert _run(cache.set("qa", "What is CSRD?", error)) is False
+        client.setex.assert_not_called()

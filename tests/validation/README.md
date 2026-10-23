@@ -225,6 +225,23 @@ tests/validation/
     └── *.txt             # Human-readable reports
 ```
 
+## Golden Set v2 (Q&A with EUR-Lex-verified citations)
+
+`test_cases/golden_v2.jsonl` holds 101 questions (60 % Italian, 40 % English) on the AI Act,
+GDPR, NIS2, DORA, CSRD/Accounting Directive, CSDDD, Taxonomy and CRA. Every answerable
+record cites the act (CELEX), article and paragraph and carries the passage copied
+verbatim from the official text; 10 out-of-corpus questions expect an abstention and
+6 prompt-injection questions expect an answer from the law only.
+
+```bash
+python -m tests.validation.runner --suite golden_v2 --demo             # smoke
+python -m tests.validation.runner --suite golden_v2 --api --verbose    # real run
+python -m pytest tests/validation/test_golden_v2_schema.py -q -p no:cacheprovider -o addopts=""
+python -m tests.validation.verify_golden_v2                            # re-check quotes on EUR-Lex (network)
+```
+
+Format, construction method, counts and findings: [GOLDEN_V2.md](GOLDEN_V2.md).
+
 ## Next Steps
 
 1. **Populate Test Cases**: Add JSON files to `test_cases/` subdirectories

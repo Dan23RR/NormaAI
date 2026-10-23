@@ -11,8 +11,6 @@ Business logic lives in dedicated modules:
 - schemas.py: Shared enums (FrameworkEnum)
 """
 
-import os
-
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,20 +18,13 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from src.config import get_settings
+from src.observability import setup_logging
 
-# ─── Structured Logging ──────────────────────────────────────────
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer(),
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-)
+# ─── Logging ─────────────────────────────────────────────────────
+# Configured from settings (LOG_LEVEL / LOG_FORMAT) at import time so the
+# router-registration lines below are emitted too; the lifespan re-applies the
+# same configuration (idempotent) and wires Sentry.
+setup_logging()
 
 logger = structlog.get_logger()
 
@@ -127,20 +118,8 @@ try:
 except ImportError:
     pass
 
-try:
-    import sentry_sdk
-
-    sentry_dsn = os.getenv("SENTRY_DSN")
-    if sentry_dsn:
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            traces_sample_rate=0.1,
-            profiles_sample_rate=0.1,
-            environment=os.getenv("APP_ENV", "development"),
-        )
-        logger.info("sentry_initialized")
-except ImportError:
-    pass
+# Sentry is initialised in the lifespan (src.observability.setup_sentry) from
+# settings.sentry_dsn, with the FastAPI integration.
 
 
 # ─── Router Registration ─────────────────────────────────────────

@@ -24,11 +24,17 @@ No real exporters are created and the shared sqlite test.db is never opened.
 # ruff: noqa: SIM117 -- the context-manager-under-test is kept nested inside
 # its patch/pytest.raises scaffolding deliberately, for readability.
 
+import io
+import json
+import logging
 import os
+import re
+import sys
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
 import pytest
+import structlog
 
 import src.observability as obs
 
@@ -424,3 +430,182 @@ class TestSetupObservabilityCombined:
             patch.object(obs, "_tracer_available", False),
         ):
             assert obs.setup_observability() is None
+
+
+# --------------------------------------------------------------------------- #
+# setup_logging() -- real logging configuration from settings
+# --------------------------------------------------------------------------- #
+_LOGGERS_TOUCHED = ("", "uvicorn", "uvicorn.error", "uvicorn.access", obs.AUDIT_LOGGER_NAME)
+
+
+@pytest.fixture
+def logging_sandbox():
+    """Snapshot and restore every logger setup_logging touches.
+
+    setup_logging mutates process-global logging state; this keeps the other
+    test files (and pytest's own capture handlers) unaffected.
+    """
+    saved = {}
+    for name in _LOGGERS_TOUCHED:
+        lg = logging.getLogger(name)
+        saved[name] = (list(lg.handlers), lg.level, lg.propagate)
+    yield
+    for name, (handlers, level, propagate) in saved.items():
+        lg = logging.getLogger(name)
+        lg.handlers[:] = handlers
+        lg.setLevel(level)
+        lg.propagate = propagate
+
+
+def _settings(level="INFO", fmt="plain"):
+    return MagicMock(log_level=level, log_format=fmt)
+
+
+def _our_handlers():
+    return [h for h in logging.getLogger().handlers if getattr(h, "_normaai_log_handler", False)]
+
+
+class TestSetupLogging:
+    def test_installs_one_root_handler_and_applies_level(self, logging_sandbox):
+        obs.setup_logging(_settings("DEBUG"), stream=io.StringIO())
+        assert len(_our_handlers()) == 1
+        assert logging.getLogger().level == logging.DEBUG
+
+    def test_is_idempotent(self, logging_sandbox):
+        # import-time call + lifespan call (+ test re-imports) must not stack handlers.
+        foreign = logging.NullHandler()
+        logging.getLogger().addHandler(foreign)
+        obs.setup_logging(_settings("INFO"), stream=io.StringIO())
+        obs.setup_logging(_settings("WARNING"), stream=io.StringIO())
+        assert len(_our_handlers()) == 1
+        assert logging.getLogger().level == logging.WARNING
+        # Handlers we did not install (pytest capture, callers) are kept.
+        assert foreign in logging.getLogger().handlers
+
+    def test_uvicorn_loggers_propagate_to_root_handler(self, logging_sandbox):
+        for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            lg = logging.getLogger(name)
+            lg.addHandler(logging.NullHandler())  # what uvicorn's LOGGING_CONFIG does
+            lg.propagate = False
+        obs.setup_logging(_settings("INFO"), stream=io.StringIO())
+        for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            lg = logging.getLogger(name)
+            assert lg.handlers == []
+            assert lg.propagate is True
+            assert lg.level == logging.INFO
+
+    def test_invalid_level_falls_back_to_info(self, logging_sandbox):
+        obs.setup_logging(_settings("VERBOSE"), stream=io.StringIO())
+        assert logging.getLogger().level == logging.INFO
+
+    def test_plain_format_has_timestamp_level_logger_and_message(self, logging_sandbox):
+        stream = io.StringIO()
+        obs.setup_logging(_settings("INFO"), stream=stream)
+        logging.getLogger("normaai.sample").info("cache_hit: %s", "qa", extra={"ttl": 900})
+        line = [ln for ln in stream.getvalue().splitlines() if "cache_hit" in ln][0]
+        assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", line)  # ISO timestamp
+        assert "info" in line.lower()
+        assert "normaai.sample" in line
+        assert "cache_hit: qa" in line  # %-args formatted
+        assert "ttl=900" in line  # extra={} fields rendered, not dropped
+
+    def test_json_format_emits_one_json_object_per_line(self, logging_sandbox):
+        stream = io.StringIO()
+        obs.setup_logging(_settings("INFO", "json"), stream=stream)
+        logging.getLogger("normaai.sample").warning("slow_query", extra={"ms": 12})
+        line = [ln for ln in stream.getvalue().splitlines() if "slow_query" in ln][0]
+        payload = json.loads(line)
+        assert payload["event"] == "slow_query"
+        assert payload["level"] == "warning"
+        assert payload["logger"] == "normaai.sample"
+        assert payload["ms"] == 12
+        assert "timestamp" in payload
+
+    def test_structlog_events_render_through_the_same_formatter(self, logging_sandbox):
+        stream = io.StringIO()
+        obs.setup_logging(_settings("INFO", "json"), stream=stream)
+        structlog.get_logger("normaai.structured").info("router_loaded", module="x")
+        line = [ln for ln in stream.getvalue().splitlines() if "router_loaded" in ln][0]
+        payload = json.loads(line)
+        assert payload["module"] == "x"
+        assert payload["logger"] == "normaai.structured"
+        assert payload["level"] == "info"
+
+    def test_info_logs_are_actually_emitted(self, logging_sandbox):
+        # The original bug: no root handler -> INFO lines vanished entirely.
+        stream = io.StringIO()
+        obs.setup_logging(_settings("INFO"), stream=stream)
+        logging.getLogger("src.cache").info("redis_cache_connected")
+        assert "redis_cache_connected" in stream.getvalue()
+
+    def test_debug_is_filtered_at_info(self, logging_sandbox):
+        stream = io.StringIO()
+        obs.setup_logging(_settings("INFO"), stream=stream)
+        logging.getLogger("src.cache").debug("hidden")
+        assert "hidden" not in stream.getvalue()
+
+
+class TestAuditLogger:
+    def test_audit_logger_is_pinned_at_info(self, logging_sandbox):
+        obs.setup_logging(_settings("WARNING"), stream=io.StringIO())
+        audit = logging.getLogger(obs.AUDIT_LOGGER_NAME)
+        assert audit.level == logging.INFO
+        assert audit.propagate is True
+
+    def test_audit_events_are_emitted_even_when_root_level_is_warning(self, logging_sandbox):
+        from src.audit import AuditAction, audit_log
+
+        stream = io.StringIO()
+        obs.setup_logging(_settings("WARNING", "json"), stream=stream)
+        audit_log(AuditAction.QA_QUERY, user_id="u-1", org_id="o-1", resource="/api/v1/qa")
+        lines = [ln for ln in stream.getvalue().splitlines() if "audit_event" in ln]
+        assert len(lines) == 1
+        payload = json.loads(lines[0])
+        assert payload["logger"] == "normaai.audit"
+        assert payload["audit"] is True
+        assert payload["action"] == "data.qa.query"
+        assert payload["user_id"] == "u-1"
+        assert payload["level"] == "info"
+
+
+# --------------------------------------------------------------------------- #
+# setup_sentry() -- optional, settings-driven
+# --------------------------------------------------------------------------- #
+class TestSetupSentry:
+    def test_disabled_without_dsn(self):
+        assert obs.setup_sentry(MagicMock(sentry_dsn=None)) is False
+        assert obs.setup_sentry(MagicMock(sentry_dsn="")) is False
+        assert obs.setup_sentry(MagicMock(sentry_dsn="   ")) is False
+
+    def test_initialises_sdk_with_fastapi_integration(self):
+        fake_sdk = MagicMock()
+        fastapi_mod = MagicMock()
+        starlette_mod = MagicMock()
+        with patch.dict(
+            sys.modules,
+            {
+                "sentry_sdk": fake_sdk,
+                "sentry_sdk.integrations": MagicMock(),
+                "sentry_sdk.integrations.fastapi": fastapi_mod,
+                "sentry_sdk.integrations.starlette": starlette_mod,
+            },
+        ):
+            ok = obs.setup_sentry(
+                MagicMock(sentry_dsn="https://key@o1.ingest.sentry.io/1", app_env="production")
+            )
+        assert ok is True
+        fake_sdk.init.assert_called_once()
+        kwargs = fake_sdk.init.call_args.kwargs
+        assert kwargs["dsn"] == "https://key@o1.ingest.sentry.io/1"
+        assert kwargs["environment"] == "production"
+        assert kwargs["send_default_pii"] is False
+        assert kwargs["release"] == f"normaai@{obs.APP_VERSION}"
+        assert fastapi_mod.FastApiIntegration.return_value in kwargs["integrations"]
+        assert starlette_mod.StarletteIntegration.return_value in kwargs["integrations"]
+
+    def test_missing_sdk_is_graceful(self):
+        # The SDK is an optional extra: without it, startup must not fail.
+        with patch.dict(sys.modules, {"sentry_sdk": None}):
+            assert (
+                obs.setup_sentry(MagicMock(sentry_dsn="https://key@o1.ingest.sentry.io/1")) is False
+            )

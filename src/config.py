@@ -3,6 +3,7 @@
 import logging
 import sys
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings
 
@@ -99,8 +100,21 @@ class Settings(BaseSettings):
 
     # ─── App ──────────────────────────────────────────────────
     app_env: str = "development"
-    log_level: str = "INFO"
     max_concurrent_requests: int = 10
+
+    # ─── Logging ──────────────────────────────────────────────
+    # Applied to the root, uvicorn and structlog loggers at startup by
+    # src.observability.setup_logging (before it, nothing configured the root
+    # logger, so INFO logs and the audit trail were silently dropped).
+    log_level: str = "INFO"
+    # "plain": `timestamp [level] event [logger] key=value`; "json": one JSON
+    # object per line for log collectors. Same renderer for stdlib + structlog.
+    log_format: Literal["plain", "json"] = "plain"
+
+    # ─── Sentry (optional error tracking) ─────────────────────
+    # Set to enable sentry_sdk with the FastAPI integration at startup; the SDK
+    # is an optional extra (`poetry install -E sentry`), never a hard dependency.
+    sentry_dsn: str | None = None
 
     # ─── Chain-of-Verification (CoVe) ────────────────────────
     cove_enabled: bool = False

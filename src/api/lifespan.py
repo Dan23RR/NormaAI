@@ -9,7 +9,8 @@ import structlog
 from fastapi import FastAPI
 
 from src.api.app_state import app_state
-from src.config import validate_settings_or_exit
+from src.config import get_settings, validate_settings_or_exit
+from src.observability import setup_logging, setup_sentry
 
 logger = structlog.get_logger()
 
@@ -17,7 +18,12 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup validation and graceful shutdown."""
+    # Logging first, so the configuration warnings below and every INFO line
+    # (including the audit trail) are actually emitted with the configured
+    # level/format. Idempotent with the import-time call in main.py.
+    setup_logging(get_settings())
     settings = validate_settings_or_exit()
+    setup_sentry(settings)
     logger.info("normaai_starting", env=settings.app_env)
 
     # Initialize database

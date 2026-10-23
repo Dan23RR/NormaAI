@@ -70,6 +70,9 @@ def make_settings():
     s.embedding_dimension = 768
     s.embedding_batch_size = 32
     s.data_source = "eurlex"
+    s.corpus_languages = "EN"
+    s.corpus_language_list = ["EN"]
+    s.eurlex_prefer_consolidated = True
     return s
 
 
@@ -98,6 +101,11 @@ def patched_pipeline():
         )
 
     ctx_chunker.enrich_single.side_effect = _enrich_single
+
+    # No CELLAR in unit tests: the consolidated-version lookup is identity by
+    # default; tests that exercise consolidation override it.
+    eurlex.resolve_download_celex.side_effect = lambda celex, **kwargs: celex
+    indexer.write_corpus_meta.return_value = {"corpus_as_of": "2026-10-23"}
 
     with (
         patch.object(pipeline_mod, "get_settings", return_value=settings),
@@ -157,7 +165,7 @@ class TestSeed:
         reg = FakeReg(celex="32022L2464", framework="CSRD")
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = self._good_html()
-        m["indexer"].index_contextual_chunks.return_value = 3
+        m["indexer"].reindex_act.return_value = 3
 
         produced = [FakeChunk("c1", {"framework": "CSRD"})] * 3
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
@@ -166,18 +174,41 @@ class TestSeed:
 
         # setup_collection invoked with recreate flag passthrough.
         m["indexer"].setup_collection.assert_called_once_with(recreate=True)
+        # The registry crawl is asked for unique acts (one download per act).
+        m["eurlex"].crawl_all_core_frameworks.assert_called_once_with(
+            celex_filter=None, unique=True
+        )
+        # Downloaded in the configured language with the chunker tagged accordingly.
+        m["eurlex"].download_full_text_html.assert_called_once_with("32022L2464", lang="EN")
+        _, chunker_kwargs = mock_chunker_cls.call_args
+        assert chunker_kwargs["celex"] == "32022L2464"
+        assert chunker_kwargs["lang"] == "EN"
+        assert chunker_kwargs["source_celex"] == "32022L2464"
+        assert chunker_kwargs["eli_type"] == "dir"  # from the registry
 
-        # Each chunk enriched once; indexer indexed once.
+        # Each chunk enriched once; the act re-indexed once (delete + upsert).
         assert m["ctx_chunker"].enrich_single.call_count == 3
-        m["indexer"].index_contextual_chunks.assert_called_once()
+        m["indexer"].reindex_act.assert_called_once()
+        celex_arg, lang_arg, enriched_arg = m["indexer"].reindex_act.call_args.args
+        assert (celex_arg, lang_arg, len(enriched_arg)) == ("32022L2464", "EN", 3)
+        assert m["indexer"].reindex_act.call_args.kwargs["batch_size"] == 32
+        # Corpus metadata written once something was indexed.
+        m["indexer"].write_corpus_meta.assert_called_once()
+        meta_kwargs = m["indexer"].write_corpus_meta.call_args.kwargs
+        assert meta_kwargs["embedding_model"] == "test-model"
+        assert meta_kwargs["acts"][0]["celex"] == "32022L2464"
+        assert meta_kwargs["acts"][0]["lang"] == "EN"
+        assert meta_kwargs["acts"][0]["chunks"] == 3
 
         assert stats["action"] == "seed"
         assert stats["data_source"] == "eurlex"
+        assert stats["languages"] == ["EN"]
         assert stats["eurlex"]["success"] == 1
         assert stats["eurlex"]["failed"] == 0
         assert stats["eurlex"]["total_chunks"] == 3
         assert stats["chunks_indexed"] == 3
         assert stats["total_downloads_success"] == 1
+        assert stats["corpus_as_of"] == "2026-10-23"
         assert stats["contextual_enrichment"] is True
         assert "timestamp" in stats
         assert isinstance(stats["frameworks"], list)
@@ -193,7 +224,7 @@ class TestSeed:
         )
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = self._good_html()
-        m["indexer"].index_contextual_chunks.return_value = 1
+        m["indexer"].reindex_act.return_value = 1
 
         chunk = FakeChunk("body", {"framework": "CSRD"})
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
@@ -202,6 +233,8 @@ class TestSeed:
 
         assert chunk.metadata["effective_date"] == "2022-12-16"
         assert chunk.metadata["superseded_by"] == "not_in_force"
+        # Every framework the act is listed under (CSRD only for the directive).
+        assert chunk.metadata["frameworks"] == ["CSRD"]
 
     def test_in_force_reg_not_marked_superseded(self, patched_pipeline):
         p, m = patched_pipeline
@@ -213,7 +246,7 @@ class TestSeed:
         )
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = self._good_html()
-        m["indexer"].index_contextual_chunks.return_value = 1
+        m["indexer"].reindex_act.return_value = 1
 
         chunk = FakeChunk("body", {"framework": "AI_ACT"})
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
@@ -228,7 +261,6 @@ class TestSeed:
         reg = FakeReg(celex="32022L2464")
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = None  # download failure
-        m["indexer"].index_contextual_chunks.return_value = 0
 
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
             stats = p.seed()
@@ -239,13 +271,16 @@ class TestSeed:
         assert stats["eurlex"]["success"] == 0
         assert stats["eurlex"]["total_chunks"] == 0
         assert stats["total_downloads_failed"] == 1
+        m["indexer"].reindex_act.assert_not_called()
+        # Nothing indexed -> no corpus metadata (the corpus must not look ready).
+        m["indexer"].write_corpus_meta.assert_not_called()
+        assert stats["corpus_as_of"] is None
 
     def test_too_short_html_counted_as_failed(self, patched_pipeline):
         p, m = patched_pipeline
         reg = FakeReg(celex="32022L2464")
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = "tiny"  # < 500 chars
-        m["indexer"].index_contextual_chunks.return_value = 0
 
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
             stats = p.seed()
@@ -255,13 +290,15 @@ class TestSeed:
         assert stats["eurlex"]["success"] == 0
 
     def test_empty_corpus_does_not_call_indexer(self, patched_pipeline):
-        """No regulations crawled -> no chunks -> indexer.index NOT called, indexed=0."""
+        """No regulations crawled -> no chunks -> nothing indexed, indexed=0."""
         p, m = patched_pipeline
         m["eurlex"].crawl_all_core_frameworks.return_value = []
 
         stats = p.seed()
 
+        m["indexer"].reindex_act.assert_not_called()
         m["indexer"].index_contextual_chunks.assert_not_called()
+        m["indexer"].write_corpus_meta.assert_not_called()
         assert stats["chunks_indexed"] == 0
         assert stats["total_chunks"] == 0
         assert m["ctx_chunker"].enrich_single.call_count == 0
@@ -274,7 +311,7 @@ class TestSeed:
 
         # First reg downloads fine, second returns None.
         m["eurlex"].download_full_text_html.side_effect = [self._good_html(), None]
-        m["indexer"].index_contextual_chunks.return_value = 2
+        m["indexer"].reindex_act.return_value = 2
 
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
             mock_chunker_cls.return_value.chunk_html.return_value = [
@@ -288,6 +325,7 @@ class TestSeed:
         assert stats["eurlex"]["total_chunks"] == 2
         assert stats["total_downloads_success"] == 1
         assert stats["total_downloads_failed"] == 1
+        assert [a["celex"] for a in stats["acts"]] == ["32022L2464"]
 
     def test_enriched_metadata_merges_original(self, patched_pipeline):
         """ctx.metadata.update(chunk.metadata) should carry original metadata through."""
@@ -295,21 +333,136 @@ class TestSeed:
         reg = FakeReg(celex="32022L2464", framework="CSRD")
         m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
         m["eurlex"].download_full_text_html.return_value = self._good_html()
-        m["indexer"].index_contextual_chunks.return_value = 1
+        m["indexer"].reindex_act.return_value = 1
 
         chunk = FakeChunk("body", {"framework": "CSRD", "article_number": "Art. 19a"})
         with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
             mock_chunker_cls.return_value.chunk_html.return_value = [chunk]
             p.seed()
 
-        # Grab the list handed to the indexer.
-        indexed_arg = m["indexer"].index_contextual_chunks.call_args.args[0]
+        # Grab the list handed to the indexer (celex, lang, chunks).
+        indexed_arg = m["indexer"].reindex_act.call_args.args[2]
         assert len(indexed_arg) == 1
         merged = indexed_arg[0].metadata
         # Original metadata merged on top of the enrich stub's {"enriched": True}.
         assert merged["framework"] == "CSRD"
         assert merged["article_number"] == "Art. 19a"
         assert merged["enriched"] is True
+
+    def test_both_languages_are_downloaded_and_reindexed_separately(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        reg = FakeReg(celex="32022L2464", framework="CSRD")
+        m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
+        m["eurlex"].download_full_text_html.return_value = self._good_html()
+        m["indexer"].reindex_act.return_value = 2
+
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
+            mock_chunker_cls.return_value.chunk_html.return_value = [
+                FakeChunk("a", {"framework": "CSRD"}),
+                FakeChunk("b", {"framework": "CSRD"}),
+            ]
+            stats = p.seed()
+
+        downloads = [c.kwargs["lang"] for c in m["eurlex"].download_full_text_html.call_args_list]
+        assert downloads == ["EN", "IT"]
+        reindexed = [c.args[:2] for c in m["indexer"].reindex_act.call_args_list]
+        assert reindexed == [("32022L2464", "EN"), ("32022L2464", "IT")]
+        langs = [c.kwargs["lang"] for c in mock_chunker_cls.call_args_list]
+        assert langs == ["EN", "IT"]
+        assert stats["languages"] == ["EN", "IT"]
+        assert stats["eurlex"]["success"] == 2
+        assert stats["chunks_indexed"] == 4
+        # One consolidated-version lookup per act, not per language.
+        m["eurlex"].resolve_download_celex.assert_called_once_with(
+            "32022L2464", prefer_consolidated=True
+        )
+
+    def test_explicit_languages_override_settings(self, patched_pipeline):
+        p, m = patched_pipeline
+        reg = FakeReg(celex="32024R1689", framework="AI_ACT")
+        m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
+        m["eurlex"].download_full_text_html.return_value = self._good_html()
+        m["indexer"].reindex_act.return_value = 1
+
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
+            mock_chunker_cls.return_value.chunk_html.return_value = [FakeChunk("a", {})]
+            stats = p.seed(languages=["it", "it"])
+
+        m["eurlex"].download_full_text_html.assert_called_once_with("32024R1689", lang="IT")
+        assert stats["languages"] == ["IT"]
+
+    def test_consolidated_text_preferred_and_recorded(self, patched_pipeline):
+        p, m = patched_pipeline
+        reg = FakeReg(celex="32022L2464", framework="CSRD")
+        m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
+        m["eurlex"].resolve_download_celex.side_effect = lambda c, **kw: "02022L2464-20260318"
+        m["eurlex"].download_full_text_html.return_value = self._good_html()
+        m["indexer"].reindex_act.return_value = 1
+
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
+            mock_chunker_cls.return_value.chunk_html.return_value = [FakeChunk("a", {})]
+            stats = p.seed()
+
+        m["eurlex"].download_full_text_html.assert_called_once_with(
+            "02022L2464-20260318", lang="EN"
+        )
+        _, kwargs = mock_chunker_cls.call_args
+        assert kwargs["celex"] == "32022L2464"
+        assert kwargs["source_celex"] == "02022L2464-20260318"
+        # The act is still re-indexed under its base CELEX (old versions removed).
+        assert m["indexer"].reindex_act.call_args.args[:2] == ("32022L2464", "EN")
+        act = stats["acts"][0]
+        assert act["source_celex"] == "02022L2464-20260318"
+        assert act["consolidated_as_of"] == "2026-03-18"
+
+    def test_consolidated_download_failure_falls_back_to_original(self, patched_pipeline):
+        p, m = patched_pipeline
+        reg = FakeReg(celex="32022L2464", framework="CSRD")
+        m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
+        m["eurlex"].resolve_download_celex.side_effect = lambda c, **kw: "02022L2464-20260318"
+        m["eurlex"].download_full_text_html.side_effect = [None, self._good_html()]
+        m["indexer"].reindex_act.return_value = 1
+
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
+            mock_chunker_cls.return_value.chunk_html.return_value = [FakeChunk("a", {})]
+            stats = p.seed()
+
+        calls = [c.args[0] for c in m["eurlex"].download_full_text_html.call_args_list]
+        assert calls == ["02022L2464-20260318", "32022L2464"]
+        assert stats["eurlex"]["success"] == 1
+        assert stats["acts"][0]["source_celex"] == "32022L2464"
+        assert stats["acts"][0]["consolidated_as_of"] is None
+
+    def test_prefer_consolidated_setting_off(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["settings"].eurlex_prefer_consolidated = False
+        m["eurlex"].crawl_all_core_frameworks.return_value = []
+        stats = p.seed()
+        assert stats["prefer_consolidated"] is False
+
+    def test_acts_filter_is_passed_to_the_crawl(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["eurlex"].crawl_all_core_frameworks.return_value = []
+        p.seed(acts=["AI_ACT", "32022L2464"])
+        m["eurlex"].crawl_all_core_frameworks.assert_called_once_with(
+            celex_filter=["AI_ACT", "32022L2464"], unique=True
+        )
+
+    def test_corpus_meta_write_failure_is_non_fatal(self, patched_pipeline):
+        p, m = patched_pipeline
+        reg = FakeReg(celex="32022L2464", framework="CSRD")
+        m["eurlex"].crawl_all_core_frameworks.return_value = [reg]
+        m["eurlex"].download_full_text_html.return_value = self._good_html()
+        m["indexer"].reindex_act.return_value = 1
+        m["indexer"].write_corpus_meta.side_effect = RuntimeError("qdrant hiccup")
+
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
+            mock_chunker_cls.return_value.chunk_html.return_value = [FakeChunk("a", {})]
+            stats = p.seed()
+
+        assert stats["chunks_indexed"] == 1
+        assert stats["corpus_as_of"] is None
 
     def test_normattiva_disabled_when_source_eurlex(self, patched_pipeline):
         """data_source='eurlex' must not trigger the Normattiva branch."""
@@ -528,24 +681,32 @@ class TestStats:
     def test_stats_healthy(self, patched_pipeline):
         p, m = patched_pipeline
         m["indexer"].get_collection_stats.return_value = {"points": 1234}
+        m["indexer"].get_corpus_info.return_value = {
+            "kind": "corpus_meta",
+            "corpus_as_of": "2026-10-23",
+        }
 
         result = p.stats()
 
         assert result["qdrant"] == {"points": 1234}
+        assert result["corpus"]["corpus_as_of"] == "2026-10-23"
         assert isinstance(result["tracked_frameworks"], list)
         assert result["tracked_regulations"] >= 1
         # tracked_regulations is the total count across all frameworks.
         assert result["tracked_regulations"] == sum(
             len(v) for v in pipeline_mod.CORE_FRAMEWORKS.values()
         )
+        assert result["tracked_acts"] == len(pipeline_mod.TRACKED_ACTS)
 
     def test_stats_indexer_unavailable(self, patched_pipeline):
         p, m = patched_pipeline
         m["indexer"].get_collection_stats.side_effect = RuntimeError("qdrant down")
+        m["indexer"].get_corpus_info.side_effect = RuntimeError("qdrant down")
 
         result = p.stats()
 
         assert result["qdrant"] == {"status": "unavailable"}
+        assert result["corpus"] is None
         # Framework counts still reported even when Qdrant is unreachable.
         assert result["tracked_regulations"] >= 1
 
@@ -579,13 +740,33 @@ class TestMainDispatch:
 
     def test_main_seed_dispatch(self):
         fp = self._run_main(["pipeline", "--action", "seed", "--recreate"])
-        fp.seed.assert_called_once_with(recreate_collection=True)
+        fp.seed.assert_called_once_with(recreate_collection=True, acts=None, languages=None)
         fp.update.assert_not_called()
         fp.close.assert_called_once()
 
     def test_main_seed_without_recreate(self):
         fp = self._run_main(["pipeline", "--action", "seed"])
-        fp.seed.assert_called_once_with(recreate_collection=False)
+        fp.seed.assert_called_once_with(recreate_collection=False, acts=None, languages=None)
+
+    def test_main_seed_acts_and_lang_options(self):
+        fp = self._run_main(
+            [
+                "pipeline",
+                "--action",
+                "seed",
+                "--acts",
+                "AI_ACT, 32022L2464",
+                "--acts",
+                "DORA",
+                "--lang",
+                "it",
+            ]
+        )
+        fp.seed.assert_called_once_with(
+            recreate_collection=False,
+            acts=["AI_ACT", "32022L2464", "DORA"],
+            languages=["it"],
+        )
 
     def test_main_update_dispatch(self):
         fp = self._run_main(["pipeline", "--action", "update", "--days-back", "30"])

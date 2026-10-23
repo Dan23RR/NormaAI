@@ -21,6 +21,22 @@ class TestSettings:
         assert s.qdrant_port == 6333
         assert s.embedding_dimension == 768
 
+    def test_corpus_defaults(self, monkeypatch):
+        s = _isolated_settings(monkeypatch, google_api_key="test")
+        assert s.embedding_model == "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+        assert s.corpus_languages == "EN,IT"
+        assert s.corpus_language_list == ["EN", "IT"]
+        assert s.eurlex_prefer_consolidated is True
+
+    def test_corpus_language_list_parsing(self):
+        assert Settings(corpus_languages=" en, it ,fr,,it").corpus_language_list == [
+            "EN",
+            "IT",
+            "FR",
+        ]
+        assert Settings(corpus_languages="").corpus_language_list == ["EN"]
+        assert Settings(corpus_languages="ita").corpus_language_list == ["IT"]
+
     def test_active_api_key_gemini(self):
         s = Settings(llm_provider="gemini", google_api_key="gkey")
         assert s.active_api_key == "gkey"

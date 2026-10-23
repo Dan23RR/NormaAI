@@ -9,7 +9,9 @@ This is the main orchestration script that:
 5. Indexes chunks into Qdrant with hybrid search (dense + sparse)
 
 Usage:
-    python -m src.pipeline --action seed     # Initial seed: crawl + index all core frameworks
+    python -m src.pipeline --action seed     # Initial seed: crawl + index all tracked acts
+    python -m src.pipeline --action seed --acts AI_ACT,32022L2464 --lang IT   # subset
+    python -m src.pipeline --action seed --recreate   # drop + rebuild the collection
     python -m src.pipeline --action update   # Check for amendments and index new content
     python -m src.pipeline --action stats    # Show collection statistics
 """
@@ -21,7 +23,13 @@ import time
 from datetime import datetime
 
 from src.config import get_settings
-from src.crawler.eurlex.client import CORE_FRAMEWORKS, EurLexClient
+from src.crawler.eurlex import celex as celex_utils
+from src.crawler.eurlex.client import (
+    CORE_FRAMEWORKS,
+    TRACKED_ACTS,
+    EurLexClient,
+    get_tracked_act,
+)
 from src.nlp.chunking.contextual_chunker import ContextualChunker
 from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
 from src.nlp.embedding.indexer import HybridIndexer
@@ -55,114 +63,198 @@ class IngestionPipeline:
         self.contextual_chunker = ContextualChunker()
         self.doc_processor = UnifiedDocumentProcessor()
 
-    def seed(self, recreate_collection: bool = False) -> dict:
+    def _enrich(self, chunks: list) -> list:
+        """Add the contextual prefix to every chunk, keeping its metadata."""
+        enriched = []
+        for chunk in chunks:
+            ctx = self.contextual_chunker.enrich_single(
+                text=chunk.text,
+                framework=chunk.metadata.get("framework", ""),
+                article=chunk.metadata.get("article_number", ""),
+                section=chunk.metadata.get("section_title", ""),
+            )
+            # Merge original metadata
+            ctx.metadata.update(chunk.metadata)
+            enriched.append(ctx)
+        return enriched
+
+    def _seed_eurlex_act(self, reg, download_celex: str, lang: str, batch_size: int) -> dict | None:
+        """Download, chunk, enrich and (re)index one act in one language.
+
+        Returns a summary dict, or None when no usable text was obtained.
         """
-        Initial seed: download and index all core EU regulatory frameworks.
-        This is the Day 1 operation that builds the foundational knowledge base.
-        Supports both EUR-Lex (EU regulations) and Normattiva (Italian implementations).
+        act = get_tracked_act(reg.celex)
+        html = self.eurlex.download_full_text_html(download_celex, lang=lang)
+        if not html and download_celex != reg.celex:
+            logger.warning(
+                f"  {reg.celex} [{lang}]: consolidated text {download_celex} unavailable, "
+                "falling back to the original act"
+            )
+            download_celex = reg.celex
+            html = self.eurlex.download_full_text_html(download_celex, lang=lang)
+        if not html:
+            logger.warning(f"  FAILED to download {reg.celex} [{lang}]")
+            return None
+        if len(html.strip()) < 500:
+            logger.warning(
+                f"  SKIPPED {reg.celex} [{lang}]: HTML too short ({len(html)} chars), "
+                "likely error page"
+            )
+            return None
+
+        chunker = EURLexHTMLChunker(
+            celex=reg.celex,
+            framework=reg.framework,
+            lang=lang,
+            source_celex=download_celex,
+            eli_type=act.eli_type if act else None,
+            title=reg.title or None,
+        )
+        chunks = chunker.chunk_html(html)
+        frameworks = list(act.all_frameworks) if act else [reg.framework]
+        # Populate temporal metadata from the real EUR-Lex record so the
+        # "exclude superseded" filter is actually effective. effective_date
+        # enables date reasoning; a not-in-force regulation is marked superseded
+        # so it is NOT served as current law.
+        for c in chunks:
+            c.metadata["frameworks"] = frameworks
+            if getattr(reg, "date_document", None):
+                c.metadata["effective_date"] = reg.date_document
+            if getattr(reg, "is_in_force", None) is False:
+                c.metadata["superseded_by"] = "not_in_force"
+
+        enriched = self._enrich(chunks)
+        # Idempotent per act + language: delete the previous points, upsert the new.
+        count = (
+            self.indexer.reindex_act(reg.celex, lang, enriched, batch_size=batch_size)
+            if enriched
+            else 0
+        )
+        consolidated_as_of = (
+            celex_utils.consolidated_as_of(download_celex)
+            if isinstance(download_celex, str)
+            else None
+        )
+        version = f"consolidated {consolidated_as_of}" if consolidated_as_of else "original text"
+        logger.info(
+            f"  OK {reg.celex} [{lang}] {version}: {count} chunks ({len(html):,} chars HTML)"
+        )
+        return {
+            "celex": reg.celex,
+            "framework": reg.framework,
+            "lang": lang,
+            "source_celex": download_celex,
+            "consolidated_as_of": consolidated_as_of,
+            "chunks": count,
+            "title": (reg.title or "")[:120],
+        }
+
+    def seed(
+        self,
+        recreate_collection: bool = False,
+        acts: list[str] | None = None,
+        languages: list[str] | None = None,
+    ) -> dict:
+        """
+        Initial seed: download and index the tracked EU acts (+ Normattiva).
+
+        Idempotent: every (act, language) pair is re-indexed in place (delete +
+        upsert with deterministic point ids), so re-running the seed never
+        duplicates chunks. Prefers the latest CELLAR consolidated text of each
+        act when one exists (EURLEX_PREFER_CONSOLIDATED), downloads every
+        language in CORPUS_LANGUAGES, and finally writes the corpus metadata
+        point (``corpus_as_of``, acts, embedding model).
+
+        Args:
+            recreate_collection: drop and re-create the Qdrant collection first
+                (needed when the sparse IDF modifier or the embedding model changed).
+            acts: optional CELEX ids and/or framework names restricting the seed.
+            languages: optional language codes (default: settings.corpus_languages).
         """
         logger.info("=" * 60)
         logger.info("NORMAAI SEED PIPELINE - Building regulatory knowledge base")
         logger.info("=" * 60)
 
         start_time = time.time()
-
-        # Step 1: Setup Qdrant collection
-        logger.info("[1/6] Setting up Qdrant collection...")
-        self.indexer.setup_collection(recreate=recreate_collection)
-
         settings = get_settings()
         data_source = settings.data_source  # "eurlex", "normattiva", or "both"
+        raw_langs = languages or settings.corpus_language_list
+        langs = list(dict.fromkeys(celex_utils.normalize_lang(code) for code in raw_langs))
+        prefer_consolidated = bool(getattr(settings, "eurlex_prefer_consolidated", True))
+        batch_size = settings.embedding_batch_size
 
-        # Step 2a: Crawl EUR-Lex (if enabled)
-        all_chunks = []
+        # Step 1: Setup Qdrant collection
+        logger.info("[1/5] Setting up Qdrant collection...")
+        self.indexer.setup_collection(recreate=recreate_collection)
+
         download_stats_eurlex = {"success": 0, "failed": 0, "total_chunks": 0}
         download_stats_normattiva = {"success": 0, "failed": 0, "total_chunks": 0}
+        indexed_acts: list[dict] = []
+        indexed = 0
 
+        # Step 2-3: EUR-Lex acts, one (act, language) at a time
         if data_source in ("eurlex", "both"):
-            logger.info("[2/6] Crawling EUR-Lex for core framework metadata...")
-            regulations = self.eurlex.crawl_all_core_frameworks()
             logger.info(
-                f"  Found {len(regulations)} regulations across {len(CORE_FRAMEWORKS)} frameworks"
+                f"[2/5] Crawling EUR-Lex metadata for the tracked acts "
+                f"(languages: {', '.join(langs)}, consolidated: {prefer_consolidated})..."
+            )
+            regulations = self.eurlex.crawl_all_core_frameworks(celex_filter=acts, unique=True)
+            logger.info(
+                f"  {len(regulations)} acts selected across {len(CORE_FRAMEWORKS)} frameworks"
             )
 
-            # Step 3a: Download and chunk EUR-Lex content
-            logger.info("[3/6] Downloading EUR-Lex full text and chunking...")
-
+            logger.info("[3/5] Downloading, chunking and indexing EUR-Lex texts...")
             for reg in regulations:
                 logger.info(f"  Processing {reg.celex} ({reg.framework}): {reg.title[:60]}...")
+                download_celex = self.eurlex.resolve_download_celex(
+                    reg.celex, prefer_consolidated=prefer_consolidated
+                )
+                if not isinstance(download_celex, str) or not download_celex:
+                    download_celex = reg.celex
+                for lang in langs:
+                    result = self._seed_eurlex_act(reg, download_celex, lang, batch_size)
+                    if result is None:
+                        download_stats_eurlex["failed"] += 1
+                        continue
+                    download_stats_eurlex["success"] += 1
+                    download_stats_eurlex["total_chunks"] += result["chunks"]
+                    indexed += result["chunks"]
+                    indexed_acts.append(result)
 
-                # Download HTML
-                html = self.eurlex.download_full_text_html(reg.celex)
-                if not html:
-                    logger.warning(f"  FAILED to download {reg.celex}")
-                    download_stats_eurlex["failed"] += 1
-                    continue
-
-                # Validate HTML has content
-                if len(html.strip()) < 500:
-                    logger.warning(
-                        f"  SKIPPED {reg.celex}: HTML too short ({len(html)} chars), likely error page"
-                    )
-                    download_stats_eurlex["failed"] += 1
-                    continue
-
-                download_stats_eurlex["success"] += 1
-
-                # Chunk
-                chunker = EURLexHTMLChunker(celex=reg.celex, framework=reg.framework)
-                chunks = chunker.chunk_html(html)
-                # Populate temporal metadata from the real EUR-Lex record so the
-                # "exclude superseded" filter is actually effective (it was inert
-                # because nothing ever set these fields). effective_date enables
-                # date reasoning; a not-in-force regulation is marked superseded
-                # so it is NOT served as current law.
-                for c in chunks:
-                    if getattr(reg, "date_document", None):
-                        c.metadata["effective_date"] = reg.date_document
-                    if getattr(reg, "is_in_force", None) is False:
-                        c.metadata["superseded_by"] = "not_in_force"
-                all_chunks.extend(chunks)
-                download_stats_eurlex["total_chunks"] += len(chunks)
-
-                logger.info(f"  OK {reg.celex}: {len(chunks)} chunks ({len(html):,} chars HTML)")
-
-        # Step 2b/3b: Seed Normattiva (if enabled)
+        # Step 4: Seed Normattiva (if enabled)
         if data_source in ("normattiva", "both"):
-            logger.info("[2/6] Initializing Normattiva Italian implementations...")
+            logger.info("[4/5] Initializing Normattiva Italian implementations...")
             normattiva_chunks = self.seed_normattiva(list(CORE_FRAMEWORKS.keys()))
-            all_chunks.extend(normattiva_chunks)
             download_stats_normattiva["success"] = len(normattiva_chunks) // max(
                 1, len(normattiva_chunks) // 5
             )
             download_stats_normattiva["total_chunks"] = len(normattiva_chunks)
+            if normattiva_chunks:
+                logger.info(
+                    f"  Enriching and indexing {len(normattiva_chunks)} Normattiva chunks..."
+                )
+                enriched = self._enrich(normattiva_chunks)
+                indexed += self.indexer.index_contextual_chunks(enriched, batch_size=batch_size)
 
-        # Step 4: Enrich with contextual prefixes
-        logger.info(f"[4/6] Enriching {len(all_chunks)} chunks with contextual prefixes...")
-        enriched_chunks = []
-        for chunk in all_chunks:
-            framework = chunk.metadata.get("framework", "")
-            ctx = self.contextual_chunker.enrich_single(
-                text=chunk.text,
-                framework=framework,
-                article=chunk.metadata.get("article_number", ""),
-                section=chunk.metadata.get("section_title", ""),
-            )
-            # Merge original metadata
-            ctx.metadata.update(chunk.metadata)
-            enriched_chunks.append(ctx)
-
-        logger.info(f"  Enriched {len(enriched_chunks)} chunks with regulatory context")
-
-        # Step 5: Index all chunks
-        logger.info(f"[5/6] Indexing {len(enriched_chunks)} chunks into Qdrant...")
-        if enriched_chunks:
-            indexed = self.indexer.index_contextual_chunks(
-                enriched_chunks,
-                batch_size=settings.embedding_batch_size,
-            )
-        else:
-            indexed = 0
+        # Step 5: corpus metadata - only when something was indexed, so an empty
+        # seed never makes the corpus look ready.
+        corpus_meta = None
+        if indexed > 0:
+            logger.info("[5/5] Writing corpus metadata point...")
+            try:
+                corpus_meta = self.indexer.write_corpus_meta(
+                    acts=indexed_acts,
+                    embedding_model=settings.embedding_model,
+                    extra={
+                        "languages": langs,
+                        "data_source": data_source,
+                        "prefer_consolidated": prefer_consolidated,
+                        "normattiva_chunks": download_stats_normattiva["total_chunks"],
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"  corpus metadata write failed: {e}")
+        corpus_as_of = corpus_meta.get("corpus_as_of") if isinstance(corpus_meta, dict) else None
 
         elapsed = time.time() - start_time
 
@@ -178,6 +270,8 @@ class IngestionPipeline:
             "timestamp": datetime.utcnow().isoformat(),
             "elapsed_seconds": round(elapsed, 1),
             "data_source": data_source,
+            "languages": langs,
+            "prefer_consolidated": prefer_consolidated,
             "eurlex": download_stats_eurlex,
             "normattiva": download_stats_normattiva,
             "total_downloads_success": total_downloads,
@@ -185,12 +279,20 @@ class IngestionPipeline:
             "total_chunks": total_chunks_created,
             "chunks_indexed": indexed,
             "frameworks": list(CORE_FRAMEWORKS.keys()),
+            "acts": indexed_acts,
+            "corpus_as_of": corpus_as_of,
             "contextual_enrichment": True,
         }
 
         logger.info("=" * 60)
         logger.info("SEED COMPLETE")
-        logger.info(f"  Data source: {data_source}")
+        logger.info(f"  Data source: {data_source} | languages: {', '.join(langs)}")
+        for entry in indexed_acts:
+            version = entry["consolidated_as_of"] or "original"
+            logger.info(
+                f"  {entry['celex']:<12} {entry['lang']:<3} {entry['framework']:<9} "
+                f"{version:<11} {entry['chunks']:>5} chunks"
+            )
         logger.info(
             f"  EUR-Lex:    {download_stats_eurlex['success']} OK, {download_stats_eurlex['failed']} failed"
         )
@@ -198,6 +300,7 @@ class IngestionPipeline:
             f"  Normattiva: {download_stats_normattiva['success']} OK, {download_stats_normattiva['failed']} failed"
         )
         logger.info(f"  Chunks:     {stats['chunks_indexed']} indexed (with contextual enrichment)")
+        logger.info(f"  Corpus as of: {corpus_as_of or 'n/a'}")
         logger.info(f"  Time:       {stats['elapsed_seconds']}s")
         logger.info("=" * 60)
 
@@ -324,23 +427,26 @@ class IngestionPipeline:
                                     logger.debug(f"    Skipping {act_summary.urn}: text too short")
                                     continue
 
-                                # Chunk the content
+                                # Chunk the content (Italian text, URN as identifier)
                                 chunker = EURLexHTMLChunker(
-                                    celex=act_summary.urn,  # Use URN as identifier
+                                    celex=act_summary.urn,
                                     framework=fw,
+                                    lang="IT",
                                 )
                                 try:
                                     chunks = chunker.chunk_html(text_content)
                                 except Exception:
                                     # If HTML chunking fails, create a single chunk from plain text
-                                    from src.nlp.chunking.legal_chunker import Chunk
+                                    from src.nlp.chunking.legal_chunker import LegalChunk
 
                                     plain = normative_text.testo_plain or text_content
                                     chunks = [
-                                        Chunk(
+                                        LegalChunk(
                                             text=plain[:4000],
                                             metadata={
+                                                "celex": act_summary.urn,
                                                 "framework": fw,
+                                                "lang": "IT",
                                                 "source": "normattiva",
                                                 "urn": act_summary.urn,
                                             },
@@ -547,16 +653,22 @@ class IngestionPipeline:
         }
 
     def stats(self) -> dict:
-        """Show collection statistics."""
+        """Show collection statistics (+ the corpus metadata point when present)."""
         try:
             collection_stats = self.indexer.get_collection_stats()
         except Exception:
             collection_stats = {"status": "unavailable"}
+        try:
+            corpus = self.indexer.get_corpus_info()
+        except Exception:
+            corpus = None
 
         return {
             "qdrant": collection_stats,
+            "corpus": corpus if isinstance(corpus, dict) else None,
             "tracked_frameworks": list(CORE_FRAMEWORKS.keys()),
             "tracked_regulations": sum(len(v) for v in CORE_FRAMEWORKS.values()),
+            "tracked_acts": len(TRACKED_ACTS),
         }
 
     def close(self):
@@ -642,14 +754,42 @@ def main():
         default=7,
         help="Days to look back for updates (update only)",
     )
+    parser.add_argument(
+        "--acts",
+        action="append",
+        default=[],
+        metavar="CELEX_OR_FRAMEWORK",
+        help=(
+            "Restrict the seed to these acts: CELEX ids and/or framework names, "
+            "comma-separated or repeated (e.g. --acts AI_ACT --acts 32022L2464). "
+            "Default: every tracked act (seed only)"
+        ),
+    )
+    parser.add_argument(
+        "--lang",
+        action="append",
+        default=[],
+        metavar="CODE",
+        help=(
+            "Language(s) to download, comma-separated or repeated (e.g. --lang EN --lang IT). "
+            "Default: CORPUS_LANGUAGES (seed only)"
+        ),
+    )
 
     args = parser.parse_args()
+
+    def _split(values: list[str]) -> list[str]:
+        return [item.strip() for value in values for item in value.split(",") if item.strip()]
 
     pipeline = IngestionPipeline()
 
     try:
         if args.action == "seed":
-            result = pipeline.seed(recreate_collection=args.recreate)
+            result = pipeline.seed(
+                recreate_collection=args.recreate,
+                acts=_split(args.acts) or None,
+                languages=_split(args.lang) or None,
+            )
         elif args.action == "update":
             result = pipeline.update(days_back=args.days_back)
         elif args.action == "stats":

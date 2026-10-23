@@ -9,9 +9,17 @@ export default function TermsPage() {
     <LegalLayout
       title="Termini di Servizio"
       intro="Condizioni d'uso di NormaAI. Disclaimer AI Act, limitazione di responsabilità, esclusione di garanzia."
-      lastUpdated="Marzo 2026 · NormaAI v0.3"
+      lastUpdated="Ottobre 2026 · NormaAI v0.3"
     >
       <LegalSection title="1. Natura del Servizio">
+        <p>
+          NormaAI è un servizio gestito da Daniel Culotta, persona fisica, nell&apos;ambito di un
+          progetto non ancora costituito in società. Contatti:{' '}
+          <a href="mailto:info@normaai.org" className="text-clay transition hover:text-clay-deep">
+            info@normaai.org
+          </a>
+          .
+        </p>
         <p>
           NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo
           esclusivamente informativo e di supporto decisionale in materia di conformità
@@ -31,13 +39,13 @@ export default function TermsPage() {
 
       <LegalSection title="3. Limitazione di Responsabilità">
         <p>
-          NormaAI S.r.l. non sarà in alcun caso responsabile per: (a) decisioni prese
+          Il gestore del servizio non sarà in alcun caso responsabile per: (a) decisioni prese
           dall&apos;Utente sulla base degli output del sistema; (b) sanzioni, multe o danni
           derivanti dalla non conformità normativa; (c) errori, omissioni o imprecisioni nelle
           analisi generate; (d) mancato aggiornamento delle informazioni normative.
         </p>
         <p>
-          La responsabilità complessiva di NormaAI S.r.l. è in ogni caso limitata
+          La responsabilità complessiva del gestore del servizio è in ogni caso limitata
           all&apos;importo dei corrispettivi pagati dall&apos;Utente nei 12 mesi precedenti
           l&apos;evento generatore del danno.
         </p>

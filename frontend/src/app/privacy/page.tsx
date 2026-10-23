@@ -9,13 +9,22 @@ export default function PrivacyPage() {
     <LegalLayout
       title="Privacy Policy"
       intro="Come NormaAI tratta i dati aziendali necessari all'erogazione del servizio, ai sensi del GDPR."
-      lastUpdated="Marzo 2026 · NormaAI v0.3"
+      lastUpdated="Ottobre 2026 · NormaAI v0.3"
     >
       <LegalSection title="1. Titolare e Responsabile del Trattamento">
         <p>
-          L&apos;Utente (Titolare del trattamento) affida a NormaAI S.r.l. (Responsabile del
-          trattamento) il trattamento dei dati aziendali necessari all&apos;erogazione del
-          servizio, ai sensi dell&apos;Art. 28 GDPR.
+          NormaAI è un progetto gestito da Daniel Culotta, persona fisica, non ancora costituito
+          in società. Contatti:{' '}
+          <a href="mailto:privacy@normaai.org" className="text-clay transition hover:text-clay-deep">
+            privacy@normaai.org
+          </a>
+          .
+        </p>
+        <p>
+          Per i dati aziendali necessari all&apos;erogazione del servizio, l&apos;Utente è
+          Titolare del trattamento e ne affida il trattamento a Daniel Culotta, quale Responsabile
+          del trattamento ai sensi dell&apos;Art. 28 GDPR. Per i dati di contatto trattati per le
+          comunicazioni descritte al punto 3-bis, Titolare del trattamento è Daniel Culotta.
         </p>
       </LegalSection>
 

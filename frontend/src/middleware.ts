@@ -25,12 +25,18 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'" + (process.env.NEXT_PUBLIC_API_URL ? ' ' + process.env.NEXT_PUBLIC_API_URL : '') + "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
+      // Vercel Analytics loads its debug script from this host in development only.
+      (process.env.NODE_ENV === 'development' ? ' https://va.vercel-scripts.com' : '') +
+      "; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'" +
+      (process.env.NEXT_PUBLIC_API_URL ? ' ' + process.env.NEXT_PUBLIC_API_URL : '') +
+      "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
-  // Prevent caching of dashboard pages (they require auth)
-  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+  // Prevent caching of application pages (they require auth)
+  const path = request.nextUrl.pathname
+  if (path.startsWith('/app') || path.startsWith('/dashboard')) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     response.headers.set('Pragma', 'no-cache');
   }

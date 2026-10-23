@@ -59,6 +59,7 @@ class AuditAction(str, Enum):
     DATA_ERASURE = "data.erasure"  # GDPR Art. 17 right to be forgotten
 
     # Admin
+    INVITE_CREATED = "admin.invite.created"
     USER_CREATED = "admin.user.created"
     USER_DEACTIVATED = "admin.user.deactivated"
     ROLE_CHANGED = "admin.role.changed"

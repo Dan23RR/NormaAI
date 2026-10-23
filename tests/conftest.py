@@ -17,6 +17,10 @@ os.environ["LLM_PROVIDER"] = "gemini"
 os.environ["GOOGLE_API_KEY"] = "test-key-not-real"
 os.environ["APP_SECRET_KEY"] = "test-secret-key-for-jwt-tokens-minimum-64-characters-long-abcdef"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///test.db"
+# The production default is invite-only; the suite's register tests predate
+# invites and exercise open self-service sign-up. Invite/closed-mode tests set
+# the mode explicitly (tests/test_invites.py).
+os.environ["REGISTRATION_MODE"] = "open"
 
 from src.auth.security import create_access_token  # noqa: E402  (env must be set first)
 from src.config import get_settings  # noqa: E402

@@ -69,6 +69,42 @@ class User(Base):
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="user")
 
 
+class Invite(Base):
+    """Registration invite (``settings.registration_mode == "invite"``).
+
+    The plaintext code is shown ONCE (API response / CLI output); only its
+    SHA-256 is stored, so a database leak does not yield redeemable codes.
+
+    ``org_id`` NULL = the invitee creates a NEW organization and becomes its
+    admin; set = the invitee joins that organization with ``role``.
+
+    ``used_by`` is a plain UUID, deliberately without a FK to ``users``: the
+    redemption UPDATE is flushed BEFORE the user row exists, because it has to
+    run before the RLS org context is switched to the new/joined organization
+    (an org-less invite is invisible to a tenant-scoped session).
+    """
+
+    __tablename__ = "invites"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="member")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Client(Base):
     __tablename__ = "clients"
 

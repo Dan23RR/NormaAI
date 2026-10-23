@@ -50,14 +50,16 @@
 **Context:** Legal documents contain both exact terms (article numbers, CELEX identifiers, thresholds) and semantic concepts (sustainability, due diligence). Pure dense search misses exact matches; pure keyword search misses paraphrases.
 
 **Decision:** Use hybrid search with:
-- **Dense vectors:** paraphrase-multilingual-mpnet-base-v2 (768-dim) via fastembed
-- **Sparse vectors:** Hash-based BM25 (30K vocab, MD5 → index mapping)
+- **Dense vectors:** paraphrase-multilingual-mpnet-base-v2 (768-dim) via fastembed (configurable: `EMBEDDING_MODEL`)
+- **Sparse vectors:** hashed term frequencies (30K vocab, MD5 → index mapping) with Qdrant's `Modifier.IDF`, so BM25-style IDF weighting is computed server-side at query time
 - **Fusion:** Reciprocal Rank Fusion with k=60
 
 **Consequences:**
 - +15-20% retrieval accuracy on legal benchmark vs. dense-only
 - No need for a separate full-text search engine (Elasticsearch)
 - Hash-based sparse vectors avoid vocabulary synchronization across nodes
+- Point ids are deterministic (`UUID5(celex|lang|article|chunk_index|sha1(text))`): re-seeding an act replaces its chunks (delete per CELEX+lang, then upsert) instead of duplicating them; a `corpus_meta` point records `corpus_as_of`, the indexed acts and the embedding model
+- Changing the embedding model or upgrading a pre-IDF collection requires `--recreate` + reseed (the indexer warns at startup)
 
 ### ADR-2: Row-Level Security (RLS) for Multi-Tenancy
 

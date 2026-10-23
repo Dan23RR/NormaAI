@@ -19,6 +19,8 @@ from datetime import datetime, timedelta
 import httpx
 from SPARQLWrapper import JSON, SPARQLWrapper
 
+from src.crawler.eurlex import celex as celex_utils
+
 logger = logging.getLogger(__name__)
 
 # CDM Ontology prefixes
@@ -63,40 +65,194 @@ LANG_ISO639_3 = {
     "RO": "ron",
 }
 
-# Core EU frameworks we track - CELEX numbers
-CORE_FRAMEWORKS: dict[str, dict[str, str]] = {
-    "CSRD": {
-        "32022L2464": "Corporate Sustainability Reporting Directive",
-        "32023R2772": "ESRS Set 1 (Delegated Regulation)",
-        "32025L0794": "Stop-the-Clock Directive (Omnibus)",
-        "32026L0470": "Omnibus I Directive (substantive CSRD/CSDDD amendments)",
-    },
-    "CSDDD": {
-        "32024L1760": "Corporate Sustainability Due Diligence Directive",
-        "32026L0470": "Omnibus I Directive (substantive CSRD/CSDDD amendments)",
-    },
-    "AI_ACT": {
-        "32024R1689": "Artificial Intelligence Act",
-    },
-    "DORA": {
-        "32022R2554": "Digital Operational Resilience Act",
-    },
-    "NIS2": {
-        "32022L2555": "NIS 2 Directive",
-    },
-    "TAXONOMY": {
-        "32020R0852": "EU Taxonomy Regulation",
-    },
-    "GDPR": {
-        "32016R0679": "General Data Protection Regulation",
-    },
-    # Cyber Resilience Act - vulnerability/incident reporting applies from
-    # 2026-09-11, full application 2027-12-11 (see ADR-004).
-    "CRA": {
-        "32024R2847": "Cyber Resilience Act",
-        "32025R2392": "CRA Implementing Regulation (important/critical product categories)",
-    },
-}
+# ─── Tracked act registry ───────────────────────────────────────────
+# One entry per act we seed. ``CORE_FRAMEWORKS`` (framework -> {celex: title})
+# is DERIVED from this tuple for backward compatibility: every existing caller
+# (CoVe trusted set, scheduler, data router, pipeline.update) keeps working.
+#
+# ``eli_type`` is the ELI resource type (dir / reg / reg_del / reg_impl): CELEX
+# alone cannot tell a delegated regulation from a basic one, and the chunker
+# needs it to build a resolvable ``http://data.europa.eu/eli/...`` URI.
+# ``consolidated=True`` means "prefer the latest CELLAR consolidated text when
+# one exists" (basic acts that get amended); amending acts are never
+# consolidated themselves, so the lookup is skipped for them.
+FRAMEWORK_ORDER: tuple[str, ...] = (
+    "CSRD",
+    "CSDDD",
+    "AI_ACT",
+    "DORA",
+    "NIS2",
+    "TAXONOMY",
+    "GDPR",
+    "CRA",
+)
+
+
+@dataclass(frozen=True)
+class TrackedAct:
+    """A legal act in the seed registry."""
+
+    celex: str
+    framework: str
+    title: str
+    eli_type: str = "reg"  # dir | reg | dec | dir_del | dir_impl | reg_del | reg_impl
+    kind: str = "basic"  # basic | amending | delegated | implementing
+    amends: tuple[str, ...] = ()
+    frameworks: tuple[str, ...] = ()  # additional frameworks the act is listed under
+    consolidated: bool = True  # prefer the latest consolidated text when CELLAR has one
+
+    @property
+    def all_frameworks(self) -> tuple[str, ...]:
+        return (self.framework, *self.frameworks)
+
+
+TRACKED_ACTS: tuple[TrackedAct, ...] = (
+    # ── CSRD ──
+    TrackedAct(
+        "32022L2464",
+        "CSRD",
+        "Corporate Sustainability Reporting Directive",
+        eli_type="dir",
+    ),
+    TrackedAct(
+        "32023R2772",
+        "CSRD",
+        "ESRS Set 1 (Delegated Regulation (EU) 2023/2772 - sustainability reporting standards)",
+        eli_type="reg_del",
+        kind="delegated",
+    ),
+    TrackedAct(
+        "32025L0794",
+        "CSRD",
+        "Stop-the-Clock Directive (Omnibus)",
+        eli_type="dir",
+        kind="amending",
+        amends=("32022L2464", "32024L1760"),
+        frameworks=("CSDDD",),
+        consolidated=False,
+    ),
+    TrackedAct(
+        "32026L0470",
+        "CSRD",
+        "Omnibus I Directive (substantive CSRD/CSDDD amendments)",
+        eli_type="dir",
+        kind="amending",
+        amends=("32022L2464", "32024L1760"),
+        frameworks=("CSDDD",),
+        consolidated=False,
+    ),
+    # ── CSDDD ──
+    TrackedAct(
+        "32024L1760",
+        "CSDDD",
+        "Corporate Sustainability Due Diligence Directive",
+        eli_type="dir",
+    ),
+    # ── AI Act ──
+    TrackedAct("32024R1689", "AI_ACT", "Artificial Intelligence Act", eli_type="reg"),
+    TrackedAct(
+        "32026R1744",
+        "AI_ACT",
+        "Regulation (EU) 2026/1744 - Digital Omnibus on AI (amends the AI Act timeline)",
+        eli_type="reg",
+        kind="amending",
+        amends=("32024R1689",),
+        consolidated=False,
+    ),
+    # ── DORA (+ the RTS/ITS the workflow presets cite) ──
+    TrackedAct("32022R2554", "DORA", "Digital Operational Resilience Act", eli_type="reg"),
+    TrackedAct(
+        "32024R1773",
+        "DORA",
+        "DORA RTS (Delegated Regulation (EU) 2024/1773) - policy on ICT services supporting "
+        "critical or important functions provided by ICT third-party providers (Art. 28(10))",
+        eli_type="reg_del",
+        kind="delegated",
+    ),
+    TrackedAct(
+        "32024R1774",
+        "DORA",
+        "DORA RTS (Delegated Regulation (EU) 2024/1774) - ICT risk management tools, methods, "
+        "processes and policies; simplified ICT risk management framework (Art. 15, 16(3))",
+        eli_type="reg_del",
+        kind="delegated",
+    ),
+    TrackedAct(
+        "32024R2956",
+        "DORA",
+        "DORA ITS (Implementing Regulation (EU) 2024/2956) - standard templates for the "
+        "register of information (Art. 28(9))",
+        eli_type="reg_impl",
+        kind="implementing",
+    ),
+    # ── NIS2 ──
+    TrackedAct("32022L2555", "NIS2", "NIS 2 Directive", eli_type="dir"),
+    # ── Taxonomy ──
+    TrackedAct("32020R0852", "TAXONOMY", "EU Taxonomy Regulation", eli_type="reg"),
+    TrackedAct(
+        "32023R2486",
+        "TAXONOMY",
+        "Taxonomy Environmental Delegated Act (Delegated Regulation (EU) 2023/2486) - technical "
+        "screening criteria for the water, circular economy, pollution and biodiversity objectives",
+        eli_type="reg_del",
+        kind="delegated",
+    ),
+    # ── GDPR ──
+    TrackedAct("32016R0679", "GDPR", "General Data Protection Regulation", eli_type="reg"),
+    # ── CRA - vulnerability/incident reporting applies from 2026-09-11, full
+    # application 2027-12-11 (see ADR-004). ──
+    TrackedAct("32024R2847", "CRA", "Cyber Resilience Act", eli_type="reg"),
+    TrackedAct(
+        "32025R2392",
+        "CRA",
+        "CRA Implementing Regulation (important/critical product categories)",
+        eli_type="reg_impl",
+        kind="implementing",
+    ),
+)
+
+
+def _build_core_frameworks(acts: tuple[TrackedAct, ...]) -> dict[str, dict[str, str]]:
+    frameworks: dict[str, dict[str, str]] = {fw: {} for fw in FRAMEWORK_ORDER}
+    for act in acts:
+        for fw in act.all_frameworks:
+            frameworks.setdefault(fw, {})[act.celex] = act.title
+    return frameworks
+
+
+# Core EU frameworks we track - framework -> {CELEX: title}. Derived from
+# TRACKED_ACTS; an act listed under several frameworks (Omnibus I amends both
+# CSRD and CSDDD) appears under each of them.
+CORE_FRAMEWORKS: dict[str, dict[str, str]] = _build_core_frameworks(TRACKED_ACTS)
+
+_TRACKED_BY_CELEX: dict[str, TrackedAct] = {act.celex: act for act in TRACKED_ACTS}
+
+
+def get_tracked_act(celex: str) -> TrackedAct | None:
+    """Registry entry for a CELEX (original or consolidated id), or None."""
+    return _TRACKED_BY_CELEX.get(celex_utils.base_celex(celex))
+
+
+def tracked_acts(selection: list[str] | tuple[str, ...] | None = None) -> list[TrackedAct]:
+    """Unique registry acts, optionally filtered by CELEX ids and/or framework names.
+
+    ``selection`` entries are matched case-insensitively against both the
+    CELEX number and the framework key, so ``["AI_ACT", "32022L2464"]`` selects
+    every AI Act entry plus the CSRD directive. Unknown entries are ignored
+    (with a warning) rather than raising, so a typo in ``--acts`` cannot abort
+    a seed that is otherwise fine.
+    """
+    if not selection:
+        return list(TRACKED_ACTS)
+    wanted = {str(s).strip().upper() for s in selection if str(s).strip()}
+    known = {act.celex.upper() for act in TRACKED_ACTS} | {fw.upper() for fw in CORE_FRAMEWORKS}
+    for unknown in sorted(wanted - known):
+        logger.warning("tracked_acts: ignoring unknown act/framework selector %r", unknown)
+    return [
+        act
+        for act in TRACKED_ACTS
+        if act.celex.upper() in wanted or any(fw.upper() in wanted for fw in act.all_frameworks)
+    ]
 
 
 @dataclass
@@ -150,18 +306,28 @@ class EurLexClient:
             headers={"User-Agent": "NormaAI/0.1 (EU Compliance Monitor)"},
         )
         self._last_request_time = 0.0
+        # base CELEX -> latest consolidated id (or None when CELLAR has none);
+        # memoised per client so a seed asks once per act, not once per language.
+        self._consolidated_cache: dict[str, str | None] = {}
 
     @staticmethod
     def _sanitize_celex(celex: str) -> str:
         """Sanitize CELEX number to prevent SPARQL injection.
 
-        CELEX numbers are alphanumeric identifiers like '32022L2464'.
-        Only allow alphanumeric characters to prevent injection.
+        CELEX numbers are alphanumeric identifiers like '32022L2464'; CELLAR
+        consolidated ids add a hyphen and the consolidation date
+        ('02022L2464-20260318'). Only alphanumerics and a single inner hyphen
+        survive, so nothing that could break out of a SPARQL literal or a URL
+        path segment gets through.
         """
         import re
 
-        sanitized = re.sub(r"[^a-zA-Z0-9]", "", celex)
-        if len(sanitized) < 5 or len(sanitized) > 20:
+        sanitized = re.sub(r"[^a-zA-Z0-9-]", "", celex).strip("-")
+        if "-" in sanitized:
+            head, _, tail = sanitized.partition("-")
+            sanitized = f"{head}-{tail.replace('-', '')}"
+        alnum = sanitized.replace("-", "")
+        if len(alnum) < 5 or len(sanitized) > 20:
             raise ValueError(f"Invalid CELEX number format: '{celex}'")
         return sanitized
 
@@ -219,13 +385,18 @@ class EurLexClient:
             template = template.replace(placeholder, safe_value)
         return template
 
+    # CELLAR stores CELEX ids as xsd:string-TYPED literals. A plain "..." literal
+    # in the triple pattern matches nothing on the Virtuoso endpoint (verified
+    # live 2026-10-23: the untyped form returned zero bindings for every tracked
+    # act, so in-force flags were always "unknown" and amendments never found).
+    # Every CELEX lookup below must use the typed form.
     def fetch_regulation_metadata(self, celex: str) -> RegulationMetadata:
         """Fetch metadata for a single regulation by CELEX number."""
         celex = self._sanitize_celex(celex)
         query = self._build_sparql_query(
             """
         SELECT DISTINCT ?title ?date ?inForce WHERE {{
-            ?work cdm:resource_legal_id_celex "{{celex}}" .
+            ?work cdm:resource_legal_id_celex "{{celex}}"^^xsd:string .
             OPTIONAL {{ ?work cdm:work_title ?title . FILTER(LANG(?title) = "en") }}
             OPTIONAL {{ ?work cdm:work_date_document ?date }}
             OPTIONAL {{ ?work cdm:resource_legal_in-force ?inForce }}
@@ -243,20 +414,95 @@ class EurLexClient:
             meta.title = b.get("title", {}).get("value", "")
             meta.date_document = b.get("date", {}).get("value", "")
             in_force_val = b.get("inForce", {}).get("value", "")
-            meta.is_in_force = in_force_val.lower() == "true" if in_force_val else None
+            # CELLAR serves the flag as "true"/"false" or "1"/"0" depending on
+            # the literal datatype; accept both spellings.
+            meta.is_in_force = (
+                in_force_val.lower() in ("true", "1") if in_force_val.strip() else None
+            )
 
-        # Determine framework from our known CELEX map
-        for framework, celex_map in CORE_FRAMEWORKS.items():
-            if celex in celex_map:
-                meta.framework = framework
-                if not meta.title:
-                    meta.title = celex_map[celex]
-                break
+        # Determine framework from the tracked-act registry (works for a
+        # consolidated id too, via its base CELEX).
+        act = get_tracked_act(celex)
+        if act is not None:
+            meta.framework = act.framework
+            if not meta.title:
+                meta.title = act.title
 
         # Determine doc_type from CELEX pattern
-        meta.doc_type = self._celex_to_doc_type(celex)
+        meta.doc_type = self._celex_to_doc_type(celex_utils.base_celex(celex))
 
         return meta
+
+    def fetch_latest_consolidated_celex(self, celex: str) -> str | None:
+        """Latest CELLAR consolidated id for an act, or None.
+
+        CELLAR publishes each consolidated version of ``32022L2464`` as its own
+        work with CELEX ``02022L2464-YYYYMMDD``; the id suffix is the
+        consolidation date, so the lexicographically greatest id is the most
+        recent text. The lookup is a prefix match on ``resource_legal_id_celex``
+        (verified live against the endpoint - the consolidation relation
+        properties do not resolve reliably).
+
+        Degrades gracefully: any network/endpoint failure, a malformed answer or
+        an act that simply has no consolidated text all yield None (and the
+        caller falls back to the original act). The answer is memoised per
+        client so the seed asks once per act, not once per language.
+        """
+        celex = self._sanitize_celex(celex)
+        base = celex_utils.base_celex(celex)
+        if base in self._consolidated_cache:
+            return self._consolidated_cache[base]
+
+        prefix = celex_utils.consolidated_prefix(base)
+        if prefix is None:
+            self._consolidated_cache[base] = None
+            return None
+
+        query = self._build_sparql_query(
+            """
+        SELECT DISTINCT ?celex WHERE {{
+            ?work cdm:resource_legal_id_celex ?celex .
+            FILTER(STRSTARTS(STR(?celex), "{{prefix}}"))
+        }}
+        ORDER BY DESC(?celex)
+        LIMIT 20
+        """,
+            {"prefix": prefix},
+        )
+        latest: str | None = None
+        try:
+            results = self._execute_sparql(query)
+            bindings = results.get("results", {}).get("bindings", [])
+            candidates = sorted(
+                {
+                    b.get("celex", {}).get("value", "").strip()
+                    for b in bindings
+                    if celex_utils.is_consolidated_celex(b.get("celex", {}).get("value", ""))
+                }
+            )
+            latest = candidates[-1] if candidates else None
+        except Exception as e:  # offline / endpoint down / throttled
+            logger.warning(
+                f"Consolidated-version lookup failed for {base}: {e}; using the original act"
+            )
+            return None  # not cached: a later call may succeed
+
+        if latest:
+            logger.info(f"Latest consolidated text for {base}: {latest}")
+        else:
+            logger.info(f"No consolidated text for {base} in CELLAR")
+        self._consolidated_cache[base] = latest
+        return latest
+
+    def resolve_download_celex(self, celex: str, prefer_consolidated: bool = True) -> str:
+        """The CELEX to download for an act: its latest consolidated text when
+        available and wanted, else the original act."""
+        if not prefer_consolidated:
+            return celex
+        act = get_tracked_act(celex)
+        if act is not None and not act.consolidated:
+            return celex
+        return self.fetch_latest_consolidated_celex(celex) or celex
 
     def fetch_amendments(self, celex: str) -> list[AmendmentInfo]:
         """Find all documents that amend a given regulation."""
@@ -264,7 +510,7 @@ class EurLexClient:
         query = self._build_sparql_query(
             """
         SELECT DISTINCT ?amendingCelex ?amendingTitle ?amendDate WHERE {{
-            ?originalWork cdm:resource_legal_id_celex "{{celex}}" .
+            ?originalWork cdm:resource_legal_id_celex "{{celex}}"^^xsd:string .
             ?amendingWork cdm:work_amends ?originalWork .
             OPTIONAL {{ ?amendingWork cdm:resource_legal_id_celex ?amendingCelex }}
             OPTIONAL {{ ?amendingWork cdm:work_title ?amendingTitle . FILTER(LANG(?amendingTitle) = "en") }}
@@ -425,33 +671,64 @@ class EurLexClient:
 
     # ─── Full Crawl ─────────────────────────────────────────────
 
-    def crawl_all_core_frameworks(self) -> list[RegulationMetadata]:
+    def crawl_all_core_frameworks(
+        self,
+        celex_filter: list[str] | tuple[str, ...] | None = None,
+        unique: bool = False,
+    ) -> list[RegulationMetadata]:
         """
-        Crawl metadata + full text for all core framework regulations.
-        This is the initial seed crawl.
+        Crawl metadata for the tracked acts. This is the initial seed crawl.
+
+        Default (no args) keeps the historical shape: one entry per
+        (framework, CELEX) pair of ``CORE_FRAMEWORKS``, so an act listed under
+        two frameworks is returned twice. ``unique=True`` returns each act once,
+        stamped with its primary framework (what the seed wants: one download
+        per act). ``celex_filter`` narrows the crawl to CELEX ids and/or
+        framework names (see ``tracked_acts``).
+
+        A SPARQL failure for one act is logged and that act still gets a
+        registry-only metadata record, so an endpoint hiccup never aborts a seed.
         """
         all_regulations = []
 
-        for framework, celex_map in CORE_FRAMEWORKS.items():
-            for celex, description in celex_map.items():
-                logger.info(f"Crawling {framework}/{celex}: {description}")
+        if unique or celex_filter:
+            targets = [(act.framework, act.celex, act.title) for act in tracked_acts(celex_filter)]
+        else:
+            targets = [
+                (framework, celex, description)
+                for framework, celex_map in CORE_FRAMEWORKS.items()
+                for celex, description in celex_map.items()
+            ]
 
-                # Fetch metadata via SPARQL
+        for framework, celex, description in targets:
+            logger.info(f"Crawling {framework}/{celex}: {description}")
+
+            # Fetch metadata via SPARQL (non-fatal: fall back to registry data)
+            try:
                 meta = self.fetch_regulation_metadata(celex)
-                meta.framework = framework
+            except Exception as e:
+                logger.warning(f"  metadata lookup failed for {celex}: {e}; using registry entry")
+                meta = RegulationMetadata(celex=celex, title=description)
+            meta.framework = framework
+            if not meta.title:
+                meta.title = description
 
-                # Fetch amendments
+            # Fetch amendments (non-fatal)
+            try:
                 amendments = self.fetch_amendments(celex)
-                meta.amendments = [a.amending_celex for a in amendments]
-                if amendments:
-                    logger.info(f"  Found {len(amendments)} amendments for {celex}")
+            except Exception as e:
+                logger.warning(f"  amendment lookup failed for {celex}: {e}")
+                amendments = []
+            meta.amendments = [a.amending_celex for a in amendments]
+            if amendments:
+                logger.info(f"  Found {len(amendments)} amendments for {celex}")
 
-                # Build full text URL
-                meta.full_text_url = (
-                    f"https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:{celex}"
-                )
+            # Build full text URL
+            meta.full_text_url = (
+                f"https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:{celex}"
+            )
 
-                all_regulations.append(meta)
+            all_regulations.append(meta)
 
         logger.info(f"Crawl complete: {len(all_regulations)} regulations processed")
         return all_regulations

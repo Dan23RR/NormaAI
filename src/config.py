@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     # ─── EUR-Lex ──────────────────────────────────────────────
     eurlex_sparql_endpoint: str = "https://publications.europa.eu/webapi/rdf/sparql"
     eurlex_crawl_interval_hours: int = 6
+    # Seed the latest CELLAR consolidated text of each tracked act (the law as
+    # amended) instead of the original OJ publication. Falls back to the
+    # original act whenever CELLAR has no consolidated version or is offline.
+    eurlex_prefer_consolidated: bool = True
+
+    # ─── Corpus languages ─────────────────────────────────────
+    # Comma-separated ISO 639-1 codes downloaded for every tracked EU act
+    # (chunks are tagged with ``lang``). EN is the authoritative drafting
+    # language of most acts; IT is what Italian users cite.
+    corpus_languages: str = "EN,IT"
 
     # ─── Background acquisition scheduler ─────────────────────
     # OFF by default: the periodic EUR-Lex/Normattiva refresh loop only runs
@@ -273,6 +283,16 @@ class Settings(BaseSettings):
     resend_from_name: str = "Daniel Culotta - NormaAI"
     resend_reply_to: str = "info@normaai.org"
     resend_webhook_secret: str = ""
+
+    @property
+    def corpus_language_list(self) -> list[str]:
+        """Parse ``corpus_languages`` into upper-case 2-letter codes (EN first wins ties)."""
+        seen: list[str] = []
+        for raw in self.corpus_languages.split(","):
+            code = "".join(ch for ch in raw.strip().upper() if ch.isalpha())[:2]
+            if code and code not in seen:
+                seen.append(code)
+        return seen or ["EN"]
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -24,12 +24,16 @@ from src.crawler.eurlex import client as eurlex_module
 from src.crawler.eurlex.client import (
     CELLAR_CELEX_BASE,
     CORE_FRAMEWORKS,
+    FRAMEWORK_ORDER,
     LANG_ISO639_3,
     RESOURCE_TYPES,
     SPARQL_PREFIXES,
+    TRACKED_ACTS,
     AmendmentInfo,
     EurLexClient,
     RegulationMetadata,
+    get_tracked_act,
+    tracked_acts,
 )
 
 # --------------------------------------------------------------------------- #
@@ -572,3 +576,242 @@ class TestLifecycle:
     def test_close_is_idempotent_via_mock(self, client):
         client.close()
         client._http.close.assert_called()
+
+
+# --------------------------------------------------------------------------- #
+#  Tracked-act registry                                                       #
+# --------------------------------------------------------------------------- #
+
+
+class TestTrackedActRegistry:
+    @pytest.mark.parametrize(
+        "celex, framework",
+        [
+            ("32026R1744", "AI_ACT"),  # Digital Omnibus on AI
+            ("32026L0470", "CSRD"),  # Omnibus I
+            ("32026L0470", "CSDDD"),
+            ("32024R2847", "CRA"),
+            ("32023R2772", "CSRD"),  # ESRS Set 1
+            ("32024R1773", "DORA"),  # RTS contractual arrangements
+            ("32024R1774", "DORA"),  # RTS ICT risk management
+            ("32024R2956", "DORA"),  # ITS register of information
+            ("32023R2486", "TAXONOMY"),  # Environmental Delegated Act
+        ],
+    )
+    def test_extended_registry_entries(self, celex, framework):
+        assert celex in CORE_FRAMEWORKS[framework]
+
+    def test_registry_is_unique_and_derives_core_frameworks(self):
+        celex_ids = [act.celex for act in TRACKED_ACTS]
+        assert len(celex_ids) == len(set(celex_ids))
+        assert len(TRACKED_ACTS) == 17
+        for framework, celex_map in CORE_FRAMEWORKS.items():
+            assert framework in FRAMEWORK_ORDER
+            for celex, title in celex_map.items():
+                act = get_tracked_act(celex)
+                assert act is not None and act.title == title
+                assert framework in act.all_frameworks
+        assert list(CORE_FRAMEWORKS) == list(FRAMEWORK_ORDER)
+
+    def test_shared_act_listed_once_but_under_both_frameworks(self):
+        omnibus = [a for a in TRACKED_ACTS if a.celex == "32026L0470"]
+        assert len(omnibus) == 1
+        assert omnibus[0].all_frameworks == ("CSRD", "CSDDD")
+        assert [a.celex for a in tracked_acts(["CSDDD"])] == [
+            "32025L0794",
+            "32026L0470",
+            "32024L1760",
+        ]
+
+    def test_digital_omnibus_amends_ai_act_and_is_not_consolidated(self):
+        act = get_tracked_act("32026R1744")
+        assert act.framework == "AI_ACT"
+        assert act.kind == "amending"
+        assert act.amends == ("32024R1689",)
+        assert act.consolidated is False
+        assert act.eli_type == "reg"
+
+    @pytest.mark.parametrize(
+        "celex, eli_type",
+        [
+            ("32022L2464", "dir"),
+            ("32024R1689", "reg"),
+            ("32023R2772", "reg_del"),
+            ("32024R1773", "reg_del"),
+            ("32024R1774", "reg_del"),
+            ("32023R2486", "reg_del"),
+            ("32024R2956", "reg_impl"),
+            ("32025R2392", "reg_impl"),
+        ],
+    )
+    def test_eli_types(self, celex, eli_type):
+        assert get_tracked_act(celex).eli_type == eli_type
+
+    def test_tracked_acts_filter_by_framework_and_celex(self):
+        assert {a.celex for a in tracked_acts(["ai_act"])} == {"32024R1689", "32026R1744"}
+        assert [a.celex for a in tracked_acts(["32022L2464", "nope"])] == ["32022L2464"]
+        assert tracked_acts(None) == list(TRACKED_ACTS)
+        assert tracked_acts([]) == list(TRACKED_ACTS)
+
+    def test_get_tracked_act_accepts_consolidated_id(self):
+        assert get_tracked_act("02022L2464-20260318").celex == "32022L2464"
+        assert get_tracked_act("39999L9999") is None
+
+
+# --------------------------------------------------------------------------- #
+#  Consolidated ids: sanitising, typed literals, lookup, download             #
+# --------------------------------------------------------------------------- #
+
+
+class TestSanitizeConsolidatedCelex:
+    def test_keeps_single_inner_hyphen(self):
+        assert EurLexClient._sanitize_celex("02022L2464-20260318") == "02022L2464-20260318"
+
+    def test_strips_junk_and_extra_hyphens(self):
+        assert EurLexClient._sanitize_celex("-02022L2464--2026 0318-") == "02022L2464-20260318"
+
+    def test_only_hyphens_rejected(self):
+        with pytest.raises(ValueError, match="Invalid CELEX"):
+            EurLexClient._sanitize_celex("-----")
+
+
+class TestTypedCelexLiterals:
+    """CELLAR stores CELEX ids as xsd:string literals; untyped literals match nothing."""
+
+    def test_metadata_query_uses_typed_literal(self, client):
+        with patch.object(client, "_execute_sparql", return_value=_sparql_bindings([])) as ex:
+            client.fetch_regulation_metadata("32022L2464")
+        assert '"32022L2464"^^xsd:string' in ex.call_args[0][0]
+
+    def test_amendments_query_uses_typed_literal(self, client):
+        with patch.object(client, "_execute_sparql", return_value=_sparql_bindings([])) as ex:
+            client.fetch_amendments("32022L2464")
+        assert '"32022L2464"^^xsd:string' in ex.call_args[0][0]
+
+    def test_in_force_accepts_numeric_boolean(self, client):
+        rows = [{"inForce": {"value": "1"}}]
+        with patch.object(client, "_execute_sparql", return_value=_sparql_bindings(rows)):
+            meta = client.fetch_regulation_metadata("32022L2464")
+        assert meta.is_in_force is True
+
+    def test_metadata_for_consolidated_id_resolves_framework(self, client):
+        with patch.object(client, "_execute_sparql", return_value=_sparql_bindings([])):
+            meta = client.fetch_regulation_metadata("02022L2464-20260318")
+        assert meta.celex == "02022L2464-20260318"
+        assert meta.framework == "CSRD"
+        assert meta.doc_type == "directive"
+
+
+def _celex_rows(*ids):
+    return _sparql_bindings([{"celex": {"value": i}} for i in ids])
+
+
+class TestConsolidatedLookup:
+    def test_returns_latest_consolidated_id(self, client):
+        rows = _celex_rows("02022L2464-20221216", "02022L2464-20260318", "02022L2464-20250417")
+        with patch.object(client, "_execute_sparql", return_value=rows) as ex:
+            latest = client.fetch_latest_consolidated_celex("32022L2464")
+        assert latest == "02022L2464-20260318"
+        query = ex.call_args[0][0]
+        assert "STRSTARTS" in query and '"02022L2464-"' in query
+
+    def test_ignores_malformed_ids(self, client):
+        rows = _celex_rows("02022L2464-2026", "garbage", "32022L2464", "02022L2464-20250417")
+        with patch.object(client, "_execute_sparql", return_value=rows):
+            assert client.fetch_latest_consolidated_celex("32022L2464") == "02022L2464-20250417"
+
+    def test_none_when_no_consolidated_text_and_cached(self, client):
+        with patch.object(client, "_execute_sparql", return_value=_celex_rows()) as ex:
+            assert client.fetch_latest_consolidated_celex("32026L0470") is None
+            assert client.fetch_latest_consolidated_celex("32026L0470") is None
+        assert ex.call_count == 1  # negative answer memoised
+
+    def test_degrades_gracefully_offline(self, client):
+        with patch.object(client, "_execute_sparql", side_effect=RuntimeError("offline")) as ex:
+            assert client.fetch_latest_consolidated_celex("32022L2464") is None
+            assert client.fetch_latest_consolidated_celex("32022L2464") is None
+        assert ex.call_count == 2  # failures are not cached: a later call may succeed
+
+    def test_cache_hit_avoids_second_query(self, client):
+        rows = _celex_rows("02022L2464-20260318")
+        with patch.object(client, "_execute_sparql", return_value=rows) as ex:
+            client.fetch_latest_consolidated_celex("32022L2464")
+            client.fetch_latest_consolidated_celex("02022L2464-20250417")  # same base act
+        assert ex.call_count == 1
+
+    def test_non_celex_identifier_yields_none_without_query(self, client):
+        with patch.object(client, "_execute_sparql") as ex:
+            assert client.fetch_latest_consolidated_celex("DOC12345") is None
+        ex.assert_not_called()
+
+    def test_resolve_download_celex_prefers_consolidated(self, client):
+        rows = _celex_rows("02022L2464-20260318")
+        with patch.object(client, "_execute_sparql", return_value=rows):
+            assert client.resolve_download_celex("32022L2464") == "02022L2464-20260318"
+
+    def test_resolve_download_celex_falls_back_to_base(self, client):
+        with patch.object(client, "_execute_sparql", side_effect=RuntimeError("offline")):
+            assert client.resolve_download_celex("32022L2464") == "32022L2464"
+
+    def test_resolve_download_celex_skips_amending_acts(self, client):
+        with patch.object(client, "_execute_sparql") as ex:
+            assert client.resolve_download_celex("32026L0470") == "32026L0470"
+        ex.assert_not_called()
+
+    def test_resolve_download_celex_respects_flag(self, client):
+        with patch.object(client, "_execute_sparql") as ex:
+            assert client.resolve_download_celex("32022L2464", prefer_consolidated=False) == (
+                "32022L2464"
+            )
+        ex.assert_not_called()
+
+    def test_download_accepts_consolidated_id(self, client):
+        client._http.get.return_value = _http_response(200, "<html>consolidated</html>")
+        out = client.download_full_text_html("02022L2464-20260318", lang="IT")
+        assert out == "<html>consolidated</html>"
+        url = client._http.get.call_args[0][0]
+        assert url == f"{CELLAR_CELEX_BASE}/02022L2464-20260318"
+        assert client._http.get.call_args[1]["headers"]["Accept-Language"] == "ita"
+
+
+class TestCrawlSelection:
+    def test_unique_returns_each_act_once_with_primary_framework(self, client):
+        with (
+            patch.object(
+                client,
+                "fetch_regulation_metadata",
+                side_effect=lambda c: RegulationMetadata(celex=c),
+            ),
+            patch.object(client, "fetch_amendments", return_value=[]),
+        ):
+            out = client.crawl_all_core_frameworks(unique=True)
+        assert len(out) == len(TRACKED_ACTS)
+        omnibus = [m for m in out if m.celex == "32026L0470"]
+        assert len(omnibus) == 1 and omnibus[0].framework == "CSRD"
+        # Registry title fills in when SPARQL returns none.
+        assert all(m.title for m in out)
+
+    def test_celex_filter_selects_subset(self, client):
+        with (
+            patch.object(
+                client,
+                "fetch_regulation_metadata",
+                side_effect=lambda c: RegulationMetadata(celex=c),
+            ),
+            patch.object(client, "fetch_amendments", return_value=[]),
+        ):
+            out = client.crawl_all_core_frameworks(celex_filter=["DORA"])
+        assert [m.celex for m in out] == ["32022R2554", "32024R1773", "32024R1774", "32024R2956"]
+        assert all(m.framework == "DORA" for m in out)
+
+    def test_metadata_failure_is_non_fatal(self, client):
+        with (
+            patch.object(client, "fetch_regulation_metadata", side_effect=RuntimeError("down")),
+            patch.object(client, "fetch_amendments", side_effect=RuntimeError("down")),
+        ):
+            out = client.crawl_all_core_frameworks(celex_filter=["32024R1689"])
+        assert len(out) == 1
+        assert out[0].celex == "32024R1689"
+        assert out[0].framework == "AI_ACT"
+        assert out[0].title == "Artificial Intelligence Act"
+        assert out[0].amendments == []

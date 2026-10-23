@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.api.app_state import app_state
 from src.api.middleware import metrics
-from src.auth.dependencies import CurrentUser, get_optional_user, require_role
+from src.auth.dependencies import CurrentUser, get_current_user, get_optional_user, require_role
 from src.config import get_settings
 
 logger = structlog.get_logger()
@@ -88,6 +88,19 @@ async def get_stats(user: CurrentUser | None = Depends(get_optional_user)):
 @router.get("/api/v1/metrics")
 async def get_metrics(user: CurrentUser = Depends(require_role("admin"))):
     return metrics.summary()
+
+
+@router.get("/api/v1/system/quota")
+async def get_llm_quota(user: CurrentUser = Depends(get_current_user)):
+    """Today's LLM request quota for the caller's organization (for the UI).
+
+    Shape: ``{org_id, date, limit, used, remaining, unlimited,
+    resets_in_seconds, resets_at}`` - ``remaining`` is -1 when unlimited.
+    """
+    from src.quotas import llm_quota
+
+    status = await llm_quota.usage(str(user.org_id))
+    return status.as_dict()
 
 
 @router.get("/api/v1/metrics/prometheus", dependencies=[Depends(require_scrape_auth)])

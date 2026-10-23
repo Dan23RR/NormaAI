@@ -197,13 +197,19 @@ def test_spec_mirrors_the_orm_metadata(m):
     """
     from src.db.models import Base
 
-    dialect = pg.dialect()
-    assert set(m.TABLES) == set(Base.metadata.tables)
+    # Objects introduced by later migrations are not part of the 007 snapshot.
+    later_tables = {"invites"}  # 008_invites
+    later_columns = {("users", "email_verified")}  # 008_invites
 
-    for table_name, table in Base.metadata.tables.items():
+    dialect = pg.dialect()
+    orm_tables = {name: t for name, t in Base.metadata.tables.items() if name not in later_tables}
+    assert set(m.TABLES) == set(orm_tables)
+
+    for table_name, table in orm_tables.items():
+        orm_columns = [c for c in table.columns if (table_name, c.name) not in later_columns]
         spec_cols = {c.name: c for c in m.TABLES[table_name]}
-        assert list(spec_cols) == [c.name for c in table.columns], table_name
-        for col in table.columns:
+        assert list(spec_cols) == [c.name for c in orm_columns], table_name
+        for col in orm_columns:
             spec = spec_cols[col.name]
             orm_type = m.normalize_type(str(col.type.compile(dialect=dialect)))
             assert spec.type == orm_type, f"{table_name}.{col.name}"

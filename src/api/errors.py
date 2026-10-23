@@ -96,7 +96,9 @@ ERROR_CODE_STATUS: dict[str, tuple[int, str]] = {
 _LEGACY_KEYWORDS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("timed out", "timeout"), "llm_timeout"),
     (("not configured",), "llm_not_configured"),
-    (("circuit",), "llm_circuit_open"),
+    # "LLM service is temporarily unavailable. The system is recovering." is the
+    # circuit-open message of src.agents.llm (it does not contain "circuit").
+    (("circuit", "unavailable"), "llm_circuit_open"),
     (("rate limit", "rate limited", "quota", "429"), "llm_rate_limited"),
     (("overloaded", "503"), "llm_overloaded"),
     (("retrieval failed", "knowledge base"), "retrieval_unavailable"),

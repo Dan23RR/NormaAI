@@ -232,13 +232,41 @@ def _snippet_supported(snippet: str, evidence_norm: str) -> bool:
     return (present / len(words)) >= 0.5
 
 
+def _citation_is_grounded(
+    cit: dict,
+    chunks: list,
+    grounded_fw: set[str],
+    evidence_norm: str,
+    substantive: bool,
+) -> bool:
+    """Single definition of "backed by the retrieved evidence" for one citation.
+
+    Shared by the runtime annotation (``citation["grounded"]``, served on the
+    citation SSE events) and the citation_grounding_rate KPI, so the two can
+    never diverge. A citation is grounded when evidence exists, its framework
+    is present in that evidence and, if it quotes a snippet, the quote is
+    supported by the evidence text.
+    """
+    if not chunks:
+        return False  # citations with zero evidence are never grounded
+    fw = str(cit.get("framework", "")).upper()
+    if grounded_fw and fw and fw not in grounded_fw:
+        return False
+    snippet = str(cit.get("quote_snippet", "") or "").strip()
+    if substantive and len(snippet) > 8 and not _snippet_supported(snippet, evidence_norm):
+        return False
+    return True
+
+
 def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
     """Flag answers whose citations are NOT backed by retrieved sources.
 
     The model tends to embellish with specific citations (frameworks / CELEX)
     absent from the evidence - exactly the hallucination the product claims to
     eliminate. When that happens we force expert review and cap confidence
-    rather than presenting an ungrounded answer as authoritative.
+    rather than presenting an ungrounded answer as authoritative. Each citation
+    dict is also annotated with ``grounded`` (see _citation_is_grounded) so the
+    per-citation verdict reaches the client instead of only the aggregate flag.
     """
     if not isinstance(result, dict):
         return result
@@ -291,14 +319,21 @@ def _apply_grounding_guard(result: dict, retrieved_chunks: list | None) -> dict:
     # The citation schema (prompts/qa_bot.txt) asks for a quote_snippet, and a
     # FABRICATED quote is the most deceptive hallucination - it reads like a direct
     # source. Only on substantive evidence; trivially short snippets are ignored.
+    evidence_norm = _norm_ws(" ".join(str(c.get("text", "")) for c in chunks))
     if substantive and citations:
-        evidence_norm = _norm_ws(" ".join(str(c.get("text", "")) for c in chunks))
         for cit in citations:
             if not isinstance(cit, dict):
                 continue
             snippet = str(cit.get("quote_snippet", "") or "").strip()
             if len(snippet) > 8 and not _snippet_supported(snippet, evidence_norm):
                 ungrounded += 1
+
+    # Per-citation verdict, served to the client as `grounded` on citation events.
+    for cit in citations:
+        if isinstance(cit, dict):
+            cit["grounded"] = _citation_is_grounded(
+                cit, chunks, grounded_fw, evidence_norm, substantive
+            )
 
     if ungrounded:
         result["requires_expert_review"] = True
@@ -331,17 +366,11 @@ def citation_grounding_rate(result: dict, retrieved_chunks: list | None) -> floa
     evidence_norm = _norm_ws(" ".join(str(c.get("text", "")) for c in chunks))
     substantive = any(len(str(c.get("text", "")).strip()) > 30 for c in chunks)
 
-    grounded = 0
-    for cit in citations:
-        if not chunks:
-            continue  # citations with zero evidence are never grounded
-        fw = str(cit.get("framework", "")).upper()
-        if grounded_fw and fw and fw not in grounded_fw:
-            continue
-        snippet = str(cit.get("quote_snippet", "") or "").strip()
-        if substantive and len(snippet) > 8 and not _snippet_supported(snippet, evidence_norm):
-            continue
-        grounded += 1
+    grounded = sum(
+        1
+        for cit in citations
+        if _citation_is_grounded(cit, chunks, grounded_fw, evidence_norm, substantive)
+    )
     return grounded / len(citations)
 
 

@@ -83,6 +83,11 @@ class TestClassifyResult:
             ("LLM timed out after 120s. Try a simpler query.", "llm_timeout", 504),
             ("GOOGLE_API_KEY not configured. Add it to your .env file.", "llm_not_configured", 503),
             ("LLM service is temporarily unavailable (circuit open)", "llm_circuit_open", 503),
+            (
+                "LLM service is temporarily unavailable. The system is recovering.",
+                "llm_circuit_open",
+                503,
+            ),
             ("Rate limited by gemini API. Wait a moment and retry.", "llm_rate_limited", 503),
             ("gemini is temporarily overloaded. Retry in 30 seconds.", "llm_overloaded", 503),
             ("Knowledge base retrieval failed: qdrant down", "retrieval_unavailable", 503),

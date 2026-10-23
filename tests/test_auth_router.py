@@ -195,6 +195,7 @@ class _FakeUser:
         role: str = "admin",
         is_active: bool = True,
         name: str = "Tester",
+        email_verified: bool = True,
     ):
         self.id = user_id
         self.org_id = org_id
@@ -203,6 +204,7 @@ class _FakeUser:
         self.hashed_password = hash_password(password)
         self.role = role
         self.is_active = is_active
+        self.email_verified = email_verified
 
 
 class _FakeOrg:

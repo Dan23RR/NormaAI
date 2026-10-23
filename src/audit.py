@@ -32,6 +32,8 @@ class AuditAction(str, Enum):
     TOKEN_REFRESH = "auth.token.refresh"
     TOKEN_REVOKED = "auth.token.revoked"
     TOKEN_REUSE_DETECTED = "auth.token.reuse_detected"
+    EMAIL_VERIFICATION = "auth.email.verification"
+    EMAIL_VERIFICATION_RESEND = "auth.email.verification_resend"
 
     # Conversations
     CONVERSATION_CREATED = "data.conversation.created"

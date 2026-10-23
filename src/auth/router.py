@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
@@ -40,6 +40,12 @@ from src.auth.security import (
     hash_password_async,
     token_blacklist,
     verify_password_async,
+)
+from src.auth.verification import (
+    INVALID_VERIFICATION_TOKEN_DETAIL,
+    parse_email_verification_token,
+    send_verification_email,
+    verify_email_verification_token,
 )
 from src.config import get_settings
 from src.db.engine import RLS_GUC, get_db_session
@@ -84,6 +90,21 @@ class UserResponse(BaseModel):
     name: str
     role: str
     organization_name: str
+    email_verified: bool
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=512)
+
+
+class VerifyEmailResponse(BaseModel):
+    status: Literal["verified", "already_verified"]
+    email: str
+
+
+class ResendVerificationResponse(BaseModel):
+    status: Literal["sent", "already_verified"]
+    email: str
 
 
 class InviteCreateRequest(BaseModel):
@@ -155,6 +176,7 @@ async def _set_rls_org_context(db: AsyncSession, org_id: uuid.UUID) -> None:
 async def register(
     payload: RegisterRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Register a new user.
@@ -170,6 +192,9 @@ async def register(
 
     In open mode a supplied invite code is still honoured (an org invite joins
     that organization) and an invalid one is rejected rather than ignored.
+
+    The address is verified automatically when it matches the invite's email;
+    otherwise a verification email is sent in the background.
     """
     client_ip = get_client_ip(request)
 
@@ -234,6 +259,10 @@ async def register(
 
     await _set_rls_org_context(db, org_id)
 
+    # An invite proves control of the invited address: skip verification when
+    # the registered email is the one the invite was issued for.
+    email_verified = invite is not None and invite.email == payload.email.strip().lower()
+
     # Create user - rely on DB UNIQUE constraint to prevent race conditions
     user = User(
         id=user_id,
@@ -242,6 +271,7 @@ async def register(
         name=payload.name,
         hashed_password=await hash_password_async(payload.password),
         role=role,
+        email_verified=email_verified,
     )
     db.add(user)
     try:
@@ -265,7 +295,12 @@ async def register(
         ip_address=client_ip,
         detail=audit_detail,
     )
-    return create_token_pair(user.id, org_id, user.role, email=user.email)
+    if not user.email_verified:
+        # Resend is a blocking HTTP call: run it after the response, off the loop.
+        background_tasks.add_task(send_verification_email, user.id, user.email, user.name)
+    return create_token_pair(
+        user.id, org_id, user.role, email=user.email, email_verified=user.email_verified
+    )
 
 
 @router.post("/login", response_model=TokenPair)
@@ -331,7 +366,9 @@ async def login(
         org_id=str(user.org_id),
         ip_address=client_ip,
     )
-    return create_token_pair(user.id, user.org_id, user.role, email=user.email)
+    return create_token_pair(
+        user.id, user.org_id, user.role, email=user.email, email_verified=user.email_verified
+    )
 
 
 @router.post("/refresh", response_model=TokenPair)
@@ -400,7 +437,12 @@ async def refresh_token(
 
     # Issue new pair with same family
     return create_token_pair(
-        user.id, user.org_id, user.role, family=token_data.family, email=user.email
+        user.id,
+        user.org_id,
+        user.role,
+        family=token_data.family,
+        email=user.email,
+        email_verified=user.email_verified,
     )
 
 
@@ -453,8 +495,87 @@ async def get_me(
         raise HTTPException(status_code=404, detail="User not found.")
     u, org = row
     return UserResponse(
-        id=str(u.id), email=u.email, name=u.name, role=u.role, organization_name=org.name
+        id=str(u.id),
+        email=u.email,
+        name=u.name,
+        role=u.role,
+        organization_name=org.name,
+        email_verified=bool(u.email_verified),
     )
+
+
+# ─── Email verification ──────────────────────────────────────────
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+@limiter.limit(settings_limit("auth_rate_limit_verification"), key_func=client_ip_key)
+async def verify_email(
+    request: Request,
+    payload: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Confirm an email address with the signed token from the verification link.
+
+    Public: the token is the credential. It is bound to the address it was
+    issued for, so changing the email invalidates earlier links; once verified,
+    presenting the token again is a harmless ``already_verified``.
+    """
+    client_ip = get_client_ip(request)
+
+    user: User | None = None
+    user_id = parse_email_verification_token(payload.token)
+    if user_id is not None:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+    if user is None or verify_email_verification_token(payload.token, user.email) != user.id:
+        audit_log(
+            AuditAction.EMAIL_VERIFICATION,
+            AuditOutcome.FAILURE,
+            ip_address=client_ip,
+            detail="Invalid or expired verification token",
+        )
+        raise HTTPException(status_code=400, detail=INVALID_VERIFICATION_TOKEN_DETAIL)
+
+    if user.email_verified:
+        return VerifyEmailResponse(status="already_verified", email=user.email)
+
+    user.email_verified = True
+    await db.commit()
+    audit_log(
+        AuditAction.EMAIL_VERIFICATION,
+        AuditOutcome.SUCCESS,
+        user_id=str(user.id),
+        org_id=str(user.org_id),
+        ip_address=client_ip,
+    )
+    return VerifyEmailResponse(status="verified", email=user.email)
+
+
+@router.post("/resend-verification", response_model=ResendVerificationResponse)
+@limiter.limit(settings_limit("auth_rate_limit_verification"), key_func=client_ip_key)
+async def resend_verification(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Send a fresh verification email to the authenticated user's address."""
+    result = await db.execute(select(User).where(User.id == user.user_id))
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if row.email_verified:
+        return ResendVerificationResponse(status="already_verified", email=row.email)
+
+    background_tasks.add_task(send_verification_email, row.id, row.email, row.name)
+    audit_log(
+        AuditAction.EMAIL_VERIFICATION_RESEND,
+        AuditOutcome.SUCCESS,
+        user_id=str(row.id),
+        org_id=str(row.org_id),
+        ip_address=get_client_ip(request),
+    )
+    return ResendVerificationResponse(status="sent", email=row.email)
 
 
 # ─── Invites (admin) ─────────────────────────────────────────────

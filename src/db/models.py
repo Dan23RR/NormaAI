@@ -61,6 +61,10 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(512), nullable=False, default="")
     role: Mapped[str] = mapped_column(String(50), default="member")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Flipped by POST /auth/verify-email (or at registration when the invite
+    # email matches). Gates the intelligence endpoints when
+    # settings.require_email_verification is on.
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

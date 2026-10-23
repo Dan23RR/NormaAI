@@ -5,6 +5,9 @@ Tenant isolation enforced via:
 - org_id in all audit log entries
 - org_id in response metadata for client-side verification
 - Circuit breaker for graceful LLM degradation
+
+Access: ``require_verified_email`` (a verified address when
+settings.require_email_verification is on).
 """
 
 import json
@@ -25,7 +28,7 @@ from src.api.streaming.generators import (
 )
 from src.api.streaming.sse import sse_generator
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user
+from src.auth.dependencies import CurrentUser, require_verified_email
 from src.config import get_settings
 from src.resilience import ServiceUnavailableError
 
@@ -205,7 +208,7 @@ async def _sse_stream(result: dict) -> AsyncIterator[str]:
 @router.post("/qa")
 @limiter.limit("10/minute")
 async def ask_question(
-    request: Request, payload: QARequest, user: CurrentUser = Depends(get_current_user)
+    request: Request, payload: QARequest, user: CurrentUser = Depends(require_verified_email)
 ):
     """
     **Ask a question about EU regulations.**
@@ -311,7 +314,9 @@ async def ask_question(
 @router.post("/gap-analysis")
 @limiter.limit("5/minute")
 async def run_gap_analysis_endpoint(
-    request: Request, payload: GapAnalysisRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    payload: GapAnalysisRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Run compliance gap analysis for a specific EU framework.**
@@ -405,7 +410,7 @@ async def run_gap_analysis_endpoint(
 @router.post("/monitor")
 @limiter.limit("10/minute")
 async def monitor_change(
-    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(require_verified_email)
 ):
     """
     **Analyze the impact of a regulatory change on a specific company.**
@@ -501,7 +506,7 @@ async def monitor_change(
 @router.post("/qa/stream")
 @limiter.limit("10/minute")
 async def ask_question_stream(
-    request: Request, payload: QARequest, user: CurrentUser = Depends(get_current_user)
+    request: Request, payload: QARequest, user: CurrentUser = Depends(require_verified_email)
 ):
     """
     **Ask a question about EU regulations with SSE streaming.**
@@ -573,7 +578,9 @@ async def ask_question_stream(
 @router.post("/gap-analysis/stream")
 @limiter.limit("5/minute")
 async def run_gap_analysis_stream(
-    request: Request, payload: GapAnalysisRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    payload: GapAnalysisRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Run compliance gap analysis with SSE streaming.**
@@ -638,7 +645,7 @@ async def run_gap_analysis_stream(
 @router.post("/monitor/stream")
 @limiter.limit("10/minute")
 async def monitor_change_stream(
-    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(require_verified_email)
 ):
     """
     **Analyze regulatory change impact with SSE streaming.**

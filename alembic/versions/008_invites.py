@@ -1,4 +1,4 @@
-"""Invites table (invite-only registration).
+"""Invites table (invite-only registration) + users.email_verified.
 
 Revision ID: 008_invites
 Revises: 006_lead_download_email_tracking
@@ -11,6 +11,9 @@ Adds:
 - invites: single-use, expiring registration codes (SHA-256 of the code is
   stored, never the plaintext). org_id NULL = the invitee creates a new
   organization as admin; set = joins that organization with `role`.
+- users.email_verified (bool, NOT NULL, default false). Accounts that exist at
+  migration time are grandfathered as verified: they were onboarded by hand and
+  must not be locked out the day REQUIRE_EMAIL_VERIFICATION is switched on.
 
 RLS on invites follows migration 002 (ENABLE + FORCE, org isolation on
 org_id) plus one extra policy for the NO-org session used by the public auth
@@ -83,8 +86,22 @@ def upgrade() -> None:
         f"USING ({_NO_ORG_CONTEXT}) WITH CHECK ({_NO_ORG_CONTEXT})"
     )
 
+    # users.email_verified
+    op.add_column(
+        "users",
+        sa.Column(
+            "email_verified",
+            sa.Boolean,
+            nullable=False,
+            server_default=sa.text("false"),
+        ),
+    )
+    # Grandfather pre-existing accounts (see module docstring).
+    op.execute("UPDATE users SET email_verified = true")
+
 
 def downgrade() -> None:
+    op.drop_column("users", "email_verified")
     for policy in ("invites_no_org_context", "invites_org_insert", "invites_org_isolation"):
         op.execute(f"DROP POLICY IF EXISTS {policy} ON invites")
     op.drop_index("ix_invites_org_id", table_name="invites")

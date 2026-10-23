@@ -13,10 +13,12 @@ Env vars (read via src.config.get_settings):
     RESEND_REPLY_TO        (default: info@normaai.org)
     NORMAAI_PUBLIC_URL     (used to build absolute URLs)
 
-Exposes one send path:
-    send_codex_email()       - inbound (post-form Codex download)
+Exposes two send paths:
+    send_codex_email()         - inbound (post-form Codex download)
+    send_verification_email()  - account email verification link
 
-Returns (success, error_message) without raising.
+Returns (success, error_message) without raising. Without RESEND_API_KEY every
+send is a no-op that logs ``resend_not_configured``.
 """
 
 from __future__ import annotations
@@ -194,6 +196,73 @@ def send_codex_email(
         html=_codex_email_html(recipient_name, download_url),
         text=_codex_email_text(recipient_name, download_url),
         tags=[{"name": "campaign", "value": "codex_inbound"}],
+    )
+
+
+def _verification_email_html(recipient_name: str, verify_url: str, ttl_hours: int) -> str:
+    name = recipient_name or "ciao"
+    return f"""\
+<!doctype html>
+<html><body style="margin:0;padding:0;background:#0a0d12;color:#e6ebf2;font-family:Arial,sans-serif;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0a0d12;padding:24px 12px;">
+  <tr><td align="center">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="background:#11161e;border-radius:12px;padding:28px 32px;max-width:600px;">
+      <tr><td>
+        <div style="display:inline-block;background:#5b8cff;color:#fff;font-weight:bold;width:34px;height:34px;line-height:34px;text-align:center;border-radius:8px;font-size:18px;">N</div>
+        <span style="color:#e6ebf2;font-weight:600;font-size:16px;margin-left:10px;vertical-align:8px;">NormaAI</span>
+      </td></tr>
+      <tr><td style="padding:20px 0 0;">
+        <h1 style="font-size:22px;color:#e6ebf2;margin:0 0 12px;font-weight:700;">Conferma il tuo indirizzo email.</h1>
+        <p style="color:#aab3c0;font-size:14px;line-height:1.5;margin:0 0 16px;">
+          Ciao {name}, per attivare il tuo account NormaAI conferma l'indirizzo email con il pulsante qui sotto.
+        </p>
+        <p style="margin:24px 0 8px;">
+          <a href="{verify_url}"
+             style="display:inline-block;background:#5b8cff;color:#0a0d12;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:8px;font-size:14px;">
+            Conferma email
+          </a>
+        </p>
+        <p style="color:#6f7a8a;font-size:12px;line-height:1.5;margin:16px 0 0;">
+          Il link è personale e scade tra {ttl_hours} ore. Se non hai creato un account NormaAI, ignora questa email.
+        </p>
+      </td></tr>
+      <tr><td style="padding:24px 0 0;color:#6f7a8a;font-size:11px;">
+        NormaAI · info@normaai.org
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>
+"""
+
+
+def _verification_email_text(recipient_name: str, verify_url: str, ttl_hours: int) -> str:
+    name = recipient_name or "ciao"
+    return f"""Ciao {name},
+
+per attivare il tuo account NormaAI conferma l'indirizzo email aprendo questo link
+(valido {ttl_hours} ore):
+{verify_url}
+
+Se non hai creato un account NormaAI, ignora questa email.
+
+NormaAI · info@normaai.org
+"""
+
+
+def send_verification_email(
+    to_email: str,
+    recipient_name: str,
+    verify_url: str,
+    ttl_hours: int = 48,
+) -> tuple[bool, str | None]:
+    """Account email verification link (registration / resend)."""
+    return _send_via_resend(
+        to_email=to_email,
+        subject="Conferma il tuo indirizzo email - NormaAI",
+        html=_verification_email_html(recipient_name, verify_url, ttl_hours),
+        text=_verification_email_text(recipient_name, verify_url, ttl_hours),
+        tags=[{"name": "campaign", "value": "email_verification"}],
     )
 
 

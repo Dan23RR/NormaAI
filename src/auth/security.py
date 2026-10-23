@@ -8,6 +8,7 @@ Security features:
 - Redis-backed token blacklist for instant revocation
 """
 
+import asyncio
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -132,6 +133,11 @@ class TokenPayload(BaseModel):
     type: str  # access or refresh
     jti: str  # unique token ID for blacklisting
     family: str | None = None  # refresh token family for rotation
+    # Identity claims on ACCESS tokens (absent on legacy / refresh tokens):
+    # the staff gate matches ``email`` against settings.staff_emails;
+    # ``email_verified`` is the fast path of require_verified_email.
+    email: str | None = None
+    email_verified: bool | None = None
 
 
 class TokenPair(BaseModel):
@@ -261,6 +267,22 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
+# bcrypt is deliberately slow (~100-300 ms per call at the default cost). Run
+# it in a worker thread from request handlers so a burst of logins/registrations
+# cannot stall the event loop for every other in-flight request. The sync
+# functions above stay for non-async callers (CLI scripts, tests).
+
+
+async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
+    """``verify_password`` off the event loop (asyncio.to_thread)."""
+    return await asyncio.to_thread(verify_password, plain_password, hashed_password)
+
+
+async def hash_password_async(password: str) -> str:
+    """``hash_password`` off the event loop (asyncio.to_thread)."""
+    return await asyncio.to_thread(hash_password, password)
+
+
 # ─── Token Creation ─────────────────────────────────────────────
 
 
@@ -269,12 +291,15 @@ def create_access_token(
     org_id: uuid.UUID,
     role: str,
     expires_delta: timedelta | None = None,
+    *,
+    email: str | None = None,
+    email_verified: bool | None = None,
 ) -> str:
     expire = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=_get_access_token_expire_minutes())
     )
     jti = str(uuid.uuid4())
-    payload = {
+    payload: dict[str, Any] = {
         "sub": str(user_id),
         "org_id": str(org_id),
         "role": role,
@@ -285,6 +310,10 @@ def create_access_token(
         "iss": _get_jwt_issuer(),
         "aud": _get_jwt_audience(),
     }
+    if email:
+        payload["email"] = email
+    if email_verified is not None:
+        payload["email_verified"] = bool(email_verified)
     return str(jwt.encode(payload, _get_signing_key(), algorithm=_algorithm))
 
 
@@ -317,9 +346,16 @@ def create_token_pair(
     org_id: uuid.UUID,
     role: str,
     family: str | None = None,
+    *,
+    email: str | None = None,
+    email_verified: bool | None = None,
 ) -> TokenPair:
+    # Identity claims go on the access token only: refresh re-reads the user
+    # from the DB, so a rotated pair always carries fresh values.
     return TokenPair(
-        access_token=create_access_token(user_id, org_id, role),
+        access_token=create_access_token(
+            user_id, org_id, role, email=email, email_verified=email_verified
+        ),
         refresh_token=create_refresh_token(user_id, org_id, role, family=family),
         expires_in=_get_access_token_expire_minutes() * 60,
     )

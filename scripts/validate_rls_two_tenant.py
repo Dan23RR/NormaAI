@@ -40,6 +40,11 @@ BASE_URL = (
 
 PASSWORD = "Rls-Validate-" + uuid.uuid4().hex[:10]  # meets the 8-char minimum
 
+# Invite codes for the two registrations when the instance is invite-only.
+INVITE_CODES = [
+    c.strip() for c in os.environ.get("NORMAAI_INVITE_CODES", "").split(",") if c.strip()
+]
+
 
 def _fail(msg: str) -> None:
     print(f"  FAIL: {msg}")
@@ -57,8 +62,19 @@ def _register(client: httpx.Client, label: str) -> str:
         "name": f"RLS Test {label}",
         "organization_name": f"RLS-Org-{label}-{suffix}",
     }
+    # Registration is invite-only by default: pass two org-less codes (minted
+    # with scripts/create_invite.py) as NORMAAI_INVITE_CODES="codeA,codeB", or
+    # run the staging instance with REGISTRATION_MODE=open.
+    if INVITE_CODES:
+        body["invite_code"] = INVITE_CODES.pop(0)
     # auth router has its own /auth prefix AND is mounted at /api/v1 (main.py)
     r = client.post("/api/v1/auth/register", json=body)
+    if r.status_code == 403 and "invito" in r.text:
+        _fail(
+            f"register org {label} was refused: registration is invite-only. Mint two "
+            f"org-less invites (python scripts/create_invite.py --email ...) and export "
+            f"NORMAAI_INVITE_CODES=codeA,codeB, or set REGISTRATION_MODE=open on staging."
+        )
     if r.status_code != 201:
         _fail(
             f"register org {label} returned {r.status_code} (expected 201) - the "

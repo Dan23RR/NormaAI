@@ -45,9 +45,27 @@ def test_org_id():
 
 @pytest.fixture
 def auth_headers(test_user_id, test_org_id):
-    """HTTP headers with a valid admin Bearer token."""
+    """HTTP headers with a valid admin Bearer token (a customer admin, NOT staff)."""
     token = create_access_token(test_user_id, test_org_id, "admin")
     return {"Authorization": f"Bearer {token}"}
+
+
+STAFF_EMAIL = "ops@normaai.org"
+
+
+@pytest.fixture
+def staff_headers(test_user_id, test_org_id):
+    """Admin token whose ``email`` claim is in settings.staff_emails.
+
+    /crawl re-indexes the shared corpus and is gated by ``require_staff``; the
+    staff list is read from settings at request time, so patch it for the test.
+    """
+    from src.config import get_settings
+
+    staff_settings = get_settings().model_copy(update={"staff_emails": [STAFF_EMAIL]})
+    token = create_access_token(test_user_id, test_org_id, "admin", email=STAFF_EMAIL)
+    with patch("src.auth.dependencies.get_settings", return_value=staff_settings):
+        yield {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
@@ -140,19 +158,36 @@ class TestCrawlEndpoint:
         )
         assert response.status_code == 401
 
-    def test_crawl_amendment_check_default_success(self, client, auth_headers):
+    def test_crawl_non_staff_admin_is_403(self, client, auth_headers):
+        """A customer admin (no staff email claim) must not re-index the shared corpus."""
+        mock_client = MagicMock()
+        with patch("src.crawler.eurlex.client.EurLexClient", return_value=mock_client):
+            response = client.post("/api/v1/crawl", json={}, headers=auth_headers)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Operazione riservata al personale NormaAI."
+        mock_client.check_for_new_amendments.assert_not_called()
+
+    def test_crawl_staff_email_not_in_allowlist_is_403(self, client, test_user_id, test_org_id):
+        """An email claim alone is not enough: it must be in settings.staff_emails."""
+        token = create_access_token(test_user_id, test_org_id, "admin", email="someone@acme.com")
+        response = client.post(
+            "/api/v1/crawl", json={}, headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 403
+
+    def test_crawl_amendment_check_default_success(self, client, staff_headers):
         """Default (no body fields) is an amendment_check; mock the EUR-Lex client."""
         mock_client = MagicMock()
         mock_client.check_for_new_amendments.return_value = ["amend-1", "amend-2"]
         with patch("src.crawler.eurlex.client.EurLexClient", return_value=mock_client):
-            response = client.post("/api/v1/crawl", json={}, headers=auth_headers)
+            response = client.post("/api/v1/crawl", json={}, headers=staff_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
         assert data["data"]["amendments_count"] == 2
         mock_client.check_for_new_amendments.assert_called_once()
 
-    def test_crawl_full_crawl_success(self, client, auth_headers):
+    def test_crawl_full_crawl_success(self, client, staff_headers):
         """full_crawl path reports a regulation count and dedup'd frameworks."""
         reg1 = MagicMock(framework="CSRD")
         reg2 = MagicMock(framework="CSRD")
@@ -163,7 +198,7 @@ class TestCrawlEndpoint:
             response = client.post(
                 "/api/v1/crawl",
                 json={"crawl_type": "full_crawl"},
-                headers=auth_headers,
+                headers=staff_headers,
             )
         assert response.status_code == 200
         data = response.json()
@@ -171,39 +206,39 @@ class TestCrawlEndpoint:
         assert data["data"]["regulations_count"] == 3
         assert sorted(data["data"]["frameworks"]) == ["CSRD", "DORA"]
 
-    def test_crawl_invalid_days_back_too_low(self, client, auth_headers):
+    def test_crawl_invalid_days_back_too_low(self, client, staff_headers):
         """days_back has ge=1; 0 must be rejected with 422."""
         response = client.post(
             "/api/v1/crawl",
             json={"days_back": 0},
-            headers=auth_headers,
+            headers=staff_headers,
         )
         assert response.status_code == 422
 
-    def test_crawl_invalid_days_back_too_high(self, client, auth_headers):
+    def test_crawl_invalid_days_back_too_high(self, client, staff_headers):
         """days_back has le=90; 91 must be rejected with 422."""
         response = client.post(
             "/api/v1/crawl",
             json={"days_back": 91},
-            headers=auth_headers,
+            headers=staff_headers,
         )
         assert response.status_code == 422
 
-    def test_crawl_invalid_crawl_type_enum(self, client, auth_headers):
+    def test_crawl_invalid_crawl_type_enum(self, client, staff_headers):
         """crawl_type is an enum; an unknown value is a 422."""
         response = client.post(
             "/api/v1/crawl",
             json={"crawl_type": "delete_everything"},
-            headers=auth_headers,
+            headers=staff_headers,
         )
         assert response.status_code == 422
 
-    def test_crawl_client_failure_returns_500(self, client, auth_headers):
+    def test_crawl_client_failure_returns_500(self, client, staff_headers):
         """A crawler exception is caught and surfaced as a sanitized 500."""
         mock_client = MagicMock()
         mock_client.check_for_new_amendments.side_effect = RuntimeError("network down")
         with patch("src.crawler.eurlex.client.EurLexClient", return_value=mock_client):
-            response = client.post("/api/v1/crawl", json={}, headers=auth_headers)
+            response = client.post("/api/v1/crawl", json={}, headers=staff_headers)
         assert response.status_code == 500
         assert "logs" in response.json()["detail"].lower()
 

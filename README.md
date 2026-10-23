@@ -142,19 +142,39 @@ docker compose build app
 
 ### Authentication
 
-All intelligence endpoints require JWT authentication:
+All intelligence endpoints require JWT authentication.
+
+Registration is **invite-only by default** (`REGISTRATION_MODE=invite`; also
+`open` for self-service sign-up or `closed`). Bootstrap the very first admin
+from the server, then let admins invite people from the API:
 
 ```bash
-# Register
+# 1. First admin: mint an org-less invite (the invitee founds a new organization)
+python scripts/create_invite.py --email founder@example.com
+
+# 2. Register with the code (joins the invite's organization, or founds a new one)
 curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "securepassword", "org_name": "Acme Srl"}'
+  -d '{"email": "founder@example.com", "password": "securepassword", "name": "Founder",
+       "organization_name": "Acme Srl", "invite_code": "<code>"}'
+
+# 3. Admins invite colleagues into their organization (code is returned once)
+curl -X POST http://localhost:8000/api/v1/auth/invites \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"email": "cfo@example.com", "role": "member"}'
 
 # Login
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "securepassword"}'
+  -d '{"email": "founder@example.com", "password": "securepassword"}'
 ```
+
+Guard rails on the auth surface (see [SECURITY.md](SECURITY.md)): per-IP rate
+limits on register/login/refresh, email verification (`POST /api/v1/auth/verify-email`,
+`POST /api/v1/auth/resend-verification`; enforced on the intelligence endpoints
+when `REQUIRE_EMAIL_VERIFICATION=true`), a daily LLM quota per organization
+(`LLM_DAILY_QUOTA_PER_ORG`, remaining units in `X-Quota-Remaining` and
+`GET /api/v1/system/quota`), and a staff-only corpus crawl (`STAFF_EMAILS`).
 
 ### Intelligence Endpoints
 
@@ -166,7 +186,10 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | `/api/v1/gap-analysis/stream` | POST | Required | 5/min | Streaming gap analysis |
 | `/api/v1/monitor` | POST | Required | 10/min | Regulatory change impact |
 | `/api/v1/monitor/stream` | POST | Required | 10/min | Streaming monitor analysis |
-| `/api/v1/crawl` | POST | Required | 2/min | Trigger EUR-Lex crawl |
+| `/api/v1/crawl` | POST | Staff | 2/min | Trigger EUR-Lex crawl (re-indexes the shared corpus) |
+
+Intelligence endpoints also consume the organization's daily LLM quota
+(default 200 requests/day, `429` once exhausted).
 
 ### System Endpoints
 
@@ -177,6 +200,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | `/api/v1/stats` | GET | Public | System health and statistics |
 | `/api/v1/processors` | GET | Public | Document processing engine status |
 | `/api/v1/metrics` | GET | Admin | Detailed request metrics |
+| `/api/v1/system/quota` | GET | Required | Today's LLM quota usage for the caller's organization |
 | `/api/v1/metrics/prometheus` | GET | Scrape token / Admin | Prometheus exposition format |
 
 ### Example: Q&A

@@ -1,10 +1,13 @@
 """NormaAI configuration - single source of truth for all settings."""
 
+import json
 import logging
 import sys
 from functools import lru_cache
+from typing import Annotated, Literal
 
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode
 
 _config_logger = logging.getLogger("normaai.config")
 
@@ -146,10 +149,70 @@ class Settings(BaseSettings):
     sse_keepalive_interval: int = 15
     sse_enabled: bool = True
 
+    # ─── LLM quota ────────────────────────────────────────────
+    # Requests per organization per UTC day across the intelligence endpoints
+    # (qa, gap-analysis, monitor + streaming). Cached answers count too (the
+    # check is one atomic INCR). 0 = unlimited. Remaining quota is exposed in
+    # the X-Quota-Remaining header and GET /api/v1/system/quota.
+    llm_daily_quota_per_org: int = 200
+
     # ─── Auth ───────────────────────────────────────────────
     app_secret_key: str = "change-me-in-production-use-64-chars-minimum"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
+
+    # ─── Registration ────────────────────────────────────────
+    # "invite" (default): POST /auth/register needs a valid invite code
+    #   (admin API or scripts/create_invite.py for the very first admin);
+    # "open": self-service sign-up, every registrant becomes admin of a new
+    #   organization; "closed": registrations return 403.
+    registration_mode: Literal["open", "invite", "closed"] = "invite"
+
+    # ─── Email verification ──────────────────────────────────
+    # When True the intelligence endpoints (Q&A, gap analysis, monitor and
+    # their streaming variants) return 403 until the user confirms the address
+    # (POST /auth/verify-email). Invite registrations whose invite email matches
+    # the registered email are verified automatically.
+    require_email_verification: bool = False
+    email_verification_token_ttl_hours: int = 48
+
+    # ─── Auth rate limits (per client IP) ────────────────────
+    # slowapi limit strings ("<count>/<period>"), keyed on the spoof-resistant
+    # client IP (see trusted_proxy_count), so credential stuffing and sign-up
+    # floods are throttled before any DB/bcrypt work. Evaluated per request.
+    auth_rate_limit_register: str = "5/hour"
+    auth_rate_limit_login: str = "10/minute"
+    auth_rate_limit_refresh: str = "30/minute"
+    # verify-email + resend-verification (token guessing / mail flooding)
+    auth_rate_limit_verification: str = "10/hour"
+
+    # ─── Staff (NormaAI personnel) ───────────────────────────
+    # Emails allowed through ``require_staff`` (corpus crawl/re-index, invites
+    # that create new organizations). Matched case-insensitively against the
+    # ``email`` claim of the access token. Env: JSON list or comma-separated
+    # (STAFF_EMAILS=ops@normaai.org,info@normaai.org). Empty = nobody is staff.
+    staff_emails: Annotated[list[str], NoDecode] = []
+
+    @field_validator("staff_emails", mode="before")
+    @classmethod
+    def _parse_staff_emails(cls, value: object) -> object:
+        """Accept a JSON list or a comma-separated string; normalise to lowercase."""
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                try:
+                    value = json.loads(raw)
+                except ValueError:
+                    value = raw
+            if isinstance(value, str):
+                return [e.strip().lower() for e in value.split(",") if e.strip()]
+        if isinstance(value, list | tuple | set):
+            return [str(e).strip().lower() for e in value if str(e).strip()]
+        return value
+
+    def is_staff_email(self, email: str | None) -> bool:
+        """True when ``email`` belongs to NormaAI staff (case-insensitive)."""
+        return bool(email) and str(email).strip().lower() in self.staff_emails
 
     # ─── JWT RS256 Keys ──────────────────────────────────────
     jwt_private_key_path: str = ""

@@ -5,6 +5,10 @@ Tenant isolation enforced via:
 - org_id in all audit log entries
 - org_id in response metadata for client-side verification
 - Circuit breaker for graceful LLM degradation
+
+Access: ``require_verified_email`` (a verified address when
+settings.require_email_verification is on) and the per-organization daily LLM
+quota (``src.quotas``; remaining units in the ``X-Quota-Remaining`` header).
 """
 
 import json
@@ -14,7 +18,7 @@ from datetime import UTC, datetime
 from enum import Enum
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -24,9 +28,10 @@ from src.api.streaming.generators import (
     qa_stream_generator,
 )
 from src.api.streaming.sse import sse_generator
-from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user
+from src.audit import AuditAction, AuditOutcome, audit_log, get_client_ip
+from src.auth.dependencies import CurrentUser, require_verified_email
 from src.config import get_settings
+from src.quotas import QuotaStatus, llm_quota, quota_exceeded_detail
 from src.resilience import ServiceUnavailableError
 
 logger = structlog.get_logger()
@@ -158,6 +163,39 @@ def _require_llm():
         )
 
 
+def _quota_headers(quota: QuotaStatus) -> dict[str, str]:
+    """``X-Quota-Remaining``: units left today for the org (-1 = unlimited)."""
+    return {"X-Quota-Remaining": str(quota.remaining)}
+
+
+async def _consume_llm_quota(user: CurrentUser, response: Response) -> QuotaStatus:
+    """Count this request against the organization's daily LLM quota.
+
+    Raises 429 (with ``Retry-After`` = seconds to the UTC day rollover) once
+    the quota is exhausted. The remaining units are set on ``response`` -
+    FastAPI merges those headers into dict responses; endpoints that return a
+    ``StreamingResponse`` directly must spread ``_quota_headers(quota)`` into
+    their own headers.
+    """
+    quota = await llm_quota.consume(str(user.org_id))
+    if not quota.allowed:
+        audit_log(
+            AuditAction.RATE_LIMIT_HIT,
+            AuditOutcome.DENIED,
+            user_id=str(user.user_id),
+            org_id=str(user.org_id),
+            resource="llm_daily_quota",
+            detail=f"Daily LLM quota exhausted ({quota.limit})",
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=quota_exceeded_detail(quota.limit),
+            headers={"Retry-After": str(quota.resets_in_seconds), "X-Quota-Remaining": "0"},
+        )
+    response.headers.update(_quota_headers(quota))
+    return quota
+
+
 def _build_metadata(
     user: CurrentUser,
     *,
@@ -205,7 +243,10 @@ async def _sse_stream(result: dict) -> AsyncIterator[str]:
 @router.post("/qa")
 @limiter.limit("10/minute")
 async def ask_question(
-    request: Request, payload: QARequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: QARequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Ask a question about EU regulations.**
@@ -219,6 +260,7 @@ async def ask_question(
     """
     _require_qdrant(request)
     _require_llm()
+    quota = await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -258,7 +300,11 @@ async def ask_question(
                     return StreamingResponse(
                         _sse_stream(response_body),
                         media_type="text/event-stream",
-                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                        headers={
+                            "Cache-Control": "no-cache",
+                            "X-Accel-Buffering": "no",
+                            **_quota_headers(quota),
+                        },
                     )
                 return response_body
         except Exception as cache_err:
@@ -289,7 +335,11 @@ async def ask_question(
             return StreamingResponse(
                 _sse_stream(response_body),
                 media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    **_quota_headers(quota),
+                },
             )
 
         return response_body
@@ -311,7 +361,10 @@ async def ask_question(
 @router.post("/gap-analysis")
 @limiter.limit("5/minute")
 async def run_gap_analysis_endpoint(
-    request: Request, payload: GapAnalysisRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: GapAnalysisRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Run compliance gap analysis for a specific EU framework.**
@@ -326,6 +379,7 @@ async def run_gap_analysis_endpoint(
     """
     _require_qdrant(request)
     _require_llm()
+    await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -405,7 +459,10 @@ async def run_gap_analysis_endpoint(
 @router.post("/monitor")
 @limiter.limit("10/minute")
 async def monitor_change(
-    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: MonitorRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Analyze the impact of a regulatory change on a specific company.**
@@ -421,6 +478,7 @@ async def monitor_change(
     """
     _require_qdrant(request)
     _require_llm()
+    await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -501,7 +559,10 @@ async def monitor_change(
 @router.post("/qa/stream")
 @limiter.limit("10/minute")
 async def ask_question_stream(
-    request: Request, payload: QARequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: QARequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Ask a question about EU regulations with SSE streaming.**
@@ -520,6 +581,7 @@ async def ask_question_stream(
     """
     _require_qdrant(request)
     _require_llm()
+    quota = await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -550,6 +612,7 @@ async def ask_question_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                **_quota_headers(quota),
             },
         )
 
@@ -573,7 +636,10 @@ async def ask_question_stream(
 @router.post("/gap-analysis/stream")
 @limiter.limit("5/minute")
 async def run_gap_analysis_stream(
-    request: Request, payload: GapAnalysisRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: GapAnalysisRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Run compliance gap analysis with SSE streaming.**
@@ -585,6 +651,7 @@ async def run_gap_analysis_stream(
     """
     _require_qdrant(request)
     _require_llm()
+    quota = await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -615,6 +682,7 @@ async def run_gap_analysis_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                **_quota_headers(quota),
             },
         )
 
@@ -638,7 +706,10 @@ async def run_gap_analysis_stream(
 @router.post("/monitor/stream")
 @limiter.limit("10/minute")
 async def monitor_change_stream(
-    request: Request, payload: MonitorRequest, user: CurrentUser = Depends(get_current_user)
+    request: Request,
+    response: Response,
+    payload: MonitorRequest,
+    user: CurrentUser = Depends(require_verified_email),
 ):
     """
     **Analyze regulatory change impact with SSE streaming.**
@@ -650,6 +721,7 @@ async def monitor_change_stream(
     """
     _require_qdrant(request)
     _require_llm()
+    quota = await _consume_llm_quota(user, response)
 
     org_id = str(user.org_id)
 
@@ -680,6 +752,7 @@ async def monitor_change_stream(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
+                **_quota_headers(quota),
             },
         )
 

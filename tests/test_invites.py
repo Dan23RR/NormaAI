@@ -624,7 +624,7 @@ def test_migration_008_chain_and_contents():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.revision == "008_invites"
-    assert module.down_revision == "006_lead_download_email_tracking"
+    assert module.down_revision == "007_reconcile_schema"
     source = path.read_text(encoding="utf-8")
     assert 'op.create_table(\n        "invites"' in source
     assert "ENABLE ROW LEVEL SECURITY" in source and "FORCE ROW LEVEL SECURITY" in source

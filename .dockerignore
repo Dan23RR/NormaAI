@@ -11,6 +11,10 @@ __pycache__
 .ruff_cache
 data/
 tests/
+# The backend image only needs frontend/public/codex-post-omnibus-2025-2029.pdf
+# from the frontend tree (see Dockerfile): keep the heavy directories out.
+frontend/node_modules
+frontend/.next
 *.md
 *.jpeg
 *.png

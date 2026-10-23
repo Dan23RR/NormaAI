@@ -40,9 +40,30 @@ router = APIRouter(prefix="/api/v1", tags=["Leads"])
 
 # ────────────────────── Constants / paths ──────────────────────
 
-# PDF location on disk (rendered by marketing/generate_pdf_native.py)
+# PDF served by GET /codex/download. CODEX_PDF_PATH (the Dockerfile sets it to
+# the copy baked into the image) wins; otherwise fall back to the repository
+# tree: the historical marketing/ render (gitignored, never shipped - which is
+# why production answered 503 "Codex temporaneamente non disponibile") and
+# then the tracked copy under frontend/public/.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-CODEX_PDF_PATH = _REPO_ROOT / "marketing" / "codex_post_omnibus_v1.pdf"
+_CODEX_PDF_CANDIDATES = (
+    _REPO_ROOT / "marketing" / "codex_post_omnibus_v1.pdf",
+    _REPO_ROOT / "frontend" / "public" / "codex-post-omnibus-2025-2029.pdf",
+)
+
+
+def resolve_codex_pdf_path() -> Path:
+    """Return the Codex PDF path: configured, else the first candidate on disk."""
+    configured = get_settings().codex_pdf_path
+    if configured:
+        return Path(configured)
+    for candidate in _CODEX_PDF_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    return _CODEX_PDF_CANDIDATES[-1]
+
+
+CODEX_PDF_PATH = resolve_codex_pdf_path()
 CODEX_DOWNLOAD_FILENAME = "NormaAI-Codex-Post-Omnibus-2025-2029.pdf"
 
 # Token TTL (30 giorni dal lead capture)

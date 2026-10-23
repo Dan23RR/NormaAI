@@ -162,6 +162,16 @@ class TestHealth:
         body = r.json()
         assert body["status"] == "ok"
 
+    def test_health_reports_the_build_version(self, client):
+        """``version`` is APP_VERSION (the git SHA baked into the image, "dev"
+        outside a build): the deploy workflow polls it to confirm which build
+        is serving."""
+        from src.config import get_settings
+
+        r = client.get("/health")
+        assert r.status_code == 200
+        assert r.json()["version"] == get_settings().app_version
+
     def test_health_reports_deps_up(self, client, app_state):
         app_state.qdrant_available = True
         app_state.llm_available = True

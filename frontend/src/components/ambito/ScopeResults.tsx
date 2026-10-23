@@ -1,22 +1,25 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { CalendarClock, Copy, ExternalLink, Link2 } from 'lucide-react'
 import { Badge, FrameworkBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { LawQuote } from '@/components/ui/LawQuote'
-import { formatDateIt } from '@/lib/obligations/dates'
-import { FRAMEWORK_TITLE, STATUS_META, inputSummary } from '@/lib/scope/text'
+import { formatDate } from '@/i18n/format'
+import { useTextContext } from '@/i18n/useTextContext'
+import { STATUS_TONE, frameworkTitle, inputSummary, statusLabel } from '@/lib/scope/text'
 import type { ScopeAssessment, ScopeResult } from '@/lib/scope/types'
 import type { Source } from '@/lib/sources'
 
 /** A compact source line: act, article, CELEX and the link to the official text. */
 export function SourceLine({ source }: { source: Source }) {
+  const tu = useTranslations('ui')
   return (
     <li className="text-small leading-relaxed text-ink-2">
       <span className="mr-1.5 tabular text-ink-3">[{source.index}]</span>
       <span className="font-medium text-ink">{source.act}</span>
       {source.article && <span>, {source.article}</span>}
-      {source.celex && <span className="ml-2 whitespace-nowrap tabular text-ink-3">CELEX {source.celex}</span>}
+      {source.celex && <span className="ml-2 whitespace-nowrap tabular text-ink-3">{tu('celex', { celex: source.celex })}</span>}
       {source.url && (
         <a
           href={source.url}
@@ -24,7 +27,7 @@ export function SourceLine({ source }: { source: Source }) {
           rel="noopener noreferrer"
           className="ml-2 inline-flex items-center gap-1 whitespace-nowrap text-union hover:underline"
         >
-          {source.origin ?? 'Testo'}
+          {source.origin ?? tu('text')}
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </a>
       )}
@@ -33,8 +36,10 @@ export function SourceLine({ source }: { source: Source }) {
 }
 
 function ResultBlock({ result }: { result: ScopeResult }) {
-  const status = STATUS_META[result.status]
+  const t = useTranslations('ambito.results')
+  const ctx = useTextContext()
   const muted = result.status === 'not_assessed'
+  const verifiedOn = formatDate(result.verifiedOn, ctx)
   return (
     <section
       aria-labelledby={`scope-result-${result.framework}`}
@@ -43,10 +48,10 @@ function ResultBlock({ result }: { result: ScopeResult }) {
       <div className="flex flex-wrap items-center gap-2 border-b border-rule px-5 py-3">
         <FrameworkBadge framework={result.framework} />
         <h2 id={`scope-result-${result.framework}`} className="font-sans text-body font-medium text-ink">
-          {FRAMEWORK_TITLE[result.framework]}
+          {frameworkTitle(result.framework, ctx.t)}
         </h2>
-        <Badge tone={status.tone} className="ml-auto">
-          {status.label}
+        <Badge tone={STATUS_TONE[result.status]} className="ml-auto">
+          {statusLabel(result.status, ctx.t)}
         </Badge>
       </div>
 
@@ -92,11 +97,12 @@ function ResultBlock({ result }: { result: ScopeResult }) {
                 quote={p.quote}
                 before={p.before}
                 after={p.after}
+                lang={p.lang}
                 act={p.act}
                 article={p.article}
                 celex={p.celex}
                 url={p.url}
-                verifiedAt={formatDateIt(result.verifiedOn)}
+                verifiedAt={verifiedOn}
                 origin="EUR-Lex"
               />
             ))}
@@ -105,7 +111,7 @@ function ResultBlock({ result }: { result: ScopeResult }) {
 
         {result.notes.length > 0 && (
           <div>
-            <h3 className="font-sans text-small font-medium text-ink-2">Da tenere presente</h3>
+            <h3 className="font-sans text-small font-medium text-ink-2">{t('notes')}</h3>
             <ul className="mt-1.5 list-disc space-y-1 pl-5 text-small text-ink-2">
               {result.notes.map((note) => (
                 <li key={note}>{note}</li>
@@ -115,16 +121,13 @@ function ResultBlock({ result }: { result: ScopeResult }) {
         )}
 
         <div className="border-t border-rule pt-4">
-          <h3 className="font-sans text-small font-medium text-ink-2">Base normativa</h3>
+          <h3 className="font-sans text-small font-medium text-ink-2">{t('legalBasis')}</h3>
           <ul className="mt-1.5 space-y-1">
             {result.sources.map((s) => (
               <SourceLine key={s.id} source={s} />
             ))}
           </ul>
-          <p className="mt-2 text-caption text-ink-3">
-            Regole e date verificate il {formatDateIt(result.verifiedOn)} sulle fonti indicate. Primo filtro
-            indicativo, non un parere legale.
-          </p>
+          <p className="mt-2 text-caption text-ink-3">{t('verifiedNote', { date: verifiedOn })}</p>
         </div>
       </div>
     </section>
@@ -140,19 +143,21 @@ export function ScopeResults({
   onCopyResult: () => void
   onCopyLink: () => void
 }) {
+  const t = useTranslations('ambito.results')
+  const ctx = useTextContext()
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-h3">Risultato</h2>
-          <p className="mt-1 text-small text-ink-2">{inputSummary(assessment.input)}</p>
+          <h2 className="text-h3">{t('title')}</h2>
+          <p className="mt-1 text-small text-ink-2">{inputSummary(assessment.input, ctx)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="secondary" size="sm" iconLeft={<Copy className="h-4 w-4" aria-hidden="true" />} onClick={onCopyResult}>
-            Copia il risultato
+            {t('copyResult')}
           </Button>
           <Button type="button" variant="ghost" size="sm" iconLeft={<Link2 className="h-4 w-4" aria-hidden="true" />} onClick={onCopyLink}>
-            Copia il link
+            {t('copyLink')}
           </Button>
         </div>
       </div>

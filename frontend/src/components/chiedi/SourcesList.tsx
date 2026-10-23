@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { Source } from '@/lib/sources'
 import { SourceRow } from '@/components/ui/LawQuote'
 
@@ -15,12 +16,9 @@ export function SourcesList({
   onSelect?: (index: number) => void
   label: string
 }) {
+  const t = useTranslations('chiedi.sources')
   if (sources.length === 0) {
-    return (
-      <p className="text-small text-ink-2">
-        Nessuna fonte citata in questa risposta: trattala come un orientamento da verificare, non come un riferimento.
-      </p>
-    )
+    return <p className="text-small text-ink-2">{t('none')}</p>
   }
   return (
     <ol className="space-y-1" aria-label={label}>

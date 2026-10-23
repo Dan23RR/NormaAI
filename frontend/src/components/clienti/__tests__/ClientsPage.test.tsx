@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ToastProvider } from '@/components/ui/Toast'
+import { renderWithIntl } from '@/test/i18n'
 import { DEMO_CLIENTS } from '@/lib/mock-data'
 import ClientiPage from '@/app/app/clienti/page'
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => '/app/clienti',
   useParams: () => ({}),
 }))
@@ -26,11 +27,12 @@ vi.mock('@/lib/api', () => ({
 
 import { api } from '@/lib/api'
 
-function renderPage() {
-  return render(
+function renderPage(language: 'it' | 'en' = 'it') {
+  return renderWithIntl(
     <ToastProvider>
       <ClientiPage />
     </ToastProvider>,
+    { language },
   )
 }
 
@@ -50,8 +52,20 @@ describe('ClientiPage', () => {
     // Node may ship a small ICU: the separator is "." with full Italian locale data, "," without.
     expect(within(table).getByText(/^5[.,]000$/)).toBeInTheDocument()
     expect(within(table).getAllByText('CSRD').length).toBeGreaterThan(0)
+    expect(within(table).getAllByText('Tassonomia').length).toBeGreaterThan(0)
     expect(within(table).getByText('2026-03-02')).toBeInTheDocument()
     expect(screen.getByText('4 clienti')).toBeInTheDocument()
+  })
+
+  it('renders the same page in English with English separators and labels', async () => {
+    renderPage('en')
+    expect(await screen.findByText('EnergiePlus GmbH')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Clients' })).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('5,000')).toBeInTheDocument()
+    expect(within(table).getAllByText('Taxonomy').length).toBeGreaterThan(0)
+    expect(screen.getByText('4 clients')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New client' })).toBeInTheDocument()
   })
 
   it('filters by name or sector and offers to clear an empty search', async () => {

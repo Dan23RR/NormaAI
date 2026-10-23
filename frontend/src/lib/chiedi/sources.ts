@@ -1,27 +1,30 @@
 import { FRAMEWORK_META, frameworkLabel } from '@/components/ui/Badge'
+import { eurlexLang } from '@/i18n/config'
+import type { TextContext, Translate } from '@/i18n/types'
 import { eurlexUrl, type Source } from '@/lib/sources'
 import type { CitationEvent } from '@/hooks/useSSEStream'
 import type { ChiediCitation } from './types'
 
 /**
- * The act behind each framework NormaAI covers, with its CELEX number.
- * Used to name the act and to build the EUR-Lex link when the citation
- * itself does not carry them.
+ * The CELEX number of the act behind each framework NormaAI covers. The
+ * official name of the act, in the language of the interface, lives in the
+ * `ui.acts` messages. Used to name the act and to build the EUR-Lex link
+ * when the citation itself does not carry them.
  */
-export const ACT_BY_FRAMEWORK: Record<string, { act: string; celex: string }> = {
-  CSRD: { act: 'Direttiva (UE) 2022/2464', celex: '32022L2464' },
-  CSDDD: { act: 'Direttiva (UE) 2024/1760', celex: '32024L1760' },
-  AI_ACT: { act: 'Regolamento (UE) 2024/1689', celex: '32024R1689' },
-  DORA: { act: 'Regolamento (UE) 2022/2554', celex: '32022R2554' },
-  NIS2: { act: 'Direttiva (UE) 2022/2555', celex: '32022L2555' },
-  TAXONOMY: { act: 'Regolamento (UE) 2020/852', celex: '32020R0852' },
-  GDPR: { act: 'Regolamento (UE) 2016/679', celex: '32016R0679' },
-  CRA: { act: 'Regolamento (UE) 2024/2847', celex: '32024R2847' },
-  ESRS: { act: 'Regolamento delegato (UE) 2023/2772', celex: '32023R2772' },
+export const CELEX_BY_FRAMEWORK: Record<string, string> = {
+  CSRD: '32022L2464',
+  CSDDD: '32024L1760',
+  AI_ACT: '32024R1689',
+  DORA: '32022R2554',
+  NIS2: '32022L2555',
+  TAXONOMY: '32020R0852',
+  GDPR: '32016R0679',
+  CRA: '32024R2847',
+  ESRS: '32023R2772',
 }
 
 const FRAMEWORK_BY_CELEX: Record<string, string> = Object.fromEntries(
-  Object.entries(ACT_BY_FRAMEWORK).map(([key, v]) => [v.celex, key]),
+  Object.entries(CELEX_BY_FRAMEWORK).map(([key, celex]) => [celex, key]),
 )
 
 const FRAMEWORK_ALIASES: Record<string, string> = {
@@ -92,22 +95,21 @@ export function originOf(url: string | undefined): string | undefined {
  * name, e.g. "Regolamento (UE) 2024/1689 (AI Act)". A real document title
  * coming from the backend wins over the table.
  */
-export function actLabel(frameworkKey: string, title?: string): string {
+export function actLabel(frameworkKey: string, title: string | undefined, t: Translate): string {
   const cleanTitle = (title ?? '').trim()
   if (cleanTitle && normalizeFramework(cleanTitle) !== frameworkKey) return cleanTitle
-  const known = ACT_BY_FRAMEWORK[frameworkKey]
-  if (known) return `${known.act} (${frameworkLabel(frameworkKey)})`
-  if (FRAMEWORK_META[frameworkKey]) return frameworkLabel(frameworkKey)
-  return cleanTitle || frameworkKey.replace(/_/g, ' ') || 'Fonte'
+  if (CELEX_BY_FRAMEWORK[frameworkKey]) return `${t(`ui.acts.${frameworkKey}`)} (${frameworkLabel(frameworkKey, t)})`
+  if (FRAMEWORK_META[frameworkKey]) return frameworkLabel(frameworkKey, t)
+  return cleanTitle || frameworkKey.replace(/_/g, ' ') || t('ui.source')
 }
 
 /** Resolve the framework key of a citation, falling back to its CELEX. */
 export function frameworkOf(c: ChiediCitation): string {
   const fromField = normalizeFramework(c.framework)
-  if (fromField && (ACT_BY_FRAMEWORK[fromField] || FRAMEWORK_META[fromField])) return fromField
+  if (fromField && (CELEX_BY_FRAMEWORK[fromField] || FRAMEWORK_META[fromField])) return fromField
   if (isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) return FRAMEWORK_BY_CELEX[c.celex.trim()]
   const fromTitle = normalizeFramework(c.title)
-  if (fromTitle && (ACT_BY_FRAMEWORK[fromTitle] || FRAMEWORK_META[fromTitle])) return fromTitle
+  if (fromTitle && (CELEX_BY_FRAMEWORK[fromTitle] || FRAMEWORK_META[fromTitle])) return fromTitle
   return fromField || fromTitle
 }
 
@@ -116,17 +118,16 @@ export function frameworkOf(c: ChiediCitation): string {
  * and doubles as the in-text marker; `idPrefix` keeps ids unique when the
  * same sources are rendered in the margin and under the answer.
  */
-export function citationToSource(c: ChiediCitation, index: number, idPrefix: string): Source {
+export function citationToSource(c: ChiediCitation, index: number, idPrefix: string, ctx: TextContext): Source {
   const key = frameworkOf(c)
-  const known = ACT_BY_FRAMEWORK[key]
-  const celex = isCelex(c.celex) ? c.celex.trim() : known?.celex
-  const url = isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex) : undefined
+  const celex = isCelex(c.celex) ? c.celex.trim() : CELEX_BY_FRAMEWORK[key]
+  const url = isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
   const quote = (c.quote_snippet ?? '').trim()
   const article = (c.article ?? c.reference ?? '').trim()
   return {
     id: `${idPrefix}-${index}`,
     index,
-    act: actLabel(key, c.title),
+    act: actLabel(key, c.title, ctx.t),
     article: article || undefined,
     celex,
     url,
@@ -136,8 +137,8 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
   }
 }
 
-export function citationsToSources(citations: ChiediCitation[], idPrefix: string): Source[] {
-  return citations.map((c, i) => citationToSource(c, i + 1, idPrefix))
+export function citationsToSources(citations: ChiediCitation[], idPrefix: string, ctx: TextContext): Source[] {
+  return citations.map((c, i) => citationToSource(c, i + 1, idPrefix, ctx))
 }
 
 /**
@@ -149,7 +150,7 @@ export function citationsToSources(citations: ChiediCitation[], idPrefix: string
 export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
   const celex = isCelex(ev.celex) ? ev.celex.trim() : undefined
   const titleKey = normalizeFramework(ev.title)
-  const framework = ACT_BY_FRAMEWORK[titleKey] || FRAMEWORK_META[titleKey] ? titleKey : celex ? (FRAMEWORK_BY_CELEX[celex] ?? '') : ''
+  const framework = CELEX_BY_FRAMEWORK[titleKey] || FRAMEWORK_META[titleKey] ? titleKey : celex ? (FRAMEWORK_BY_CELEX[celex] ?? '') : ''
   const article = (ev.article ?? '').trim()
   return {
     framework,

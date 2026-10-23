@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useId, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronDown, AlertTriangle } from 'lucide-react'
 import type { CompanyProfile } from '@/lib/types'
 import { FRAMEWORKS } from '@/lib/types'
@@ -9,6 +10,9 @@ import { Card } from '@/components/ui/Card'
 import { Field, Input, Textarea, describedBy } from '@/components/ui/Field'
 import { frameworkLabel } from '@/components/ui/Badge'
 import { cn } from '@/lib/cn'
+import { formatInt } from '@/i18n/format'
+import type { TextContext, Translate } from '@/i18n/types'
+import { useTextContext } from '@/i18n/useTextContext'
 
 interface Props {
   value: CompanyProfile
@@ -75,41 +79,41 @@ export function useCompanyProfile(initial?: Partial<CompanyProfile>) {
   return { profile, setProfile }
 }
 
-export function validateProfile(profile: CompanyProfile, required: boolean): ValidationErrors {
+export function validateProfile(profile: CompanyProfile, required: boolean, t: Translate): ValidationErrors {
   const errors: ValidationErrors = {}
 
   if (required || profile.name) {
     if (!profile.name.trim()) {
-      errors.name = 'Il nome azienda è obbligatorio'
+      errors.name = t('chiedi.profile.errors.nameRequired')
     } else if (profile.name.trim().length < 2) {
-      errors.name = 'Il nome deve avere almeno 2 caratteri'
+      errors.name = t('chiedi.profile.errors.nameShort')
     }
   }
 
   if (profile.employee_count < 0) {
-    errors.employee_count = 'Il numero dipendenti non può essere negativo'
+    errors.employee_count = t('chiedi.profile.errors.employeesNegative')
   } else if (profile.employee_count > 10_000_000) {
-    errors.employee_count = 'Valore non valido'
+    errors.employee_count = t('chiedi.profile.errors.employeesInvalid')
   }
 
   if (profile.revenue_eur < 0) {
-    errors.revenue_eur = 'Il fatturato non può essere negativo'
+    errors.revenue_eur = t('chiedi.profile.errors.revenueNegative')
   }
 
   if (required && profile.applicable_frameworks.length === 0) {
-    errors.applicable_frameworks = 'Seleziona almeno un framework'
+    errors.applicable_frameworks = t('chiedi.profile.errors.frameworksRequired')
   }
 
   return errors
 }
 
 /** One line that says what will be sent with the question. */
-export function profileSummary(profile: CompanyProfile): string | null {
+export function profileSummary(profile: CompanyProfile, ctx: TextContext): string | null {
   const name = profile.name.trim()
   if (!name) return null
   const parts = [name]
   if (profile.sector.trim()) parts.push(profile.sector.trim())
-  if (profile.employee_count > 0) parts.push(`${profile.employee_count.toLocaleString('it-IT')} dipendenti`)
+  if (profile.employee_count > 0) parts.push(ctx.t('chiedi.profile.employeesSummary', { count: formatInt(profile.employee_count, ctx.locale) }))
   if (profile.jurisdictions.length) parts.push(profile.jurisdictions.join(', '))
   return parts.join(', ')
 }
@@ -127,11 +131,13 @@ export default function CompanyProfileForm({
   defaultExpanded,
   className,
 }: Props) {
+  const t = useTranslations('chiedi.profile')
+  const ctx = useTextContext()
   const [expanded, setExpanded] = useState(defaultExpanded ?? !!required)
   const [touched, setTouched] = useState<Set<string>>(new Set())
   const panelId = `${idPrefix}-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}-panel`
 
-  const errors = validateProfile(value, !!required)
+  const errors = validateProfile(value, !!required, ctx.t)
   const hasErrors = Object.keys(errors).length > 0
   const showWarning = hasErrors && touched.size > 0
 
@@ -145,7 +151,7 @@ export default function CompanyProfileForm({
 
   const errorFor = (field: keyof ValidationErrors) => (touched.has(field) ? errors[field] : undefined)
 
-  const summary = profileSummary(value)
+  const summary = profileSummary(value, ctx)
   const ids = {
     name: `${idPrefix}-name`,
     sector: `${idPrefix}-sector`,
@@ -166,11 +172,12 @@ export default function CompanyProfileForm({
       >
         <span className="min-w-0">
           <span className="flex items-center gap-2 text-body font-medium text-ink">
-            Profilo aziendale{required ? '' : ' (opzionale)'}
-            {showWarning && <AlertTriangle className="h-4 w-4 shrink-0 text-warn" aria-label="Il profilo contiene errori" />}
+            {t('title')}
+            {!required && ` ${t('optional')}`}
+            {showWarning && <AlertTriangle className="h-4 w-4 shrink-0 text-warn" aria-label={t('hasErrors')} />}
           </span>
           <span className="mt-0.5 block truncate text-caption text-ink-3" title={summary ?? undefined}>
-            {summary ?? 'Settore, dimensione e Paesi per una risposta sul vostro caso.'}
+            {summary ?? t('placeholder')}
           </span>
         </span>
         <ChevronDown
@@ -182,7 +189,7 @@ export default function CompanyProfileForm({
       {expanded && (
         <div id={panelId} className="space-y-4 border-t border-rule px-4 pb-4 pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nome dell'azienda" htmlFor={ids.name} required={required} error={errorFor('name')}>
+            <Field label={t('name')} htmlFor={ids.name} required={required} error={errorFor('name')}>
               <Input
                 id={ids.name}
                 type="text"
@@ -190,13 +197,13 @@ export default function CompanyProfileForm({
                 onChange={(e) => update('name', e.target.value)}
                 onBlur={() => markTouched('name')}
                 maxLength={200}
-                placeholder="Acme Srl"
+                placeholder={t('namePlaceholder')}
                 autoComplete="organization"
                 invalid={!!errorFor('name')}
                 aria-describedby={describedBy(ids.name, { error: errorFor('name') })}
               />
             </Field>
-            <Field label="Settore" htmlFor={ids.sector}>
+            <Field label={t('sector')} htmlFor={ids.sector}>
               <Input
                 id={ids.sector}
                 type="text"
@@ -204,10 +211,10 @@ export default function CompanyProfileForm({
                 onChange={(e) => update('sector', e.target.value)}
                 onBlur={() => markTouched('sector')}
                 maxLength={100}
-                placeholder="Manifattura"
+                placeholder={t('sectorPlaceholder')}
               />
             </Field>
-            <Field label="Dipendenti" htmlFor={ids.employees} error={errorFor('employee_count')}>
+            <Field label={t('employees')} htmlFor={ids.employees} error={errorFor('employee_count')}>
               <Input
                 id={ids.employees}
                 type="number"
@@ -223,7 +230,7 @@ export default function CompanyProfileForm({
                 aria-describedby={describedBy(ids.employees, { error: errorFor('employee_count') })}
               />
             </Field>
-            <Field label="Fatturato netto (euro)" htmlFor={ids.revenue} error={errorFor('revenue_eur')}>
+            <Field label={t('revenue')} htmlFor={ids.revenue} error={errorFor('revenue_eur')}>
               <Input
                 id={ids.revenue}
                 type="number"
@@ -240,7 +247,7 @@ export default function CompanyProfileForm({
             </Field>
           </div>
 
-          <Field label="Paesi" htmlFor={ids.jurisdictions} help="Codici separati da virgola, per esempio IT, DE, FR.">
+          <Field label={t('countries')} htmlFor={ids.jurisdictions} help={t('countriesHelp')}>
             <Input
               id={ids.jurisdictions}
               type="text"
@@ -253,7 +260,7 @@ export default function CompanyProfileForm({
 
           <div className="space-y-1.5">
             <p id={`${idPrefix}-frameworks-label`} className="text-small font-medium text-ink">
-              Normative già in ambito
+              {t('frameworks')}
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`${idPrefix}-frameworks-label`}>
               {FRAMEWORKS.map((fw) => {
@@ -277,7 +284,7 @@ export default function CompanyProfileForm({
                         : 'border-rule-2 text-ink-2 hover:bg-surface-2 hover:text-ink',
                     )}
                   >
-                    {frameworkLabel(fw.value)}
+                    {frameworkLabel(fw.value, ctx.t)}
                   </button>
                 )
               })}
@@ -289,14 +296,14 @@ export default function CompanyProfileForm({
             )}
           </div>
 
-          <Field label="Documenti di conformità già in uso" htmlFor={ids.docs}>
+          <Field label={t('documents')} htmlFor={ids.docs}>
             <Textarea
               id={ids.docs}
               value={value.existing_documents}
               onChange={(e) => update('existing_documents', e.target.value)}
               rows={2}
               maxLength={2000}
-              placeholder="Per esempio: bilancio di sostenibilità 2025, registro dei trattamenti."
+              placeholder={t('documentsPlaceholder')}
               className="min-h-[72px] resize-y"
             />
           </Field>

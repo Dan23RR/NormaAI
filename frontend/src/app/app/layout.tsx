@@ -2,12 +2,14 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/app/AppShell'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Spinner } from '@/components/ui/Button'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('app.shell')
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -20,9 +22,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas" role="status" aria-label="Caricamento">
+      <div className="flex min-h-screen items-center justify-center bg-canvas" role="status" aria-label={t('loading')}>
         <Spinner className="h-6 w-6 text-union" />
-        <span className="sr-only">Caricamento</span>
+        <span className="sr-only">{t('loading')}</span>
       </div>
     )
   }

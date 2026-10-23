@@ -1,4 +1,5 @@
 import type { BadgeTone } from '@/components/ui'
+import type { Translate } from '@/i18n/types'
 import type { ComplianceStatus } from '@/lib/types'
 import { getComplianceLabel, getConfidenceLabel } from '@/lib/confidence-labels'
 
@@ -13,27 +14,29 @@ export interface Assessment {
   tone: 'union' | 'warn'
 }
 
-export function complianceAssessment(overallScore: number): Assessment {
-  const cfg = getComplianceLabel(overallScore)
+export function complianceAssessment(overallScore: number, t: Translate): Assessment {
+  const cfg = getComplianceLabel(overallScore, t)
   return { label: cfg.label, sublabel: cfg.sublabel, tone: cfg.level === 'high' ? 'union' : 'warn' }
 }
 
-export function confidenceAssessment(confidenceScore: number): Assessment {
-  const cfg = getConfidenceLabel(confidenceScore)
+export function confidenceAssessment(confidenceScore: number, t: Translate): Assessment {
+  const cfg = getConfidenceLabel(confidenceScore, t)
   return { label: cfg.label, sublabel: cfg.sublabel, tone: cfg.level === 'high' ? 'union' : 'warn' }
 }
 
-export const STATUS_META: Record<ComplianceStatus, { label: string; tone: BadgeTone }> = {
-  COMPLIANT: { label: 'Conforme', tone: 'union' },
-  PARTIALLY_COMPLIANT: { label: 'Parziale', tone: 'warn' },
-  NON_COMPLIANT: { label: 'Non conforme', tone: 'bad' },
-  NOT_APPLICABLE: { label: 'N/A', tone: 'neutral' },
-  IN_EVOLUTION: { label: 'In evoluzione', tone: 'neutral' },
+export const STATUS_TONE: Record<ComplianceStatus, BadgeTone> = {
+  COMPLIANT: 'union',
+  PARTIALLY_COMPLIANT: 'warn',
+  NON_COMPLIANT: 'bad',
+  NOT_APPLICABLE: 'neutral',
+  IN_EVOLUTION: 'neutral',
 }
 
-export function statusMeta(status: string | undefined): { label: string; tone: BadgeTone } {
-  if (status && status in STATUS_META) return STATUS_META[status as ComplianceStatus]
-  return { label: status ? status.replace(/_/g, ' ').toLowerCase() : 'n.d.', tone: 'neutral' }
+export function statusMeta(status: string | undefined, t: Translate): { label: string; tone: BadgeTone } {
+  if (status && status in STATUS_TONE) {
+    return { label: t(`ui.compliance.status.${status}`), tone: STATUS_TONE[status as ComplianceStatus] }
+  }
+  return { label: status ? status.replace(/_/g, ' ').toLowerCase() : t('ui.notAvailable'), tone: 'neutral' }
 }
 
 export const PRIORITY_TONE: Record<string, BadgeTone> = {
@@ -43,15 +46,12 @@ export const PRIORITY_TONE: Record<string, BadgeTone> = {
   P4: 'neutral',
 }
 
-const EFFORT_LABEL: Record<string, string> = {
-  LOW: 'Basso',
-  MEDIUM: 'Medio',
-  HIGH: 'Alto',
-}
+const EFFORTS = ['LOW', 'MEDIUM', 'HIGH']
 
-export function effortLabel(effort: string | undefined): string {
+export function effortLabel(effort: string | undefined, t: Translate): string {
   if (!effort) return ''
-  return EFFORT_LABEL[effort.trim().toUpperCase()] ?? effort
+  const key = effort.trim().toUpperCase()
+  return EFFORTS.includes(key) ? t(`ui.compliance.effort.${key}`) : effort
 }
 
 /** Order and labels of the status counters under the assessment. */

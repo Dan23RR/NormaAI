@@ -1,10 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
 import { RefreshCw } from 'lucide-react'
 import { Badge, Button, Skeleton, StatCard, TBody, TD, TH, THead, TR, Table, type BadgeTone } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
+import { INT } from '@/i18n/format'
 import { api } from '@/lib/api'
-import { formatInt, formatIsoDateTime } from '@/components/clienti/format'
+import { formatIsoDateTime } from '@/components/clienti/format'
 
 /**
  * What GET /api/v1/stats returns (src/api/routers/system.py). Everything
@@ -30,9 +33,9 @@ interface StatsResponse {
 
 type State = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; stats: StatsResponse; at: string }
 
-const STATUS_META: Record<string, { label: string; tone: BadgeTone }> = {
-  healthy: { label: 'Operativo', tone: 'ok' },
-  degraded: { label: 'Degradato', tone: 'warn' },
+const STATUS_TONE: Record<string, BadgeTone> = {
+  healthy: 'ok',
+  degraded: 'warn',
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -44,12 +47,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-function formatMs(value: number | undefined): string {
-  if (typeof value !== 'number') return 'n.d.'
-  return `${formatInt(Math.round(value))} ms`
-}
-
 export function SystemStatusSection() {
+  const t = useTranslations('admin.system')
+  const tu = useTranslations('ui')
+  const format = useFormatter()
+  const errorText = useErrorText()
   const [state, setState] = useState<State>({ status: 'loading' })
 
   const load = useCallback(async () => {
@@ -58,19 +60,24 @@ export function SystemStatusSection() {
       const stats = await api.get<StatsResponse>('/api/v1/stats')
       setState({ status: 'ready', stats, at: new Date().toISOString() })
     } catch (err) {
-      setState({ status: 'error', message: err instanceof Error ? err.message : 'Caricamento non riuscito.' })
+      setState({ status: 'error', message: errorText(err, 'errors.loadFailed') })
     }
-  }, [])
+  }, [errorText])
 
   useEffect(() => {
     load()
   }, [load])
 
+  const missing = tu('notAvailable')
+  const int = (value: number | undefined) => (typeof value === 'number' ? format.number(value, INT) : missing)
+  const formatMs = (value: number | undefined) =>
+    typeof value === 'number' ? t('ms', { value: format.number(Math.round(value), INT) }) : missing
+
   if (state.status === 'loading') {
     return (
-      <div className="space-y-3" role="status" aria-label="Caricamento dello stato del sistema">
-        <Skeleton className="h-6 w-40" label="Caricamento dello stato del sistema" />
-        <Skeleton className="h-48" label="Caricamento dello stato del sistema" />
+      <div className="space-y-3" role="status" aria-label={t('loading')}>
+        <Skeleton className="h-6 w-40" label={t('loading')} />
+        <Skeleton className="h-48" label={t('loading')} />
       </div>
     )
   }
@@ -78,17 +85,19 @@ export function SystemStatusSection() {
   if (state.status === 'error') {
     return (
       <div role="alert" className="rounded-lg border border-bad/30 bg-surface p-5">
-        <h3 className="text-h4">Lo stato del sistema non si è caricato</h3>
+        <h3 className="text-h4">{t('loadFailedTitle')}</h3>
         <p className="mt-1 text-body text-ink-2">{state.message}</p>
         <Button variant="secondary" className="mt-4" onClick={load}>
-          Riprova il caricamento
+          {tu('retryLoad')}
         </Button>
       </div>
     )
   }
 
   const { stats } = state
-  const status = stats.status ? (STATUS_META[stats.status] ?? { label: stats.status, tone: 'neutral' as BadgeTone }) : null
+  const status = stats.status
+    ? { label: stats.status in STATUS_TONE ? t(`status.${stats.status}`) : stats.status, tone: STATUS_TONE[stats.status] ?? ('neutral' as BadgeTone) }
+    : null
   const endpoints = Object.entries(stats.metrics?.endpoints ?? {}).sort(([, a], [, b]) => (b.count ?? 0) - (a.count ?? 0))
   const hasP95 = endpoints.some(([, m]) => typeof m.p95_latency_ms === 'number' && m.p95_latency_ms > 0)
   const total = stats.metrics?.total_requests
@@ -99,35 +108,38 @@ export function SystemStatusSection() {
         <div className="flex flex-wrap items-center gap-3">
           {status && <Badge tone={status.tone}>{status.label}</Badge>}
           <p className="text-small text-ink-2">
-            Letto dal server il <span className="tabular">{formatIsoDateTime(stats.timestamp) ?? formatIsoDateTime(state.at)}</span>
+            {t.rich('readAt', {
+              date: formatIsoDateTime(stats.timestamp) ?? formatIsoDateTime(state.at) ?? missing,
+              num: (chunks) => <span className="tabular">{chunks}</span>,
+            })}
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={load} iconLeft={<RefreshCw className="h-4 w-4" aria-hidden="true" />}>
-          Aggiorna lo stato
+          {t('refresh')}
         </Button>
       </div>
 
       <dl className="divide-y divide-rule rounded-lg border border-rule bg-surface px-5">
-        {stats.version && <Row label="Versione">{stats.version}</Row>}
-        {stats.environment && <Row label="Ambiente">{stats.environment}</Row>}
-        {stats.llm_provider && <Row label="Provider LLM">{stats.llm_provider}</Row>}
-        {stats.llm_model && <Row label="Modello">{stats.llm_model}</Row>}
+        {stats.version && <Row label={t('version')}>{stats.version}</Row>}
+        {stats.environment && <Row label={t('environment')}>{stats.environment}</Row>}
+        {stats.llm_provider && <Row label={t('provider')}>{stats.llm_provider}</Row>}
+        {stats.llm_model && <Row label={t('model')}>{stats.llm_model}</Row>}
         {typeof stats.llm_available === 'boolean' && (
-          <Row label="LLM">
-            <Badge tone={stats.llm_available ? 'ok' : 'bad'}>{stats.llm_available ? 'Configurato' : 'Chiave mancante'}</Badge>
+          <Row label={t('llm')}>
+            <Badge tone={stats.llm_available ? 'ok' : 'bad'}>{stats.llm_available ? t('llmOk') : t('llmMissing')}</Badge>
           </Row>
         )}
         {typeof stats.qdrant_available === 'boolean' && (
-          <Row label="Qdrant (base vettoriale)">
+          <Row label={t('qdrant')}>
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={stats.qdrant_available ? 'ok' : 'bad'}>
-                {stats.qdrant_available ? 'Disponibile' : 'Non disponibile'}
+                {stats.qdrant_available ? t('available') : t('unavailable')}
               </Badge>
               {stats.qdrant?.status && stats.qdrant.status !== (stats.qdrant_available ? 'ok' : 'unavailable') && (
-                <span className="text-small text-ink-2">stato: {stats.qdrant.status}</span>
+                <span className="text-small text-ink-2">{t('qdrantStatus', { status: stats.qdrant.status })}</span>
               )}
               {typeof stats.qdrant?.points_count === 'number' && (
-                <span className="text-small text-ink-2 tabular">{formatInt(stats.qdrant.points_count)} blocchi indicizzati</span>
+                <span className="text-small text-ink-2 tabular">{t('chunks', { count: format.number(stats.qdrant.points_count, INT) })}</span>
               )}
             </div>
           </Row>
@@ -137,34 +149,34 @@ export function SystemStatusSection() {
       {stats.metrics ? (
         <section aria-labelledby="metrics-title" className="space-y-4">
           <h3 id="metrics-title" className="text-h4">
-            Richieste dall’avvio del server
+            {t('requestsTitle')}
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="Richieste totali" value={formatInt(total) ?? 'n.d.'} />
+            <StatCard label={t('totalRequests')} value={int(total)} />
             <StatCard
-              label="Errori"
-              value={formatInt(stats.metrics.error_count) ?? 'n.d.'}
+              label={t('errors')}
+              value={int(stats.metrics.error_count)}
               tone={typeof stats.metrics.error_count === 'number' && stats.metrics.error_count > 0 ? 'bad' : undefined}
             />
           </div>
           {endpoints.length === 0 ? (
-            <p className="text-small text-ink-2">Nessuna richiesta registrata da quando il server è partito.</p>
+            <p className="text-small text-ink-2">{t('noRequests')}</p>
           ) : (
             <Table>
               <THead>
                 <TR>
-                  <TH>Endpoint</TH>
-                  <TH numeric>Richieste</TH>
+                  <TH>{t('colEndpoint')}</TH>
+                  <TH numeric>{t('colRequests')}</TH>
                   <TH numeric className="hidden sm:table-cell">
-                    Quota
+                    {t('colShare')}
                   </TH>
-                  <TH numeric>Latenza media</TH>
+                  <TH numeric>{t('colAvg')}</TH>
                   <TH numeric className="hidden md:table-cell">
-                    Massima
+                    {t('colMax')}
                   </TH>
                   {hasP95 && (
                     <TH numeric className="hidden md:table-cell">
-                      p95
+                      {t('colP95')}
                     </TH>
                   )}
                 </TR>
@@ -175,11 +187,11 @@ export function SystemStatusSection() {
                     <TD>
                       <code className="font-mono text-small text-ink">{endpoint}</code>
                     </TD>
-                    <TD numeric>{formatInt(m.count) ?? 'n.d.'}</TD>
+                    <TD numeric>{int(m.count)}</TD>
                     <TD numeric className="hidden text-ink-2 sm:table-cell">
                       {typeof total === 'number' && total > 0 && typeof m.count === 'number'
-                        ? `${((m.count / total) * 100).toFixed(1).replace('.', ',')}%`
-                        : 'n.d.'}
+                        ? format.number(m.count / total, { style: 'percent', maximumFractionDigits: 1 })
+                        : missing}
                     </TD>
                     <TD numeric className="whitespace-nowrap text-ink-2">
                       {formatMs(m.avg_latency_ms)}
@@ -189,7 +201,7 @@ export function SystemStatusSection() {
                     </TD>
                     {hasP95 && (
                       <TD numeric className="hidden whitespace-nowrap text-ink-2 md:table-cell">
-                        {m.p95_latency_ms ? formatMs(m.p95_latency_ms) : 'n.d.'}
+                        {m.p95_latency_ms ? formatMs(m.p95_latency_ms) : missing}
                       </TD>
                     )}
                   </TR>
@@ -199,10 +211,7 @@ export function SystemStatusSection() {
           )}
         </section>
       ) : (
-        <p className="text-small text-ink-2">
-          Il server non ha incluso i contatori delle richieste nella risposta: li mostra solo a una sessione da
-          amministratore.
-        </p>
+        <p className="text-small text-ink-2">{t('noMetrics')}</p>
       )}
     </div>
   )

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button, Checkbox, Dialog, Field, Input, describedBy, frameworkLabel, useToast } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
 import type { Client } from '@/lib/types'
 import { FRAMEWORK_KEYS, createClient, updateClient } from './clients-api'
 import {
@@ -17,8 +19,8 @@ const FORM_ID = 'client-form'
 
 /**
  * Create or edit a client. The same dialog serves both: with `client` it
- * edits, without it creates. Validation messages are in Italian and sit
- * under the field they refer to.
+ * edits, without it creates. Validation messages sit under the field they
+ * refer to, in the language of the interface.
  */
 export function ClientFormDialog({
   open,
@@ -31,6 +33,9 @@ export function ClientFormDialog({
   client?: Client | null
   onSaved: (saved: Client) => void
 }) {
+  const t = useTranslations('clienti.form')
+  const tRoot = useTranslations()
+  const errorText = useErrorText()
   const { toast } = useToast()
   const [values, setValues] = useState<ClientFormValues>(emptyClientForm)
   const [errors, setErrors] = useState<ClientFormErrors>({})
@@ -67,7 +72,7 @@ export function ClientFormDialog({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const found = validateClientForm(values)
+    const found = validateClientForm(values, tRoot)
     setErrors(found)
     if (Object.keys(found).length > 0) {
       const first = Object.keys(found)[0]
@@ -82,13 +87,13 @@ export function ClientFormDialog({
       const merged: Client = { ...(client ?? {}), ...saved } as Client
       toast({
         kind: 'ok',
-        title: client ? 'Modifiche salvate' : 'Cliente creato',
+        title: client ? t('savedTitle') : t('createdTitle'),
         description: merged.name,
       })
       onSaved(merged)
       onClose()
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Salvataggio non riuscito. Riprova.')
+      setServerError(errorText(err, 'clienti.form.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -98,19 +103,15 @@ export function ClientFormDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title={client ? 'Modifica il cliente' : 'Nuovo cliente'}
-      description={
-        client
-          ? 'Le modifiche aggiornano il profilo usato dalle analisi.'
-          : 'Il profilo serve per le analisi di conformità e i report.'
-      }
+      title={client ? t('titleEdit') : t('titleNew')}
+      description={client ? t('descriptionEdit') : t('descriptionNew')}
       footer={
         <>
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-            Annulla
+            {t('cancel')}
           </Button>
           <Button type="submit" form={FORM_ID} loading={saving}>
-            {client ? 'Salva le modifiche' : 'Crea il cliente'}
+            {client ? t('save') : t('create')}
           </Button>
         </>
       }
@@ -122,33 +123,33 @@ export function ClientFormDialog({
           </p>
         )}
 
-        <Field label="Nome del cliente" htmlFor="cl-name" required error={errors.name}>
+        <Field label={t('name')} htmlFor="cl-name" required error={errors.name}>
           <Input
             id="cl-name"
             value={values.name}
             onChange={(e) => set('name', e.target.value)}
             maxLength={255}
             autoComplete="organization"
-            placeholder="Per esempio Acme S.r.l."
+            placeholder={t('namePlaceholder')}
             invalid={!!errors.name}
             aria-describedby={describedBy('cl-name', { error: errors.name })}
           />
         </Field>
 
-        <Field label="Settore" htmlFor="cl-sector" error={errors.sector}>
+        <Field label={t('sector')} htmlFor="cl-sector" error={errors.sector}>
           <Input
             id="cl-sector"
             value={values.sector}
             onChange={(e) => set('sector', e.target.value)}
             maxLength={100}
-            placeholder="Per esempio manifatturiero"
+            placeholder={t('sectorPlaceholder')}
             invalid={!!errors.sector}
             aria-describedby={describedBy('cl-sector', { error: errors.sector })}
           />
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Dipendenti" htmlFor="cl-employee_count" error={errors.employee_count}>
+          <Field label={t('employees')} htmlFor="cl-employee_count" error={errors.employee_count}>
             <Input
               id="cl-employee_count"
               inputMode="numeric"
@@ -160,9 +161,9 @@ export function ClientFormDialog({
             />
           </Field>
           <Field
-            label="Fatturato annuo (euro)"
+            label={t('revenue')}
             htmlFor="cl-revenue_eur"
-            help={errors.revenue_eur ? undefined : 'Senza decimali, per esempio 200000000.'}
+            help={errors.revenue_eur ? undefined : t('revenueHelp')}
             error={errors.revenue_eur}
           >
             <Input
@@ -174,16 +175,16 @@ export function ClientFormDialog({
               invalid={!!errors.revenue_eur}
               aria-describedby={describedBy('cl-revenue_eur', {
                 error: errors.revenue_eur,
-                help: 'Senza decimali',
+                help: true,
               })}
             />
           </Field>
         </div>
 
         <Field
-          label="Paesi in cui opera"
+          label={t('countries')}
           htmlFor="cl-jurisdictions"
-          help={errors.jurisdictions ? undefined : 'Codici a due lettere separati da virgola, per esempio IT, DE, FR.'}
+          help={errors.jurisdictions ? undefined : t('countriesHelp')}
           error={errors.jurisdictions}
         >
           <Input
@@ -194,20 +195,20 @@ export function ClientFormDialog({
             invalid={!!errors.jurisdictions}
             aria-describedby={describedBy('cl-jurisdictions', {
               error: errors.jurisdictions,
-              help: 'Codici a due lettere',
+              help: true,
             })}
           />
         </Field>
 
         <fieldset>
-          <legend className="text-small font-medium text-ink">Framework da seguire</legend>
-          <p className="mt-1 text-caption text-ink-3">Gli atti per cui vuoi analisi e scadenze di questo cliente.</p>
+          <legend className="text-small font-medium text-ink">{t('frameworks')}</legend>
+          <p className="mt-1 text-caption text-ink-3">{t('frameworksHelp')}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {frameworkOptions.map((key) => (
               <Checkbox
                 key={key}
                 id={`cl-fw-${key}`}
-                label={frameworkLabel(key)}
+                label={frameworkLabel(key, tRoot)}
                 checked={values.applicable_frameworks.includes(key)}
                 onChange={() => toggleFramework(key)}
               />

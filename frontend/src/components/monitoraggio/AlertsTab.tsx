@@ -1,25 +1,35 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
 import { Archive, Check } from 'lucide-react'
 import { Badge, FrameworkBadge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Field, Select } from '@/components/ui/Field'
 import { SkeletonText } from '@/components/ui/Skeleton'
+import { useErrorText } from '@/i18n/errors'
+import { LONG_DATE } from '@/i18n/format'
+import type { Translate } from '@/i18n/types'
+import { useDateFormat } from '@/i18n/useDateFormat'
 import { api } from '@/lib/api'
-import { formatDateIt, parseIsoDate, startOfDay } from '@/lib/obligations/dates'
+import { parseIsoDate, startOfDay } from '@/lib/obligations/dates'
 import type { Alert, Severity } from '@/lib/types'
 
-export const SEVERITY_META: Record<Severity, { label: string; tone: BadgeTone }> = {
-  CRITICAL: { label: 'Critico', tone: 'bad' },
-  HIGH: { label: 'Alto', tone: 'bad' },
-  MEDIUM: { label: 'Medio', tone: 'warn' },
-  LOW: { label: 'Basso', tone: 'neutral' },
-  INFORMATIONAL: { label: 'Informativo', tone: 'neutral' },
+export const SEVERITY_TONE: Record<Severity, BadgeTone> = {
+  CRITICAL: 'bad',
+  HIGH: 'bad',
+  MEDIUM: 'warn',
+  LOW: 'neutral',
+  INFORMATIONAL: 'neutral',
 }
 
-const SEVERITIES: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFORMATIONAL']
+export const SEVERITIES: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFORMATIONAL']
+
+/** "Critico", "Alto"... from the `monitoraggio.alerts.severity` messages; an unknown value is shown as it is. */
+export function severityLabel(severity: string, t: Translate): string {
+  return (SEVERITIES as string[]).includes(severity) ? t(`monitoraggio.alerts.severity.${severity}`) : severity
+}
 
 export interface AlertSummaryView {
   total: number
@@ -54,12 +64,6 @@ function isIsoDate(value: string | undefined): value is string {
   return !!value && /^\d{4}-\d{2}-\d{2}/.test(value)
 }
 
-function createdAtLabel(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).format(d)
-}
-
 function AlertCard({
   alert,
   today,
@@ -73,18 +77,24 @@ function AlertCard({
   onRead: () => void
   onDismiss: () => void
 }) {
-  const sev = SEVERITY_META[alert.severity] ?? { label: alert.severity, tone: 'neutral' as BadgeTone }
+  const t = useTranslations('monitoraggio.alerts')
+  const tRoot = useTranslations()
+  const format = useFormatter()
+  const formatDate = useDateFormat()
+  const tone = SEVERITY_TONE[alert.severity] ?? 'neutral'
   const deadlinePast = isIsoDate(alert.deadline) && parseIsoDate(alert.deadline.slice(0, 10)) < startOfDay(today)
+  const created = new Date(alert.created_at)
+  const createdLabel = Number.isNaN(created.getTime()) ? alert.created_at : format.dateTime(created, LONG_DATE)
   return (
     <article
       aria-labelledby={`alert-${alert.id}`}
       className="rounded-lg border border-rule bg-surface px-5 py-4"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={sev.tone}>{sev.label}</Badge>
+        <Badge tone={tone}>{severityLabel(alert.severity, tRoot)}</Badge>
         {alert.framework && <FrameworkBadge framework={alert.framework} />}
-        {!alert.is_read && <Badge tone="union">Non letto</Badge>}
-        <span className="ml-auto text-caption text-ink-3">Creato il {createdAtLabel(alert.created_at)}</span>
+        {!alert.is_read && <Badge tone="union">{t('unread')}</Badge>}
+        <span className="ml-auto text-caption text-ink-3">{t('createdOn', { date: createdLabel })}</span>
       </div>
       <h3 id={`alert-${alert.id}`} className="mt-2 font-sans text-body font-medium text-ink">
         {alert.title}
@@ -99,10 +109,10 @@ function AlertCard({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="text-small text-ink-2">
-          <span className="text-ink-3">Scadenza: </span>
-          {isIsoDate(alert.deadline) ? formatDateIt(alert.deadline.slice(0, 10)) : alert.deadline || 'non indicata'}
+          <span className="text-ink-3">{t('deadline')}</span>
+          {isIsoDate(alert.deadline) ? formatDate(alert.deadline.slice(0, 10)) : alert.deadline || t('deadlineMissing')}
         </span>
-        {deadlinePast && <Badge tone="bad">Scadenza superata</Badge>}
+        {deadlinePast && <Badge tone="bad">{t('deadlinePast')}</Badge>}
         <div className="ml-auto flex flex-wrap gap-2">
           {!alert.is_read && (
             <Button
@@ -113,7 +123,7 @@ function AlertCard({
               iconLeft={<Check className="h-4 w-4" aria-hidden="true" />}
               onClick={onRead}
             >
-              Segna come letto
+              {t('markRead')}
             </Button>
           )}
           <Button
@@ -124,7 +134,7 @@ function AlertCard({
             iconLeft={<Archive className="h-4 w-4" aria-hidden="true" />}
             onClick={onDismiss}
           >
-            Archivia l’avviso
+            {t('dismiss')}
           </Button>
         </div>
       </div>
@@ -138,6 +148,9 @@ function AlertCard({
  * of src/api/routers/alerts.py.
  */
 export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChange?: (n: number) => void; today?: Date }) {
+  const t = useTranslations('monitoraggio.alerts')
+  const tRoot = useTranslations()
+  const errorText = useErrorText()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [summary, setSummary] = useState<AlertSummaryView | null>(null)
   const [loading, setLoading] = useState(true)
@@ -159,11 +172,11 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
       const s = normaliseSummary(rawSummary) ?? { total: list.length, unread: list.filter((a) => !a.is_read).length }
       setSummary(s)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gli avvisi non sono disponibili al momento. Riprova tra un minuto.')
+      setError(errorText(e, 'monitoraggio.alerts.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [errorText])
 
   useEffect(() => {
     load()
@@ -181,7 +194,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
       setAlerts((prev) => prev.map((a) => (a.id === alert.id ? { ...a, is_read: true } : a)))
       setSummary((prev) => (prev ? { ...prev, unread: Math.max(0, prev.unread - (alert.is_read ? 0 : 1)) } : prev))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'L’avviso non è stato aggiornato. Riprova.')
+      setError(errorText(e, 'monitoraggio.alerts.readError'))
     } finally {
       setBusy(null)
     }
@@ -199,7 +212,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
           : prev,
       )
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'L’avviso non è stato archiviato. Riprova.')
+      setError(errorText(e, 'monitoraggio.alerts.dismissError'))
     } finally {
       setBusy(null)
     }
@@ -221,28 +234,25 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-4">
-        <Field label="Gravità" htmlFor="alerts-severity" className="w-full sm:w-52">
+        <Field label={t('filterSeverity')} htmlFor="alerts-severity" className="w-full sm:w-52">
           <Select id="alerts-severity" value={severity} onChange={(e) => setSeverity(e.target.value as Severity | '')}>
-            <option value="">Tutte</option>
+            <option value="">{t('all')}</option>
             {SEVERITIES.map((s) => (
               <option key={s} value={s}>
-                {SEVERITY_META[s].label}
+                {severityLabel(s, tRoot)}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Stato" htmlFor="alerts-read" className="w-full sm:w-52">
+        <Field label={t('filterState')} htmlFor="alerts-read" className="w-full sm:w-52">
           <Select id="alerts-read" value={readState} onChange={(e) => setReadState(e.target.value as 'all' | 'unread' | 'read')}>
-            <option value="all">Tutti</option>
-            <option value="unread">Non letti</option>
-            <option value="read">Letti</option>
+            <option value="all">{t('allStates')}</option>
+            <option value="unread">{t('unreadOnly')}</option>
+            <option value="read">{t('readOnly')}</option>
           </Select>
         </Field>
         {summary && (
-          <p className="text-small text-ink-2 sm:ml-auto">
-            {summary.total} {summary.total === 1 ? 'avviso' : 'avvisi'}, {summary.unread} non{' '}
-            {summary.unread === 1 ? 'letto' : 'letti'}
-          </p>
+          <p className="text-small text-ink-2 sm:ml-auto">{t('count', { total: summary.total, unread: summary.unread })}</p>
         )}
       </div>
 
@@ -258,12 +268,8 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
         </div>
       ) : visible.length === 0 ? (
         <EmptyState
-          title={filtered ? 'Nessun avviso con questi filtri' : 'Nessun avviso per la vostra organizzazione'}
-          description={
-            filtered
-              ? 'Cambia gravità o stato per vedere gli altri avvisi.'
-              : 'Gli avvisi vengono creati dalle analisi e dal monitoraggio dei clienti; quando ci saranno, compariranno qui.'
-          }
+          title={filtered ? t('emptyFilteredTitle') : t('emptyTitle')}
+          description={filtered ? t('emptyFilteredDescription') : t('emptyDescription')}
           action={
             filtered ? (
               <Button
@@ -274,7 +280,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
                   setReadState('all')
                 }}
               >
-                Togli i filtri
+                {t('clearFilters')}
               </Button>
             ) : undefined
           }
@@ -294,10 +300,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
         </div>
       )}
 
-      <p className="text-caption text-ink-3">
-        Gli avvisi sono generati da un sistema di IA (Regolamento (UE) 2024/1689, art. 50). Verifica sul testo ufficiale
-        prima di decisioni vincolanti.
-      </p>
+      <p className="text-caption text-ink-3">{t('aiNotice')}</p>
     </div>
   )
 }

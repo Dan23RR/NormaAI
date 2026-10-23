@@ -1,13 +1,16 @@
-import { api } from '@/lib/api'
-import { isDemoMode } from '@/lib/auth'
 import type { BadgeTone } from '@/components/ui'
+import type { Translate } from '@/i18n/types'
+import { api } from '@/lib/api'
+import { ApiError } from '@/lib/api-error'
+import { isDemoMode } from '@/lib/auth'
 
 /**
  * Invitations, against the contract the backend is adding on its own branch:
  * - POST /api/v1/auth/invites {email, organization_id?} -> {code, email, expires_at}
  * - GET  /api/v1/auth/invites -> [{code, email, organization_id, used, expires_at, created_at}]
- * An older backend answers 404: the page says so instead of failing silently.
- * In the demo the invitations live in sessionStorage, declared as such.
+ * An older backend answers 404: the page says so (ApiError 'invitesUnavailable')
+ * instead of failing silently. In the demo the invitations live in
+ * sessionStorage, declared as such.
  */
 
 export interface Invite {
@@ -25,14 +28,12 @@ export interface CreatedInvite {
   expires_at: string
 }
 
-export class InvitesUnavailableError extends Error {
-  constructor() {
-    super('Il server in uso non ha ancora gli inviti (endpoint /api/v1/auth/invites non trovato).')
-    this.name = 'InvitesUnavailableError'
-  }
+export function isInvitesUnavailable(err: unknown): boolean {
+  return err instanceof ApiError && err.code === 'invitesUnavailable'
 }
 
 function isNotFound(err: unknown): boolean {
+  if (err instanceof ApiError) return err.values?.status === '404' || /not found|\b404\b/i.test(err.message)
   return err instanceof Error && /not found|\b404\b/i.test(err.message)
 }
 
@@ -86,7 +87,7 @@ export async function listInvites(): Promise<Invite[]> {
   try {
     return normalizeInvites(await api.get<unknown>('/api/v1/auth/invites'))
   } catch (err) {
-    if (isNotFound(err)) throw new InvitesUnavailableError()
+    if (isNotFound(err)) throw new ApiError('invitesUnavailable')
     throw err
   }
 }
@@ -108,23 +109,33 @@ export async function createInvite(email: string): Promise<CreatedInvite> {
   try {
     return await api.post<CreatedInvite>('/api/v1/auth/invites', { email })
   } catch (err) {
-    if (isNotFound(err)) throw new InvitesUnavailableError()
+    if (isNotFound(err)) throw new ApiError('invitesUnavailable')
     throw err
   }
 }
 
-export function inviteStatus(invite: Invite, now: number = Date.now()): { label: string; tone: BadgeTone } {
-  if (invite.used) return { label: 'Usato', tone: 'ok' }
+export type InviteState = 'used' | 'expired' | 'active'
+
+export function inviteState(invite: Invite, now: number = Date.now()): InviteState {
+  if (invite.used) return 'used'
   const expiry = Date.parse(invite.expires_at)
-  if (!Number.isNaN(expiry) && expiry < now) return { label: 'Scaduto', tone: 'neutral' }
-  return { label: 'Attivo', tone: 'union' }
+  if (!Number.isNaN(expiry) && expiry < now) return 'expired'
+  return 'active'
+}
+
+const STATE_TONE: Record<InviteState, BadgeTone> = { used: 'ok', expired: 'neutral', active: 'union' }
+
+export function inviteStatus(invite: Invite, t: Translate, now: number = Date.now()): { label: string; tone: BadgeTone } {
+  const state = inviteState(invite, now)
+  return { label: t(`admin.invites.status.${state}`), tone: STATE_TONE[state] }
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-export function validateInviteEmail(value: string): string | null {
+/** The key of the problem under `admin.invites.errors`, or null when the email is fine. */
+export function validateInviteEmail(value: string): 'emailRequired' | 'emailInvalid' | null {
   const email = value.trim()
-  if (!email) return 'Inserisci l’email della persona da invitare.'
-  if (!EMAIL.test(email)) return 'L’email non sembra valida: controlla che abbia la forma nome@dominio.it.'
+  if (!email) return 'emailRequired'
+  if (!EMAIL.test(email)) return 'emailInvalid'
   return null
 }

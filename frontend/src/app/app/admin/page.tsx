@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { PageHeader, useToast } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { InvitesSection } from '@/components/admin/InvitesSection'
@@ -25,6 +26,7 @@ function AdminSection({ id, title, description, children }: { id: string; title:
  * backend has no endpoint that returns one.
  */
 export default function AdminPage() {
+  const t = useTranslations('admin')
   const { user, demoMode } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -34,30 +36,19 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user || isAdmin || redirected.current) return
     redirected.current = true
-    toast({ kind: 'bad', title: 'Area riservata agli amministratori', description: 'Sei tornato alla pagina iniziale.' })
+    toast({ kind: 'bad', title: t('forbiddenTitle'), description: t('forbiddenDescription') })
     router.replace('/app')
-  }, [user, isAdmin, router, toast])
+  }, [user, isAdmin, router, toast, t])
 
   if (!user || !isAdmin) return null
 
   return (
     <div>
-      <PageHeader
-        title="Amministrazione"
-        description="Chi può entrare nell’organizzazione e come sta il server."
-      />
-      <AdminSection
-        id="inviti"
-        title="Inviti"
-        description="Ogni persona entra con un codice legato alla sua email, valido una volta sola."
-      >
+      <PageHeader title={t('title')} description={t('description')} />
+      <AdminSection id="inviti" title={t('invites.title')} description={t('invites.description')}>
         <InvitesSection demoMode={demoMode} />
       </AdminSection>
-      <AdminSection
-        id="sistema"
-        title="Stato del sistema"
-        description="Quello che il server riferisce di sé: versione, modello, base vettoriale e richieste servite."
-      >
+      <AdminSection id="sistema" title={t('system.title')} description={t('system.description')}>
         <SystemStatusSection />
       </AdminSection>
     </div>

@@ -1,53 +1,53 @@
 /**
  * Labels and the plain-text export of an assessment ("Copia il risultato").
+ * The words live in the `ambito.results`, `ambito.summary` and
+ * `ambito.text` messages; this module only puts them together.
  */
 import type { BadgeTone } from '@/components/ui/Badge'
-import { formatDateIt } from '@/lib/obligations/dates'
-import { formatEur, formatInt } from './format'
+import { formatDate, formatEur, formatInt } from '@/i18n/format'
+import type { TextContext, Translate } from '@/i18n/types'
 import { sourceLine } from './sources'
 import type { ScopeAssessment, ScopeFramework, ScopeInput, ScopeResult, ScopeStatus } from './types'
 
-export const STATUS_META: Record<ScopeStatus, { label: string; tone: BadgeTone }> = {
-  in_scope: { label: 'Si applica', tone: 'union' },
-  out_of_scope: { label: 'Non si applica', tone: 'neutral' },
-  conditional: { label: 'Dipende', tone: 'warn' },
-  not_assessed: { label: 'Non valutato', tone: 'neutral' },
+export const STATUS_TONE: Record<ScopeStatus, BadgeTone> = {
+  in_scope: 'union',
+  out_of_scope: 'neutral',
+  conditional: 'warn',
+  not_assessed: 'neutral',
 }
 
-export const FRAMEWORK_TITLE: Record<ScopeFramework, string> = {
-  CSRD: 'CSRD, rendicontazione di sostenibilità',
-  CSDDD: 'CSDDD, dovere di diligenza',
-  AI_ACT: 'AI Act, trasparenza (art. 50)',
+export function statusLabel(status: ScopeStatus, t: Translate): string {
+  return t(`ambito.results.status.${status}`)
 }
 
-export const GROUP_ROLE_LABEL: Record<ScopeInput['groupRole'], string> = {
-  standalone: 'società singola',
-  parent: 'capogruppo con bilancio consolidato',
-  subsidiary: 'società controllata',
+export function frameworkTitle(framework: ScopeFramework, t: Translate): string {
+  return t(`ambito.results.frameworks.${framework}`)
 }
 
 /** "Acme Srl: 1.500 dipendenti, ricavi netti 620.000.000 €, non quotata, società singola, IT" */
-export function inputSummary(input: ScopeInput): string {
+export function inputSummary(input: ScopeInput, ctx: TextContext): string {
+  const { t, locale } = ctx
   const parts: string[] = []
-  if (input.employees != null) parts.push(`${formatInt(input.employees)} dipendenti`)
-  if (input.turnoverEur != null) parts.push(`ricavi netti ${formatEur(input.turnoverEur)}`)
+  if (input.employees != null) parts.push(t('ambito.summary.employees', { count: formatInt(input.employees, locale) }))
+  if (input.turnoverEur != null) parts.push(t('ambito.summary.turnover', { amount: formatEur(input.turnoverEur, locale) }))
   if (input.nonEu) {
-    parts.push('sede fuori dall’UE')
-    if (input.euTurnoverEur != null) parts.push(`ricavi netti nell’UE ${formatEur(input.euTurnoverEur)}`)
+    parts.push(t('ambito.summary.nonEu'))
+    if (input.euTurnoverEur != null) parts.push(t('ambito.summary.euTurnover', { amount: formatEur(input.euTurnoverEur, locale) }))
   }
-  parts.push(input.listedEu ? 'quotata in un mercato regolamentato UE' : 'non quotata')
-  if (input.wave1Reporter) parts.push('già in rendicontazione (Wave 1)')
-  parts.push(GROUP_ROLE_LABEL[input.groupRole])
+  parts.push(t(input.listedEu ? 'ambito.summary.listed' : 'ambito.summary.notListed'))
+  if (input.wave1Reporter) parts.push(t('ambito.summary.wave1'))
+  parts.push(t(`ambito.summary.groupRoles.${input.groupRole}`))
   if (input.sector?.trim()) parts.push(input.sector.trim())
   if (input.country) parts.push(input.country)
   const name = input.name?.trim()
   return name ? `${name}: ${parts.join(', ')}` : parts.join(', ')
 }
 
-function resultToText(r: ScopeResult): string {
+function resultToText(r: ScopeResult, ctx: TextContext): string {
+  const { t } = ctx
   const lines: string[] = []
   const from = r.fromLabel ? ` (${r.fromLabel.charAt(0).toLowerCase()}${r.fromLabel.slice(1)})` : ''
-  lines.push(`${FRAMEWORK_TITLE[r.framework]}: ${STATUS_META[r.status].label}${from}`)
+  lines.push(`${frameworkTitle(r.framework, t)}: ${statusLabel(r.status, t)}${from}`)
   lines.push(r.headline)
   for (const reason of r.reasons) lines.push(`- ${reason}`)
   if (r.obligations?.length) {
@@ -56,24 +56,31 @@ function resultToText(r: ScopeResult): string {
     }
   }
   if (r.notes.length) {
-    lines.push('Note:')
+    lines.push(t('ambito.text.notes'))
     for (const note of r.notes) lines.push(`- ${note}`)
   }
   if (r.passages.length) {
     for (const p of r.passages) {
-      lines.push(`Testo: «${[p.before, p.quote, p.after].filter(Boolean).join(' ')}» (${p.act}, ${p.article})`)
+      lines.push(
+        t('ambito.text.passage', {
+          text: [p.before, p.quote, p.after].filter(Boolean).join(' '),
+          act: p.act,
+          article: p.article,
+        }),
+      )
     }
   }
-  lines.push('Fonti:')
+  lines.push(t('ambito.text.sources'))
   for (const s of r.sources) lines.push(`[${s.index}] ${sourceLine(s)}`)
   return lines.join('\n')
 }
 
-export function assessmentToText(a: ScopeAssessment): string {
+export function assessmentToText(a: ScopeAssessment, ctx: TextContext): string {
+  const { t } = ctx
   const header = [
-    `Ambito NormaAI, regole e date verificate il ${formatDateIt(a.verifiedOn)}`,
-    `Profilo: ${inputSummary(a.input)}`,
-    'Primo filtro indicativo, non un parere legale.',
+    t('ambito.text.header', { date: formatDate(a.verifiedOn, ctx) }),
+    t('ambito.text.profile', { summary: inputSummary(a.input, ctx) }),
+    t('ambito.text.disclaimer'),
   ]
-  return [header.join('\n'), ...a.results.map(resultToText)].join('\n\n')
+  return [header.join('\n'), ...a.results.map((r) => resultToText(r, ctx))].join('\n\n')
 }

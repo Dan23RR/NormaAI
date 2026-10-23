@@ -1,3 +1,4 @@
+import type { Translate } from '@/i18n/types'
 import type { Client } from '@/lib/types'
 import type { ClientPayload } from './clients-api'
 
@@ -45,27 +46,28 @@ export function parseJurisdictions(raw: string): string[] {
     .filter(Boolean)
 }
 
-export function validateClientForm(values: ClientFormValues): ClientFormErrors {
+/** The messages sit under the field they refer to, in the language of the interface (`clienti.form.errors`). */
+export function validateClientForm(values: ClientFormValues, t: Translate): ClientFormErrors {
   const errors: ClientFormErrors = {}
   const name = values.name.trim()
-  if (!name) errors.name = 'Inserisci il nome del cliente.'
-  else if (name.length > 255) errors.name = 'Il nome può avere al massimo 255 caratteri.'
+  if (!name) errors.name = t('clienti.form.errors.nameRequired')
+  else if (name.length > 255) errors.name = t('clienti.form.errors.nameLong')
 
-  if (values.sector.trim().length > 100) errors.sector = 'Il settore può avere al massimo 100 caratteri.'
+  if (values.sector.trim().length > 100) errors.sector = t('clienti.form.errors.sectorLong')
 
   const employees = values.employee_count.trim()
   if (employees && !INTEGER.test(employees)) {
-    errors.employee_count = 'Inserisci il numero di dipendenti come intero, zero o più.'
+    errors.employee_count = t('clienti.form.errors.employeesInteger')
   }
 
   const revenue = values.revenue_eur.trim()
   if (revenue && !INTEGER.test(revenue)) {
-    errors.revenue_eur = 'Inserisci il fatturato annuo in euro, senza decimali.'
+    errors.revenue_eur = t('clienti.form.errors.revenueInteger')
   }
 
   const invalidCodes = parseJurisdictions(values.jurisdictions).filter((c) => !COUNTRY_CODE.test(c))
   if (invalidCodes.length > 0) {
-    errors.jurisdictions = `Usa codici Paese di due lettere separati da virgola, per esempio IT, DE. Non validi: ${invalidCodes.join(', ')}.`
+    errors.jurisdictions = t('clienti.form.errors.jurisdictions', { codes: invalidCodes.join(', ') })
   }
 
   return errors

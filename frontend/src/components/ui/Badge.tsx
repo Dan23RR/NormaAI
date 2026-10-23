@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/cn'
+import type { Translate } from '@/i18n/types'
 
 export type BadgeTone = 'neutral' | 'union' | 'ok' | 'warn' | 'bad' | 'mark'
 
@@ -37,34 +39,37 @@ export function Badge({
   )
 }
 
-/** Canonical short labels and hues for the EU frameworks NormaAI covers. */
-export const FRAMEWORK_META: Record<string, { label: string; color: string }> = {
-  CSRD: { label: 'CSRD', color: '#1F7A53' },
-  CSDDD: { label: 'CSDDD', color: '#1D6FB8' },
-  AI_ACT: { label: 'AI Act', color: '#6D4AB8' },
-  DORA: { label: 'DORA', color: '#B9541F' },
-  NIS2: { label: 'NIS2', color: '#8A5A00' },
-  TAXONOMY: { label: 'Tassonomia', color: '#0F766E' },
-  GDPR: { label: 'GDPR', color: '#B42A45' },
-  CRA: { label: 'CRA', color: '#9A3D7A' },
-  ESRS: { label: 'ESRS', color: '#5B5CA5' },
+/** Hues of the EU frameworks NormaAI covers; the labels live in the `ui.frameworks` messages. */
+export const FRAMEWORK_META: Record<string, { color: string }> = {
+  CSRD: { color: '#1F7A53' },
+  CSDDD: { color: '#1D6FB8' },
+  AI_ACT: { color: '#6D4AB8' },
+  DORA: { color: '#B9541F' },
+  NIS2: { color: '#8A5A00' },
+  TAXONOMY: { color: '#0F766E' },
+  GDPR: { color: '#B42A45' },
+  CRA: { color: '#9A3D7A' },
+  ESRS: { color: '#5B5CA5' },
 }
 
-export function frameworkLabel(key: string): string {
-  return FRAMEWORK_META[key]?.label ?? key.replace('_', ' ')
+/** "AI Act", "Tassonomia" / "Taxonomy"; an unknown key is shown as it is, without the underscore. */
+export function frameworkLabel(key: string, t: Translate): string {
+  const path = `ui.frameworks.${key}`
+  return key && !key.includes('.') && t.has(path) ? t(path) : key.replace('_', ' ')
 }
 
 export function FrameworkBadge({ framework, className }: { framework: string; className?: string }) {
-  const meta = FRAMEWORK_META[framework] ?? { label: framework, color: '#3D4B61' }
+  const t = useTranslations()
+  const color = FRAMEWORK_META[framework]?.color ?? '#3D4B61'
   return (
     <span
       className={cn(
         'inline-flex items-center whitespace-nowrap rounded-sm px-2 py-0.5 text-caption font-medium',
         className,
       )}
-      style={{ color: meta.color, backgroundColor: `${meta.color}1A` }}
+      style={{ color, backgroundColor: `${color}1A` }}
     >
-      {meta.label}
+      {frameworkLabel(framework, t)}
     </span>
   )
 }

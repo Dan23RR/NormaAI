@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, type FormEvent, type KeyboardEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/Button'
 
 export interface ComposerHandle {
@@ -20,6 +21,7 @@ export const Composer = forwardRef<ComposerHandle, {
   busy: boolean
   disabled?: boolean
 }>(function Composer({ value, onChange, onSubmit, busy, disabled }, ref) {
+  const t = useTranslations('chiedi.composer')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useImperativeHandle(ref, () => ({ focus: () => textareaRef.current?.focus() }), [])
@@ -52,9 +54,9 @@ export const Composer = forwardRef<ComposerHandle, {
   }
 
   return (
-    <form onSubmit={onFormSubmit} aria-label="Fai una domanda">
+    <form onSubmit={onFormSubmit} aria-label={t('form')}>
       <label htmlFor="chiedi-question" className="sr-only">
-        La tua domanda
+        {t('label')}
       </label>
       <div className="rounded-lg border border-rule-2 bg-surface p-2 focus-within:border-union focus-within:ring-2 focus-within:ring-union/20">
         <textarea
@@ -65,16 +67,16 @@ export const Composer = forwardRef<ComposerHandle, {
           onKeyDown={onKeyDown}
           rows={2}
           disabled={disabled}
-          placeholder="Scrivi la domanda, con il contesto che serve: settore, dimensione, Paese."
+          placeholder={t('placeholder')}
           aria-describedby="chiedi-question-help"
           className="block min-h-[56px] w-full resize-none bg-transparent px-2 py-1.5 text-read text-ink placeholder:text-ink-3 focus:outline-none disabled:text-ink-3"
         />
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-1">
           <p id="chiedi-question-help" className="text-caption text-ink-3">
-            Invio per inviare, Maiusc+Invio per andare a capo.
+            {t('help')}
           </p>
           <Button type="submit" loading={busy} disabled={!value.trim() || disabled}>
-            Invia la domanda
+            {t('send')}
           </Button>
         </div>
       </div>

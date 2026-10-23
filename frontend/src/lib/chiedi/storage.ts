@@ -16,9 +16,10 @@ function isoOf(value: unknown): string {
  * The conversation kept for this tab. Entries written by the previous
  * version of the page (no id, `timestamp` as a Date, partial answers) are
  * normalised; an answer that never completed is dropped, and a question
- * left without an answer gets an error turn so it can be retried.
+ * left without an answer gets an error turn (`reloadedError`, in the words
+ * of the interface) so it can be retried.
  */
-export function loadMessages(): ChatMessage[] {
+export function loadMessages(reloadedError: string): ChatMessage[] {
   if (typeof window === 'undefined') return []
   let parsed: unknown
   try {
@@ -77,7 +78,7 @@ export function loadMessages(): ChatMessage[] {
       question: last.content,
       language: 'it',
       content: '',
-      error: 'La risposta non è arrivata prima che la pagina fosse ricaricata. Riprova.',
+      error: reloadedError,
       timestamp: new Date().toISOString(),
     })
   }
@@ -116,12 +117,17 @@ export function clearMessages(): void {
   }
 }
 
-export function loadLanguage(): Language {
-  if (typeof window === 'undefined') return 'it'
+/**
+ * The answer language chosen on the Chiedi page, if the person overrode
+ * the interface language there; null means "follow the interface".
+ */
+export function loadLanguage(): Language | null {
+  if (typeof window === 'undefined') return null
   try {
-    return localStorage.getItem(QA_LANGUAGE_KEY) === 'en' ? 'en' : 'it'
+    const stored = localStorage.getItem(QA_LANGUAGE_KEY)
+    return stored === 'en' || stored === 'it' ? stored : null
   } catch {
-    return 'it'
+    return null
   }
 }
 

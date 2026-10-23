@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ToastProvider } from '@/components/ui/Toast'
+import { renderWithIntl } from '@/test/i18n'
 import { InvitesSection } from '../InvitesSection'
 
 vi.mock('@/lib/api', () => ({
@@ -14,11 +15,12 @@ vi.mock('@/lib/auth', () => ({
 
 import { api } from '@/lib/api'
 
-function renderSection() {
-  return render(
+function renderSection(language: 'it' | 'en' = 'it') {
+  return renderWithIntl(
     <ToastProvider>
       <InvitesSection demoMode={false} />
     </ToastProvider>,
+    { language },
   )
 }
 
@@ -89,6 +91,14 @@ describe('InvitesSection', () => {
     ;(api.get as Mock).mockRejectedValue(new Error('Not Found'))
     renderSection()
     expect(await screen.findByText('Gli inviti non sono ancora attivi su questo server')).toBeInTheDocument()
+    expect(screen.getByText(/endpoint \/api\/v1\/auth\/invites non trovato/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Crea l.invito/ })).not.toBeInTheDocument()
+  })
+
+  it('says the same in English', async () => {
+    ;(api.get as Mock).mockRejectedValue(new Error('Not Found'))
+    renderSection('en')
+    expect(await screen.findByText('Invitations are not active on this server yet')).toBeInTheDocument()
+    expect(screen.getByText(/endpoint \/api\/v1\/auth\/invites not found/)).toBeInTheDocument()
   })
 })

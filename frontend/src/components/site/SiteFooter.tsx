@@ -1,37 +1,39 @@
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { LogoMark, Wordmark } from '@/components/Logo'
 
-const columns: Array<{ title: string; links: Array<{ href: string; label: string; external?: boolean }> }> = [
+const COLUMNS: Array<{ title: string; links: Array<{ href: string; key: string; external?: boolean }> }> = [
   {
-    title: 'Prodotto',
+    title: 'product',
     links: [
-      { href: '/#come-funziona', label: 'Chiedi' },
-      { href: '/scope-csrd.html', label: 'Verifica ambito CSRD' },
-      { href: '/scope-aiact.html', label: 'Verifica AI Act, art. 50' },
-      { href: '/#codex', label: 'Codex Post-Omnibus' },
+      { href: '/#come-funziona', key: 'ask' },
+      { href: '/scope-csrd.html', key: 'scopeCsrd' },
+      { href: '/scope-aiact.html', key: 'scopeAiAct' },
+      { href: '/#codex', key: 'codex' },
     ],
   },
   {
-    title: 'Come lavoriamo',
+    title: 'howWeWork',
     links: [
-      { href: '/metodo', label: 'Metodo' },
-      { href: '/#fonti', label: 'Fonti' },
-      { href: 'https://github.com/Dan23RR/NormaAI', label: 'Codice su GitHub', external: true },
+      { href: '/metodo', key: 'method' },
+      { href: '/#fonti', key: 'sources' },
+      { href: 'https://github.com/Dan23RR/NormaAI', key: 'github', external: true },
     ],
   },
   {
-    title: 'Legale',
+    title: 'legal',
     links: [
-      { href: '/privacy', label: 'Privacy' },
-      { href: '/cookie', label: 'Cookie' },
-      { href: '/terms', label: 'Termini' },
-      { href: '/security', label: 'Sicurezza' },
+      { href: '/privacy', key: 'privacy' },
+      { href: '/cookie', key: 'cookie' },
+      { href: '/terms', key: 'terms' },
+      { href: '/security', key: 'security' },
     ],
   },
 ]
 
 /** Shared footer of the public pages. */
 export function SiteFooter() {
+  const t = useTranslations('site.footer')
   return (
     <footer className="border-t border-rule bg-surface-2">
       <div className="mx-auto grid max-w-site gap-10 px-6 py-14 md:grid-cols-12">
@@ -40,19 +42,16 @@ export function SiteFooter() {
             <LogoMark size={28} />
             <Wordmark className="text-h3" />
           </div>
-          <p className="mt-4 max-w-sm text-small text-ink-2">
-            Risposte sul diritto dell'Unione con la fonte esatta: atto, articolo, passaggio di legge
-            e link al testo ufficiale. Quando il testo non basta, lo diciamo.
-          </p>
+          <p className="mt-4 max-w-sm text-small text-ink-2">{t('tagline')}</p>
           <p className="mt-4 text-small text-ink-2">
             <a href="mailto:info@normaai.org" className="text-union hover:underline">
               info@normaai.org
             </a>
           </p>
         </div>
-        {columns.map((col) => (
+        {COLUMNS.map((col) => (
           <div key={col.title} className="md:col-span-2">
-            <h2 className="font-sans text-small font-semibold text-ink">{col.title}</h2>
+            <h2 className="font-sans text-small font-semibold text-ink">{t(col.title)}</h2>
             <ul className="mt-3 space-y-2">
               {col.links.map((l) =>
                 l.external ? (
@@ -63,13 +62,13 @@ export function SiteFooter() {
                       rel="noopener noreferrer"
                       className="text-small text-ink-2 no-underline hover:text-ink hover:underline"
                     >
-                      {l.label}
+                      {t(l.key)}
                     </a>
                   </li>
                 ) : (
                   <li key={l.href}>
                     <Link href={l.href} className="text-small text-ink-2 no-underline hover:text-ink hover:underline">
-                      {l.label}
+                      {t(l.key)}
                     </Link>
                   </li>
                 ),
@@ -80,11 +79,8 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-rule">
         <div className="mx-auto flex max-w-site flex-col gap-2 px-6 py-5 text-caption text-ink-3 md:flex-row md:items-center md:justify-between">
-          <p>NormaAI è un progetto di Daniel Culotta, Inverigo (CO), Italia. © {new Date().getFullYear()}</p>
-          <p>
-            Le risposte sono generate da un sistema di intelligenza artificiale e non sostituiscono la
-            consulenza di un professionista.
-          </p>
+          <p>{t('credits', { year: String(new Date().getFullYear()) })}</p>
+          <p>{t('aiNotice')}</p>
         </div>
       </div>
     </footer>

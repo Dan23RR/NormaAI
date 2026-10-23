@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ToastProvider } from '@/components/ui/Toast'
+import { renderWithIntl } from '@/test/i18n'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -9,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: mocks.replace, push: vi.fn() }),
+  useRouter: () => ({ replace: mocks.replace, push: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
   usePathname: () => '/app/chiedi',
 }))
@@ -21,7 +22,6 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/api', () => ({
   api: { post: (...args: unknown[]) => mocks.post(...args), getBaseUrl: () => '' },
-  NETWORK_ERROR: 'Il server non risponde. Riprova tra un minuto.',
 }))
 
 import { ChiediPage } from '../ChiediPage'
@@ -67,11 +67,12 @@ const ANSWER = {
   metadata: { timestamp: '2026-10-23T10:00:00Z', model: 'demo-mode', corpus_as_of: '2026-02-28' },
 }
 
-function renderPage() {
-  return render(
+function renderPage(language: 'it' | 'en' = 'it') {
+  return renderWithIntl(
     <ToastProvider>
       <ChiediPage />
     </ToastProvider>,
+    { language },
   )
 }
 
@@ -145,6 +146,36 @@ describe('ChiediPage (demo mode)', () => {
     const stored = JSON.parse(sessionStorage.getItem('normaai_qa_messages') ?? '[]')
     expect(stored).toHaveLength(2)
     expect(stored[1].data.citations).toHaveLength(2)
+  })
+
+  it('follows the interface language: English words, English answer language, English EUR-Lex link', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage('en')
+
+    expect(screen.getByRole('heading', { name: 'Ask' })).toBeInTheDocument()
+    expect(screen.getByText('What do you want to know?')).toBeInTheDocument()
+    expect(screen.getByLabelText('Answer language')).toHaveValue('en')
+
+    await user.type(screen.getByLabelText('Your question'), 'Does a chatbot have to say it is an AI?')
+    await user.click(screen.getByRole('button', { name: 'Send the question' }))
+
+    const [, body] = mocks.post.mock.calls[0] as [string, { language: string }]
+    expect(body.language).toBe('en')
+
+    await screen.findByText(/Sì\. L'articolo 50, paragrafo 1/)
+    const margin = screen.getByRole('complementary', { name: 'Sources and profile' })
+    expect(within(margin).getByRole('heading', { name: 'Sources (2)' })).toBeInTheDocument()
+    expect(within(margin).getAllByText('Regulation (EU) 2024/1689 (AI Act)')).toHaveLength(2)
+    expect(within(margin).getByText('Verified')).toBeInTheDocument()
+    expect(within(margin).getByText('Unverified')).toBeInTheDocument()
+    expect(within(margin).getAllByRole('link', { name: /EUR-Lex/ })[0]).toHaveAttribute(
+      'href',
+      'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689',
+    )
+    expect(screen.getByText('High reliability')).toBeInTheDocument()
+    expect(screen.getAllByText(/Corpus as of 28 February 2026/).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('button', { name: 'Copy with sources' })).toBeInTheDocument()
   })
 
   it('renders an abstention instead of an answer', async () => {

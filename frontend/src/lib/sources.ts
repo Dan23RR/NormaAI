@@ -24,11 +24,8 @@ export interface Source {
   origin?: string
 }
 
-export const SOURCE_STATUS_LABEL: Record<SourceStatus, string> = {
-  verified: 'Verificata nel testo ufficiale',
-  unverified: 'Non trovata nel testo ufficiale',
-  pending: 'Verifica in corso',
-}
+/** The words for each status live in the `ui.sourceStatus` messages (short and long form). */
+export const SOURCE_STATUSES: SourceStatus[] = ['verified', 'unverified', 'pending']
 
 /** EUR-Lex URL for a CELEX number, in the given language. */
 export function eurlexUrl(celex: string, lang: 'IT' | 'EN' = 'IT'): string {

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Download, Mail, Trash2 } from 'lucide-react'
 import { Button, Dialog, Field, Input, buttonClasses, useToast } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
 import { api } from '@/lib/api'
 import { getAccessToken } from '@/lib/auth'
 import type { User } from '@/lib/types'
@@ -37,14 +39,11 @@ function orgIdFromToken(): string | null {
   }
 }
 
-const DELETED_LABEL: Record<string, string> = {
-  clients: 'clienti',
-  conversations: 'conversazioni',
-  assessments: 'analisi',
-  alerts: 'avvisi',
-}
+const DELETED_KEYS = ['clients', 'conversations', 'assessments', 'alerts']
 
 export function DataSection({ user, demoMode }: { user: User; demoMode: boolean }) {
+  const t = useTranslations('impostazioni.data')
+  const errorText = useErrorText()
   const { toast } = useToast()
   const isAdmin = user.role === 'admin'
   const [exporting, setExporting] = useState(false)
@@ -69,9 +68,9 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast({ kind: 'ok', title: 'Dati esportati', description: filename })
+      toast({ kind: 'ok', title: t('exportedTitle'), description: filename })
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Esportazione non riuscita. Riprova.')
+      setExportError(errorText(err, 'impostazioni.data.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -86,44 +85,32 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
     setEraseError(null)
     try {
       const res = await api.post<EraseResponse>('/api/v1/gdpr/erase', { confirm_org_id: orgId })
-      const parts = Object.entries(res.deleted ?? {}).map(([k, v]) => `${v} ${DELETED_LABEL[k] ?? k}`)
-      toast({ kind: 'ok', title: 'Dati dell’organizzazione cancellati', description: parts.join(', ') })
+      const parts = Object.entries(res.deleted ?? {}).map(([k, v]) => `${v} ${DELETED_KEYS.includes(k) ? t(`deleted.${k}`) : k}`)
+      toast({ kind: 'ok', title: t('erasedTitle'), description: parts.join(', ') })
       setEraseOpen(false)
       setConfirmName('')
     } catch (err) {
-      setEraseError(err instanceof Error ? err.message : 'Cancellazione non riuscita. Riprova.')
+      setEraseError(errorText(err, 'impostazioni.data.eraseFailed'))
     } finally {
       setErasing(false)
     }
   }
 
-  const mailto = `mailto:info@normaai.org?subject=${encodeURIComponent('Richiesta di cancellazione dell’account')}&body=${encodeURIComponent(
-    `Chiedo la cancellazione dell’account ${user.email}` +
-      (user.organization_name ? ` (organizzazione ${user.organization_name}).` : '.'),
-  )}`
+  const mailBody = user.organization_name
+    ? t('mailBodyOrg', { email: user.email, org: user.organization_name })
+    : t('mailBody', { email: user.email })
+  const mailto = `mailto:info@normaai.org?subject=${encodeURIComponent(t('mailSubject'))}&body=${encodeURIComponent(mailBody)}`
 
   return (
-    <SettingsSection
-      id="dati"
-      title="I tuoi dati"
-      description="Esportazione e cancellazione secondo il GDPR (artt. 15, 17 e 20 del Regolamento (UE) 2016/679)."
-    >
+    <SettingsSection id="dati" title={t('title')} description={t('description')}>
       <div className="space-y-6">
         <div className="rounded-lg border border-rule bg-surface p-5">
-          <h3 className="text-h4">Esporta i dati dell’organizzazione</h3>
-          <p className="mt-1 max-w-prose text-small text-ink-2">
-            Un file JSON con utenti, clienti, conversazioni, analisi e avvisi. Al massimo tre esportazioni all’ora.
-          </p>
+          <h3 className="text-h4">{t('exportTitle')}</h3>
+          <p className="mt-1 max-w-prose text-small text-ink-2">{t('exportLead')}</p>
           {demoMode ? (
-            <p className="mt-3 text-small text-ink-2">
-              Nella demo con dati di esempio non c’è nulla di tuo da esportare: l’esportazione è disponibile con un account
-              reale.
-            </p>
+            <p className="mt-3 text-small text-ink-2">{t('exportDemo')}</p>
           ) : !isAdmin ? (
-            <p className="mt-3 text-small text-ink-2">
-              L’esportazione è riservata agli amministratori dell’organizzazione: chiedi a loro, oppure scrivi a
-              info@normaai.org.
-            </p>
+            <p className="mt-3 text-small text-ink-2">{t('exportAdminOnly')}</p>
           ) : (
             <>
               <Button
@@ -133,7 +120,7 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
                 loading={exporting}
                 iconLeft={<Download className="h-4 w-4" aria-hidden="true" />}
               >
-                {exporting ? 'Preparazione del file' : 'Scarica i dati (JSON)'}
+                {exporting ? t('exporting') : t('export')}
               </Button>
               {exportError && (
                 <p role="alert" className="mt-3 text-small text-bad">
@@ -146,11 +133,8 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
 
         {isAdmin && !demoMode && (
           <div className="rounded-lg border border-rule bg-surface p-5">
-            <h3 className="text-h4">Cancella i dati dell’organizzazione</h3>
-            <p className="mt-1 max-w-prose text-small text-ink-2">
-              Elimina clienti, analisi, avvisi, conversazioni e i documenti caricati. Gli account e l’organizzazione
-              restano, così puoi ripartire da zero. Non si può annullare.
-            </p>
+            <h3 className="text-h4">{t('eraseTitle')}</h3>
+            <p className="mt-1 max-w-prose text-small text-ink-2">{t('eraseLead')}</p>
             {orgId ? (
               <Button
                 className="mt-4"
@@ -158,29 +142,20 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
                 onClick={() => setEraseOpen(true)}
                 iconLeft={<Trash2 className="h-4 w-4" aria-hidden="true" />}
               >
-                Cancella i dati dell’organizzazione
+                {t('erase')}
               </Button>
             ) : (
-              <p className="mt-3 text-small text-ink-2">
-                La sessione non contiene l’identificativo dell’organizzazione: esci e accedi di nuovo per usare questa
-                funzione.
-              </p>
+              <p className="mt-3 text-small text-ink-2">{t('noOrgId')}</p>
             )}
           </div>
         )}
 
         <div className="rounded-lg border border-rule bg-surface p-5">
-          <h3 className="text-h4">Cancella l’account</h3>
-          <p className="mt-1 max-w-prose text-small text-ink-2">
-            La chiusura dell’account non è ancora automatica: la chiedi per email e la confermiamo entro 30 giorni, come
-            prevede l’art. 12 del GDPR.
-          </p>
-          <a
-            href={mailto}
-            className={buttonClasses({ variant: 'secondary', className: 'mt-4' })}
-          >
+          <h3 className="text-h4">{t('accountTitle')}</h3>
+          <p className="mt-1 max-w-prose text-small text-ink-2">{t('accountLead')}</p>
+          <a href={mailto} className={buttonClasses({ variant: 'secondary', className: 'mt-4' })}>
             <Mail className="h-4 w-4" aria-hidden="true" />
-            Scrivi per cancellare l’account
+            {t('accountMail')}
           </a>
         </div>
       </div>
@@ -190,24 +165,20 @@ export function DataSection({ user, demoMode }: { user: User; demoMode: boolean 
         onClose={() => {
           if (!erasing) setEraseOpen(false)
         }}
-        title="Cancella i dati dell’organizzazione"
-        description="Clienti, analisi, avvisi, conversazioni e documenti caricati vengono eliminati in modo definitivo."
+        title={t('dialogTitle')}
+        description={t('dialogDescription')}
         footer={
           <>
             <Button variant="secondary" onClick={() => setEraseOpen(false)} disabled={erasing}>
-              Annulla
+              {t('cancel')}
             </Button>
             <Button variant="danger" onClick={erase} loading={erasing} disabled={!nameMatches}>
-              Cancella i dati dell’organizzazione
+              {t('erase')}
             </Button>
           </>
         }
       >
-        <Field
-          label={`Per confermare scrivi il nome dell’organizzazione: ${user.organization_name}`}
-          htmlFor="erase-confirm"
-          error={eraseError ?? undefined}
-        >
+        <Field label={t('confirmLabel', { name: user.organization_name })} htmlFor="erase-confirm" error={eraseError ?? undefined}>
           <Input
             id="erase-confirm"
             value={confirmName}

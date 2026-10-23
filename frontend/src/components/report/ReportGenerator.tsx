@@ -1,15 +1,17 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { FileDown, FileText } from 'lucide-react'
 import { Badge, Button, ButtonLink, Checkbox, Field, Select, frameworkLabel } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
 import type { Client, GapAnalysisResponse } from '@/lib/types'
 import { FRAMEWORK_KEYS, isFrameworkKey, type FrameworkKey } from '@/components/clienti/clients-api'
 import { clientToProfile } from '@/components/clienti/ComplianceTab'
 import { STATUS_SUMMARY_KEYS, complianceAssessment, confidenceAssessment, statusMeta } from '@/components/clienti/compliance'
 import { formatIsoDateTime } from '@/components/clienti/format'
 import {
-  REPORT_TYPE_LABEL,
+  REPORT_TYPES,
   downloadBlob,
   generatePdf,
   runDemoAnalyses,
@@ -48,6 +50,9 @@ export function ReportGenerator({
   prefill: ReportPrefill | null
   onGenerated: (item: ReportHistoryItem) => void
 }) {
+  const t = useTranslations('report')
+  const tRoot = useTranslations()
+  const errorText = useErrorText()
   const [clientId, setClientId] = useState<string>('')
   const [type, setType] = useState<ReportType>('gap_analysis')
   const [framework, setFramework] = useState<FrameworkKey>('CSRD')
@@ -94,12 +99,12 @@ export function ReportGenerator({
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!client) {
-      setFormError('Scegli il cliente per cui generare il report.')
+      setFormError(t('generator.chooseClient'))
       return
     }
     const selected = type === 'gap_analysis' ? [framework] : frameworks
     if (selected.length === 0) {
-      setFormError('Seleziona almeno un framework per la sintesi.')
+      setFormError(t('generator.chooseFramework'))
       return
     }
     setFormError(null)
@@ -139,7 +144,7 @@ export function ReportGenerator({
         })
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Generazione non riuscita. Riprova.')
+      setError(errorText(err, 'report.generator.failed'))
     } finally {
       setLoading(false)
     }
@@ -148,24 +153,22 @@ export function ReportGenerator({
   if (clients.length === 0) {
     return (
       <div className="rounded-lg border border-rule bg-surface p-5">
-        <h3 className="text-h4">Serve prima un cliente</h3>
-        <p className="mt-1 max-w-prose text-body text-ink-2">
-          Il report parte dal profilo di un cliente: nome, settore, dimensione e framework seguiti.
-        </p>
+        <h3 className="text-h4">{t('generator.needClientTitle')}</h3>
+        <p className="mt-1 max-w-prose text-body text-ink-2">{t('generator.needClientBody')}</p>
         <ButtonLink href="/app/clienti" className="mt-4">
-          Crea il primo cliente
+          {t('generator.createFirst')}
         </ButtonLink>
       </div>
     )
   }
 
-  const selectedLabel = (type === 'gap_analysis' ? [framework] : frameworks).map(frameworkLabel).join(', ')
+  const selectedLabel = (type === 'gap_analysis' ? [framework] : frameworks).map((key) => frameworkLabel(key, tRoot)).join(', ')
 
   return (
     <div className="space-y-6">
       <form onSubmit={submit} noValidate className="rounded-lg border border-rule bg-surface p-5">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Cliente" htmlFor="report-client" required>
+          <Field label={t('generator.client')} htmlFor="report-client" required>
             <Select id="report-client" value={clientId} onChange={(e) => selectClient(e.target.value)} disabled={loading}>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -175,13 +178,9 @@ export function ReportGenerator({
             </Select>
           </Field>
           <Field
-            label="Tipo di report"
+            label={t('generator.type')}
             htmlFor="report-type"
-            help={
-              type === 'gap_analysis'
-                ? 'Un framework: requisiti, stato, gap e raccomandazioni.'
-                : 'Più framework in un quadro unico per la direzione.'
-            }
+            help={type === 'gap_analysis' ? t('generator.typeHelpGap') : t('generator.typeHelpSummary')}
           >
             <Select
               id="report-type"
@@ -190,15 +189,15 @@ export function ReportGenerator({
               disabled={loading}
               aria-describedby="report-type-help"
             >
-              {(Object.keys(REPORT_TYPE_LABEL) as ReportType[]).map((key) => (
+              {REPORT_TYPES.map((key) => (
                 <option key={key} value={key}>
-                  {REPORT_TYPE_LABEL[key]}
+                  {t(`types.${key}`)}
                 </option>
               ))}
             </Select>
           </Field>
           {type === 'gap_analysis' ? (
-            <Field label="Framework" htmlFor="report-framework" required>
+            <Field label={t('generator.framework')} htmlFor="report-framework" required>
               <Select
                 id="report-framework"
                 value={framework}
@@ -207,20 +206,20 @@ export function ReportGenerator({
               >
                 {FRAMEWORK_KEYS.map((key) => (
                   <option key={key} value={key}>
-                    {frameworkLabel(key)}
+                    {frameworkLabel(key, tRoot)}
                   </option>
                 ))}
               </Select>
             </Field>
           ) : (
             <fieldset className="md:col-span-2">
-              <legend className="text-small font-medium text-ink">Framework da includere</legend>
+              <legend className="text-small font-medium text-ink">{t('generator.frameworksToInclude')}</legend>
               <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {FRAMEWORK_KEYS.map((key) => (
                   <Checkbox
                     key={key}
                     id={`report-fw-${key}`}
-                    label={frameworkLabel(key)}
+                    label={frameworkLabel(key, tRoot)}
                     checked={frameworks.includes(key)}
                     onChange={() => toggleFramework(key)}
                     disabled={loading}
@@ -243,34 +242,35 @@ export function ReportGenerator({
             loading={loading}
             iconLeft={demoMode ? <FileText className="h-4 w-4" aria-hidden="true" /> : <FileDown className="h-4 w-4" aria-hidden="true" />}
           >
-            {loading ? 'Generazione in corso' : demoMode ? 'Genera l’anteprima del report' : 'Genera e scarica il PDF'}
+            {loading ? t('generator.generating') : demoMode ? t('generator.generatePreview') : t('generator.generatePdf')}
           </Button>
-          {demoMode && !loading && (
-            <p className="text-caption text-ink-3">Nella demo il PDF non viene prodotto: il contenuto compare qui sotto.</p>
-          )}
+          {demoMode && !loading && <p className="text-caption text-ink-3">{t('generator.demoNote')}</p>}
         </div>
       </form>
 
       {loading && client && (
         <p role="status" className="rounded-md border border-rule bg-surface-2 px-4 py-3 text-small text-ink-2">
-          Analisi di {client.name} per {selectedLabel}. Fino a un minuto per ogni framework.
+          {t('generator.progress', { name: client.name, frameworks: selectedLabel })}
         </p>
       )}
 
       {error && (
         <div role="alert" className="rounded-lg border border-bad/30 bg-surface p-5">
-          <h3 className="text-h4">Il report non è stato generato</h3>
+          <h3 className="text-h4">{t('generator.failedTitle')}</h3>
           <p className="mt-1 text-body text-ink-2">{error}</p>
         </div>
       )}
 
       {outcome?.kind === 'pdf' && (
         <div role="status" className="rounded-lg border border-ok/30 bg-surface p-5">
-          <h3 className="text-h4">PDF scaricato</h3>
+          <h3 className="text-h4">{t('generator.pdfTitle')}</h3>
           <p className="mt-1 text-body text-ink-2">
-            <span className="font-medium text-ink">{outcome.filename}</span>, generato il{' '}
-            <span className="tabular">{formatIsoDateTime(outcome.at)}</span>. Lo trovi nella cartella dei download del
-            browser: conservalo, perché il server non permette ancora di riscaricarlo.
+            {t.rich('generator.pdfBody', {
+              filename: outcome.filename,
+              date: formatIsoDateTime(outcome.at) ?? '',
+              strong: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
+              num: (chunks) => <span className="tabular">{chunks}</span>,
+            })}
           </p>
         </div>
       )}
@@ -279,20 +279,20 @@ export function ReportGenerator({
         <section aria-labelledby="report-preview-title" className="space-y-4">
           <div>
             <h3 id="report-preview-title" className="text-h3">
-              Anteprima del report per {client.name}
+              {t('generator.previewTitle', { name: client.name })}
             </h3>
             <p className="mt-1 text-caption text-ink-3 tabular">
-              Demo con dati di esempio, generata il {formatIsoDateTime(outcome.at)}
+              {t('generator.previewMeta', { date: formatIsoDateTime(outcome.at) ?? '' })}
             </p>
           </div>
           {outcome.analyses.map((analysis, i) => {
-            const overall = complianceAssessment(analysis.overall_score ?? 0)
-            const confidence = confidenceAssessment(analysis.confidence_score ?? 0)
+            const overall = complianceAssessment(analysis.overall_score ?? 0, tRoot)
+            const confidence = confidenceAssessment(analysis.confidence_score ?? 0, tRoot)
             const summary = (analysis.status_summary ?? {}) as Record<string, number | undefined>
             return (
               <article key={`${analysis.framework}-${i}`} className="rounded-lg border border-rule bg-surface p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h4 className="text-h4">{frameworkLabel(analysis.framework)}</h4>
+                  <h4 className="text-h4">{frameworkLabel(analysis.framework, tRoot)}</h4>
                   <div className="flex flex-wrap gap-2">
                     <Badge tone={overall.tone} title={overall.sublabel}>
                       {overall.label}
@@ -306,7 +306,7 @@ export function ReportGenerator({
                   {STATUS_SUMMARY_KEYS.map(({ key, status }) => {
                     const count = summary[key]
                     if (typeof count !== 'number') return null
-                    const meta = statusMeta(status)
+                    const meta = statusMeta(status, tRoot)
                     return (
                       <div key={key} className="flex items-center gap-2">
                         <dt>
@@ -327,10 +327,7 @@ export function ReportGenerator({
               </article>
             )
           })}
-          <p className="max-w-prose text-caption text-ink-3">
-            Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): stima preliminare, non una
-            certificazione né una consulenza legale.
-          </p>
+          <p className="max-w-prose text-caption text-ink-3">{t('generator.aiNotice')}</p>
         </section>
       )}
     </div>

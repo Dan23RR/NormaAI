@@ -1,11 +1,14 @@
 'use client'
 
 import { Component, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/Button'
 
 interface Props {
   children: ReactNode
   fallback?: ReactNode
+  /** The words of the default fallback, resolved by the wrapper below. */
+  texts: { title: string; body: (message: string) => string; unexpected: string; retry: string }
 }
 
 interface State {
@@ -13,7 +16,7 @@ interface State {
   error: Error | null
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryInner extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -30,16 +33,14 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback
+      const { texts } = this.props
       return (
         <div className="flex min-h-[400px] items-center justify-center p-8">
           <div className="max-w-lg rounded-lg border border-bad/30 bg-surface p-8 text-center">
-            <h2 className="text-h3">Questa pagina ha smesso di funzionare</h2>
-            <p className="mt-2 text-body text-ink-2">
-              {this.state.error?.message || 'Errore imprevisto.'} Riprova; se succede di nuovo, scrivi a
-              info@normaai.org con il nome della pagina.
-            </p>
+            <h2 className="text-h3">{texts.title}</h2>
+            <p className="mt-2 text-body text-ink-2">{texts.body(this.state.error?.message || texts.unexpected)}</p>
             <Button className="mt-6" onClick={() => this.setState({ hasError: false, error: null })}>
-              Riprova
+              {texts.retry}
             </Button>
           </div>
         </div>
@@ -47,4 +48,22 @@ export class ErrorBoundary extends Component<Props, State> {
     }
     return this.props.children
   }
+}
+
+/** Class components cannot use hooks: the words are read here and handed down. */
+export function ErrorBoundary({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  const t = useTranslations('errors.boundary')
+  return (
+    <ErrorBoundaryInner
+      fallback={fallback}
+      texts={{
+        title: t('title'),
+        body: (message) => t('body', { message }),
+        unexpected: t('unexpected'),
+        retry: t('retry'),
+      }}
+    >
+      {children}
+    </ErrorBoundaryInner>
+  )
 }

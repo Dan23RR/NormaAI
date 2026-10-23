@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/cn'
 
 /**
@@ -53,13 +54,14 @@ export function Logo({
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }) {
+  const t = useTranslations('ui')
   const mark = size === 'lg' ? 36 : size === 'sm' ? 24 : 28
   const text = size === 'lg' ? 'text-h2' : size === 'sm' ? 'text-h4' : 'text-h3'
   return (
     <Link
       href={href}
       className={cn('inline-flex items-center gap-2.5 no-underline', className)}
-      aria-label="NormaAI, pagina iniziale"
+      aria-label={t('logoLabel')}
     >
       <LogoMark size={mark} />
       <Wordmark className={text} />

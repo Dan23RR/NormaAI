@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import type { Source } from '@/lib/sources'
 import { detectAbstention } from '@/lib/chiedi/abstention'
 import type { AssistantMessage } from '@/lib/chiedi/types'
@@ -27,44 +28,37 @@ export function SourcesMargin({
   /** Rendered above the sources: the company profile panel. */
   children?: ReactNode
 }) {
+  const t = useTranslations('chiedi')
   const abstained = message?.data ? detectAbstention(message.data).abstained : false
   const waiting = message && (message.status === 'loading' || message.status === 'streaming') && sources.length === 0
 
   return (
-    <aside aria-label="Fonti e profilo" className="hidden min-w-0 lg:block">
+    <aside aria-label={t('sources.aside')} className="hidden min-w-0 lg:block">
       <div className="sticky top-6 flex max-h-[calc(100vh-3rem)] flex-col gap-5 overflow-y-auto pr-1">
         {children}
         <section aria-labelledby="sources-heading">
           <h2 id="sources-heading" className="text-h4">
-            Fonti{sources.length > 0 ? ` (${sources.length})` : ''}
+            {sources.length > 0 ? t('sources.headingCount', { count: sources.length }) : t('sources.heading')}
           </h2>
           {message && totalAnswers > 1 && (
             <p className="mt-1 truncate text-caption text-ink-3" title={message.question}>
-              Della risposta a: {message.question}
+              {t('sources.ofAnswer', { question: message.question })}
             </p>
           )}
           <div className="mt-3">
             {!message ? (
-              <p className="text-small text-ink-2">
-                Le fonti di ogni risposta compaiono qui: atto, articolo, passaggio citato nel testo ufficiale e stato di
-                verifica.
-              </p>
+              <p className="text-small text-ink-2">{t('sources.intro')}</p>
             ) : message.status === 'error' ? (
-              <p className="text-small text-ink-2">Nessuna fonte: la risposta non è arrivata.</p>
+              <p className="text-small text-ink-2">{t('sources.error')}</p>
             ) : waiting ? (
-              <p className="text-small text-ink-2">Le fonti arrivano con la risposta.</p>
+              <p className="text-small text-ink-2">{t('sources.waiting')}</p>
             ) : abstained ? (
-              <p className="text-small text-ink-2">Nessuna fonte: NormaAI non ha risposto a questa domanda.</p>
+              <p className="text-small text-ink-2">{t('sources.abstained')}</p>
             ) : (
-              <SourcesList sources={sources} activeIndex={activeIndex} onSelect={onSelect} label="Fonti della risposta" />
+              <SourcesList sources={sources} activeIndex={activeIndex} onSelect={onSelect} label={t('answer.sourcesOfAnswer')} />
             )}
           </div>
-          {sources.length > 0 && (
-            <p className="mt-4 text-caption text-ink-3">
-              «Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora
-              confermato.
-            </p>
-          )}
+          {sources.length > 0 && <p className="mt-4 text-caption text-ink-3">{t('sources.legend')}</p>}
         </section>
       </div>
     </aside>

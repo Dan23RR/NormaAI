@@ -1,13 +1,10 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Badge, Button, FrameworkBadge, TBody, TD, TH, THead, TR, Table } from '@/components/ui'
 import { complianceAssessment } from '@/components/clienti/compliance'
 import { formatIsoDateTime } from '@/components/clienti/format'
-import { REPORT_TYPE_LABEL, type ReportHistoryItem, type ReportType } from './report-api'
-
-function typeLabel(type: string): string {
-  return (REPORT_TYPE_LABEL as Record<string, string>)[type] ?? type.replace(/_/g, ' ')
-}
+import { isReportType, reportTypeLabel, type ReportHistoryItem } from './report-api'
 
 /**
  * The reports generated so far. The backend keeps the metadata, not the
@@ -20,30 +17,31 @@ export function ReportHistoryTable({
   items: ReportHistoryItem[]
   onRegenerate: (item: ReportHistoryItem) => void
 }) {
+  const t = useTranslations('report.table')
+  const tRoot = useTranslations()
+  const missing = <span className="text-ink-3">{tRoot('ui.notAvailable')}</span>
   return (
     <Table>
       <THead>
         <TR>
-          <TH>Data</TH>
-          <TH>Cliente</TH>
-          <TH>Framework</TH>
-          <TH>Valutazione</TH>
-          <TH className="hidden md:table-cell">Tipo</TH>
+          <TH>{t('date')}</TH>
+          <TH>{t('client')}</TH>
+          <TH>{t('framework')}</TH>
+          <TH>{t('assessment')}</TH>
+          <TH className="hidden md:table-cell">{t('type')}</TH>
           <TH>
-            <span className="sr-only">Azioni</span>
+            <span className="sr-only">{t('actions')}</span>
           </TH>
         </TR>
       </THead>
       <TBody>
         {items.map((item) => {
           const frameworks = item.frameworks ?? (item.framework ? [item.framework] : [])
-          const assessment = typeof item.overall_score === 'number' ? complianceAssessment(item.overall_score) : null
+          const assessment = typeof item.overall_score === 'number' ? complianceAssessment(item.overall_score, tRoot) : null
           return (
             <TR key={item.id}>
-              <TD className="whitespace-nowrap tabular text-ink-2">
-                {formatIsoDateTime(item.generated_at) ?? <span className="text-ink-3">n.d.</span>}
-              </TD>
-              <TD className="font-medium">{item.company_name || <span className="text-ink-3">n.d.</span>}</TD>
+              <TD className="whitespace-nowrap tabular text-ink-2">{formatIsoDateTime(item.generated_at) ?? missing}</TD>
+              <TD className="font-medium">{item.company_name || missing}</TD>
               <TD>
                 {frameworks.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
@@ -52,7 +50,7 @@ export function ReportHistoryTable({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-ink-3">n.d.</span>
+                  missing
                 )}
               </TD>
               <TD>
@@ -61,10 +59,10 @@ export function ReportHistoryTable({
                     {assessment.label}
                   </Badge>
                 ) : (
-                  <span className="text-ink-3">Non registrata</span>
+                  <span className="text-ink-3">{t('notRecorded')}</span>
                 )}
               </TD>
-              <TD className="hidden text-ink-2 md:table-cell">{typeLabel(item.report_type)}</TD>
+              <TD className="hidden text-ink-2 md:table-cell">{reportTypeLabel(item.report_type, tRoot)}</TD>
               <TD className="text-right">
                 <Button
                   variant="secondary"
@@ -72,11 +70,11 @@ export function ReportHistoryTable({
                   onClick={() =>
                     onRegenerate({
                       ...item,
-                      report_type: (item.report_type in REPORT_TYPE_LABEL ? item.report_type : 'gap_analysis') as ReportType,
+                      report_type: isReportType(item.report_type) ? item.report_type : 'gap_analysis',
                     })
                   }
                 >
-                  Genera di nuovo
+                  {t('regenerate')}
                 </Button>
               </TD>
             </TR>

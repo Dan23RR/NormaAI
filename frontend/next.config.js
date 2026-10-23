@@ -1,3 +1,9 @@
+const createNextIntlPlugin = require('next-intl/plugin')
+
+// Italian and English without a locale in the URL: the language is read from
+// the `normaai.locale` cookie in src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -52,4 +58,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig)

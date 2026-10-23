@@ -4,9 +4,12 @@ export interface AbstentionInfo {
   abstained: boolean
   /** Machine code: the backend's `abstention_reason`, or how it was inferred. */
   code?: string
-  /** The explanation shown to the person. */
+  /** The explanation the backend wrote, when the answer text itself is the reason. */
   reason?: string
 }
+
+/** The codes with a sentence of their own in the `chiedi.abstention.reasons` messages. */
+export const ABSTENTION_CODES = ['snc_low_trust', 'no_evidence', 'demo_not_covered'] as const
 
 /**
  * How the backend says "I will not answer this":
@@ -29,13 +32,6 @@ const ABSTENTION_WORDING = [
   /cannot answer this question/i,
 ]
 
-const REASON_BY_CODE: Record<string, string> = {
-  snc_low_trust:
-    'La verifica automatica ha trovato troppa incertezza tra le risposte candidate per considerarne una affidabile.',
-  no_evidence: 'Il corpus non contiene passaggi sufficienti per rispondere con affidabilità.',
-  demo_not_covered: 'La demo copre alcuni scenari di esempio e questa domanda non rientra tra quelli.',
-}
-
 export function detectAbstention(
   res: Pick<ChiediResponse, 'answer' | 'citations' | 'abstention_reason'> | null | undefined,
 ): AbstentionInfo {
@@ -45,7 +41,7 @@ export function detectAbstention(
 
   if (typeof res.abstention_reason === 'string' && res.abstention_reason.trim()) {
     const code = res.abstention_reason.trim()
-    return { abstained: true, code, reason: answer || REASON_BY_CODE[code] || REASON_BY_CODE.no_evidence }
+    return { abstained: true, code, reason: answer || undefined }
   }
 
   if (noCitations && answer && ABSTENTION_WORDING.some((re) => re.test(answer))) {

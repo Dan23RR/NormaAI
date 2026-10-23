@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -20,6 +21,7 @@ interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null)
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations('ui')
   const [items, setItems] = useState<ToastItem[]>([])
   const counter = useRef(0)
 
@@ -46,34 +48,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         role="status"
         aria-live="polite"
       >
-        {items.map((t) => (
+        {items.map((item) => (
           <div
-            key={t.id}
+            key={item.id}
             className={cn(
               'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-surface px-4 py-3 shadow-pop',
-              t.kind === 'ok' && 'border-ok/30',
-              t.kind === 'bad' && 'border-bad/30',
-              t.kind === 'neutral' && 'border-rule',
+              item.kind === 'ok' && 'border-ok/30',
+              item.kind === 'bad' && 'border-bad/30',
+              item.kind === 'neutral' && 'border-rule',
             )}
           >
-            <span className={cn('mt-0.5 shrink-0', t.kind === 'ok' && 'text-ok', t.kind === 'bad' && 'text-bad', t.kind === 'neutral' && 'text-union')}>
-              {t.kind === 'ok' ? (
+            <span className={cn('mt-0.5 shrink-0', item.kind === 'ok' && 'text-ok', item.kind === 'bad' && 'text-bad', item.kind === 'neutral' && 'text-union')}>
+              {item.kind === 'ok' ? (
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              ) : t.kind === 'bad' ? (
+              ) : item.kind === 'bad' ? (
                 <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               ) : (
                 <Info className="h-4 w-4" aria-hidden="true" />
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-body font-medium text-ink">{t.title}</p>
-              {t.description && <p className="mt-0.5 text-small text-ink-2">{t.description}</p>}
+              <p className="text-body font-medium text-ink">{item.title}</p>
+              {item.description && <p className="mt-0.5 text-small text-ink-2">{item.description}</p>}
             </div>
             <button
               type="button"
-              onClick={() => dismiss(t.id)}
+              onClick={() => dismiss(item.id)}
               className="-mr-1 -mt-1 rounded-md p-1 text-ink-3 hover:bg-surface-3 hover:text-ink"
-              aria-label="Chiudi la notifica"
+              aria-label={t('closeNotification')}
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>

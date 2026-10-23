@@ -1,17 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { assessScope, classifyCsrd, AI_OBLIGATIONS, SCOPE_DATES } from '../rules'
+import { assessScope, classifyCsrd, aiObligations, SCOPE_DATES } from '../rules'
 import { EMPTY_INPUT, NO_AI, keysToAi } from '../query'
 import { VERIFIED_ON } from '../sources'
 import type { ScopeInput, ScopeResult } from '../types'
+import { textContextFor } from '@/test/i18n'
 
 const M = 1_000_000
+const it_ = textContextFor('it')
+const en = textContextFor('en')
 
 function company(partial: Partial<ScopeInput>): ScopeInput {
   return { ...EMPTY_INPUT, ...partial }
 }
 
-function result(input: ScopeInput, framework: ScopeResult['framework']): ScopeResult {
-  const r = assessScope(input).results.find((x) => x.framework === framework)
+function result(input: ScopeInput, framework: ScopeResult['framework'], ctx = it_): ScopeResult {
+  const r = assessScope(input, ctx).results.find((x) => x.framework === framework)
   if (!r) throw new Error(`no result for ${framework}`)
   return r
 }
@@ -57,6 +60,15 @@ describe('CSRD result', () => {
     expect(r.fromLabel).toContain('18 marzo 2026')
     expect(r.sources.some((s) => s.celex === '32026L0470' && s.url?.includes('32026L0470'))).toBe(true)
     expect(r.reasons.join(' ')).toContain('1.500')
+  })
+  it('in English: British dates, English separators and the official act names', () => {
+    const r = result(company({ employees: 1500, turnoverEur: 620 * M }), 'CSRD', en)
+    expect(r.status).toBe('in_scope')
+    expect(r.fromLabel).toBe('Thresholds in force from 18 March 2026 (Omnibus I)')
+    expect(r.reasons.join(' ')).toContain('Employees: 1,500 (above 1,000).')
+    expect(r.reasons.join(' ')).toContain('Net turnover: 620 million euro (above 450 million euro).')
+    expect(r.sources[0].act).toBe('Directive (EU) 2026/470 (Omnibus I)')
+    expect(r.sources[0].url).toContain('/legal-content/EN/')
   })
   it('sul filo: stato condizionale con la ragione della soglia mancante', () => {
     const r = result(company({ employees: 1200, turnoverEur: 380 * M }), 'CSRD')
@@ -135,8 +147,18 @@ describe('AI Act art. 50 result (port of public/scope-aiact.html)', () => {
     expect(r.obligations?.[0].who).toBe('provider')
     expect(r.passages).toHaveLength(1)
     expect(r.passages[0].article).toBe('art. 50, par. 1')
+    expect(r.passages[0].lang).toBe('it')
     expect(r.sources[0].article).toBe('art. 50, par. 1')
     expect(r.sources.some((s) => s.article?.startsWith('art. 113'))).toBe(true)
+  })
+  it('in English the quoted passage stays Italian while the act and the article follow the reader', () => {
+    const r = result(company({ ai: keysToAi(['chat']) }), 'AI_ACT', en)
+    expect(r.headline).toBe('From 2 August 2026 Art. 50 covers the situations you indicated.')
+    expect(r.passages[0].quote).toBe('siano informate del fatto che stanno interagendo con un sistema di IA')
+    expect(r.passages[0].lang).toBe('it')
+    expect(r.passages[0].act).toBe('Regulation (EU) 2024/1689')
+    expect(r.passages[0].article).toBe('Art. 50(1)')
+    expect(r.obligations?.[0].whoLabel).toBe('Provider obligation')
   })
   it('chatbot e GenAI: due obblighi del fornitore, par. 1 e par. 2', () => {
     const r = result(company({ ai: keysToAi(['chat', 'gen']) }), 'AI_ACT')
@@ -150,7 +172,8 @@ describe('AI Act art. 50 result (port of public/scope-aiact.html)', () => {
     expect(r.passages).toHaveLength(0)
   })
   it('la nota sul transitorio GenAI cita il 2 dicembre 2026', () => {
-    expect(AI_OBLIGATIONS.gen.exception).toContain('2 dicembre 2026')
+    expect(aiObligations(it_).gen.exception).toContain('2 dicembre 2026')
+    expect(aiObligations(en).gen.exception).toContain('2 December 2026')
   })
 })
 
@@ -162,15 +185,17 @@ describe('every result', () => {
       company({ nonEu: true, euTurnoverEur: 500 * M }),
       company({}),
     ]
-    for (const input of inputs) {
-      const assessment = assessScope(input)
-      expect(assessment.verifiedOn).toBe(VERIFIED_ON)
-      expect(assessment.results).toHaveLength(3)
-      for (const r of assessment.results) {
-        expect(r.verifiedOn).toBe('2026-10-23')
-        expect(r.sources.length).toBeGreaterThan(0)
-        expect(r.sources.some((s) => s.url)).toBe(true)
-        expect(r.sources.map((s) => s.index)).toEqual(r.sources.map((_, i) => i + 1))
+    for (const ctx of [it_, en]) {
+      for (const input of inputs) {
+        const assessment = assessScope(input, ctx)
+        expect(assessment.verifiedOn).toBe(VERIFIED_ON)
+        expect(assessment.results).toHaveLength(3)
+        for (const r of assessment.results) {
+          expect(r.verifiedOn).toBe('2026-10-23')
+          expect(r.sources.length).toBeGreaterThan(0)
+          expect(r.sources.some((s) => s.url)).toBe(true)
+          expect(r.sources.map((s) => s.index)).toEqual(r.sources.map((_, i) => i + 1))
+        }
       }
     }
   })

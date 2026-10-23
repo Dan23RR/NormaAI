@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import { ClipboardCheck } from 'lucide-react'
 import { Badge, Button, EmptyState, Field, Select, TBody, TD, TH, THead, TR, Table, frameworkLabel } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
 import { api } from '@/lib/api'
 import type { ApiResponse, Client, CompanyProfile, GapAnalysisResponse, Requirement } from '@/lib/types'
 import { FRAMEWORK_KEYS, isFrameworkKey, type FrameworkKey } from './clients-api'
@@ -65,6 +67,9 @@ function defaultFramework(client: Client): FrameworkKey {
  * its status, gap, effort and priority.
  */
 export function ComplianceTab({ client }: { client: Client }) {
+  const t = useTranslations('clienti.compliance')
+  const tRoot = useTranslations()
+  const errorText = useErrorText()
   const [framework, setFramework] = useState<FrameworkKey>(() => defaultFramework(client))
   const [analysis, setAnalysis] = useState<StoredAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
@@ -91,22 +96,22 @@ export function ComplianceTab({ client }: { client: Client }) {
       setAnalysis(next)
       store(client.id, next)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analisi non riuscita. Riprova.')
+      setError(errorText(err, 'clienti.compliance.failed'))
     } finally {
       setLoading(false)
     }
   }
 
   const result = analysis?.result
-  const overall = result ? complianceAssessment(result.overall_score ?? 0) : null
-  const confidence = result ? confidenceAssessment(result.confidence_score ?? 0) : null
+  const overall = result ? complianceAssessment(result.overall_score ?? 0, tRoot) : null
+  const confidence = result ? confidenceAssessment(result.confidence_score ?? 0, tRoot) : null
   const requirements: Requirement[] = result?.requirements ?? []
   const summary = (result?.status_summary ?? {}) as Record<string, number | undefined>
 
   return (
     <div className="space-y-6">
       <form onSubmit={run} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <Field label="Framework" htmlFor="gap-framework" className="w-full sm:max-w-xs">
+        <Field label={t('framework')} htmlFor="gap-framework" className="w-full sm:max-w-xs">
           <Select
             id="gap-framework"
             value={framework}
@@ -115,26 +120,25 @@ export function ComplianceTab({ client }: { client: Client }) {
           >
             {FRAMEWORK_KEYS.map((key) => (
               <option key={key} value={key}>
-                {frameworkLabel(key)}
+                {frameworkLabel(key, tRoot)}
               </option>
             ))}
           </Select>
         </Field>
         <Button type="submit" loading={loading} iconLeft={<ClipboardCheck className="h-4 w-4" aria-hidden="true" />}>
-          {loading ? 'Analisi in corso' : analysis ? 'Ripeti l’analisi' : 'Avvia l’analisi'}
+          {loading ? t('running') : analysis ? t('rerun') : t('run')}
         </Button>
       </form>
 
       {loading && (
         <p role="status" className="rounded-md border border-rule bg-surface-2 px-4 py-3 text-small text-ink-2">
-          Confronto del profilo di {client.name} con i requisiti {frameworkLabel(framework)}. Può richiedere fino a un
-          minuto.
+          {t('progress', { name: client.name, framework: frameworkLabel(framework, tRoot) })}
         </p>
       )}
 
       {error && (
         <div role="alert" className="rounded-lg border border-bad/30 bg-surface p-5">
-          <h3 className="text-h4">L’analisi non è riuscita</h3>
+          <h3 className="text-h4">{t('failedTitle')}</h3>
           <p className="mt-1 text-body text-ink-2">{error}</p>
         </div>
       )}
@@ -142,8 +146,8 @@ export function ComplianceTab({ client }: { client: Client }) {
       {!loading && !result && !error && (
         <EmptyState
           icon={<ClipboardCheck className="h-8 w-8" aria-hidden="true" />}
-          title="Nessuna analisi per questo cliente"
-          description="Scegli un framework e avvia l’analisi: il profilo viene confrontato con i requisiti dell’atto, articolo per articolo."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       )}
 
@@ -153,10 +157,10 @@ export function ComplianceTab({ client }: { client: Client }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 id="gap-result-title" className="text-h3">
-                  Valutazione {frameworkLabel(analysis.framework)}
+                  {t('resultTitle', { framework: frameworkLabel(analysis.framework, tRoot) })}
                 </h3>
                 <p className="mt-1 text-caption text-ink-3 tabular">
-                  Analisi del {formatIsoDateTime(analysis.analysedAt)}
+                  {t('analysedOn', { date: formatIsoDateTime(analysis.analysedAt) ?? '' })}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -166,7 +170,7 @@ export function ComplianceTab({ client }: { client: Client }) {
                 <Badge tone={confidence.tone} title={confidence.sublabel}>
                   {confidence.label}
                 </Badge>
-                {result.requires_expert_review && <Badge tone="warn">Revisione di un esperto consigliata</Badge>}
+                {result.requires_expert_review && <Badge tone="warn">{t('expertReview')}</Badge>}
               </div>
             </div>
             <p className="mt-3 max-w-prose text-body text-ink-2">{overall.sublabel}.</p>
@@ -175,7 +179,7 @@ export function ComplianceTab({ client }: { client: Client }) {
               {STATUS_SUMMARY_KEYS.map(({ key, status }) => {
                 const count = summary[key]
                 if (typeof count !== 'number') return null
-                const meta = statusMeta(status)
+                const meta = statusMeta(status, tRoot)
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <dt>
@@ -187,31 +191,28 @@ export function ComplianceTab({ client }: { client: Client }) {
               })}
             </dl>
 
-            <p className="mt-4 max-w-prose text-caption text-ink-3">
-              Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): è una stima preliminare basata
-              sul profilo inserito, non una certificazione di conformità né una consulenza legale.
-            </p>
+            <p className="mt-4 max-w-prose text-caption text-ink-3">{t('aiNotice')}</p>
           </section>
 
           {requirements.length > 0 && (
             <section aria-labelledby="gap-requirements-title">
               <h3 id="gap-requirements-title" className="mb-3 text-h4">
-                Requisiti ({requirements.length})
+                {t('requirements', { count: requirements.length })}
               </h3>
               <Table>
                 <THead>
                   <TR>
-                    <TH>Requisito</TH>
-                    <TH>Stato</TH>
-                    <TH className="hidden md:table-cell">Gap</TH>
-                    <TH className="hidden sm:table-cell">Impegno</TH>
-                    <TH>Priorità</TH>
+                    <TH>{t('colRequirement')}</TH>
+                    <TH>{t('colStatus')}</TH>
+                    <TH className="hidden md:table-cell">{t('colGap')}</TH>
+                    <TH className="hidden sm:table-cell">{t('colEffort')}</TH>
+                    <TH>{t('colPriority')}</TH>
                   </TR>
                 </THead>
                 <TBody>
                   {requirements.map((req, i) => {
-                    const status = statusMeta(req.status)
-                    const effort = effortLabel(req.remediation_effort)
+                    const status = statusMeta(req.status, tRoot)
+                    const effort = effortLabel(req.remediation_effort, tRoot)
                     return (
                       <TR key={req.requirement_id || i}>
                         <TD>
@@ -227,14 +228,14 @@ export function ComplianceTab({ client }: { client: Client }) {
                           <Badge tone={status.tone}>{status.label}</Badge>
                         </TD>
                         <TD className="hidden max-w-md text-small text-ink-2 md:table-cell">
-                          {req.gap_description || <span className="text-ink-3">Nessun gap rilevato</span>}
+                          {req.gap_description || <span className="text-ink-3">{t('noGap')}</span>}
                         </TD>
                         <TD className="hidden text-small text-ink-2 sm:table-cell">{effort}</TD>
                         <TD>
                           {req.priority ? (
                             <Badge tone={PRIORITY_TONE[req.priority] ?? 'neutral'}>{req.priority}</Badge>
                           ) : (
-                            <span className="text-ink-3">n.d.</span>
+                            <span className="text-ink-3">{tRoot('ui.notAvailable')}</span>
                           )}
                         </TD>
                       </TR>
@@ -248,7 +249,7 @@ export function ComplianceTab({ client }: { client: Client }) {
           {result.top_recommendations?.length > 0 && (
             <section aria-labelledby="gap-recommendations-title" className="rounded-lg border border-rule bg-surface p-5">
               <h3 id="gap-recommendations-title" className="text-h4">
-                Raccomandazioni principali
+                {t('recommendations')}
               </h3>
               <ol className="mt-3 max-w-prose list-decimal space-y-2 pl-5 text-body text-ink">
                 {result.top_recommendations.map((rec, i) => (

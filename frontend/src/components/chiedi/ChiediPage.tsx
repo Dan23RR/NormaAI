@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { api, NETWORK_ERROR } from '@/lib/api'
+import { useTranslations } from 'next-intl'
+import { api } from '@/lib/api'
 import { getAccessToken, isDemoMode } from '@/lib/auth'
 import type { ApiResponse, CompanyProfile } from '@/lib/types'
 import { useSSEStream, type CitationEvent, type DoneStats } from '@/hooks/useSSEStream'
@@ -11,9 +12,14 @@ import { Select } from '@/components/ui/Field'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { useToast } from '@/components/ui/Toast'
+import { itemKeys } from '@/components/LegalLayout'
 import CompanyProfileForm, { useCompanyProfile } from '@/components/CompanyProfileForm'
+import { languageOf } from '@/i18n/config'
+import { useErrorText } from '@/i18n/errors'
+import { formatCorpusDate } from '@/i18n/format'
+import { useTextContext } from '@/i18n/useTextContext'
 import { copyToClipboard } from '@/lib/chiedi/copy'
-import { corpusDateFrom, formatItalianDate } from '@/lib/chiedi/dates'
+import { corpusDateFrom } from '@/lib/chiedi/dates'
 import { phaseLabel } from '@/lib/chiedi/phases'
 import { citationsToSources, sseCitationToChiedi } from '@/lib/chiedi/sources'
 import { clearMessages, loadLanguage, loadMessages, newId, saveLanguage, saveMessages } from '@/lib/chiedi/storage'
@@ -29,12 +35,6 @@ import {
 import { AnswerTurn } from './AnswerTurn'
 import { Composer, type ComposerHandle } from './Composer'
 import { SourcesMargin } from './SourcesMargin'
-
-const SUGGESTIONS = [
-  'La nostra società con 600 dipendenti rientra ancora nella CSRD dopo l’Omnibus?',
-  'Un chatbot sul sito aziendale deve dichiarare di essere un’IA?',
-  'Quali incidenti vanno notificati entro 24 ore secondo la NIS2?',
-]
 
 interface QABody {
   question: string
@@ -73,14 +73,19 @@ function bringIntoView(el: HTMLElement, block: ScrollLogicalPosition, focus: boo
 }
 
 export function ChiediPage() {
+  const t = useTranslations('chiedi')
+  const ctx = useTextContext()
+  const errorText = useErrorText()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const { profile, setProfile } = useCompanyProfile()
 
   const [demo] = useState(() => isDemoMode())
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadMessages())
-  const [language, setLanguageState] = useState<Language>(() => loadLanguage())
+  const [messages, setMessages] = useState<ChatMessage[]>(() => loadMessages(t('errors.reloaded')))
+  // The answer language follows the interface unless overridden here.
+  const [override, setOverride] = useState<Language | null>(() => loadLanguage())
+  const language: Language = override ?? languageOf(ctx.locale)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [active, setActive] = useState<{ messageId: string; index: number } | null>(null)
@@ -150,7 +155,7 @@ export function ChiediPage() {
       const citations = run.citations
       patch(run.id, (m) => {
         if (!m.content.trim()) {
-          return { ...m, status: 'error', error: 'Il server ha restituito una risposta vuota. Riprova.', phase: undefined }
+          return { ...m, status: 'error', error: t('errors.empty'), phase: undefined }
         }
         const data: ChiediResponse = {
           answer: m.content,
@@ -164,7 +169,7 @@ export function ChiediPage() {
         return { ...m, status: 'done', data, phase: undefined, streamCitations: undefined }
       })
     },
-    [patch],
+    [patch, t],
   )
 
   const { startStream, stopStream } = useSSEStream({
@@ -184,7 +189,7 @@ export function ChiediPage() {
         const res = await api.post<ApiResponse<ChiediResponse>>('/api/v1/qa', body)
         const data = res?.data
         if (!data || typeof data.answer !== 'string') {
-          throw new Error('Il server ha restituito una risposta non valida. Riprova.')
+          throw new Error(t('errors.invalid'))
         }
         const corpusAsOf = corpusDateFrom(res.metadata, data)
         patch(id, (m) => ({
@@ -197,11 +202,11 @@ export function ChiediPage() {
           streamCitations: undefined,
         }))
       } catch (err) {
-        const message = err instanceof Error && err.message ? err.message : NETWORK_ERROR
+        const message = errorText(err, 'errors.network')
         patch(id, (m) => ({ ...m, status: 'error', error: message, phase: undefined }))
       }
     },
-    [patch],
+    [errorText, patch, t],
   )
 
   const runStream = useCallback(
@@ -219,9 +224,9 @@ export function ChiediPage() {
         return
       }
       console.warn('qa/stream ended before the done event:', run.error ?? 'connection closed')
-      patch(id, (m) => ({ ...m, status: 'error', error: 'La risposta si è interrotta prima della fine. Riprova.', phase: undefined }))
+      patch(id, (m) => ({ ...m, status: 'error', error: t('errors.interrupted'), phase: undefined }))
     },
-    [patch, runPost, startStream],
+    [patch, runPost, startStream, t],
   )
 
   const run = useCallback(
@@ -306,7 +311,7 @@ export function ChiediPage() {
   }, [searchParams, send, router])
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang)
+    setOverride(lang)
     saveLanguage(lang)
   }
 
@@ -358,11 +363,11 @@ export function ChiediPage() {
       const ok = await copyToClipboard(text)
       toast(
         ok
-          ? { kind: 'ok', title: 'Copiato', description: 'Risposta e fonti sono negli appunti.' }
-          : { kind: 'bad', title: 'Copia non riuscita', description: 'Seleziona il testo e copialo a mano.' },
+          ? { kind: 'ok', title: t('copy.ok'), description: t('copy.okDescription') }
+          : { kind: 'bad', title: t('copy.failed'), description: t('copy.failedDescription') },
       )
     },
-    [toast],
+    [t, toast],
   )
 
   // ─── Derived view state ────────────────────────────────────
@@ -373,24 +378,24 @@ export function ChiediPage() {
     [answers, marginMessageId],
   )
   const marginSources = useMemo(
-    () => (marginMessage ? citationsToSources(citationsOf(marginMessage), marginMessage.id) : []),
-    [marginMessage],
+    () => (marginMessage ? citationsToSources(citationsOf(marginMessage), marginMessage.id, ctx) : []),
+    [ctx, marginMessage],
   )
   const corpusAsOf = useMemo(() => {
     for (let i = answers.length - 1; i >= 0; i--) if (answers[i].corpusAsOf) return answers[i].corpusAsOf
     return undefined
   }, [answers])
-  const corpusLabel = formatItalianDate(corpusAsOf)
+  const corpusLabel = formatCorpusDate(corpusAsOf, ctx.locale)
   const last = answers[answers.length - 1]
   const liveText = !last
     ? ''
     : last.status === 'loading'
-      ? phaseLabel(undefined)
+      ? phaseLabel(undefined, ctx.t)
       : last.status === 'streaming'
-        ? phaseLabel(last.phase ?? 'draft')
+        ? phaseLabel(last.phase ?? 'draft', ctx.t)
         : last.status === 'error'
-          ? 'La risposta non è arrivata'
-          : 'Risposta pronta'
+          ? t('live.error')
+          : t('live.ready')
 
   const profileForm = (idPrefix: string) => (
     <CompanyProfileForm idPrefix={idPrefix} value={profile} onChange={setProfile} />
@@ -399,28 +404,28 @@ export function ChiediPage() {
   return (
     <div>
       <PageHeader
-        title="Chiedi"
-        description="Una domanda sul diritto dell'Unione, una risposta con l'atto, l'articolo e il passaggio di legge."
-        meta={corpusLabel ? `Corpus al ${corpusLabel}${demo ? ' (dati di esempio)' : ''}` : undefined}
+        title={t('title')}
+        description={t('description')}
+        meta={corpusLabel ? t(demo ? 'corpusMetaDemo' : 'corpusMeta', { date: corpusLabel }) : undefined}
         actions={
           <>
             <div className="w-32">
               <label htmlFor="chiedi-language" className="sr-only">
-                Lingua della risposta
+                {t('answerLanguage')}
               </label>
               <Select
                 id="chiedi-language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value === 'en' ? 'en' : 'it')}
-                title="Lingua della risposta"
+                title={t('answerLanguage')}
                 className="text-small"
               >
-                <option value="it">Italiano</option>
-                <option value="en">English</option>
+                <option value="it">{t('languages.it')}</option>
+                <option value="en">{t('languages.en')}</option>
               </Select>
             </div>
             <Button variant="secondary" onClick={newConversation} disabled={messages.length === 0 && !draft}>
-              Nuova conversazione
+              {t('newConversation')}
             </Button>
           </>
         }
@@ -434,31 +439,34 @@ export function ChiediPage() {
         <div className="min-w-0 max-w-prose">
           {messages.length === 0 ? (
             <EmptyState
-              title="Cosa vuoi sapere?"
-              description="Scrivi la domanda con il contesto che serve: settore, dimensione, Paese. La risposta cita l'atto, l'articolo e il passaggio di legge, con il link al testo ufficiale. Quando il testo non basta, NormaAI lo dice."
+              title={t('empty.title')}
+              description={t('empty.description')}
               action={
-                <ul className="flex flex-wrap justify-center gap-2" aria-label="Esempi di domande">
-                  {SUGGESTIONS.map((s) => (
-                    <li key={s}>
-                      <button
-                        type="button"
-                        onClick={() => prefill(s)}
-                        className="rounded-md border border-rule bg-surface px-3 py-1.5 text-left text-small text-ink-2 hover:border-rule-2 hover:text-ink"
-                      >
-                        {s}
-                      </button>
-                    </li>
-                  ))}
+                <ul className="flex flex-wrap justify-center gap-2" aria-label={t('examples')}>
+                  {itemKeys(t.raw('suggestions')).map((k) => {
+                    const s = t(`suggestions.${k}`)
+                    return (
+                      <li key={k}>
+                        <button
+                          type="button"
+                          onClick={() => prefill(s)}
+                          className="rounded-md border border-rule bg-surface px-3 py-1.5 text-left text-small text-ink-2 hover:border-rule-2 hover:text-ink"
+                        >
+                          {s}
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               }
             />
           ) : (
-            <ol className="divide-y divide-rule" aria-label="Conversazione">
+            <ol className="divide-y divide-rule" aria-label={t('conversation')}>
               {messages.map((m) => (
                 <li key={m.id} id={`turn-${m.id}`} className="py-6 first:pt-0">
                   {m.role === 'user' ? (
                     <div>
-                      <p className="text-small text-ink-3">Domanda</p>
+                      <p className="text-small text-ink-3">{t('questionLabel')}</p>
                       <p className="mt-1 whitespace-pre-wrap text-read font-medium text-ink">{m.content}</p>
                     </div>
                   ) : (

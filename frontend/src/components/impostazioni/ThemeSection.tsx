@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Moon, Sun } from 'lucide-react'
 import { SettingsSection } from './SettingsSection'
 
@@ -9,12 +10,13 @@ const THEME_KEY = 'normaai.theme'
 
 type Theme = 'light' | 'dark'
 
-const OPTIONS: Array<{ value: Theme; label: string; hint: string; icon: typeof Sun }> = [
-  { value: 'light', label: 'Chiaro', hint: 'Fondo bianco su scrivania neutra.', icon: Sun },
-  { value: 'dark', label: 'Scuro', hint: 'Per lavorare con poca luce.', icon: Moon },
+const OPTIONS: Array<{ value: Theme; icon: typeof Sun }> = [
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
 ]
 
 export function ThemeSection() {
+  const t = useTranslations('impostazioni.theme')
   const [theme, setTheme] = useState<Theme>('light')
 
   useEffect(() => {
@@ -32,9 +34,9 @@ export function ThemeSection() {
   }
 
   return (
-    <SettingsSection id="tema" title="Tema" description="Chiaro di default, scuro se preferisci.">
+    <SettingsSection id="tema" title={t('title')} description={t('description')}>
       <fieldset>
-        <legend className="sr-only">Tema dell’interfaccia</legend>
+        <legend className="sr-only">{t('legend')}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {OPTIONS.map((opt) => {
             const id = `tema-${opt.value}`
@@ -59,15 +61,15 @@ export function ThemeSection() {
                 />
                 <opt.icon className="mt-0.5 h-4 w-4 shrink-0 text-ink-2" aria-hidden="true" />
                 <span>
-                  <span className="block text-body font-medium text-ink">{opt.label}</span>
-                  <span className="block text-caption text-ink-3">{opt.hint}</span>
+                  <span className="block text-body font-medium text-ink">{t(opt.value)}</span>
+                  <span className="block text-caption text-ink-3">{t(`${opt.value}Hint`)}</span>
                 </span>
               </label>
             )
           })}
         </div>
       </fieldset>
-      <p className="mt-3 text-caption text-ink-3">La scelta è salvata su questo browser.</p>
+      <p className="mt-3 text-caption text-ink-3">{t('note')}</p>
     </SettingsSection>
   )
 }

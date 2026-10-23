@@ -49,11 +49,13 @@ export interface ScopeInput {
   ai: AiActAnswers | null
 }
 
-/** An exact passage of law, rendered with LawQuote. */
+/** An exact passage of law, rendered with LawQuote. It keeps the language it was quoted in. */
 export interface LegalPassage {
   quote: string
   before?: string
   after?: string
+  /** Language of the quoted text (BCP 47). */
+  lang: string
   act: string
   article: string
   celex?: string
@@ -81,7 +83,7 @@ export interface ScopeResult {
   from?: string
   /** Human label for `from`, e.g. "Soglie in vigore dal 18 marzo 2026". */
   fromLabel?: string
-  /** Plain Italian reasons, in reading order. */
+  /** Plain reasons, in reading order, in the language of the interface. */
   reasons: string[]
   /** Secondary notes: exemptions, indirect pressure, what to verify. */
   notes: string[]

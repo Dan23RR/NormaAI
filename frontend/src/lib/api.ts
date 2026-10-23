@@ -1,5 +1,6 @@
 import { getAccessToken, getRefreshToken, setTokens, clearTokens, isTokenExpired, isDemoMode } from './auth'
-import type { TokenPair, ApiError, ApiResponse, QAResponse, GapAnalysisResponse, MonitorResponse, SystemStats } from './types'
+import { ApiError } from './api-error'
+import type { TokenPair, ApiError as ApiErrorBody, ApiResponse, QAResponse, GapAnalysisResponse, MonitorResponse, SystemStats } from './types'
 import {
   DEMO_TOKENS, DEMO_USER, DEMO_STATS, DEMO_PROCESSORS,
   DEMO_ALERTS, DEMO_ALERT_SUMMARY, DEMO_CLIENTS,
@@ -11,8 +12,12 @@ import {
 // production that would point every visitor at their own machine.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
-export const NETWORK_ERROR =
-  'Il server non risponde. Riprova tra un minuto; se il problema continua, scrivi a info@normaai.org.'
+// The client never writes a sentence of its own: it raises an ApiError with a
+// code (translated by the interface) or passes on the server's `detail`.
+function detailOf(body: unknown): string | undefined {
+  const detail = (body as { detail?: unknown } | null)?.detail
+  return typeof detail === 'string' && detail.trim() ? detail : undefined
+}
 
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
@@ -165,6 +170,27 @@ class ApiClient {
     }
   }
 
+  /** Refresh or leave for the login page: the token is unusable either way. */
+  private async requireFreshToken(): Promise<string | null> {
+    let token = getAccessToken()
+    if (token && isTokenExpired(token)) {
+      const refreshed = await this.refreshAccessToken()
+      if (refreshed) {
+        token = getAccessToken()
+      } else {
+        clearTokens()
+        window.location.href = '/login'
+        throw new ApiError('sessionExpired')
+      }
+    }
+    return token
+  }
+
+  private async failed(res: Response): Promise<ApiError> {
+    const body: ApiErrorBody | null = await res.json().catch(() => null)
+    return new ApiError('requestFailed', { detail: detailOf(body), values: { status: String(res.status) } })
+  }
+
   // ─── Core fetch ─────────────────────────────────────────
 
   async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -177,19 +203,7 @@ class ApiClient {
       return this.handleDemoPost<T>(path, body, options.method)
     }
 
-    let token = getAccessToken()
-
-    // Auto-refresh if expired
-    if (token && isTokenExpired(token)) {
-      const refreshed = await this.refreshAccessToken()
-      if (refreshed) {
-        token = getAccessToken()
-      } else {
-        clearTokens()
-        window.location.href = '/login'
-        throw new Error('Session expired')
-      }
-    }
+    const token = await this.requireFreshToken()
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -207,7 +221,7 @@ class ApiClient {
         headers,
       })
     } catch {
-      throw new Error(NETWORK_ERROR)
+      throw new ApiError('network')
     }
 
     if (res.status === 401) {
@@ -219,13 +233,10 @@ class ApiClient {
       }
       clearTokens()
       window.location.href = '/login'
-      throw new Error('Sessione scaduta. Accedi di nuovo.')
+      throw new ApiError('sessionExpired')
     }
 
-    if (!res.ok) {
-      const error: ApiError = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      throw new Error(error.detail || `Richiesta fallita (${res.status}).`)
-    }
+    if (!res.ok) throw await this.failed(res)
 
     // 204 No Content (e.g. DELETE) has no body to parse.
     if (res.status === 204) return undefined as T
@@ -242,11 +253,11 @@ class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     }).catch(() => {
-      throw new Error(NETWORK_ERROR)
+      throw new ApiError('network')
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Accesso non riuscito.' }))
-      throw new Error(err.detail)
+      const body = await res.json().catch(() => null)
+      throw new ApiError('loginFailed', { detail: detailOf(body) })
     }
     const data: TokenPair = await res.json()
     setTokens(data.access_token, data.refresh_token)
@@ -271,11 +282,11 @@ class ApiClient {
         ...(inviteCode ? { invite_code: inviteCode } : {}),
       }),
     }).catch(() => {
-      throw new Error(NETWORK_ERROR)
+      throw new ApiError('network')
     })
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Registrazione non riuscita.' }))
-      throw new Error(err.detail)
+      const body = await res.json().catch(() => null)
+      throw new ApiError('registerFailed', { detail: detailOf(body) })
     }
     const data: TokenPair = await res.json()
     setTokens(data.access_token, data.refresh_token)
@@ -312,30 +323,24 @@ class ApiClient {
    */
   async upload<T>(path: string, formData: FormData): Promise<T> {
     if (isDemoMode()) {
-      throw new Error('File upload is not available in demo mode')
+      throw new ApiError('uploadDemo')
     }
 
-    let token = getAccessToken()
-
-    if (token && isTokenExpired(token)) {
-      const refreshed = await this.refreshAccessToken()
-      if (refreshed) {
-        token = getAccessToken()
-      } else {
-        clearTokens()
-        window.location.href = '/login'
-        throw new Error('Session expired')
-      }
-    }
+    const token = await this.requireFreshToken()
 
     const headers: Record<string, string> = {}
     if (token) headers['Authorization'] = `Bearer ${token}`
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
+    let res: Response
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+    } catch {
+      throw new ApiError('network')
+    }
 
     if (res.status === 401) {
       const refreshed = await this.refreshAccessToken()
@@ -346,13 +351,10 @@ class ApiClient {
       }
       clearTokens()
       window.location.href = '/login'
-      throw new Error('Unauthorized')
+      throw new ApiError('unauthorized')
     }
 
-    if (!res.ok) {
-      const error: ApiError = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      throw new Error(error.detail || `Request failed: ${res.status}`)
-    }
+    if (!res.ok) throw await this.failed(res)
 
     return res.json()
   }
@@ -363,22 +365,10 @@ class ApiClient {
    */
   async fetchBlob(path: string, options: RequestInit = {}): Promise<Response> {
     if (isDemoMode()) {
-      throw new Error('Report generation is not available in demo mode')
+      throw new ApiError('reportDemo')
     }
 
-    let token = getAccessToken()
-
-    // Auto-refresh if expired
-    if (token && isTokenExpired(token)) {
-      const refreshed = await this.refreshAccessToken()
-      if (refreshed) {
-        token = getAccessToken()
-      } else {
-        clearTokens()
-        window.location.href = '/login'
-        throw new Error('Session expired')
-      }
-    }
+    const token = await this.requireFreshToken()
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -389,10 +379,15 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...options,
-      headers,
-    })
+    let res: Response
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        ...options,
+        headers,
+      })
+    } catch {
+      throw new ApiError('network')
+    }
 
     if (res.status === 401) {
       const refreshed = await this.refreshAccessToken()
@@ -403,13 +398,10 @@ class ApiClient {
       }
       clearTokens()
       window.location.href = '/login'
-      throw new Error('Unauthorized')
+      throw new ApiError('unauthorized')
     }
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      throw new Error(error.detail || `Request failed: ${res.status}`)
-    }
+    if (!res.ok) throw await this.failed(res)
 
     return res
   }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { PageHeader } from '@/components/ui'
 import { useAuth } from '@/hooks/useAuth'
 import { DataSection } from '@/components/impostazioni/DataSection'
@@ -9,12 +10,13 @@ import { ProfileSection } from '@/components/impostazioni/ProfileSection'
 import { ThemeSection } from '@/components/impostazioni/ThemeSection'
 
 export default function ImpostazioniPage() {
+  const t = useTranslations('impostazioni')
   const { user, demoMode } = useAuth()
   if (!user) return null
 
   return (
     <div>
-      <PageHeader title="Impostazioni" description="Il tuo account, la lingua delle risposte, il tema e i tuoi dati." />
+      <PageHeader title={t('title')} description={t('description')} />
       <ProfileSection user={user} />
       <LanguageSection />
       <ThemeSection />

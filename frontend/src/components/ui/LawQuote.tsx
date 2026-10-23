@@ -1,7 +1,7 @@
+import { useTranslations } from 'next-intl'
 import { CheckCircle2, CircleDashed, AlertTriangle, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { Source, SourceStatus } from '@/lib/sources'
-import { SOURCE_STATUS_LABEL } from '@/lib/sources'
 
 function StatusIcon({ status, className }: { status: SourceStatus; className?: string }) {
   if (status === 'verified') return <CheckCircle2 className={cn('h-4 w-4 text-ok', className)} aria-hidden="true" />
@@ -12,7 +12,8 @@ function StatusIcon({ status, className }: { status: SourceStatus; className?: s
 /**
  * The signature element: a passage of law in Literata, the cited words
  * under the highlighter, the act and article underneath, the verification
- * status and the link to the official text.
+ * status and the link to the official text. The passage keeps the language
+ * it was quoted in (`lang`), whatever the interface language.
  */
 export function LawQuote({
   quote,
@@ -25,6 +26,7 @@ export function LawQuote({
   status = 'verified',
   verifiedAt,
   origin,
+  lang = 'it',
   className,
 }: {
   quote: string
@@ -36,13 +38,18 @@ export function LawQuote({
   celex?: string
   url?: string
   status?: SourceStatus
+  /** Already formatted for the reader, e.g. "23 ottobre 2026". */
   verifiedAt?: string
   origin?: string
+  /** Language of the quoted passage. */
+  lang?: string
   className?: string
 }) {
+  const t = useTranslations('ui')
+  const long = t(`sourceStatus.${status}.long`)
   return (
     <figure className={cn('border-l-2 border-mark-deep pl-4', className)}>
-      <blockquote className="font-serif text-read leading-relaxed text-ink" lang="it">
+      <blockquote className="font-serif text-read leading-relaxed text-ink" lang={lang}>
         {before && <span className="text-ink-2">{before} </span>}
         <mark>{quote}</mark>
         {after && <span className="text-ink-2"> {after}</span>}
@@ -52,11 +59,11 @@ export function LawQuote({
           <span className="font-medium text-ink">{act}</span>
           {article && <span>, {article}</span>}
         </span>
-        {celex && <span className="tabular text-ink-3">CELEX {celex}</span>}
-        <span className="inline-flex items-center gap-1" title={verifiedAt ? `${SOURCE_STATUS_LABEL[status]} il ${verifiedAt}` : SOURCE_STATUS_LABEL[status]}>
+        {celex && <span className="tabular text-ink-3">{t('celex', { celex })}</span>}
+        <span className="inline-flex items-center gap-1" title={verifiedAt ? t('statusOn', { status: long, date: verifiedAt }) : long}>
           <StatusIcon status={status} />
           <span className={cn(status === 'verified' && 'text-ok', status === 'unverified' && 'text-warn')}>
-            {status === 'verified' ? 'Verificata' : status === 'pending' ? 'In verifica' : 'Da verificare'}
+            {t(`sourceStatus.${status}.short`)}
           </span>
         </span>
         {url && (
@@ -66,7 +73,7 @@ export function LawQuote({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-union hover:underline"
           >
-            {origin ?? 'Testo ufficiale'}
+            {origin ?? t('officialText')}
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
         )}
@@ -77,6 +84,7 @@ export function LawQuote({
 
 /** One entry of the sources margin: number, act, article, status, quote. */
 export function SourceRow({ source, active, onSelect }: { source: Source; active?: boolean; onSelect?: (id: string) => void }) {
+  const t = useTranslations('ui')
   const body = (
     <div className="flex items-start gap-2">
       <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-surface-3 px-1 text-caption font-medium tabular text-ink-2">
@@ -119,7 +127,7 @@ export function SourceRow({ source, active, onSelect }: { source: Source; active
         <span className="inline-flex items-center gap-1">
           <StatusIcon status={source.status} className="h-3.5 w-3.5" />
           <span className={cn(source.status === 'verified' ? 'text-ok' : source.status === 'unverified' ? 'text-warn' : 'text-ink-3')}>
-            {source.status === 'verified' ? 'Verificata' : source.status === 'pending' ? 'In verifica' : 'Da verificare'}
+            {t(`sourceStatus.${source.status}.short`)}
           </span>
         </span>
         {source.celex && <span className="tabular text-ink-3">{source.celex}</span>}
@@ -130,7 +138,7 @@ export function SourceRow({ source, active, onSelect }: { source: Source; active
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-union hover:underline"
           >
-            {source.origin ?? 'Apri'}
+            {source.origin ?? t('open')}
             <ExternalLink className="h-3 w-3" aria-hidden="true" />
           </a>
         )}

@@ -2,39 +2,44 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useFormatter, useTranslations } from 'next-intl'
 import { FrameworkBadge, TBody, TD, TH, THead, TR, Table } from '@/components/ui'
+import { EUR, INT } from '@/i18n/format'
 import type { Client } from '@/lib/types'
-import { NOT_AVAILABLE, formatEur, formatInt, formatIsoDate } from './format'
+import { formatIsoDate } from './format'
 
 function Missing() {
-  return <span className="text-ink-3">{NOT_AVAILABLE}</span>
+  const t = useTranslations('ui')
+  return <span className="text-ink-3">{t('notAvailable')}</span>
 }
 
 /** The list of clients: a row per client, the name links to the detail. */
 export function ClientsTable({ clients }: { clients: Client[] }) {
+  const t = useTranslations('clienti.table')
+  const format = useFormatter()
   const router = useRouter()
 
   return (
     <Table>
       <THead>
         <TR>
-          <TH>Nome</TH>
-          <TH className="hidden md:table-cell">Settore</TH>
+          <TH>{t('name')}</TH>
+          <TH className="hidden md:table-cell">{t('sector')}</TH>
           <TH numeric className="hidden sm:table-cell">
-            Dipendenti
+            {t('employees')}
           </TH>
           <TH numeric className="hidden lg:table-cell">
-            Fatturato
+            {t('revenue')}
           </TH>
-          <TH>Framework</TH>
-          <TH className="hidden md:table-cell">Ultimo aggiornamento</TH>
+          <TH>{t('frameworks')}</TH>
+          <TH className="hidden md:table-cell">{t('updated')}</TH>
         </TR>
       </THead>
       <TBody>
         {clients.map((client) => {
           const href = `/app/clienti/${encodeURIComponent(client.id)}`
-          const employees = formatInt(client.employee_count)
-          const revenue = formatEur(client.revenue_eur)
+          const employees = typeof client.employee_count === 'number' ? format.number(client.employee_count, INT) : null
+          const revenue = typeof client.revenue_eur === 'number' ? format.number(client.revenue_eur, EUR) : null
           const updated = formatIsoDate(client.updated_at)
           const frameworks = client.applicable_frameworks ?? []
           return (
@@ -68,7 +73,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                     ))}
                   </div>
                 ) : (
-                  <span className="text-caption text-ink-3">Nessuno</span>
+                  <span className="text-caption text-ink-3">{t('none')}</span>
                 )}
               </TD>
               <TD className="hidden tabular text-ink-2 md:table-cell">{updated ?? <Missing />}</TD>

@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import { Literata, Public_Sans, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages, getTranslations } from 'next-intl/server'
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
-import { LocaleProvider } from '@/hooks/useLocale'
 import { ToastProvider } from '@/components/ui/Toast'
 import { CookieBanner } from '@/components/CookieBanner'
+import { LocaleSync } from '@/i18n/LocaleSync'
+import { languageOf } from '@/i18n/config'
 
 // Self-hosted by next/font: no external request, no layout shift, CSP
 // font-src 'self' stays intact. Literata carries the text of the law and
@@ -32,39 +35,46 @@ const mono = Geist_Mono({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai.org'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: 'NormaAI: risposte sul diritto UE con la fonte esatta',
-    template: '%s | NormaAI',
-  },
-  description:
-    "Domande su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia UE con l'articolo citato e il passaggio di legge verificabile su EUR-Lex e Normattiva.",
-  keywords: [
-    'CSRD',
-    'CSDDD',
-    'AI Act',
-    'DORA',
-    'NIS2',
-    'Tassonomia UE',
-    'GDPR',
-    'compliance UE',
-    'EUR-Lex',
-    'Normattiva',
-    'compliance officer',
-    'consulenza ESG',
-  ],
-  openGraph: {
-    title: 'NormaAI: risposte sul diritto UE con la fonte esatta',
-    description:
-      "Ogni risposta cita l'atto, l'articolo e il passaggio di legge, con il link al testo ufficiale. Se il testo non basta, il sistema lo dice.",
-    url: SITE_URL,
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-    type: 'website',
-    locale: 'it_IT',
-  },
-  twitter: { card: 'summary_large_image' },
-  robots: { index: true, follow: true },
+const KEYWORDS = [
+  'CSRD',
+  'CSDDD',
+  'AI Act',
+  'DORA',
+  'NIS2',
+  'Tassonomia UE',
+  'EU Taxonomy',
+  'GDPR',
+  'compliance UE',
+  'EU compliance',
+  'EUR-Lex',
+  'Normattiva',
+  'compliance officer',
+  'consulenza ESG',
+]
+
+/** Title, description and Open Graph in the language of the request. */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale()
+  const t = await getTranslations('site.meta')
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: t('title'),
+      template: '%s | NormaAI',
+    },
+    description: t('description'),
+    keywords: KEYWORDS,
+    openGraph: {
+      title: t('title'),
+      description: t('ogDescription'),
+      url: SITE_URL,
+      images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+      type: 'website',
+      locale: languageOf(locale) === 'en' ? 'en_GB' : 'it_IT',
+    },
+    twitter: { card: 'summary_large_image' },
+    robots: { index: true, follow: true },
+  }
 }
 
 export const viewport: Viewport = {
@@ -78,54 +88,57 @@ export const viewport: Viewport = {
 // only when the person chose it (or chose "system" on a dark OS).
 const themeScript = `try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': `${SITE_URL}/#org`,
-      name: 'NormaAI',
-      url: SITE_URL,
-      logo: `${SITE_URL}/og-image.png`,
-      email: 'info@normaai.org',
-      description:
-        'Risposte sul diritto UE (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia, GDPR) con la fonte esatta su EUR-Lex e Normattiva.',
-    },
-    {
-      '@type': 'SoftwareApplication',
-      name: 'NormaAI',
-      applicationCategory: 'BusinessApplication',
-      operatingSystem: 'Web',
-      url: SITE_URL,
-      description:
-        "Domande e risposte sul diritto UE con citazione dell'atto, dell'articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze.",
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'EUR',
-        description: 'Accesso su invito. Codex Post-Omnibus 2025-2029 gratuito.',
-      },
-      provider: { '@id': `${SITE_URL}/#org` },
-    },
-  ],
-}
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+  const t = await getTranslations('site.meta')
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${SITE_URL}/#org`,
+        name: 'NormaAI',
+        url: SITE_URL,
+        logo: `${SITE_URL}/og-image.png`,
+        email: 'info@normaai.org',
+        description: t('orgDescription'),
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'NormaAI',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        url: SITE_URL,
+        description: t('appDescription'),
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'EUR',
+          description: t('offer'),
+        },
+        provider: { '@id': `${SITE_URL}/#org` },
+      },
+    ],
+  }
+
   return (
-    <html lang="it" className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        <AuthProvider>
-          <LocaleProvider>
+        <NextIntlClientProvider locale={locale} messages={messages} timeZone="Europe/Rome">
+          <AuthProvider>
             <ToastProvider>
               {children}
               <CookieBanner />
             </ToastProvider>
-          </LocaleProvider>
-        </AuthProvider>
+          </AuthProvider>
+          <LocaleSync />
+        </NextIntlClientProvider>
         {/* Cookieless, GDPR-friendly (no personal data, no consent needed).
             Activates once Analytics is enabled on the Vercel project. */}
         <Analytics />

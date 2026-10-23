@@ -1,31 +1,32 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { User } from '@/lib/types'
 import { SettingsRow, SettingsSection } from './SettingsSection'
 
-const ROLE_LABEL: Record<User['role'], string> = {
-  admin: 'Amministratore',
-  member: 'Membro',
-  viewer: 'Lettore',
-}
+const ROLES: User['role'][] = ['admin', 'member', 'viewer']
 
 /** Who is signed in. Read-only: the backend has no endpoint to update these fields yet. */
 export function ProfileSection({ user }: { user: User }) {
+  const t = useTranslations('impostazioni.profile')
+  const tu = useTranslations('ui')
+  const missing = <span className="text-ink-3">{tu('notAvailable')}</span>
   return (
-    <SettingsSection id="profilo" title="Profilo" description="L’account con cui sei entrato e la sua organizzazione.">
+    <SettingsSection id="profilo" title={t('title')} description={t('description')}>
       <dl className="divide-y divide-rule rounded-lg border border-rule bg-surface px-5">
-        <SettingsRow label="Nome">{user.name || <span className="text-ink-3">n.d.</span>}</SettingsRow>
-        <SettingsRow label="Email">{user.email}</SettingsRow>
-        <SettingsRow label="Organizzazione">{user.organization_name || <span className="text-ink-3">n.d.</span>}</SettingsRow>
-        <SettingsRow label="Ruolo">{ROLE_LABEL[user.role] ?? user.role}</SettingsRow>
+        <SettingsRow label={t('name')}>{user.name || missing}</SettingsRow>
+        <SettingsRow label={t('email')}>{user.email}</SettingsRow>
+        <SettingsRow label={t('org')}>{user.organization_name || missing}</SettingsRow>
+        <SettingsRow label={t('role')}>{ROLES.includes(user.role) ? t(`roles.${user.role}`) : user.role}</SettingsRow>
       </dl>
       <p className="mt-3 max-w-prose text-caption text-ink-3">
-        Nome, email e organizzazione non si modificano ancora da qui: il server non ha un endpoint per aggiornarli. Per
-        cambiarli scrivi a{' '}
-        <a href="mailto:info@normaai.org" className="text-union underline">
-          info@normaai.org
-        </a>
-        .
+        {t.rich('note', {
+          mail: (chunks) => (
+            <a href="mailto:info@normaai.org" className="text-union underline">
+              {chunks}
+            </a>
+          ),
+        })}
       </p>
     </SettingsSection>
   )

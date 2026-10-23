@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button, Dialog, useToast } from '@/components/ui'
+import { useErrorText } from '@/i18n/errors'
 import type { Client } from '@/lib/types'
 import { deleteClient } from './clients-api'
 
@@ -17,6 +19,8 @@ export function DeleteClientDialog({
   client: Client | null
   onDeleted: (id: string) => void
 }) {
+  const t = useTranslations('clienti.delete')
+  const errorText = useErrorText()
   const { toast } = useToast()
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -27,11 +31,11 @@ export function DeleteClientDialog({
     setError(null)
     try {
       await deleteClient(client.id)
-      toast({ kind: 'ok', title: 'Cliente eliminato', description: client.name })
+      toast({ kind: 'ok', title: t('deletedTitle'), description: client.name })
       onDeleted(client.id)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Eliminazione non riuscita. Riprova.')
+      setError(errorText(err, 'clienti.delete.failed'))
     } finally {
       setDeleting(false)
     }
@@ -41,26 +45,26 @@ export function DeleteClientDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Elimina il cliente"
+      title={t('title')}
       size="sm"
       footer={
         <>
           <Button type="button" variant="secondary" onClick={onClose} disabled={deleting}>
-            Annulla
+            {t('cancel')}
           </Button>
           <Button type="button" variant="danger" onClick={confirm} loading={deleting}>
-            Elimina il cliente
+            {t('confirm')}
           </Button>
         </>
       }
     >
       <p className="text-body text-ink">
-        Vuoi eliminare <span className="font-medium">{client?.name}</span>?
+        {t.rich('question', {
+          name: client?.name ?? '',
+          strong: (chunks) => <span className="font-medium">{chunks}</span>,
+        })}
       </p>
-      <p className="mt-2 text-small text-ink-2">
-        Vengono cancellate anche le analisi, gli avvisi e le conversazioni collegate. L&apos;operazione non si può
-        annullare.
-      </p>
+      <p className="mt-2 text-small text-ink-2">{t('warning')}</p>
       {error && (
         <p role="alert" className="mt-3 rounded-md border border-bad/30 bg-bad/10 px-3 py-2 text-small text-bad">
           {error}

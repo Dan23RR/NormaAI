@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   MessageSquareText,
   ListChecks,
@@ -23,19 +24,20 @@ import { useAuth } from '@/hooks/useAuth'
 import { Logo, LogoMark } from '@/components/Logo'
 import { cn } from '@/lib/cn'
 
+/** The surfaces of the application; the labels live in the `app.nav` messages. */
 export const APP_NAV: Array<{
   href: string
-  label: string
+  key: string
   icon: typeof MessageSquareText
   adminOnly?: boolean
 }> = [
-  { href: '/app/chiedi', label: 'Chiedi', icon: MessageSquareText },
-  { href: '/app/ambito', label: 'Ambito', icon: ListChecks },
-  { href: '/app/monitoraggio', label: 'Monitoraggio', icon: CalendarClock },
-  { href: '/app/clienti', label: 'Clienti', icon: Building2 },
-  { href: '/app/report', label: 'Report', icon: FileText },
-  { href: '/app/impostazioni', label: 'Impostazioni', icon: Settings },
-  { href: '/app/admin', label: 'Amministrazione', icon: ShieldCheck, adminOnly: true },
+  { href: '/app/chiedi', key: 'chiedi', icon: MessageSquareText },
+  { href: '/app/ambito', key: 'ambito', icon: ListChecks },
+  { href: '/app/monitoraggio', key: 'monitoraggio', icon: CalendarClock },
+  { href: '/app/clienti', key: 'clienti', icon: Building2 },
+  { href: '/app/report', key: 'report', icon: FileText },
+  { href: '/app/impostazioni', key: 'impostazioni', icon: Settings },
+  { href: '/app/admin', key: 'admin', icon: ShieldCheck, adminOnly: true },
 ]
 
 const COLLAPSED_KEY = 'normaai_sidebar_collapsed'
@@ -87,6 +89,8 @@ function Initials({ name }: { name?: string }) {
  * collapses on desktop and becomes a drawer on small screens.
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  const t = useTranslations('app')
+  const tu = useTranslations('ui')
   const pathname = usePathname()
   const { user, logout, demoMode } = useAuth()
   const { dark, toggle: toggleTheme } = useTheme()
@@ -118,16 +122,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const nav = (
-    <nav aria-label="Sezioni" className="flex-1 overflow-y-auto px-2 py-3">
+    <nav aria-label={t('nav.label')} className="flex-1 overflow-y-auto px-2 py-3">
       <ul className="space-y-0.5">
         {APP_NAV.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/')
+          const label = t(`nav.${item.key}`)
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? label : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-body no-underline transition-colors',
                   collapsed && 'justify-center px-0',
@@ -135,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{label}</span>}
               </Link>
             </li>
           )
@@ -151,8 +156,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={toggleTheme}
           className="rounded-md p-2 text-ink-3 hover:bg-surface-3 hover:text-ink"
-          aria-label={dark ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
-          title={dark ? 'Tema chiaro' : 'Tema scuro'}
+          aria-label={dark ? t('shell.themeToLight') : t('shell.themeToDark')}
+          title={dark ? t('shell.themeLight') : t('shell.themeDark')}
         >
           {dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
         </button>
@@ -160,8 +165,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={toggleCollapsed}
           className="hidden rounded-md p-2 text-ink-3 hover:bg-surface-3 hover:text-ink md:block"
-          aria-label={collapsed ? 'Espandi la barra laterale' : 'Comprimi la barra laterale'}
-          title={collapsed ? 'Espandi' : 'Comprimi'}
+          aria-label={collapsed ? t('shell.expand') : t('shell.collapse')}
+          title={collapsed ? t('shell.expandShort') : t('shell.collapseShort')}
         >
           {collapsed ? (
             <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
@@ -174,7 +179,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Initials name={user?.name} />
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-small font-medium text-ink">{user?.name || 'Utente'}</p>
+            <p className="truncate text-small font-medium text-ink">{user?.name || t('shell.user')}</p>
             <p className="truncate text-caption text-ink-3">{user?.organization_name}</p>
           </div>
         )}
@@ -182,8 +187,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={logout}
           className={cn('rounded-md p-2 text-ink-3 hover:bg-surface-3 hover:text-bad', collapsed && 'hidden')}
-          aria-label="Esci"
-          title="Esci"
+          aria-label={t('shell.logout')}
+          title={t('shell.logout')}
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -195,7 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col bg-surface">
       <div className={cn('flex h-14 items-center border-b border-rule', collapsed ? 'justify-center' : 'px-4')}>
         {collapsed ? (
-          <Link href="/app" aria-label="NormaAI, inizio">
+          <Link href="/app" aria-label={tu('logoApp')}>
             <LogoMark size={28} />
           </Link>
         ) : (
@@ -213,7 +218,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-union focus:px-4 focus:py-2 focus:text-union-ink"
       >
-        Vai al contenuto
+        {t('shell.skip')}
       </a>
 
       {/* Desktop rail */}
@@ -233,14 +238,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={() => setDrawer(true)}
           className="rounded-md p-2 text-ink-2 hover:bg-surface-3 hover:text-ink"
-          aria-label="Apri il menu"
+          aria-label={t('shell.openMenu')}
           aria-expanded={drawer}
         >
           <Menu className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
       {drawer && (
-        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label={t('shell.menu')}>
           <div className="absolute inset-0 bg-[#0C1B33]/50" onClick={() => setDrawer(false)} aria-hidden="true" />
           <div className="absolute inset-y-0 left-0 w-rail border-r border-rule shadow-pop">
             {rail}
@@ -248,7 +253,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setDrawer(false)}
               className="absolute right-2 top-3 rounded-md p-2 text-ink-3 hover:bg-surface-3 hover:text-ink"
-              aria-label="Chiudi il menu"
+              aria-label={t('shell.closeMenu')}
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -259,9 +264,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className={cn('flex min-h-screen flex-col transition-[padding]', collapsed ? 'md:pl-rail-collapsed' : 'md:pl-rail')}>
         {demoMode && (
           <div className="border-b border-mark-deep/40 bg-mark/30 px-4 py-2 text-small text-[#0C1B33] md:px-8">
-            Demo con dati di esempio: le risposte e i clienti non vengono dal corpus reale.{' '}
+            {t('shell.demoBanner')}{' '}
             <button type="button" onClick={logout} className="font-medium underline underline-offset-4">
-              Esci dalla demo
+              {t('shell.leaveDemo')}
             </button>
           </div>
         )}
@@ -270,16 +275,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
         <footer className="px-4 py-4 md:px-8">
           <p className="max-w-prose text-caption text-ink-3">
-            NormaAI usa un sistema di intelligenza artificiale per generare le risposte (Regolamento (UE)
-            2024/1689, art. 50). Le risposte non sostituiscono la consulenza di un professionista.{' '}
-            <Link href="/terms" className="underline">
-              Termini
-            </Link>
-            {', '}
-            <Link href="/privacy" className="underline">
-              Privacy
-            </Link>
-            .
+            {t.rich('shell.footer', {
+              terms: (chunks) => (
+                <Link href="/terms" className="underline">
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link href="/privacy" className="underline">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
         </footer>
       </div>

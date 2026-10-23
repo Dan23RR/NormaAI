@@ -1,3 +1,4 @@
+import type { Translate } from '@/i18n/types'
 import { api } from '@/lib/api'
 import type { ApiResponse, CompanyProfile, GapAnalysisResponse } from '@/lib/types'
 
@@ -16,9 +17,15 @@ import type { ApiResponse, CompanyProfile, GapAnalysisResponse } from '@/lib/typ
 
 export type ReportType = 'gap_analysis' | 'executive_summary'
 
-export const REPORT_TYPE_LABEL: Record<ReportType, string> = {
-  gap_analysis: 'Gap analysis',
-  executive_summary: 'Sintesi direzionale',
+export const REPORT_TYPES: ReportType[] = ['gap_analysis', 'executive_summary']
+
+export function isReportType(value: string): value is ReportType {
+  return (REPORT_TYPES as string[]).includes(value)
+}
+
+/** "Gap analysis", "Sintesi direzionale" from the `report.types` messages; an unknown type is shown as it is. */
+export function reportTypeLabel(type: string, t: Translate): string {
+  return isReportType(type) ? t(`report.types.${type}`) : type.replace(/_/g, ' ')
 }
 
 export interface ReportHistoryItem {

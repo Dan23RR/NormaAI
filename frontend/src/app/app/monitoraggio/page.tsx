@@ -2,14 +2,15 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Tabs } from '@/components/ui/Tabs'
 import { AlertsTab, normaliseSummary } from '@/components/monitoraggio/AlertsTab'
 import { AnalyzeTab } from '@/components/monitoraggio/AnalyzeTab'
 import { DeadlinesTab } from '@/components/monitoraggio/DeadlinesTab'
+import { useDateFormat } from '@/i18n/useDateFormat'
 import { api } from '@/lib/api'
-import { formatDateIt } from '@/lib/obligations/dates'
 import { VERIFIED_ON } from '@/lib/scope/sources'
 
 const TAB_IDS = ['scadenze', 'avvisi', 'analizza'] as const
@@ -20,14 +21,17 @@ function isTabId(value: string | null): value is TabId {
 }
 
 export default function MonitoraggioPage() {
+  const t = useTranslations('monitoraggio')
   return (
-    <Suspense fallback={<Skeleton className="h-64" label="Caricamento della pagina Monitoraggio" />}>
+    <Suspense fallback={<Skeleton className="h-64" label={t('loading')} />}>
       <MonitoraggioView />
     </Suspense>
   )
 }
 
 function MonitoraggioView() {
+  const t = useTranslations('monitoraggio')
+  const formatDate = useDateFormat()
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -71,27 +75,22 @@ function MonitoraggioView() {
   return (
     <div>
       <PageHeader
-        title="Monitoraggio"
-        description="Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l’analisi di una novità normativa."
-        meta={
-          <>
-            Calendario curato a mano; ogni voce indica la data di verifica (ultima verifica: {formatDateIt(VERIFIED_ON)}).
-            Il controllo automatico delle novità su EUR-Lex non è ancora attivo.
-          </>
-        }
+        title={t('title')}
+        description={t('description')}
+        meta={t('meta', { date: formatDate(VERIFIED_ON) })}
       />
       <Tabs
-        label="Sezioni del monitoraggio"
+        label={t('tabsLabel')}
         className="mb-6"
         value={tab}
         onChange={change}
         tabs={[
-          { id: 'scadenze', label: 'Scadenze' },
-          { id: 'avvisi', label: 'Avvisi', count: unread },
-          { id: 'analizza', label: 'Analizza una novità' },
+          { id: 'scadenze', label: t('tabs.scadenze') },
+          { id: 'avvisi', label: t('tabs.avvisi'), count: unread },
+          { id: 'analizza', label: t('tabs.analizza') },
         ]}
       />
-      <div role="tabpanel" aria-label={tab === 'scadenze' ? 'Scadenze' : tab === 'avvisi' ? 'Avvisi' : 'Analizza una novità'}>
+      <div role="tabpanel" aria-label={t(`tabs.${tab}`)}>
         {tab === 'scadenze' && <DeadlinesTab />}
         {tab === 'avvisi' && <AlertsTab onUnreadChange={setUnread} />}
         {tab === 'analizza' && <AnalyzeTab />}

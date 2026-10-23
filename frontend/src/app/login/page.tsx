@@ -3,16 +3,22 @@
 import Link from 'next/link'
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useAuth } from '@/hooks/useAuth'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, describedBy } from '@/components/ui/Field'
 import { LawQuote } from '@/components/ui/LawQuote'
+import { eurlexLang } from '@/i18n/config'
+import { useErrorText } from '@/i18n/errors'
+import { AI_ACT_ART_50_1_IT } from '@/lib/law-passages'
 import { eurlexUrl } from '@/lib/sources'
 
 type Mode = 'login' | 'register'
 
 function LoginForm() {
+  const t = useTranslations('login')
+  const errorText = useErrorText()
   const { login, register, loginDemo } = useAuth()
   const router = useRouter()
   const params = useSearchParams()
@@ -41,7 +47,7 @@ function LoginForm() {
       }
       router.push(safeNext)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Qualcosa non ha funzionato. Riprova.')
+      setError(errorText(err))
     } finally {
       setLoading(false)
     }
@@ -52,14 +58,23 @@ function LoginForm() {
     router.push('/app')
   }
 
+  const switchTo = (next: Mode) => (chunks: React.ReactNode) => (
+    <button
+      type="button"
+      className="text-union hover:underline"
+      onClick={() => {
+        setMode(next)
+        setError('')
+      }}
+    >
+      {chunks}
+    </button>
+  )
+
   return (
     <div className="w-full max-w-md">
-      <h1 className="text-h2">{mode === 'register' ? 'Crea il tuo account' : 'Accedi a NormaAI'}</h1>
-      <p className="mt-2 text-body text-ink-2">
-        {mode === 'register'
-          ? 'Serve un codice di invito. Se non lo hai, richiedi una demo dalla pagina principale.'
-          : 'Usa l’email e la password del tuo account.'}
-      </p>
+      <h1 className="text-h2">{mode === 'register' ? t('titleRegister') : t('titleLogin')}</h1>
+      <p className="mt-2 text-body text-ink-2">{mode === 'register' ? t('leadRegister') : t('leadLogin')}</p>
 
       {error && (
         <div className="mt-5 rounded-md border border-bad/30 bg-bad/5 px-3 py-2.5 text-small text-bad" role="alert">
@@ -70,7 +85,7 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
         {mode === 'register' && (
           <>
-            <Field label="Codice di invito" htmlFor="invite" required>
+            <Field label={t('invite')} htmlFor="invite" required>
               <Input
                 id="invite"
                 value={inviteCode}
@@ -78,17 +93,13 @@ function LoginForm() {
                 required
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="Il codice ricevuto via email"
+                placeholder={t('invitePlaceholder')}
               />
             </Field>
-            <Field label="Nome e cognome" htmlFor="name" required>
+            <Field label={t('name')} htmlFor="name" required>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />
             </Field>
-            <Field
-              label="Organizzazione"
-              htmlFor="org"
-              help="Lascia vuoto se l'invito ti aggiunge a un'organizzazione esistente."
-            >
+            <Field label={t('org')} htmlFor="org" help={t('orgHelp')}>
               <Input
                 id="org"
                 value={orgName}
@@ -99,7 +110,7 @@ function LoginForm() {
             </Field>
           </>
         )}
-        <Field label="Email" htmlFor="email" required>
+        <Field label={t('email')} htmlFor="email" required>
           <Input
             id="email"
             type="email"
@@ -110,12 +121,7 @@ function LoginForm() {
             inputMode="email"
           />
         </Field>
-        <Field
-          label="Password"
-          htmlFor="password"
-          required
-          help={mode === 'register' ? 'Almeno 8 caratteri.' : undefined}
-        >
+        <Field label={t('password')} htmlFor="password" required help={mode === 'register' ? t('passwordHelp') : undefined}>
           <Input
             id="password"
             type="password"
@@ -128,78 +134,71 @@ function LoginForm() {
           />
         </Field>
         <Button type="submit" loading={loading} className="w-full" size="lg">
-          {mode === 'register' ? 'Crea l’account' : 'Accedi'}
+          {mode === 'register' ? t('submitRegister') : t('submitLogin')}
         </Button>
       </form>
 
       <p className="mt-4 text-small text-ink-2">
-        {mode === 'register' ? (
-          <>
-            Hai già un account?{' '}
-            <button type="button" className="text-union hover:underline" onClick={() => { setMode('login'); setError('') }}>
-              Accedi
-            </button>
-          </>
-        ) : (
-          <>
-            Hai un codice di invito?{' '}
-            <button type="button" className="text-union hover:underline" onClick={() => { setMode('register'); setError('') }}>
-              Crea l’account
-            </button>
-            . Password dimenticata? Scrivi a{' '}
-            <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union hover:underline">
-              info@normaai.org
-            </a>
-            .
-          </>
-        )}
+        {mode === 'register'
+          ? t.rich('haveAccount', { login: switchTo('login') })
+          : t.rich('haveInvite', {
+              register: switchTo('register'),
+              mail: (chunks) => (
+                <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union hover:underline">
+                  {chunks}
+                </a>
+              ),
+            })}
       </p>
 
       <div className="mt-8 border-t border-rule pt-6">
         <Button variant="secondary" className="w-full" onClick={handleDemo}>
-          Apri la demo con dati di esempio
+          {t('demo')}
         </Button>
-        <p className="mt-2 text-caption text-ink-3">
-          Nessun account necessario. Risposte, clienti e analisi sono esempi, non il corpus reale.
-        </p>
+        <p className="mt-2 text-caption text-ink-3">{t('demoNote')}</p>
       </div>
 
       <p className="mt-6 text-caption text-ink-3">
-        Accedendo accetti i{' '}
-        <Link href="/terms" className="underline">
-          Termini di servizio
-        </Link>{' '}
-        e la{' '}
-        <Link href="/privacy" className="underline">
-          Privacy
-        </Link>
-        .
+        {t.rich('terms', {
+          terms: (chunks) => (
+            <Link href="/terms" className="underline">
+              {chunks}
+            </Link>
+          ),
+          privacy: (chunks) => (
+            <Link href="/privacy" className="underline">
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
     </div>
   )
 }
 
 export default function LoginPage() {
+  const t = useTranslations('login')
+  const tu = useTranslations('ui')
+  const locale = useLocale()
   return (
     <div className="grid min-h-screen bg-surface lg:grid-cols-12">
       <aside className="hidden flex-col justify-between border-r border-rule bg-surface-2 p-10 lg:col-span-5 lg:flex">
         <Logo size="lg" />
         <div className="max-w-md">
-          <p className="text-h3 text-ink">
-            Ogni risposta mostra il passaggio di legge che la sostiene.
-          </p>
+          <p className="text-h3 text-ink">{t('claim')}</p>
           <LawQuote
             className="mt-6"
-            quote="siano informate del fatto che stanno interagendo con un sistema di IA"
-            before="I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate"
-            act="Regolamento (UE) 2024/1689"
-            article="art. 50, par. 1"
-            celex="32024R1689"
-            url={eurlexUrl('32024R1689')}
+            quote={AI_ACT_ART_50_1_IT.quote}
+            before={AI_ACT_ART_50_1_IT.before}
+            lang={AI_ACT_ART_50_1_IT.lang}
+            act={tu('acts.AI_ACT')}
+            article={t('article')}
+            celex={AI_ACT_ART_50_1_IT.celex}
+            url={eurlexUrl(AI_ACT_ART_50_1_IT.celex, eurlexLang(locale))}
             origin="EUR-Lex"
           />
         </div>
-        <p className="text-caption text-ink-3">Codice aperto su GitHub. Dati in Europa.</p>
+        <p className="text-caption text-ink-3">{t('asideNote')}</p>
       </aside>
       <main className="flex items-center justify-center px-6 py-12 lg:col-span-7">
         <div className="w-full max-w-md">

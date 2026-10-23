@@ -2,16 +2,18 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { ListChecks } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
-import { EU_COUNTRIES, ScopeForm } from '@/components/ambito/ScopeForm'
+import { EU_COUNTRY_CODES, ScopeForm } from '@/components/ambito/ScopeForm'
 import { ScopeResults } from '@/components/ambito/ScopeResults'
 import { copyText } from '@/components/ambito/clipboard'
 import { loadClients, type ClientOption } from '@/components/ambito/clients'
-import { formatDateIt } from '@/lib/obligations/dates'
+import { formatDate } from '@/i18n/format'
+import { useTextContext } from '@/i18n/useTextContext'
 import { assessScope } from '@/lib/scope/rules'
 import { EMPTY_INPUT, inputToQuery, queryToInput } from '@/lib/scope/query'
 import { VERIFIED_ON } from '@/lib/scope/sources'
@@ -23,14 +25,17 @@ function canAssess(input: ScopeInput): boolean {
 }
 
 export default function AmbitoPage() {
+  const t = useTranslations('ambito')
   return (
-    <Suspense fallback={<Skeleton className="h-64" label="Caricamento della pagina Ambito" />}>
+    <Suspense fallback={<Skeleton className="h-64" label={t('loading')} />}>
       <AmbitoView />
     </Suspense>
   )
 }
 
 function AmbitoView() {
+  const t = useTranslations('ambito')
+  const ctx = useTextContext()
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -39,7 +44,7 @@ function AmbitoView() {
   const [input, setInput] = useState<ScopeInput>(() => queryToInput(params.toString()) ?? EMPTY_INPUT)
   const [assessment, setAssessment] = useState<ScopeAssessment | null>(() => {
     const fromUrl = queryToInput(params.toString())
-    return fromUrl ? assessScope(fromUrl) : null
+    return fromUrl ? assessScope(fromUrl, ctx) : null
   })
   const [formError, setFormError] = useState<string | undefined>()
   const [clients, setClients] = useState<ClientOption[]>([])
@@ -54,12 +59,17 @@ function AmbitoView() {
     const next = queryToInput(q)
     if (next) {
       setInput(next)
-      setAssessment(assessScope(next))
+      setAssessment(assessScope(next, ctx))
     } else {
       setInput(EMPTY_INPUT)
       setAssessment(null)
     }
-  }, [params])
+  }, [params, ctx])
+
+  // A language change re-words the result that is on screen.
+  useEffect(() => {
+    setAssessment((current) => (current ? assessScope(current.input, ctx) : current))
+  }, [ctx])
 
   useEffect(() => {
     let cancelled = false
@@ -80,15 +90,15 @@ function AmbitoView() {
 
   const verify = useCallback(() => {
     if (!canAssess(input)) {
-      setFormError('Indica dipendenti e ricavi netti, oppure rispondi alle domande sull’IA, poi premi di nuovo Verifica l’ambito.')
+      setFormError(t('formError'))
       return
     }
     setFormError(undefined)
-    setAssessment(assessScope(input))
+    setAssessment(assessScope(input, ctx))
     const q = inputToQuery(input).toString()
     lastQuery.current = q
     router.replace(`${pathname}?${q}`, { scroll: false })
-  }, [input, pathname, router])
+  }, [ctx, input, pathname, router, t])
 
   const reset = useCallback(() => {
     setAssessment(null)
@@ -100,7 +110,7 @@ function AmbitoView() {
   const loadClient = (id: string) => {
     const c = clients.find((x) => x.id === id)
     if (!c) return
-    const country = c.jurisdictions?.find((j) => EU_COUNTRIES.some((e) => e.code === j))
+    const country = c.jurisdictions?.find((j) => (EU_COUNTRY_CODES as readonly string[]).includes(j))
     setInput((prev) => ({
       ...prev,
       name: c.name,
@@ -113,11 +123,11 @@ function AmbitoView() {
 
   const copyResult = async () => {
     if (!assessment) return
-    const ok = await copyText(assessmentToText(assessment))
+    const ok = await copyText(assessmentToText(assessment, ctx))
     toast(
       ok
-        ? { kind: 'ok', title: 'Copiato' }
-        : { kind: 'bad', title: 'Copia non riuscita', description: 'Seleziona il testo del risultato e copialo a mano.' },
+        ? { kind: 'ok', title: t('copy.ok') }
+        : { kind: 'bad', title: t('copy.failed'), description: t('copy.resultFailed') },
     )
   }
 
@@ -125,17 +135,17 @@ function AmbitoView() {
     const ok = await copyText(window.location.href)
     toast(
       ok
-        ? { kind: 'ok', title: 'Copiato' }
-        : { kind: 'bad', title: 'Copia non riuscita', description: 'Copia l’indirizzo dalla barra del browser.' },
+        ? { kind: 'ok', title: t('copy.ok') }
+        : { kind: 'bad', title: t('copy.failed'), description: t('copy.linkFailed') },
     )
   }
 
   return (
     <div>
       <PageHeader
-        title="Ambito"
-        description="Quali obblighi si applicano a un’impresa, e da quando, con la norma che lo stabilisce."
-        meta={`Regole e date verificate il ${formatDateIt(VERIFIED_ON)}. Primo filtro indicativo, non un parere legale.`}
+        title={t('title')}
+        description={t('description')}
+        meta={t('meta', { date: formatDate(VERIFIED_ON, ctx) })}
       />
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">
@@ -156,8 +166,8 @@ function AmbitoView() {
           ) : (
             <EmptyState
               icon={<ListChecks className="h-8 w-8" aria-hidden="true" />}
-              title="Compila il profilo e premi Verifica l’ambito"
-              description="Il risultato mostra, per CSRD, CSDDD e AI Act (art. 50), se l’obbligo si applica, da quando e su quale norma si fonda."
+              title={t('empty.title')}
+              description={t('empty.description')}
             />
           )}
         </div>

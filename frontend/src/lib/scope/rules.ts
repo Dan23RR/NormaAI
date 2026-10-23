@@ -17,13 +17,17 @@
  *    transposition 26 July 2028, first compliance 26 July 2029.
  *
  * Anything the sources do not state (balance-sheet total, NIS2, DORA,
- * GDPR, CRA scope thresholds) is deliberately absent.
+ * GDPR, CRA scope thresholds) is deliberately absent. The words of every
+ * verdict live in the `ambito.rules` messages: this module decides, the
+ * messages speak.
  */
+import { eurlexLang } from '@/i18n/config'
+import { formatDate, formatInt, formatMillionsEur } from '@/i18n/format'
+import type { TextContext } from '@/i18n/types'
+import { AI_ACT_ART_50_1_IT } from '@/lib/law-passages'
 import type { Source } from '@/lib/sources'
 import { eurlexUrl } from '@/lib/sources'
-import { formatDateIt } from '@/lib/obligations/dates'
-import { formatInt, formatMillionsEur } from './format'
-import { SCOPE_SOURCES as S, VERIFIED_ON, withIndex } from './sources'
+import { VERIFIED_ON, scopeSources, withIndex } from './sources'
 import type {
   AiActAnswers,
   AiKey,
@@ -75,82 +79,54 @@ export function classifyCsrd(employees: number, turnoverEur: number, listed: boo
   return 'out'
 }
 
-const CSRD_SOURCES: Source[] = [S.omnibusI, S.csrd, S.dlgs125, S.codex]
-
-function csrdNotes(input: ScopeInput): string[] {
+function csrdNotes(input: ScopeInput, ctx: TextContext): string[] {
   const notes: string[] = []
-  if (input.wave1Reporter) {
-    notes.push(
-      'Hai indicato una rendicontazione già in corso (Wave 1, FY2024): l’Omnibus I prevede un’esenzione transitoria per gli esercizi 2025 e 2026, dopo la quale si riapplicano le nuove soglie sull’esercizio rilevante.',
-    )
-  }
-  if (input.groupRole === 'parent') {
-    notes.push(
-      'Capogruppo: i valori vanno letti sul bilancio consolidato; per i gruppi la base è l’art. 29-bis della Direttiva 2013/34/UE.',
-    )
-  }
-  if (input.groupRole === 'subsidiary') {
-    notes.push(
-      'Società controllata: l’ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo.',
-    )
-  }
+  if (input.wave1Reporter) notes.push(ctx.t('ambito.rules.csrd.noteWave1'))
+  if (input.groupRole === 'parent') notes.push(ctx.t('ambito.rules.csrd.noteParent'))
+  if (input.groupRole === 'subsidiary') notes.push(ctx.t('ambito.rules.csrd.noteSubsidiary'))
   return notes
 }
 
-function assessCsrd(input: ScopeInput): ScopeResult {
+function assessCsrd(input: ScopeInput, ctx: TextContext, S: ReturnType<typeof scopeSources>): ScopeResult {
+  const { t, locale } = ctx
   const base = {
     framework: 'CSRD' as const,
-    sources: withIndex(CSRD_SOURCES),
+    sources: withIndex([S.omnibusI, S.csrd, S.dlgs125, S.codex]),
     passages: [] as LegalPassage[],
     verifiedOn: VERIFIED_ON,
   }
-  const fromLabel = `Soglie in vigore dal ${formatDateIt(SCOPE_DATES.omnibusInForce)} (Omnibus I)`
+  const fromLabel = t('ambito.rules.csrd.fromLabel', { date: formatDate(SCOPE_DATES.omnibusInForce, ctx) })
 
   if (input.nonEu) {
     if (input.euTurnoverEur == null) {
-      return {
-        ...base,
-        status: 'not_assessed',
-        headline: 'Indica i ricavi netti realizzati nell’Unione per valutare la CSRD come impresa di un Paese terzo.',
-        reasons: [],
-        notes: [],
-      }
+      return { ...base, status: 'not_assessed', headline: t('ambito.rules.csrd.nonEuMissing'), reasons: [], notes: [] }
     }
-    const over = input.euTurnoverEur > CSRD_RULES.nonEuTurnoverEur
-    if (over) {
+    const amounts = {
+      amount: formatMillionsEur(input.euTurnoverEur, ctx),
+      threshold: formatMillionsEur(CSRD_RULES.nonEuTurnoverEur, ctx),
+    }
+    if (input.euTurnoverEur > CSRD_RULES.nonEuTurnoverEur) {
       return {
         ...base,
         status: 'conditional',
-        headline: 'Può applicarsi la rendicontazione prevista per le imprese di Paesi terzi.',
+        headline: t('ambito.rules.csrd.nonEuOverHeadline'),
         from: SCOPE_DATES.omnibusInForce,
         fromLabel,
-        reasons: [
-          `Ricavi netti nell’Unione: ${formatMillionsEur(input.euTurnoverEur)}, oltre la soglia di ${formatMillionsEur(CSRD_RULES.nonEuTurnoverEur)} indicata dal Codex per le imprese extra-UE.`,
-          'Il Codex (cap. 1.2) lega l’obbligo anche alla presenza di una sussidiaria o succursale nell’Unione sopra 200 milioni di euro: la verifica richiede il bilancio consolidato del gruppo e i ricavi per Stato membro (cap. 2.4, caso 2).',
-        ],
-        notes: csrdNotes(input),
+        reasons: [t('ambito.rules.csrd.nonEuOverReason1', amounts), t('ambito.rules.csrd.nonEuOverReason2')],
+        notes: csrdNotes(input, ctx),
       }
     }
     return {
       ...base,
       status: 'out_of_scope',
-      headline: 'Sotto la soglia di ricavi UE per le imprese di Paesi terzi.',
-      reasons: [
-        `Ricavi netti nell’Unione: ${formatMillionsEur(input.euTurnoverEur)}, sotto la soglia di ${formatMillionsEur(CSRD_RULES.nonEuTurnoverEur)} (Codex, cap. 2.1).`,
-        'Una società di diritto italiano controllata dal gruppo può comunque rientrare come sussidiaria UE: in quel caso valuta la controllata con le soglie UE.',
-      ],
-      notes: csrdNotes(input),
+      headline: t('ambito.rules.csrd.nonEuUnderHeadline'),
+      reasons: [t('ambito.rules.csrd.nonEuUnderReason1', amounts), t('ambito.rules.csrd.nonEuUnderReason2')],
+      notes: csrdNotes(input, ctx),
     }
   }
 
   if (input.employees == null || input.turnoverEur == null) {
-    return {
-      ...base,
-      status: 'not_assessed',
-      headline: 'Indica il numero medio di dipendenti e i ricavi netti annui per valutare la CSRD.',
-      reasons: [],
-      notes: [],
-    }
+    return { ...base, status: 'not_assessed', headline: t('ambito.rules.csrd.missing'), reasons: [], notes: [] }
   }
 
   const employees = input.employees
@@ -159,222 +135,172 @@ function assessCsrd(input: ScopeInput): ScopeResult {
   const revOver = turnover > CSRD_RULES.turnoverEur
   const band = classifyCsrd(employees, turnover, input.listedEu)
   const axis = [
-    `Dipendenti: ${formatInt(employees)} (${empOver ? 'oltre' : 'non oltre'} ${formatInt(CSRD_RULES.employees)}).`,
-    `Ricavi netti: ${formatMillionsEur(turnover)} (${revOver ? 'oltre' : 'non oltre'} ${formatMillionsEur(CSRD_RULES.turnoverEur)}).`,
+    t('ambito.rules.csrd.axisEmployees', {
+      count: formatInt(employees, locale),
+      over: empOver ? 'yes' : 'no',
+      threshold: formatInt(CSRD_RULES.employees, locale),
+    }),
+    t('ambito.rules.csrd.axisTurnover', {
+      amount: formatMillionsEur(turnover, ctx),
+      over: revOver ? 'yes' : 'no',
+      threshold: formatMillionsEur(CSRD_RULES.turnoverEur, ctx),
+    }),
   ]
 
   if (band === 'in') {
     return {
       ...base,
       status: 'in_scope',
-      headline: 'L’impresa è quasi certamente in ambito di rendicontazione CSRD.',
+      headline: t('ambito.rules.csrd.inHeadline'),
       from: SCOPE_DATES.omnibusInForce,
       fromLabel,
-      reasons: [
-        'Superi entrambe le soglie cumulative post-Omnibus: più di 1.000 dipendenti e oltre 450 milioni di euro di ricavi netti. Salvo esenzioni specifiche, ricadi nell’obbligo di rendicontazione di sostenibilità secondo gli ESRS.',
-        ...axis,
-      ],
-      notes: [
-        'Verifica le esenzioni: reporter Wave 1 (esenzione transitoria FY2025-2026) e perimetri di gruppo con holding possono cambiare il quadro.',
-        'Doppia materialità ed ESRS Set 1 (ridotto di circa il 61% dei datapoint) restano il cuore del lavoro: la riduzione non semplifica l’assessment.',
-        ...csrdNotes(input),
-      ],
+      reasons: [t('ambito.rules.csrd.inReason'), ...axis],
+      notes: [t('ambito.rules.csrd.inNote1'), t('ambito.rules.csrd.inNote2'), ...csrdNotes(input, ctx)],
     }
   }
 
   if (band === 'filo') {
-    let reason: string
     const nearMargin =
       (employees >= CSRD_RULES.employeesMargin.min && employees <= CSRD_RULES.employeesMargin.max) ||
       (turnover >= CSRD_RULES.turnoverMarginEur.min && turnover <= CSRD_RULES.turnoverMarginEur.max)
-    if (empOver && !revOver) {
-      reason =
-        'Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.'
-    } else if (revOver && !empOver) {
-      reason =
-        'Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.'
-    } else if (input.listedEu && !nearMargin) {
-      reason =
-        'Come società quotata sotto le nuove soglie dimensionali sei in linea di principio esclusa, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).'
-    } else {
-      reason =
-        'Oggi sei fuori dall’obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all’altro.'
-    }
+    const reason =
+      empOver && !revOver
+        ? t('ambito.rules.csrd.borderEmployees')
+        : revOver && !empOver
+          ? t('ambito.rules.csrd.borderTurnover')
+          : input.listedEu && !nearMargin
+            ? t('ambito.rules.csrd.borderListed')
+            : t('ambito.rules.csrd.borderMargin')
     return {
       ...base,
       status: 'conditional',
-      headline: 'Oggi fuori dall’obbligo CSRD, ma sul filo della soglia.',
+      headline: t('ambito.rules.csrd.borderHeadline'),
       from: SCOPE_DATES.omnibusInForce,
       fromLabel,
-      reasons: [reason, ...axis, 'È il caso in cui una verifica puntuale (e una scelta tra obbligo, adozione volontaria e VSME) vale di più.'],
-      notes: [
-        'Perimetro variabile: l’ambito si misura a fine esercizio, ma i dati ESG vanno raccolti su tutto l’anno. Con M&A o riassetti in corso l’analisi diventa multi-scenario.',
-        'Pressione di filiera: anche fuori dall’obbligo, i clienti in ambito CSRD o CSDDD chiederanno disclosure (VSME) come fornitore.',
-        ...csrdNotes(input),
-      ],
+      reasons: [reason, ...axis, t('ambito.rules.csrd.borderCheck')],
+      notes: [t('ambito.rules.csrd.borderNote1'), t('ambito.rules.csrd.borderNote2'), ...csrdNotes(input, ctx)],
     }
   }
 
   return {
     ...base,
     status: 'out_of_scope',
-    headline: 'Probabilmente fuori dall’ambito di rendicontazione CSRD obbligatoria.',
-    reasons: [
-      'Non superi le soglie cumulative post-Omnibus (1.000 dipendenti e 450 milioni di euro di ricavi netti). L’obbligo diretto non scatta, ma fuori dalla CSRD non significa fuori da tutto.',
-      ...axis,
-    ],
+    headline: t('ambito.rules.csrd.outHeadline'),
+    reasons: [t('ambito.rules.csrd.outReason'), ...axis],
     notes: [
-      'Pressione di filiera (VSME): se sei fornitore di un gruppo in ambito, riceverai richieste di disclosure di sostenibilità lungo la catena.',
-      'Tassonomia indiretta: se hai finanziamento bancario, la banca (per il proprio GAR) può chiederti dati Taxonomy-eligible.',
-      'CSDDD di filiera: i grandi gruppi obbligati alla due diligence trasferiscono requisiti ai fornitori, ben sotto le loro soglie dirette.',
-      ...csrdNotes(input),
+      t('ambito.rules.csrd.outNote1'),
+      t('ambito.rules.csrd.outNote2'),
+      t('ambito.rules.csrd.outNote3'),
+      ...csrdNotes(input, ctx),
     ],
   }
 }
 
-const CSDDD_SOURCES: Source[] = [S.csddd, S.omnibusI, S.codex]
-
-function assessCsddd(input: ScopeInput): ScopeResult {
+function assessCsddd(input: ScopeInput, ctx: TextContext, S: ReturnType<typeof scopeSources>): ScopeResult {
+  const { t, locale } = ctx
   const base = {
     framework: 'CSDDD' as const,
-    sources: withIndex(CSDDD_SOURCES),
+    sources: withIndex([S.csddd, S.omnibusI, S.codex]),
     passages: [] as LegalPassage[],
     verifiedOn: VERIFIED_ON,
   }
 
   if (input.nonEu) {
-    return {
-      ...base,
-      status: 'not_assessed',
-      headline: 'Per le imprese di Paesi terzi le fonti disponibili non riportano le soglie CSDDD: non valutato.',
-      reasons: [],
-      notes: [],
-    }
+    return { ...base, status: 'not_assessed', headline: t('ambito.rules.csddd.nonEu'), reasons: [], notes: [] }
   }
   if (input.employees == null || input.turnoverEur == null) {
-    return {
-      ...base,
-      status: 'not_assessed',
-      headline: 'Indica dipendenti e ricavi netti per valutare la CSDDD.',
-      reasons: [],
-      notes: [],
-    }
+    return { ...base, status: 'not_assessed', headline: t('ambito.rules.csddd.missing'), reasons: [], notes: [] }
   }
 
   const empOver = input.employees > CSDDD_RULES.employees
   const revOver = input.turnoverEur > CSDDD_RULES.turnoverEur
   const axis = [
-    `Dipendenti: ${formatInt(input.employees)} (${empOver ? 'oltre' : 'non oltre'} ${formatInt(CSDDD_RULES.employees)}).`,
-    `Ricavi netti: ${formatMillionsEur(input.turnoverEur)} (${revOver ? 'oltre' : 'non oltre'} ${formatMillionsEur(CSDDD_RULES.turnoverEur)}).`,
+    t('ambito.rules.csrd.axisEmployees', {
+      count: formatInt(input.employees, locale),
+      over: empOver ? 'yes' : 'no',
+      threshold: formatInt(CSDDD_RULES.employees, locale),
+    }),
+    t('ambito.rules.csrd.axisTurnover', {
+      amount: formatMillionsEur(input.turnoverEur, ctx),
+      over: revOver ? 'yes' : 'no',
+      threshold: formatMillionsEur(CSDDD_RULES.turnoverEur, ctx),
+    }),
   ]
-  const calendar = `Recepimento negli Stati membri entro il ${formatDateIt(SCOPE_DATES.csdddTransposition)}, prima applicazione dal ${formatDateIt(SCOPE_DATES.csdddFirstCompliance)} (Direttiva (UE) 2026/470).`
+  const calendar = t('ambito.rules.csddd.calendar', {
+    transposition: formatDate(SCOPE_DATES.csdddTransposition, ctx),
+    firstCompliance: formatDate(SCOPE_DATES.csdddFirstCompliance, ctx),
+  })
 
   if (empOver && revOver) {
     return {
       ...base,
       status: 'in_scope',
-      headline: 'Superi anche le soglie dirette del dovere di diligenza (CSDDD).',
+      headline: t('ambito.rules.csddd.inHeadline'),
       from: SCOPE_DATES.csdddFirstCompliance,
-      fromLabel: `Prima applicazione dal ${formatDateIt(SCOPE_DATES.csdddFirstCompliance)}`,
-      reasons: [
-        'Superi entrambe le soglie cumulative post-Omnibus: più di 5.000 dipendenti e oltre 1,5 miliardi di euro di ricavi netti.',
-        ...axis,
-        calendar,
-      ],
-      notes: [
-        'L’Omnibus I ha rimosso l’obbligo del piano di transizione climatica e il regime armonizzato di responsabilità civile, e ha sostituito la mappatura completa della catena del valore con un esercizio generale di scoping (Codex, cap. 1.4).',
-        'Sanzioni: tetto massimo al 3% dei ricavi netti mondiali (Codex, cap. 1.4).',
-      ],
+      fromLabel: t('ambito.rules.csddd.inFromLabel', { date: formatDate(SCOPE_DATES.csdddFirstCompliance, ctx) }),
+      reasons: [t('ambito.rules.csddd.inReason'), ...axis, calendar],
+      notes: [t('ambito.rules.csddd.inNote1'), t('ambito.rules.csddd.inNote2')],
     }
   }
 
-  const which =
-    empOver || revOver
-      ? 'Superi una sola delle due soglie cumulative: l’obbligo diretto oggi non scatta.'
-      : 'Non superi le soglie cumulative post-Omnibus (5.000 dipendenti e 1,5 miliardi di euro): l’obbligo diretto non scatta.'
+  const which = empOver || revOver ? t('ambito.rules.csddd.outReasonOne') : t('ambito.rules.csddd.outReasonNone')
   return {
     ...base,
     status: 'out_of_scope',
-    headline: 'Fuori dalle soglie dirette del dovere di diligenza (CSDDD).',
+    headline: t('ambito.rules.csddd.outHeadline'),
     reasons: [which, ...axis, calendar],
-    notes: [
-      'CSDDD di filiera: i grandi gruppi obbligati trasferiscono requisiti ai fornitori, ben sotto le loro soglie dirette. Le richieste di disclosure in catena arrivano prima della scadenza di legge.',
-    ],
+    notes: [t('ambito.rules.csddd.outNote')],
   }
 }
 
 /** The article 50 passage as the landing page cites it from the official Italian text. */
-const ART_50_1_PASSAGE: LegalPassage = {
-  before:
-    'I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate',
-  quote: 'siano informate del fatto che stanno interagendo con un sistema di IA',
-  after:
-    'a meno che ciò non risulti evidente dal punto di vista di una persona fisica ragionevolmente informata, attenta e avveduta',
-  act: 'Regolamento (UE) 2024/1689',
-  article: 'art. 50, par. 1',
-  celex: '32024R1689',
-  url: eurlexUrl('32024R1689'),
-}
-
-/** Port of OBS in public/scope-aiact.html. */
-export const AI_OBLIGATIONS: Record<AiKey, AiObligation> = {
-  chat: {
-    key: 'chat',
-    who: 'provider',
-    whoLabel: 'Obbligo del fornitore',
-    title: 'Chatbot e assistenti: la persona deve sapere che sta parlando con un’IA',
-    requirement:
-      'I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un’IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.',
-    exception:
-      'Eccezione: sistemi autorizzati per legge per finalità di contrasto, a determinate condizioni. Se il chatbot lo comprate da terzi, l’obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a voi.',
-    article: 'art. 50, par. 1',
-    source: S.aiAct50_1,
-  },
-  gen: {
-    key: 'gen',
-    who: 'provider',
-    whoLabel: 'Obbligo del fornitore',
-    title: 'Contenuti generati: marcatura leggibile dalle macchine',
-    requirement:
-      'I fornitori di sistemi che generano contenuti sintetici (audio, immagini, video o testo) devono garantire che gli output siano marcati in un formato leggibile dalle macchine e rilevabili come generati o manipolati artificialmente; le soluzioni tecniche devono essere efficaci, interoperabili, robuste e affidabili per quanto tecnicamente possibile.',
-    exception:
-      'Eccezioni: funzioni di assistenza all’editing standard o che non alterano sostanzialmente i dati di input, e ambiti autorizzati per legge. Transitorio: per i sistemi generativi già sul mercato prima del 2 agosto 2026 la marcatura si applica dal 2 dicembre 2026; per i sistemi nuovi vale il 2 agosto 2026. Un Codice di buone pratiche UE sulla trasparenza dei contenuti IA (10 giugno 2026, adesione volontaria) supporta l’attuazione.',
-    article: 'art. 50, par. 2',
-    source: S.aiAct50_2,
-  },
-  emo: {
-    key: 'emo',
-    who: 'deployer',
-    whoLabel: 'Obbligo dell’utilizzatore',
-    title: 'Riconoscimento delle emozioni e categorizzazione biometrica: informare le persone esposte',
-    requirement:
-      'Chi utilizza un sistema di riconoscimento delle emozioni o di categorizzazione biometrica deve informare le persone fisiche che vi sono esposte sul funzionamento del sistema, e trattare i dati personali nel rispetto del GDPR.',
-    exception:
-      'Attenzione ai divieti già in vigore (art. 5, dal 2 febbraio 2025): per esempio il riconoscimento delle emozioni sul luogo di lavoro e negli istituti di istruzione è vietato, salvo motivi medici o di sicurezza.',
-    article: 'art. 50, par. 3',
-    source: S.aiAct50_3,
-  },
-  deep: {
-    key: 'deep',
-    who: 'deployer',
-    whoLabel: 'Obbligo dell’utilizzatore',
-    title: 'Deepfake e testi IA pubblicati: dichiararne l’origine',
-    requirement:
-      'Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall’IA pubblicati per informare il pubblico su questioni di interesse pubblico.',
-    exception:
-      'Eccezioni: per opere manifestamente artistiche, creative o satiriche la disclosure va data in modo appropriato senza pregiudicare l’opera; per i testi, l’obbligo non si applica se c’è revisione umana o controllo editoriale e una persona fisica o giuridica se ne assume la responsabilità editoriale.',
-    article: 'art. 50, par. 4',
-    source: S.aiAct50_4,
-  },
+function art50Passage(ctx: TextContext): LegalPassage {
+  return {
+    before: AI_ACT_ART_50_1_IT.before,
+    quote: AI_ACT_ART_50_1_IT.quote,
+    after: AI_ACT_ART_50_1_IT.after,
+    lang: AI_ACT_ART_50_1_IT.lang,
+    act: ctx.t('ui.acts.AI_ACT'),
+    article: ctx.t('ambito.rules.obligations.chat.article'),
+    celex: AI_ACT_ART_50_1_IT.celex,
+    url: eurlexUrl(AI_ACT_ART_50_1_IT.celex, eurlexLang(ctx.locale)),
+  }
 }
 
 export const AI_KEYS: AiKey[] = ['chat', 'gen', 'emo', 'deep']
+
+const AI_WHO: Record<AiKey, AiObligation['who']> = { chat: 'provider', gen: 'provider', emo: 'deployer', deep: 'deployer' }
+const AI_SOURCE: Record<AiKey, 'aiAct50_1' | 'aiAct50_2' | 'aiAct50_3' | 'aiAct50_4'> = {
+  chat: 'aiAct50_1',
+  gen: 'aiAct50_2',
+  emo: 'aiAct50_3',
+  deep: 'aiAct50_4',
+}
+
+/** Port of OBS in public/scope-aiact.html, in the words of the interface. */
+export function aiObligations(ctx: TextContext, S: ReturnType<typeof scopeSources> = scopeSources(ctx)): Record<AiKey, AiObligation> {
+  const out = {} as Record<AiKey, AiObligation>
+  for (const key of AI_KEYS) {
+    out[key] = {
+      key,
+      who: AI_WHO[key],
+      whoLabel: ctx.t(`ambito.results.who.${AI_WHO[key]}`),
+      title: ctx.t(`ambito.rules.obligations.${key}.title`),
+      requirement: ctx.t(`ambito.rules.obligations.${key}.requirement`),
+      exception: ctx.t(`ambito.rules.obligations.${key}.exception`),
+      article: ctx.t(`ambito.rules.obligations.${key}.article`),
+      source: S[AI_SOURCE[key]],
+    }
+  }
+  return out
+}
 
 export function selectedAiKeys(ai: AiActAnswers): AiKey[] {
   return AI_KEYS.filter((k) => ai[AI_KEY_FIELD[k]])
 }
 
-function assessAiAct(input: ScopeInput): ScopeResult {
+function assessAiAct(input: ScopeInput, ctx: TextContext, S: ReturnType<typeof scopeSources>): ScopeResult {
+  const { t } = ctx
   const base = {
     framework: 'AI_ACT' as const,
     verifiedOn: VERIFIED_ON,
@@ -384,7 +310,7 @@ function assessAiAct(input: ScopeInput): ScopeResult {
     return {
       ...base,
       status: 'not_assessed',
-      headline: 'Rispondi alle quattro domande sull’IA per valutare gli obblighi di trasparenza dell’art. 50.',
+      headline: t('ambito.rules.aiAct.notAnswered'),
       reasons: [],
       notes: [],
       sources: withIndex([S.aiAct50_1, S.aiAct113]),
@@ -398,56 +324,60 @@ function assessAiAct(input: ScopeInput): ScopeResult {
     return {
       ...base,
       status: 'out_of_scope',
-      headline: 'Dalle risposte, gli obblighi di trasparenza dell’art. 50 non vi toccano direttamente.',
-      reasons: [
-        'Nessuna delle quattro situazioni dell’art. 50 risulta applicabile. Fuori dall’art. 50 non significa fuori dall’AI Act.',
-      ],
+      headline: t('ambito.rules.aiAct.noneHeadline'),
+      reasons: [t('ambito.rules.aiAct.noneReason')],
       notes: [
-        `Alfabetizzazione in materia di IA (art. 4): applicabile dal ${formatDateIt(SCOPE_DATES.aiActArt4And5)} a chiunque fornisca o utilizzi sistemi di IA: il personale che usa l’IA deve avere un livello adeguato di competenza.`,
-        `Pratiche vietate (art. 5): in vigore dal ${formatDateIt(SCOPE_DATES.aiActArt4And5)} (per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul lavoro).`,
-        `Modelli di IA per finalità generali: se fornite modelli GPAI, gli obblighi del Capo V si applicano dal ${formatDateIt(SCOPE_DATES.aiActGpai)}, con poteri di enforcement dal 2026.`,
-        `Alto rischio: rinviato, non cancellato. La disciplina si applica dal ${formatDateIt(SCOPE_DATES.aiActHighRiskAnnexIII)} per i sistemi stand-alone (allegato III) e dal ${formatDateIt(SCOPE_DATES.aiActHighRiskAnnexI)} per l’IA integrata in prodotti regolamentati (allegato I); la preparazione richiede mesi.`,
+        t('ambito.rules.aiAct.noneNote1', { date: formatDate(SCOPE_DATES.aiActArt4And5, ctx) }),
+        t('ambito.rules.aiAct.noneNote2', { date: formatDate(SCOPE_DATES.aiActArt4And5, ctx) }),
+        t('ambito.rules.aiAct.noneNote3', { date: formatDate(SCOPE_DATES.aiActGpai, ctx) }),
+        t('ambito.rules.aiAct.noneNote4', {
+          annexIII: formatDate(SCOPE_DATES.aiActHighRiskAnnexIII, ctx),
+          annexI: formatDate(SCOPE_DATES.aiActHighRiskAnnexI, ctx),
+        }),
       ],
       sources: withIndex([S.aiAct4, S.aiAct5, S.aiActGpai, S.aiActHighRisk, S.aiAct113]),
       passages: [],
     }
   }
 
-  const obligations = keys.map((k) => AI_OBLIGATIONS[k])
-  const sources = withIndex([
+  const all = aiObligations(ctx, S)
+  const obligations = keys.map((k) => all[k])
+  const sources: Source[] = withIndex([
     ...obligations.map((o) => o.source),
     S.aiAct50_5,
     S.aiAct113,
     S.aiAct99,
     S.legge132,
   ])
+  const applies = formatDate(SCOPE_DATES.aiActArt50, ctx)
 
   return {
     ...base,
     status: 'in_scope',
-    headline: `Dal ${formatDateIt(SCOPE_DATES.aiActArt50)} l’art. 50 tocca le situazioni che hai indicato.`,
+    headline: t('ambito.rules.aiAct.inHeadline', { date: applies }),
     from: SCOPE_DATES.aiActArt50,
-    fromLabel: `Applicazione dal ${formatDateIt(SCOPE_DATES.aiActArt50)} (art. 113)`,
+    fromLabel: t('ambito.rules.aiAct.inFromLabel', { date: applies }),
     reasons: [
-      ...obligations.map((o) => `${o.whoLabel}: ${o.title} (${o.article}).`),
-      'Attenzione a chi è il destinatario: alcuni obblighi gravano su chi fornisce il sistema, altri su chi lo utilizza. Se il vostro ruolo è solo di utilizzatore, gli obblighi del fornitore gravano sul vostro fornitore, e viceversa.',
-      'Le informazioni vanno date in modo chiaro e riconoscibile, al più tardi alla prima interazione o esposizione (art. 50, par. 5).',
+      ...obligations.map((o) => t('ambito.rules.aiAct.inObligation', { who: o.whoLabel, title: o.title, article: o.article })),
+      t('ambito.rules.aiAct.inReason1'),
+      t('ambito.rules.aiAct.inReason2'),
     ],
     notes: [
-      'Sanzioni: fino a 15 milioni di euro o al 3% del fatturato mondiale annuo, se superiore; per PMI e start-up il minore dei due importi (art. 99, par. 4 e par. 6).',
-      'In Italia la Legge 132/2025 designa ACN (vigilanza e sanzioni) e AgID come autorità nazionali per l’AI Act.',
-      `Cosa non scatta il 2 agosto 2026: la disciplina dei sistemi ad alto rischio (allegato III), rinviata al ${formatDateIt(SCOPE_DATES.aiActHighRiskAnnexIII)} dal pacchetto Omnibus digitale.`,
+      t('ambito.rules.aiAct.inNote1'),
+      t('ambito.rules.aiAct.inNote2'),
+      t('ambito.rules.aiAct.inNote3', { date: formatDate(SCOPE_DATES.aiActHighRiskAnnexIII, ctx) }),
     ],
     sources,
-    passages: keys.includes('chat') ? [ART_50_1_PASSAGE] : [],
+    passages: keys.includes('chat') ? [art50Passage(ctx)] : [],
     obligations,
   }
 }
 
-export function assessScope(input: ScopeInput): ScopeAssessment {
+export function assessScope(input: ScopeInput, ctx: TextContext): ScopeAssessment {
+  const S = scopeSources(ctx)
   return {
     input,
-    results: [assessCsrd(input), assessCsddd(input), assessAiAct(input)],
+    results: [assessCsrd(input, ctx, S), assessCsddd(input, ctx, S), assessAiAct(input, ctx, S)],
     verifiedOn: VERIFIED_ON,
   }
 }

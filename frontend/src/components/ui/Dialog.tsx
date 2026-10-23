@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -25,6 +26,7 @@ export function Dialog({
   footer?: ReactNode
   size?: 'sm' | 'md' | 'lg'
 }) {
+  const t = useTranslations('ui')
   const ref = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function Dialog({
           type="button"
           onClick={onClose}
           className="-mr-2 -mt-2 rounded-md p-2 text-ink-3 hover:bg-surface-3 hover:text-ink"
-          aria-label="Chiudi"
+          aria-label={t('close')}
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

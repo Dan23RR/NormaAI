@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/cn'
 import { parseAnswer, resolverFor, type InlineToken } from '@/lib/chiedi/answer-text'
 import type { ChiediCitation } from '@/lib/chiedi/types'
@@ -22,20 +23,21 @@ export function AnswerBody({
   activeIndex?: number | null
   onMarkerClick?: (index: number) => void
 }) {
+  const t = useTranslations('chiedi.answer')
   const blocks = useMemo(() => parseAnswer(text, resolverFor(citations)), [text, citations])
 
   const renderInline = (tokens: InlineToken[], keyPrefix: string) =>
-    tokens.map((t, i) => {
+    tokens.map((tok, i) => {
       const key = `${keyPrefix}-${i}`
-      if (t.type === 'text') return <Fragment key={key}>{t.text}</Fragment>
-      if (t.type === 'strong')
+      if (tok.type === 'text') return <Fragment key={key}>{tok.text}</Fragment>
+      if (tok.type === 'strong')
         return (
           <strong key={key} className="font-semibold text-ink">
-            {t.text}
+            {tok.text}
           </strong>
         )
-      if (t.index === null || !onMarkerClick) return <Fragment key={key}>[{t.label}]</Fragment>
-      const index = t.index
+      if (tok.index === null || !onMarkerClick) return <Fragment key={key}>[{tok.label}]</Fragment>
+      const index = tok.index
       const active = activeIndex === index
       return (
         <button
@@ -43,14 +45,14 @@ export function AnswerBody({
           type="button"
           data-marker={`${messageId}-${index}`}
           onClick={() => onMarkerClick(index)}
-          aria-label={`Vai alla fonte ${index}`}
-          title={`Fonte ${index}`}
+          aria-label={t('goToSource', { index })}
+          title={t('source', { index })}
           className={cn(
             'rounded-sm px-0.5 font-medium text-union underline-offset-4 hover:underline',
             active && 'bg-union/10 underline',
           )}
         >
-          [{t.label}]
+          [{tok.label}]
         </button>
       )
     })

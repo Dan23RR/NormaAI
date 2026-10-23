@@ -222,7 +222,7 @@ export default function Home() {
                 <TR>
                   <TH>Ambito</TH>
                   <TH>Atti</TH>
-                  <TH>Cosa copre</TH>
+                  <TH className="hidden md:table-cell">Cosa copre</TH>
                 </TR>
               </THead>
               <TBody>
@@ -231,8 +231,11 @@ export default function Home() {
                     <TD className="whitespace-nowrap">
                       <FrameworkBadge framework={row.framework} />
                     </TD>
-                    <TD className="font-serif text-read">{row.act}</TD>
-                    <TD className="text-ink-2">{row.covers}</TD>
+                    <TD>
+                      <span className="font-serif text-read">{row.act}</span>
+                      <span className="mt-1 block text-small text-ink-2 md:hidden">{row.covers}</span>
+                    </TD>
+                    <TD className="hidden text-ink-2 md:table-cell">{row.covers}</TD>
                   </TR>
                 ))}
               </TBody>

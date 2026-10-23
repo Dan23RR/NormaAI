@@ -191,7 +191,7 @@ def resolve_locator(lines: list[str], loc: dict) -> str:
     span = int(loc.get("span", 1))
     passage = "\n".join(lines[idx : idx + span])
     if loc.get("strip_quotes"):
-        passage = passage.strip("‘’'“”\"")
+        passage = passage.strip("‘’'“”\"«»")
     return passage
 
 

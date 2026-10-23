@@ -738,7 +738,12 @@ class TestNodeWiredToRealGovernance:
         assert out["confidence_score"] == pytest.approx(0.95)
         # result_json now holds the modal answer (the GDPR:5 cluster rep).
         modal = json.loads(out["result_json"])
-        assert modal["citations"] == [{"framework": "GDPR", "article_number": "5"}]
+        # ...annotated by the grounding guard with the evidence-backed verdict.
+        assert modal["citations"] == [
+            {"framework": "GDPR", "article_number": "5", "grounded": True}
+        ]
+        # The SNC sample itself is left as the model produced it (no mutation).
+        assert initial["citations"] == [{"framework": "GDPR", "article_number": "5"}]
 
     async def test_node_abstain_end_to_end_then_abstain_response(self):
         # Divergent samples drive ABSTAIN at the node, then the routing helper

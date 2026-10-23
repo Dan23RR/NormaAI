@@ -55,12 +55,20 @@ class CitationEvent(BaseModel):
     """Regulatory document reference with metadata and verification status."""
 
     type: str = Field(default=EventType.CITATION, frozen=True)
-    celex: str = Field(..., description="CELEX identifier (EU-Lex)")
+    celex: str = Field(default="", description="CELEX identifier (EUR-Lex); empty if unknown")
     urn: str | None = Field(default=None, description="URN identifier if available")
     article: str = Field(..., description="Article or section reference")
     title: str = Field(..., description="Document title")
-    url: str = Field(..., description="Full URL to document")
-    verified: bool = Field(..., description="Whether citation was verified by CoVe")
+    url: str | None = Field(default=None, description="Full URL to document, when resolvable")
+    # Honest provenance: True/False only when a verification step actually ran
+    # on this citation; omitted (None) when none did - never a default False.
+    verified: bool | None = Field(
+        default=None, description="Verification outcome when a verifier ran; absent otherwise"
+    )
+    grounded: bool | None = Field(
+        default=None,
+        description="Whether the citation is backed by the retrieved evidence (grounding guard)",
+    )
 
 
 class ThinkingEvent(BaseModel):
@@ -102,11 +110,18 @@ class PhaseChangeEvent(BaseModel):
 
 
 class ErrorEvent(BaseModel):
-    """Streaming error during processing."""
+    """Streaming error during processing.
+
+    ``recoverable`` is honest about the STREAM: True only when processing
+    continues after the error (e.g. one CoVe claim timed out, the rest goes on);
+    False when the stream ends here. ``error_code`` (see src.api.errors) lets
+    clients tell a transient upstream condition from a permanent failure.
+    """
 
     type: str = Field(default=EventType.ERROR, frozen=True)
     message: str = Field(..., description="Error message")
     recoverable: bool = Field(..., description="Whether processing can recover from this error")
+    error_code: str | None = Field(default=None, description="Machine-readable error class")
 
 
 class DoneEvent(BaseModel):
@@ -147,13 +162,16 @@ def format_sse(event: SSEEvent) -> str:
 
     SSE format: `data: {json}\n\n`
 
+    Optional fields left unset (None) are omitted rather than sent as null, so
+    an absent ``verified``/``url`` is honestly absent instead of a fake value.
+
     Args:
         event: The SSE event to format
 
     Returns:
         Properly formatted SSE string with double newline terminator
     """
-    json_str = event.model_dump_json(exclude_unset=False)
+    json_str = event.model_dump_json(exclude_none=True)
     return f"data: {json_str}\n\n"
 
 

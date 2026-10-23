@@ -225,7 +225,14 @@ def _build_graph(*, use_async_nodes: bool = False):
         graph.add_node("cove_verification", cove_verification_node)
 
     def should_route_to_cove(state: AgentState) -> str:
-        """Conditional edge: route to CoVe if enabled and confidence is low."""
+        """Conditional edge: route to CoVe if enabled and confidence is low.
+
+        A result that already carries an error (LLM or retrieval failure) has
+        nothing to verify: running CoVe on it would only burn LLM calls on an
+        error payload, so it goes straight to END.
+        """
+        if state.get("error"):
+            return END
         if state.get("cove_enabled") and state.get("confidence_score", 1.0) < 0.85:
             return "cove_verification"
         return END
@@ -377,21 +384,44 @@ def _apply_cove_to_result(state: dict, done: dict) -> None:
 
 
 def _extract_result(state: dict) -> dict:
+    """Parse the graph's result_json into the dict returned to the caller.
+
+    A result that is not a JSON object is returned as ``raw_response`` with NO
+    confidence (0.0) and flagged for expert review: nothing in the pipeline
+    scored it, so inventing a mid-range confidence would be a lie.
+    """
     result_json = state.get("result_json", "{}")
     try:
         result = json.loads(result_json)
         if isinstance(result, dict):
+            # The graph's own verdict (confidence_check_node: score < 0.8) lives
+            # in the state channel; surface it so the JSON and SSE responses
+            # report the real review state, not only the LLM's self-assessment.
+            if state.get("requires_review") and not result.get("requires_expert_review"):
+                result["requires_expert_review"] = True
             return result
-        return {"raw_response": str(result), "confidence_score": 0.5}
+        raw = str(result)
     except (json.JSONDecodeError, TypeError):
-        return {"raw_response": str(result_json), "confidence_score": 0.5}
+        raw = str(result_json)
+    return {"raw_response": raw, "confidence_score": 0.0, "requires_expert_review": True}
 
 
 _ERROR_RESPONSE = {
     "error": "An unexpected error occurred during analysis.",
+    "error_code": "internal_error",
     "confidence_score": 0.0,
     "requires_expert_review": True,
 }
+
+
+def _graph_error(message: str, code: str) -> dict:
+    """Structured error envelope for graph-level failures (see src.api.errors)."""
+    return {
+        "error": message,
+        "error_code": code,
+        "confidence_score": 0.0,
+        "requires_expert_review": True,
+    }
 
 
 def _run_graph(state: dict) -> dict:
@@ -404,25 +434,13 @@ def _run_graph(state: dict) -> dict:
         return _extract_result(final_state)
     except ValueError as e:
         logger.error("invalid_graph_input: %s", e)
-        return {
-            "error": "Invalid input for analysis.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Invalid input for analysis.", "invalid_input")
     except RuntimeError as e:
         logger.error("graph_runtime_error: %s", e)
-        return {
-            "error": "Analysis execution failed. Please try again.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Analysis execution failed. Please try again.", "graph_error")
     except TimeoutError as e:
         logger.error("graph_timeout: %s", e)
-        return {
-            "error": "Graph execution timed out.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Graph execution timed out.", "graph_timeout")
     except Exception:
         logger.error("unexpected_graph_error", exc_info=True)
         return {**_ERROR_RESPONSE}
@@ -447,25 +465,13 @@ async def _arun_graph(state: dict) -> dict:
 
     except ValueError as e:
         logger.error("invalid_graph_input: %s", e)
-        return {
-            "error": "Invalid input for analysis.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Invalid input for analysis.", "invalid_input")
     except RuntimeError as e:
         logger.error("graph_runtime_error: %s", e)
-        return {
-            "error": "Analysis execution failed. Please try again.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Analysis execution failed. Please try again.", "graph_error")
     except TimeoutError:
         logger.error("graph_async_timeout")
-        return {
-            "error": "Graph execution timed out.",
-            "confidence_score": 0.0,
-            "requires_expert_review": True,
-        }
+        return _graph_error("Graph execution timed out.", "graph_timeout")
     except Exception:
         logger.error("unexpected_async_graph_error", exc_info=True)
         return {**_ERROR_RESPONSE}

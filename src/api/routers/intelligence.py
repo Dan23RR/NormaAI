@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.api.errors import QDRANT_UNAVAILABLE_DETAIL, llm_not_configured_detail, raise_for_result
 from src.api.streaming.generators import (
     gap_analysis_stream_generator,
     monitor_stream_generator,
@@ -144,10 +145,7 @@ def _require_qdrant(request: Request):
     from src.api.app_state import app_state
 
     if not app_state.qdrant_available:
-        raise HTTPException(
-            status_code=503,
-            detail="Qdrant vector database is not available. Check Docker services.",
-        )
+        raise HTTPException(status_code=503, detail=QDRANT_UNAVAILABLE_DETAIL)
 
 
 def _require_llm():
@@ -156,11 +154,25 @@ def _require_llm():
 
     if not app_state.llm_available:
         settings = get_settings()
-        key_name = "GOOGLE_API_KEY" if settings.llm_provider == "gemini" else "ANTHROPIC_API_KEY"
-        raise HTTPException(
-            status_code=503,
-            detail=f"{key_name} not configured. Add it to your .env file to use intelligence endpoints.",
+        key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
+            settings.llm_provider, "ANTHROPIC_API_KEY"
         )
+        raise HTTPException(status_code=503, detail=llm_not_configured_detail(key_name))
+
+
+# UI-facing (Italian) details for failures raised as exceptions rather than
+# returned as result dicts (those go through src.api.errors.raise_for_result).
+_INTERNAL_DETAIL = "Errore interno durante l'analisi. Riprova più tardi."
+_TIMEOUT_DETAIL = "L'analisi non è stata completata entro il tempo massimo. Riprova più tardi."
+
+
+def _service_unavailable_detail(err: ServiceUnavailableError) -> str:
+    """503 detail for an open circuit breaker (service name kept for operators)."""
+    service = getattr(err, "service", "") or "servizio"
+    return (
+        f"Il servizio '{service}' è temporaneamente non disponibile dopo errori ripetuti. "
+        "Riprova tra qualche minuto."
+    )
 
 
 def _quota_headers(quota: QuotaStatus) -> dict[str, str]:
@@ -313,6 +325,9 @@ async def ask_question(
         result = await arun_qa(
             payload.question, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
         )
+        # A failed analysis is an HTTP error (503/502/504/500), never a 200
+        # "success" envelope wrapping an error payload - and it is never cached.
+        raise_for_result(result, endpoint="qa")
 
         # Cache with org isolation (skip when CoVe ran - see cache-read note above)
         try:
@@ -347,15 +362,15 @@ async def ask_question(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
+    except TimeoutError:
+        logger.error("qa_timeout", traceback=traceback.format_exc())
+        raise HTTPException(status_code=504, detail=_TIMEOUT_DETAIL)
     except Exception as e:
         logger.error(
             "qa_error", error=str(e), error_type=type(e).__name__, traceback=traceback.format_exc()
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during Q&A analysis. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)
 
 
 @router.post("/gap-analysis")
@@ -422,6 +437,7 @@ async def run_gap_analysis_endpoint(
         result = await arun_gap_analysis(
             payload.framework.value, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
         )
+        raise_for_result(result, endpoint="gap_analysis")
 
         # Cache with org isolation (skip when CoVe ran)
         try:
@@ -442,7 +458,10 @@ async def run_gap_analysis_endpoint(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
+    except TimeoutError:
+        logger.error("gap_analysis_timeout", traceback=traceback.format_exc())
+        raise HTTPException(status_code=504, detail=_TIMEOUT_DETAIL)
     except Exception as e:
         logger.error(
             "gap_analysis_error",
@@ -450,10 +469,7 @@ async def run_gap_analysis_endpoint(
             error_type=type(e).__name__,
             traceback=traceback.format_exc(),
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during gap analysis. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)
 
 
 @router.post("/monitor")
@@ -519,6 +535,7 @@ async def monitor_change(
         result = await arun_monitor_check(
             payload.regulation_change, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
         )
+        raise_for_result(result, endpoint="monitor")
 
         # Cache with org isolation (skip when CoVe ran)
         try:
@@ -539,7 +556,10 @@ async def monitor_change(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
+    except TimeoutError:
+        logger.error("monitor_timeout", traceback=traceback.format_exc())
+        raise HTTPException(status_code=504, detail=_TIMEOUT_DETAIL)
     except Exception as e:
         logger.error(
             "monitor_error",
@@ -547,10 +567,7 @@ async def monitor_change(
             error_type=type(e).__name__,
             traceback=traceback.format_exc(),
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during monitor analysis. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)
 
 
 # ─── SSE Streaming Endpoints ──────────────────────────────────────
@@ -605,6 +622,7 @@ async def ask_question_stream(
                     profile_dict,
                     user,
                     payload.enable_cove,
+                    language=payload.language.value,
                 )
             ),
             media_type="text/event-stream",
@@ -619,7 +637,7 @@ async def ask_question_stream(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
     except Exception as e:
         logger.error(
             "qa_stream_error",
@@ -627,10 +645,7 @@ async def ask_question_stream(
             error_type=type(e).__name__,
             traceback=traceback.format_exc(),
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during Q&A streaming. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)
 
 
 @router.post("/gap-analysis/stream")
@@ -689,7 +704,7 @@ async def run_gap_analysis_stream(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
     except Exception as e:
         logger.error(
             "gap_analysis_stream_error",
@@ -697,10 +712,7 @@ async def run_gap_analysis_stream(
             error_type=type(e).__name__,
             traceback=traceback.format_exc(),
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during gap analysis streaming. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)
 
 
 @router.post("/monitor/stream")
@@ -759,7 +771,7 @@ async def monitor_change_stream(
     except HTTPException:
         raise
     except ServiceUnavailableError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=_service_unavailable_detail(e))
     except Exception as e:
         logger.error(
             "monitor_stream_error",
@@ -767,7 +779,4 @@ async def monitor_change_stream(
             error_type=type(e).__name__,
             traceback=traceback.format_exc(),
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred during monitor streaming. Please try again.",
-        )
+        raise HTTPException(status_code=500, detail=_INTERNAL_DETAIL)

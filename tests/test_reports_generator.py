@@ -12,6 +12,11 @@ We assert:
 We never assert exact PDF bytes, only structure / non-emptiness / no-raise.
 """
 
+import io
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 from fpdf import FPDF
 
 from src.reports.generator import (
@@ -99,6 +104,8 @@ class TestLookupTables:
         assert _STATUS_LABELS["PARTIALLY_COMPLIANT"] == "Partial"
         assert _STATUS_LABELS["NON_COMPLIANT"] == "Non-Compliant"
         assert _STATUS_LABELS["NOT_APPLICABLE"] == "N/A"
+        # Fifth status emitted by prompts/gap_analyst.txt.
+        assert _STATUS_LABELS["IN_EVOLUTION"] == "In Evolution"
 
     def test_status_colours_keys_match_labels(self):
         # Every label key must have a colour, and each colour is an RGB triple.
@@ -138,6 +145,84 @@ class TestPdfConstruction:
         assert isinstance(out, bytes)
         assert len(out) > 0
         assert out.startswith(PDF_MAGIC)
+
+
+# ---------------------------------------------------------------------------
+# Unicode text: "€", typographic quotes and accents must not break rendering
+# ---------------------------------------------------------------------------
+
+UNICODE_SAMPLE = "Sanzione fino a €20.000.000 - l'obbligo “è” già in vigore… (Art. 83)"
+
+
+class TestUnicodeText:
+    def test_vendored_dejavu_font_is_registered(self):
+        pdf = _NormaPDF()
+        assert pdf.report_font == "DejaVuSans"
+        assert pdf.safe_text(UNICODE_SAMPLE) == UNICODE_SAMPLE  # untouched
+
+    def test_report_with_euro_quotes_and_accents_renders(self):
+        gen = ComplianceReportGenerator()
+        gap = {
+            "framework": "GDPR",
+            "overall_score": 33.3,
+            "confidence_score": 0.7,
+            "requirements": [
+                _requirement("Sanzioni – art. 83", "NON_COMPLIANT", UNICODE_SAMPLE, "HIGH"),
+                _requirement(
+                    "Evoluzione “Omnibus”", "IN_EVOLUTION", "Soglia a 1.000 dipendenti", ""
+                ),
+            ],
+            "recommendations": [{"priority": "P1", "action": "Budget: €50.000 all’anno"}],
+        }
+        out = gen.generate_gap_report("Società Àlfa S.r.l.", "GDPR", gap, _company_profile())
+        assert out.startswith(PDF_MAGIC)
+        # The embedded TrueType font is DejaVu Sans, not a core font.
+        assert b"DejaVuSans" in out
+
+    def test_rendered_text_round_trips_through_pdf_extraction(self):
+        pypdf = pytest.importorskip("pypdf")
+        gen = ComplianceReportGenerator()
+        gap = {
+            "framework": "GDPR",
+            "overall_score": 10.0,
+            "confidence_score": 0.5,
+            "requirements": [_requirement("Euro check", "NON_COMPLIANT", "Costo €1.500", "LOW")],
+            "recommendations": [],
+        }
+        out = gen.generate_gap_report("Società Àlfa", "GDPR", gap)
+        text = "".join(p.extract_text() for p in pypdf.PdfReader(io.BytesIO(out)).pages)
+        assert "€1.500" in text
+        assert "Società Àlfa" in text
+        # alias_nb_pages still works with the TrueType font.
+        assert "Page 1/1" in text
+
+    def test_core_font_fallback_transliterates_instead_of_raising(self):
+        # Simulate missing font files: the report must still render, with
+        # Helvetica and ASCII-safe text.
+        with patch("src.reports.generator._FONTS_DIR", Path("/nonexistent/fonts")):
+            pdf = _NormaPDF()
+            assert pdf.report_font == "Helvetica"
+            assert pdf.safe_text("€20 l’anno “ok” – fine…") == 'EUR20 l\'anno "ok" - fine...'
+            gen = ComplianceReportGenerator()
+            out = gen.generate_gap_report(
+                "Società Àlfa",
+                "GDPR",
+                {
+                    "framework": "GDPR",
+                    "overall_score": 1.0,
+                    "confidence_score": 0.1,
+                    "requirements": [_requirement("x", "NON_COMPLIANT", UNICODE_SAMPLE, "LOW")],
+                    "recommendations": [],
+                },
+            )
+        assert out.startswith(PDF_MAGIC)
+        assert b"DejaVuSans" not in out
+
+    def test_in_evolution_rows_render_with_their_own_label(self):
+        gen, pdf = _new_pdf_with_page()
+        gen._add_requirement_table(pdf, [_requirement("Soglie", "IN_EVOLUTION", "d", "")])
+        assert pdf.get_y() > 0
+        assert _STATUS_COLOURS["IN_EVOLUTION"] != _STATUS_COLOURS["NON_COMPLIANT"]
 
 
 # ---------------------------------------------------------------------------

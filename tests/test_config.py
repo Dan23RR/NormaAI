@@ -36,3 +36,10 @@ class TestSettings:
     def test_active_model_anthropic(self):
         s = Settings(llm_provider="anthropic", anthropic_api_key="test")
         assert "claude" in s.active_model
+
+    def test_snc_trust_layer_is_opt_in(self, monkeypatch):
+        # K-1 extra LLM calls per request: never on unless a deploy asks for it.
+        monkeypatch.delenv("SNC_ENABLED", raising=False)
+        s = _isolated_settings(monkeypatch, google_api_key="test")
+        assert s.snc_enabled is False
+        assert _isolated_settings(monkeypatch, google_api_key="t", snc_enabled=True).snc_enabled

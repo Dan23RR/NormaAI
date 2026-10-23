@@ -27,11 +27,6 @@ from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
 from src.nlp.embedding.indexer import HybridIndexer
 from src.nlp.processing.dots_ocr_processor import UnifiedDocumentProcessor
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 logger = logging.getLogger("normaai.pipeline")
 
 
@@ -624,6 +619,14 @@ def refresh_in_force_status(eurlex, indexer, tracked_celex: list[str], amendment
 
 
 def main():
+    # CLI entry point only: when imported by the API (data router, scheduler)
+    # the application's own logging setup applies - a module-level basicConfig
+    # would install a second root handler and duplicate every line.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     parser = argparse.ArgumentParser(description="NormaAI Ingestion Pipeline")
     parser.add_argument(
         "--action",

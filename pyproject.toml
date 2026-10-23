@@ -77,6 +77,8 @@ sentry-sdk = {extras = ["fastapi"], version = "^2.19.0", optional = true}
 
 [tool.poetry.extras]
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi", "opentelemetry-exporter-otlp-proto-grpc", "prometheus-client", "sentry-sdk"]
+# Error tracking only (sentry-sdk[fastapi]); enabled at runtime by SENTRY_DSN.
+sentry = ["sentry-sdk"]
 local-llm = ["langchain-ollama"]
 openrouter = ["langchain-openai"]
 

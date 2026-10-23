@@ -127,6 +127,10 @@ class SNCDecision:
     n_clusters: int
     modal_answer: dict
     samples: list
+    # True when the K-1 resamples FAILED (provider/network errors) so no trust
+    # could be computed: the resulting ABSTAIN is a failure in disguise, not a
+    # genuine disagreement, and must be reported (and cached) differently.
+    degraded: bool = False
 
 
 # ----- Main async entry point -----
@@ -192,6 +196,7 @@ async def snc_governance(
             n_clusters=1,
             modal_answer=initial_response,
             samples=samples,
+            degraded=True,
         )
 
     ppv = sum(extract_confidence(s) for s in samples) / len(samples)
@@ -261,6 +266,7 @@ def serialize_decision(decision: SNCDecision) -> dict:
         "t_comp": round(decision.t_comp, 6),
         "n_clusters": decision.n_clusters,
         "n_samples": len(decision.samples),
+        "degraded": decision.degraded,
         "samples_summary": [
             {
                 "self_confidence": extract_confidence(s),

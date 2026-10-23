@@ -34,11 +34,23 @@ services:
       - normaai-network
 
   app:
+    build:
+      args:
+        # Git SHA baked into the image (Dockerfile ARG GIT_SHA) and reported by
+        # GET /health as "version". bootstrap_hetzner.sh and the deploy
+        # workflow export GIT_SHA before building; "dev" otherwise.
+        GIT_SHA: ${GIT_SHA:-dev}
     # No public port in production - Caddy proxies to it on the internal
     # network. `ports: []` would not override the base mapping, hence !override.
     ports: !override []
     environment:
       APP_ENV: production
+    # JWT RS256 keys: bootstrap_hetzner.sh writes ./data/jwt_private.pem and
+    # ./data/jwt_public.pem on the host, the base file bind-mounts ./data at
+    # /app/data, and .env points JWT_PRIVATE_KEY_PATH / JWT_PUBLIC_KEY_PATH
+    # there (src/config.py -> src/auth/security.py). APP_ENV=production refuses
+    # to start without them (no HS256 fallback). The Codex PDF is baked into
+    # the image (Dockerfile, CODEX_PDF_PATH) - no mount needed.
 
 volumes:
   caddy_data:

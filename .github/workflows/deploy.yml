@@ -1,0 +1,130 @@
+name: Deploy
+
+# Production deploy of the backend to the Hetzner host bootstrapped by
+# scripts/bootstrap_hetzner.sh. Runs on every push to main (after the code is
+# already on main) and on demand.
+#
+# On the server it does, in this order:
+#   1. git reset --hard origin/main in /opt/normaai
+#   2. docker compose build app   (GIT_SHA baked in -> GET /health "version")
+#   3. alembic upgrade head       as the `normaai` OWNER role (base compose
+#      files: under the RLS overlay the app connects as normaai_app, which
+#      cannot ALTER tables, so `exec app alembic upgrade head` would fail)
+#   4. docker compose up -d app caddy with the prod + RLS overlays
+# then waits until https://api.normaai.org/health answers 200 and reports the
+# deployed SHA.
+#
+# Required repository secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
+# (private key of a user allowed to run docker on the host). Optional:
+# DEPLOY_PORT (default 22), DEPLOY_KNOWN_HOSTS (the host's `ssh-keyscan`
+# line; without it the key is trusted on first use, with a warning).
+# When the required secrets are missing (forks, dry runs) the job succeeds
+# with a notice instead of failing.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; never cancel a deploy that is mid-flight.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  APP_DIR: /opt/normaai
+  HEALTH_URL: https://api.normaai.org/health
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check deploy secrets
+        id: cfg
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::notice::DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY not configured - skipping the deploy."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up SSH
+        if: steps.cfg.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS not set - trusting the host key on first use. Add the output of 'ssh-keyscan -p <port> <host>' as a secret."
+            ssh-keyscan -p "${DEPLOY_PORT:-22}" -H "$DEPLOY_HOST" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy over SSH (pull, build, migrate as owner, restart)
+        if: steps.cfg.outputs.configured == 'true'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          # The script travels on stdin (`bash -s`): it is wrapped in a function
+          # so bash parses it completely before running it, and the docker
+          # commands get stdin from /dev/null, otherwise they could consume the
+          # rest of the script.
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+              -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
+              "$DEPLOY_USER@$DEPLOY_HOST" "APP_DIR='$APP_DIR' bash -s" <<'REMOTE'
+          deploy() {
+            set -euo pipefail
+            cd "$APP_DIR"
+            git fetch --prune origin
+            git reset --hard origin/main
+            export GIT_SHA="$(git rev-parse --short=7 HEAD)"
+            echo "deploying $GIT_SHA"
+            BASE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+            $BASE build app < /dev/null
+            # Migrations run as the `normaai` owner: the base files' DATABASE_URL.
+            $BASE run --rm -T app alembic upgrade head < /dev/null
+            # The long-lived app connects as the non-superuser role (RLS overlay).
+            $BASE -f docker-compose.rls.yml up -d app caddy < /dev/null
+          }
+          deploy
+          REMOTE
+
+      - name: Wait for the deployed build to answer on /health
+        if: steps.cfg.outputs.configured == 'true'
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          expected="${EXPECTED_SHA:0:7}"
+          for i in $(seq 1 36); do
+            if body="$(curl -fsS --max-time 10 "$HEALTH_URL")"; then
+              version="$(printf '%s' "$body" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))')"
+              if [ "$version" = "$expected" ]; then
+                echo "healthy: $body"; exit 0
+              fi
+              echo "up but still version '$version' (want $expected) - attempt $i/36"
+            else
+              echo "not healthy yet - attempt $i/36"
+            fi
+            sleep 10
+          done
+          echo "::error::$HEALTH_URL did not report version $expected within 6 minutes"
+          exit 1

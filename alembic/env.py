@@ -13,11 +13,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy import pool  # noqa: E402
+from sqlalchemy.ext.asyncio import async_engine_from_config  # noqa: E402
 
-from alembic import context
-from src.db.models import Base
+from alembic import context  # noqa: E402
+from src.db.models import Base  # noqa: E402
 
 
 # ── Load .env so DATABASE_URL is available at alembic invocation time ─────────
@@ -50,7 +50,16 @@ _runtime_url = os.environ.get("DATABASE_URL")
 if _runtime_url:
     config.set_main_option("sqlalchemy.url", _runtime_url)
 
+# src.db.models declares EVERY table the application uses (including the ones
+# only reached through raw SQL, e.g. parent_documents), so this metadata is the
+# complete schema that `alembic check` / autogenerate compare against.
 target_metadata = Base.metadata
+
+# What `alembic check` compares (CI "schema" job): column types (VARCHAR
+# lengths included), nullability, indexes, unique/foreign-key constraints and
+# comments. Server defaults are NOT compared: the ORM mostly uses client-side
+# defaults and the DB keeps harmless `DEFAULT now()`-style defaults.
+_COMPARE_OPTIONS = {"compare_type": True, "compare_server_default": False}
 
 
 def run_migrations_offline() -> None:
@@ -60,13 +69,14 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        **_COMPARE_OPTIONS,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, **_COMPARE_OPTIONS)
     with context.begin_transaction():
         context.run_migrations()
 

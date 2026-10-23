@@ -109,8 +109,8 @@ poetry install -E observability
 ### 6. Initialize Database
 
 ```bash
-# The database is auto-initialized by the docker-entrypoint script
-# For manual migration:
+# Alembic owns the schema (src/db/models.py is the source of truth; the
+# docker-entrypoint script only creates the PostgreSQL extensions):
 alembic upgrade head
 ```
 

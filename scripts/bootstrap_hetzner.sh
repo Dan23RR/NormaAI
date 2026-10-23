@@ -66,6 +66,9 @@ else
 fi
 cd "$APP_DIR"
 mkdir -p data backups
+# Baked into the image (Dockerfile ARG GIT_SHA via docker-compose.prod.yml) and
+# reported by GET /health as "version", so a deploy can be verified end to end.
+export GIT_SHA="$(git rev-parse --short=7 HEAD)"
 
 # ── 3. Secrets and .env ──────────────────────────────────────────────────────
 log "3/9" "Configurazione .env"
@@ -143,10 +146,12 @@ chmod 600 data/jwt_private.pem; chmod 644 data/jwt_public.pem
 # ── 5. Infra + migrations ────────────────────────────────────────────────────
 log "5/9" "Postgres, Qdrant, Redis e migrazioni"
 $COMPOSE_BASE up -d postgres qdrant redis
-$COMPOSE_BASE run --rm app alembic upgrade head || {
-  echo "   alembic ha trovato tabelle gia' create da init_db.sql: registro la versione corrente"
-  $COMPOSE_BASE run --rm app alembic stamp head
-}
+# Alembic is the only source of the schema (scripts/init_db.sql creates just the
+# extensions). Run as the `normaai` owner (base compose, NOT the RLS overlay:
+# normaai_app cannot ALTER tables). No `|| alembic stamp head` fallback: that
+# used to hide the init_db.sql drift and left tables missing - migration 007
+# reconciles any pre-existing database instead.
+$COMPOSE_BASE run --rm app alembic upgrade head
 
 # ── 6. Non-superuser role (real RLS) ────────────────────────────────────────
 log "6/9" "Ruolo applicativo normaai_app (isolamento multi-tenant reale)"
@@ -199,5 +204,9 @@ cat <<EOF
 Fatto. Prossimi passi:
   - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_URL=https://$API_DOMAIN, poi Redeploy.
   - Salva una copia di $APP_DIR/.env e di $APP_DIR/data/jwt_private.pem fuori dal server.
-  - Aggiornamenti: cd $APP_DIR && git pull && $COMPOSE_RLS up -d --build app && docker compose exec app alembic upgrade head
+  - Aggiornamenti: un push su main esegue .github/workflows/deploy.yml (build, migrazioni
+    come owner, riavvio, verifica di /health). A mano, nello stesso ordine:
+      cd $APP_DIR && git pull && export GIT_SHA=\$(git rev-parse --short=7 HEAD)
+      $COMPOSE_BASE build app && $COMPOSE_BASE run --rm app alembic upgrade head
+      $COMPOSE_RLS up -d app caddy
 EOF

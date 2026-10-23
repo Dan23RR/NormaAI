@@ -20,6 +20,13 @@ RUN poetry lock --no-update --no-interaction 2>/dev/null || true && \
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
 
+# Build-time version stamp. docker-compose.prod.yml passes the git SHA
+# (`GIT_SHA` exported by bootstrap_hetzner.sh / the deploy workflow) and
+# GET /health reports it as "version", so a deploy can be verified end to end.
+ARG GIT_SHA=dev
+ENV APP_VERSION=${GIT_SHA}
+LABEL org.opencontainers.image.revision=${GIT_SHA}
+
 # Security: non-root user
 RUN groupadd -r normaai && useradd -r -g normaai -d /app -s /sbin/nologin normaai
 
@@ -52,6 +59,12 @@ COPY scripts/ scripts/
 # container (without these, alembic loads an empty config -> "No script_location").
 COPY alembic/ alembic/
 COPY alembic.ini ./
+# Public Codex PDF served by GET /api/v1/codex/download (src/api/routers/leads.py).
+# The historical marketing/ render is gitignored and never reached the image,
+# so the endpoint answered 503 in production; the tracked copy under
+# frontend/public/ is baked in here and CODEX_PDF_PATH points the router at it.
+COPY frontend/public/codex-post-omnibus-2025-2029.pdf assets/codex-post-omnibus-2025-2029.pdf
+ENV CODEX_PDF_PATH=/app/assets/codex-post-omnibus-2025-2029.pdf
 
 # Set ownership (covers the baked model cache too)
 RUN chown -R normaai:normaai /app

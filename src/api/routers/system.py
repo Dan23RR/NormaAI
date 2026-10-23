@@ -111,9 +111,13 @@ async def health_check():
     Always returns 200 while the event loop is responsive - do NOT gate
     on dependencies here, or a Qdrant outage would make the orchestrator
     kill healthy app containers.
+
+    ``version`` is the git SHA baked into the image (APP_VERSION, "dev"
+    outside a build) so the deploy workflow can confirm the running build.
     """
     return {
         "status": "ok",
+        "version": get_settings().app_version,
         "qdrant": "up" if app_state.qdrant_available else "down",
         "llm": "configured" if app_state.llm_available else "missing_key",
     }

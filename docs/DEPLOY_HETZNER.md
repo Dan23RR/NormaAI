@@ -97,8 +97,9 @@ chmod 600 jwt_private.pem
 #    scarica da EUR-Lex: minuti.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres qdrant redis
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
-# crea il ruolo non-superuser normaai_app (+ policy mancanti). Passa la STESSA
-# password che hai messo in APP_DB_PASSWORD nel .env (:'app_pw' la quota da solo):
+# crea il ruolo non-superuser normaai_app (le policy RLS le crea Alembic, migrazione
+# 007). Passa la STESSA password che hai messo in APP_DB_PASSWORD nel .env
+# (:'app_pw' la quota da solo):
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
   psql -U normaai -d normaai -v app_pw="<APP_DB_PASSWORD>" < scripts/setup_app_role.sql
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app python -m src.pipeline --action seed
@@ -151,10 +152,18 @@ Registra l'esito nel post-mortem log del [RUNBOOK](RUNBOOK.md). Fine G10.
 
 ## Aggiornamenti successivi
 
+Un push su `main` esegue `.github/workflows/deploy.yml` (secret `DEPLOY_HOST`,
+`DEPLOY_USER`, `DEPLOY_SSH_KEY`, opzionali `DEPLOY_PORT` e `DEPLOY_KNOWN_HOSTS`):
+build con il SHA git, migrazioni **come owner**, riavvio, verifica che
+`/health` risponda con la `version` attesa. A mano, nello stesso ordine:
+
 ```bash
-cd /opt/normaai && git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.rls.yml up -d --build app
-docker compose exec app alembic upgrade head
+cd /opt/normaai && git pull && export GIT_SHA=$(git rev-parse --short=7 HEAD)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build app
+# come owner `normaai`: sotto l'overlay RLS l'app gira come normaai_app, che NON puo' alterare le tabelle
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.rls.yml up -d app caddy
+curl https://api.normaai.org/health   # "version" = SHA appena deployato
 ```
 
 Rollback: `git checkout <tag-precedente>` + stesso comando di build.

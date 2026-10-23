@@ -101,6 +101,16 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     max_concurrent_requests: int = 10
+    # Git SHA of the running build. The Dockerfile sets APP_VERSION from its
+    # GIT_SHA build arg (wired through docker-compose.prod.yml / deploy.yml);
+    # GET /health reports it so a deploy can be verified end to end. "dev"
+    # outside a built image.
+    app_version: str = "dev"
+
+    # ─── Public assets ────────────────────────────────────────
+    # Absolute path of the Codex PDF served by GET /api/v1/codex/download. The
+    # image sets it (Dockerfile); empty = resolve from the repository tree.
+    codex_pdf_path: str = ""
 
     # ─── Chain-of-Verification (CoVe) ────────────────────────
     cove_enabled: bool = False

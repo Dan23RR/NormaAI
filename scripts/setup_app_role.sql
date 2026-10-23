@@ -1,22 +1,29 @@
 -- =============================================================================
 -- NormaAI - non-superuser application role for REAL Row-Level Security
 -- =============================================================================
--- PostgreSQL bypasses RLS for superusers and table OWNERS, so the migration-002
--- policies only isolate tenants when the app connects as a dedicated
--- NON-superuser role. Today docker-compose connects the app as `normaai` (the
--- owner) -> RLS is inert. This script creates that role and fills the INSERT
--- policy gaps that block a non-superuser from registering / writing.
+-- PostgreSQL bypasses RLS for superusers and table OWNERS, so the policies
+-- only isolate tenants when the app connects as a dedicated NON-superuser
+-- role. The docker-compose.rls.yml overlay repoints the app's DATABASE_URL at
+-- that role; this script creates it and grants it the least privilege it
+-- needs. Alembic migrations keep running as the `normaai` owner.
 --
--- HOW TO USE (one-time, on the live DB, as a SUPERUSER e.g. the `normaai` owner):
+-- HOW TO USE (one-time, on the live DB, as a SUPERUSER e.g. the `normaai` owner,
+-- AFTER `alembic upgrade head` so the grants cover every table):
 --   psql "$SUPERUSER_DATABASE_URL" -v app_pw="<strong-password>" -f scripts/setup_app_role.sql
 -- then set the app's DATABASE_URL to normaai_app and redeploy.
 --
 -- !! VALIDATE ON STAGING FIRST !! Run the two-tenant isolation check in
 -- docs/DEPLOY_READINESS.md (register two orgs, confirm neither sees the other's
--- rows) before switching production traffic to normaai_app. A wrong policy here
--- either breaks register or silently leaks across tenants.
+-- rows) before switching production traffic to normaai_app.
 --
 -- Idempotent: safe to re-run.
+--
+-- NOTE: the RLS policies themselves are NOT defined here any more. They are
+-- owned by Alembic (migration 007_reconcile_schema creates the canonical set
+-- and drops the legacy init_db.sql ones), so every database converges on the
+-- same policies regardless of how it was born. The historical sections 3-4 of
+-- this script, which patched the policy gaps on servers created from
+-- init_db.sql, are superseded by `alembic upgrade head`.
 -- =============================================================================
 
 -- 1) The role -----------------------------------------------------------------
@@ -51,78 +58,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO normaai_app;
 
--- 3) INSERT-policy gaps -------------------------------------------------------
--- Migration 002 added INSERT (WITH CHECK) policies only for users/clients. A
--- non-superuser therefore cannot create an organization (register), or insert
--- alerts/assessments/conversations, under FORCE ROW LEVEL SECURITY. These are
--- no-ops for the current superuser app; they only matter once you switch to
--- normaai_app.
-
--- organizations: creating a NEW tenant is inherently cross-org; SELECT stays
--- restricted to your own org by the existing organizations_self_only policy.
-DROP POLICY IF EXISTS organizations_insert ON organizations;
-CREATE POLICY organizations_insert ON organizations FOR INSERT WITH CHECK (true);
-
--- alerts / assessments / conversations: allow INSERT for rows belonging to the
--- caller's org (mirrors the existing USING isolation via the parent join).
-DROP POLICY IF EXISTS alerts_insert ON alerts;
-CREATE POLICY alerts_insert ON alerts FOR INSERT WITH CHECK (
-  client_id IN (SELECT id FROM clients
-                WHERE org_id::text = current_setting('app.current_org_id', true))
-);
-DROP POLICY IF EXISTS assessments_insert ON assessments;
-CREATE POLICY assessments_insert ON assessments FOR INSERT WITH CHECK (
-  client_id IN (SELECT id FROM clients
-                WHERE org_id::text = current_setting('app.current_org_id', true))
-);
-DROP POLICY IF EXISTS conversations_insert ON conversations;
-CREATE POLICY conversations_insert ON conversations FOR INSERT WITH CHECK (
-  user_id IN (SELECT id FROM users
-              WHERE org_id::text = current_setting('app.current_org_id', true))
-);
-
--- 4) SELECT/UPDATE/DELETE (USING) policy alignment ----------------------------
--- The bundled scripts/init_db.sql created USING policies for clients/alerts/
--- assessments with the STRICT current_setting('app.current_org_id') (which ERRORS
--- when the GUC is unset, e.g. a no-org session) and created NONE for conversations
--- (RLS-enabled-but-no-policy => a non-superuser sees zero rows and can write but
--- never read back). Re-create them idempotently with the missing_ok form so a
--- no-org session degrades to "no rows" instead of erroring, and so conversations
--- are actually readable by their owner. This mirrors the alembic 002/003 intent
--- for servers whose schema came from init_db.sql (or were `alembic stamp`ed).
--- RLS is intentionally NOT enabled on users/organizations here: the login path
--- looks up a user by email on a no-org session, and an org-scoped policy there
--- would break login. Those tables rely on the application-level org filter.
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS clients_org_policy ON clients;
-CREATE POLICY clients_org_policy ON clients
-  USING (org_id::text = current_setting('app.current_org_id', true));
-
-DROP POLICY IF EXISTS alerts_org_policy ON alerts;
-CREATE POLICY alerts_org_policy ON alerts
-  USING (client_id IN (SELECT id FROM clients
-                       WHERE org_id::text = current_setting('app.current_org_id', true)));
-
-DROP POLICY IF EXISTS assessments_org_policy ON assessments;
-CREATE POLICY assessments_org_policy ON assessments
-  USING (client_id IN (SELECT id FROM clients
-                       WHERE org_id::text = current_setting('app.current_org_id', true)));
-
-DROP POLICY IF EXISTS conversations_org_policy ON conversations;
-CREATE POLICY conversations_org_policy ON conversations
-  USING (user_id IN (SELECT id FROM users
-                     WHERE org_id::text = current_setting('app.current_org_id', true)));
-
--- NOTE on register: the /auth/register handler creates the org AND the first
--- user on a no-org session, so users_org_insert (WITH CHECK org_id =
--- current_setting('app.current_org_id')) fails because the context isn't set
--- yet. After switching to normaai_app, set the context inside register right
--- after flushing the new org:
---     await db.execute(text("SELECT set_config('app.current_org_id', :oid, true)"),
---                      {"oid": str(org.id)})
--- (a no-op under the current superuser, required under normaai_app). Verify with
--- the register test on staging.
+-- NOTE on register: /auth/register creates the org AND the first user on a
+-- no-org session. users/organizations carry no RLS (migration 007 documents
+-- why: the login/refresh/me lookups run with no org context), while the
+-- handler sets the org context right after flushing the new org so that any
+-- tenant-scoped INSERT that follows passes its WITH CHECK under normaai_app.

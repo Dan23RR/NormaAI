@@ -1,350 +1,308 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import {
-  ShieldCheck,
-  Database,
-  GitBranch,
-  FileText,
-  ArrowLeft,
-  CheckCircle2,
-  Scale,
-  ServerCog,
-} from 'lucide-react'
+import { SiteHeader } from '@/components/site/SiteHeader'
+import { SiteFooter } from '@/components/site/SiteFooter'
+import { ButtonLink } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
-  title: 'Metodo e trasparenza - NormaAI',
+  title: 'Metodo e trasparenza',
   description:
-    'Come è costruita NormaAI: pipeline anti-allucinazione verificabile, corpus EUR-Lex/Normattiva, decisioni di ingegneria pubbliche. Ogni numero in questa pagina è riproducibile dalla test suite.',
+    'Come nasce una risposta di NormaAI: corpus EUR-Lex e Normattiva con data dichiarata, ricerca ibrida, controlli di aderenza alle fonti, astensione quando il testo non basta. Ogni affermazione rimanda al file del codice pubblico che la realizza.',
 }
 
-// Every figure on this page is reproducible from the repository.
-// Update via: run_tests.ps1 (test counts) · CORE_FRAMEWORKS (seeds) ·
-// the public ADRs. No live counters, no demo data - by design.
-const VERIFIED = {
-  lastVerified: '2026-06-12',
-  backendTests: 327,
-  frontendTests: 30,
-  frameworks: 8,
-  celexSeeds: 12,
-  covePhases: 5,
-  sncThresholds: { high: 0.85, low: 0.5 },
+const REPO = 'https://github.com/Dan23RR/NormaAI'
+
+/** Files of the public repository where a reader can check the claims above. */
+function InCode({ paths }: { paths: string[] }) {
+  return (
+    <p className="mt-4 text-small text-ink-3">
+      Nel codice:{' '}
+      {paths.map((path, i) => (
+        <span key={path}>
+          {i > 0 && ', '}
+          <a
+            href={`${REPO}/blob/main/${path}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-union hover:underline"
+          >
+            <code className="font-mono">{path}</code>
+          </a>
+        </span>
+      ))}
+      .
+    </p>
+  )
 }
 
-const ADRS = [
+// Acts in the acquisition list (CORE_FRAMEWORKS in src/crawler/eurlex/client.py).
+const FRAMEWORKS: Array<{ name: string; acts: string }> = [
   {
-    id: 'ADR-004',
-    date: '2026-06-12',
-    title: 'CRA (Cyber Resilience Act) come 8° framework',
-    body: 'Reg. (UE) 2024/2847 + Implementing Reg. 2025/2392 nei seed EUR-Lex. Il claim pubblico resta "7 framework" finché il seed del corpus CRA non è verificato in produzione.',
+    name: 'CSRD',
+    acts: 'Dir. (UE) 2022/2464, ESRS (Reg. delegato (UE) 2023/2772), direttiva stop-the-clock (Dir. (UE) 2025/794) e Omnibus I (Dir. (UE) 2026/470)',
+  },
+  { name: 'CSDDD', acts: 'Dir. (UE) 2024/1760 e Omnibus I (Dir. (UE) 2026/470)' },
+  { name: 'AI Act', acts: 'Reg. (UE) 2024/1689' },
+  { name: 'DORA', acts: 'Reg. (UE) 2022/2554' },
+  { name: 'NIS2', acts: 'Dir. (UE) 2022/2555' },
+  { name: 'Tassonomia UE', acts: 'Reg. (UE) 2020/852' },
+  { name: 'GDPR', acts: 'Reg. (UE) 2016/679' },
+  {
+    name: 'CRA',
+    acts: 'Reg. (UE) 2024/2847 e Reg. di esecuzione (UE) 2025/2392, aggiunto per ultimo all’elenco',
+  },
+]
+
+const PIPELINE: Array<{ title: string; body: string; paths: string[] }> = [
+  {
+    title: 'Recupero ibrido',
+    body: 'La domanda viene cercata in due modi insieme: per significato, con vettori densi del modello multilingue paraphrase-multilingual-mpnet-base-v2 (768 dimensioni, scelto perché il corpus mescola l’inglese di EUR-Lex e l’italiano di Normattiva), e per termini esatti, con vettori sparsi in stile BM25 che catturano «articolo 29» o un numero CELEX. Le due classifiche sono fuse con Reciprocal Rank Fusion, senza pesi da tarare. I filtri escludono i testi superati e limitano la ricerca al corpus condiviso più i documenti dell’organizzazione.',
+    paths: ['src/nlp/embedding/indexer.py', 'src/config.py'],
   },
   {
-    id: 'ADR-003',
-    date: '2026-06-11',
-    title: 'Source of truth per le date regolatorie',
-    body: 'Le date CSDDD interne erano in conflitto (stop-the-clock vs Omnibus I). Verifica su fonte primaria: trasposizione 26-07-2028, prima compliance 26-07-2029 (Dir. (UE) 2026/470). Ogni data normativa nei prompt ora richiede fonte CELEX.',
+    title: 'Redazione dal testo recuperato',
+    body: 'Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello predefinito è Google Gemini, configurabile.',
+    paths: ['src/agents/nodes.py', 'prompts/qa_bot.txt', 'src/agents/sanitization.py'],
   },
   {
-    id: 'ADR-002',
-    date: '2026-05-15',
-    title: 'Deploy foundation: staging-first',
-    body: 'Dominio custom rinviato; il funnel gira su URL staging finché ogni anello (form, email, download) non è verificato end-to-end.',
+    title: 'Più campioni, una decisione',
+    body: 'Per calibrare la fiducia, il sistema genera più risposte indipendenti (3 per impostazione predefinita) e le raggruppa per comportamento. Ne deriva un punteggio di fiducia calcolato, non autodichiarato dal modello: sopra 0,85 la risposta passa; sotto 0,50, o se nemmeno due campioni concordano, il sistema si astiene e lo scrive, chiedendo una revisione esperta. Se la migliore evidenza recuperata è debole (similarità densa sotto 0,25), la risposta viene comunque segnalata per revisione e la fiducia è limitata.',
+    paths: ['src/agents/snc_node.py', 'src/agents/snc_layer.py', 'src/config.py'],
   },
   {
-    id: 'ADR-001',
-    date: '2026-05-08',
-    title: 'Pivot ICP: via dalle boutique ESG',
-    body: 'Le consulenze ESG sono competitor, non clienti. Tre ipotesi ICP in test parallelo: compliance officer mid-market, studi legali generalisti, CFO/risk di banche e assicurazioni piccole.',
+    title: 'Controllo di aderenza alle fonti',
+    body: 'Ogni citazione della risposta è confrontata con i passaggi recuperati: la normativa, i numeri CELEX nel testo, il numero di articolo e la frase citata devono esistere nell’evidenza. Una citazione non supportata non blocca la risposta, ma la marca come «revisione esperta necessaria» e abbassa la fiducia. Il controllo gira sulla bozza e di nuovo sulla risposta effettivamente servita.',
+    paths: ['src/agents/nodes.py', 'src/agents/snc_node.py'],
+  },
+  {
+    title: 'Chain-of-Verification, su richiesta',
+    body: 'Esiste una verifica a cinque fasi (estrazione delle affermazioni, domande di verifica, revisione, validazione dei riferimenti CELEX e URN contro EUR-Lex e Normattiva), ma è spenta per impostazione predefinita e si attiva per singola richiesta, solo per le risposte con fiducia sotto 0,85. Non è applicata a ogni risposta.',
+    paths: ['src/config.py', 'src/agents/graph.py', 'src/agents/cove/orchestrator.py'],
+  },
+  {
+    title: 'In lavorazione: verifica deterministica',
+    body: 'Stiamo introducendo un controllo deterministico delle citazioni, cioè un confronto esatto del passaggio citato con il testo ufficiale indicizzato, che non dipende da un modello. Finché non è in produzione, in questa pagina resta un lavoro in corso, non un fatto.',
+    paths: [],
+  },
+]
+
+const CHOICES: Array<{ title: string; body: string; paths: string[] }> = [
+  {
+    title: 'Modello di embedding multilingue',
+    body: 'Il modello di embedding solo inglese degradava la ricerca sul testo giuridico italiano. Il passaggio al modello multilingue ha richiesto di reindicizzare l’intero corpus, perché i vettori vivono in uno spazio specifico del modello.',
+    paths: ['src/config.py'],
+  },
+  {
+    title: 'Data del corpus dichiarata',
+    body: 'Il corpus è congelato tra una reindicizzazione e l’altra, e lo stato «superato» di un atto viene impostato solo in quella fase. Finché il rilevamento delle abrogazioni non è automatico, la mitigazione onesta è dichiarare la data del corpus in ogni risposta e in ogni report.',
+    paths: ['src/config.py', 'src/api/routers/intelligence.py', 'src/reports/generator.py'],
+  },
+  {
+    title: 'Aggiornamento periodico spento',
+    body: 'Un ciclo di acquisizione periodico esisteva sulla carta ma non girava davvero. Ora è esplicitamente spento per impostazione predefinita, finché un processo dedicato non lo gestisce: meglio una reindicizzazione esplicita e datata che un «aggiornato ogni notte» non vero.',
+    paths: ['src/config.py', 'src/api/lifespan.py'],
+  },
+  {
+    title: 'Chain-of-Verification opzionale',
+    body: 'La verifica a cinque fasi aggiunge altre chiamate al modello per ogni risposta. È disponibile su richiesta, non promessa su tutto: i controlli sempre attivi sono il campionamento multiplo e l’aderenza alle fonti.',
+    paths: ['src/config.py', 'src/agents/graph.py'],
+  },
+  {
+    title: 'Cyber Resilience Act nell’elenco',
+    body: 'Il CRA è stato aggiunto all’elenco di acquisizione con il regolamento di esecuzione sulle categorie di prodotto, annotando accanto ai CELEX le date di applicazione (obblighi di segnalazione dall’11 settembre 2026, applicazione piena dall’11 dicembre 2027).',
+    paths: ['src/crawler/eurlex/client.py'],
   },
 ]
 
 export default function MetodoPage() {
   return (
-    <div className="min-h-screen bg-paper text-night">
-      {/* Nav */}
-      <nav className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-night font-serif text-lg text-paper">
-              N
-            </div>
-            <span className="font-serif text-xl tracking-tight">NormaAI</span>
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-night-2 transition hover:text-night"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Torna alla home
-          </Link>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-surface text-ink">
+      <SiteHeader />
 
-      {/* Hero */}
-      <section className="mx-auto max-w-3xl px-6 pb-16 pt-16 md:pt-20">
-        <p className="mb-5 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-          Metodo · trasparenza verificabile
-        </p>
-        <h1 className="font-serif text-4xl font-normal leading-[1.1] tracking-tight md:text-5xl">
-          Niente contatori animati.
-          <br />
-          Solo numeri <em className="italic text-clay">riproducibili</em>.
-        </h1>
-        <p className="mt-6 text-lg leading-relaxed text-night-2">
-          In un mercato dove ogni AI si dichiara "affidabile", noi facciamo una cosa
-          diversa: pubblichiamo il metodo, le decisioni di ingegneria e i numeri - e ogni
-          numero in questa pagina è riproducibile eseguendo la test suite del progetto,
-          non generato da uno script di marketing. Ultima verifica:{' '}
-          <strong className="text-night">{VERIFIED.lastVerified}</strong>.
-        </p>
-      </section>
-
-      {/* Verified numbers */}
-      <section className="border-t border-line bg-paper-2">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-            I numeri (run {VERIFIED.lastVerified})
-          </p>
-          <div className="grid gap-4 md:grid-cols-4">
-            <StatCard
-              n={`${VERIFIED.backendTests}/${VERIFIED.backendTests}`}
-              label="test backend in pass"
-              sub="8 tier: unit, DB/RLS, cache, retrieval, agenti, API, Monte Carlo"
-            />
-            <StatCard
-              n={`${VERIFIED.frameworks}`}
-              label="framework EU coperti"
-              sub={`${VERIFIED.celexSeeds} atti CELEX nei seed EUR-Lex, sync notturna`}
-            />
-            <StatCard
-              n={`${VERIFIED.covePhases} fasi`}
-              label="Chain-of-Verification"
-              sub="ogni claim estratto, verificato e citato prima della risposta"
-            />
-            <StatCard
-              n="abstain"
-              label="quando il trust è basso"
-              sub={`sotto trust ${VERIFIED.sncThresholds.low} il sistema NON risponde: lo dice`}
-            />
+      <main>
+        <section className="mx-auto max-w-site px-6 pb-14 pt-14 md:pt-20">
+          <div className="max-w-prose">
+            <h1 className="text-h1 md:text-display">Come nasce una risposta, e quando non arriva.</h1>
+            <p className="mt-5 text-read text-ink-2">
+              Pubblichiamo il metodo e il codice. Questa pagina descrive la pipeline così com&apos;è
+              oggi, senza contatori e senza promesse: ogni sezione rimanda ai file del repository
+              pubblico che la realizzano, così si può verificare invece di credere.
+            </p>
           </div>
-          <p className="mt-6 text-sm text-night-3">
-            Come riprodurli: la suite gira in CI a ogni commit (lint, type-check, test su
-            Postgres/Qdrant/Redis reali, scansioni di sicurezza, SBOM). I conteggi sopra
-            sono l'output dell'ultima run completa, aggiornati a ogni release - mai stimati.
-          </p>
-        </div>
-      </section>
+        </section>
 
-      {/* Pipeline */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-            La pipeline anti-allucinazione
-          </p>
-          <h2 className="max-w-2xl font-serif text-3xl font-normal tracking-tight md:text-[36px]">
-            Tre cancelli tra il modello e la tua risposta.
-          </h2>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <GateCard
-              icon={<Database className="h-5 w-5" />}
-              step="01 · Grounding"
-              title="Solo fonte primaria"
-              body="Hybrid retrieval (denso + BM25 + RRF) sul corpus EUR-Lex e Normattiva, con filtro temporale: i testi superseded sono esclusi di default. Il modello non risponde mai 'a memoria'."
-            />
-            <GateCard
-              icon={<Scale className="h-5 w-5" />}
-              step="02 · Trust gate"
-              title="K campioni, una decisione"
-              body={`Il sistema genera K risposte indipendenti e ne misura la coerenza comportamentale. Sopra ${VERIFIED.sncThresholds.high} procede; sotto ${VERIFIED.sncThresholds.low} si astiene e ti dice di consultare un esperto. L'astensione è una risposta.`}
-            />
-            <GateCard
-              icon={<ShieldCheck className="h-5 w-5" />}
-              step="03 · Verifica"
-              title="Ogni claim, ogni citazione"
-              body="Chain-of-Verification a 5 fasi: estrazione claim, domande di verifica indipendenti, revisione, validazione di ogni CELEX/URN contro EUR-Lex e Normattiva. Le citazioni inventate muoiono qui."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* EU sovereignty */}
-      <section className="border-t border-line bg-paper-2">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
-            <div className="lg:col-span-7">
-              <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-                Sovranità del dato
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Il corpus: testi ufficiali, con data</h2>
+            <div className="mt-5 max-w-prose space-y-4 text-read text-ink-2">
+              <p>
+                Le fonti sono due: EUR-Lex, interrogato tramite l&apos;endpoint SPARQL
+                dell&apos;Ufficio delle pubblicazioni dell&apos;Unione, e gli Open Data di Normattiva
+                per il recepimento italiano. I testi vengono suddivisi per articolo e indicizzati;
+                ogni frammento conserva atto (CELEX o URN), articolo, titolo della sezione e data.
               </p>
-              <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[36px]">
-                I tuoi dati restano in Europa. Il modello, se vuoi, in casa tua.
-              </h2>
-              <p className="mt-5 leading-relaxed text-night-2">
-                Infrastruttura in data center EU (Germania, regione Francoforte) con
-                isolamento multi-tenant a livello di database (Row-Level Security
-                PostgreSQL). Per i regimi più rigorosi - DPIA strict, settore finanziario,
-                segreto industriale - NormaAI funziona in modalità sovrana:
-              </p>
-              <ul className="mt-5 space-y-2.5 text-sm text-night-2">
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-                  <span>
-                    <strong className="text-night">BYO API key</strong>: il traffico LLM passa
-                    dal tuo tenant (Vertex/Bedrock EU), non dal nostro
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-                  <span>
-                    <strong className="text-night">Self-host del modello</strong> (Ollama): zero
-                    chiamate cloud, il testo normativo non lascia il perimetro
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
-                  <span>
-                    <strong className="text-night">Audit trail strutturato</strong>: ogni accesso
-                    e ogni risposta tracciati per organizzazione, esportabili per l'auditor
-                  </span>
-                </li>
+              <p>Gli atti nell&apos;elenco di acquisizione:</p>
+              <ul className="list-disc space-y-1.5 pl-6">
+                {FRAMEWORKS.map((f) => (
+                  <li key={f.name}>
+                    <strong className="font-semibold text-ink">{f.name}</strong>: {f.acts}
+                  </li>
+                ))}
               </ul>
+              <p>
+                Il corpus non si aggiorna da solo. Il ciclo periodico di acquisizione esiste nel
+                codice ma è spento per impostazione predefinita: il corpus viene reindicizzato con
+                operazioni esplicite, e la data di riferimento (
+                <code className="font-mono text-small">corpus_as_of</code>) viene impostata al momento
+                del deploy, restituita nei metadati di ogni risposta dell&apos;API e stampata a piè
+                di pagina dei report. I testi superati da atti successivi sono esclusi dalla ricerca
+                per impostazione predefinita.
+              </p>
             </div>
-            <div className="lg:col-span-5">
-              <div className="rounded-xl bg-coal p-6 text-[#E8E6E0]">
-                <div className="mb-3 flex items-center gap-2 text-xs text-[#9C9A92]">
-                  <ServerCog className="h-4 w-4" />
-                  AI Act, Art. 50 - trasparenza
-                </div>
-                <p className="text-sm leading-relaxed">
-                  NormaAI è essa stessa un sistema AI soggetto al Regolamento (UE)
-                  2024/1689 - e lo dichiara su ogni superficie. Il footer della dashboard,
-                  le risposte e questa pagina dicono la stessa cosa:{' '}
-                  <strong className="text-white">
-                    supporto decisionale, non consulenza legale
-                  </strong>
-                  . Un fornitore di compliance che non rispetta la propria normativa non
-                  merita la tua fiducia.
-                </p>
-              </div>
+            <InCode
+              paths={[
+                'src/crawler/eurlex/client.py',
+                'src/crawler/normattiva/client.py',
+                'src/config.py',
+                'src/nlp/embedding/indexer.py',
+              ]}
+            />
+          </div>
+        </section>
+
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">La pipeline, passo per passo</h2>
+            <p className="mt-5 max-w-prose text-read text-ink-2">
+              Ogni domanda attraversa questi passaggi nell&apos;ordine. I numeri citati sono le
+              soglie impostate nel codice, non risultati misurati.
+            </p>
+            <ol className="mt-8 max-w-prose list-decimal space-y-8 pl-6">
+              {PIPELINE.map((step) => (
+                <li key={step.title}>
+                  <h3 className="text-h3">{step.title}</h3>
+                  <p className="mt-2 text-read text-ink-2">{step.body}</p>
+                  {step.paths.length > 0 && <InCode paths={step.paths} />}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Cosa vede chi legge</h2>
+            <ul className="mt-5 max-w-prose list-disc space-y-2 pl-6 text-read text-ink-2">
+              <li>L&apos;atto e l&apos;articolo citati, il passaggio riportato e il link al testo ufficiale.</li>
+              <li>Un livello di affidabilità espresso a parole, non una percentuale.</li>
+              <li>
+                Il segnale «revisione esperta necessaria» quando il sistema si astiene, trova
+                evidenza debole o una citazione non supportata.
+              </li>
+              <li>
+                L&apos;avviso che le risposte sono generate da un sistema di intelligenza
+                artificiale (Reg. (UE) 2024/1689, art. 50): nel piè di pagina
+                dell&apos;applicazione, nella pagina Chiedi e nei report.
+              </li>
+            </ul>
+            <InCode
+              paths={[
+                'frontend/src/app/dashboard/qa/page.tsx',
+                'frontend/src/components/app/AppShell.tsx',
+                'src/reports/generator.py',
+              ]}
+            />
+          </div>
+        </section>
+
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Dati e separazione tra organizzazioni</h2>
+            <div className="mt-5 max-w-prose space-y-4 text-read text-ink-2">
+              <p>
+                Il sito è su Vercel (regione di Francoforte); l&apos;API e i database su un server
+                Hetzner in Germania. Ogni organizzazione vede solo i propri dati: Row Level
+                Security in PostgreSQL con un ruolo non superuser, chiavi di cache per
+                organizzazione, filtro per organizzazione nel motore di ricerca.
+                L&apos;amministratore può esportare e cancellare i dati dell&apos;organizzazione
+                dall&apos;applicazione.
+              </p>
+              <p>
+                I dettagli, e ciò che manca ancora (SSO, certificazioni, penetration test), sono
+                nella pagina{' '}
+                <Link href="/security" className="text-union hover:underline">
+                  Sicurezza
+                </Link>
+                .
+              </p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Public ADRs */}
-      <section className="border-t border-line">
-        <div className="mx-auto max-w-3xl px-6 py-16">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-night-2">
-            Decisioni di ingegneria - pubbliche
-          </p>
-          <h2 className="font-serif text-3xl font-normal tracking-tight md:text-[36px]">
-            Anche quando sbagliamo, lo scriviamo.
-          </h2>
-          <p className="mt-4 leading-relaxed text-night-2">
-            Ogni decisione rilevante è un Architecture Decision Record datato. Questa è la
-            serie completa - inclusa quella in cui i nostri stessi documenti avevano le
-            date CSDDD sbagliate, e come l'abbiamo corretto con la fonte primaria.
-          </p>
-          <div className="mt-8 space-y-4">
-            {ADRS.map((adr) => (
-              <div
-                key={adr.id}
-                className="rounded-xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(20,20,19,0.04)]"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-clay">
-                    {adr.id}
-                  </span>
-                  <span className="font-mono text-xs text-night-3">{adr.date}</span>
-                </div>
-                <h3 className="mt-2 font-serif text-lg text-night">{adr.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-night-2">{adr.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-coal text-[#E8E6E0]">
-        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h2 className="font-serif text-3xl font-normal tracking-tight text-white md:text-[36px]">
-            Giudica il metodo su una domanda vera.
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl leading-relaxed text-[#B5B3AA]">
-            Porta un caso reale del tuo lavoro: se la risposta non è migliore della tua
-            ricerca attuale - citazioni alla mano - niente seguito.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 md:flex-row">
-            <a
-              href="mailto:info@normaai.org?subject=NormaAI%20demo%20call"
-              className="inline-flex items-center gap-2 rounded-md bg-clay px-6 py-3 font-medium text-white transition hover:bg-clay-deep"
-            >
-              Prenota 30 minuti
-            </a>
-            <Link
-              href="/#codex"
-              className="inline-flex items-center gap-2 rounded-md border border-white/20 px-6 py-3 font-medium text-[#E8E6E0] transition hover:border-white/40 hover:text-white"
-            >
-              <FileText className="h-4 w-4" />
-              Scarica il Codex Post-Omnibus
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-line bg-paper">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 text-sm text-night-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-night font-serif text-xs text-paper">
-              N
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Come verifichiamo il codice</h2>
+            <div className="mt-5 max-w-prose space-y-4 text-read text-ink-2">
+              <p>
+                A ogni push: lint e formato (ruff), type-check (mypy, bloccante sui moduli di
+                sicurezza), test del backend su PostgreSQL, Qdrant e Redis reali, compreso un test
+                con due organizzazioni che blocca la build se una vede i dati dell&apos;altra;
+                type-check, test e build del frontend; CodeQL, Gitleaks, Bandit, Trivy e una SBOM.
+              </p>
+              <p>
+                I conteggi dei test cambiano a ogni commit: per questo non li stampiamo qui. Si
+                leggono nell&apos;ultima esecuzione della CI sul repository.
+              </p>
             </div>
-            <span>NormaAI © {new Date().getFullYear()}</span>
+            <InCode
+              paths={[
+                '.github/workflows/ci.yml',
+                '.github/workflows/codeql.yml',
+                'tests/test_rls_pool_isolation.py',
+              ]}
+            />
           </div>
-          <div className="flex flex-wrap gap-5">
-            <Link href="/privacy" className="transition hover:text-night">Privacy</Link>
-            <Link href="/cookie" className="transition hover:text-night">Cookie</Link>
-            <Link href="/terms" className="transition hover:text-night">Termini</Link>
-            <Link href="/security" className="transition hover:text-night">Sicurezza</Link>
+        </section>
+
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Scelte che si leggono nel codice</h2>
+            <p className="mt-5 max-w-prose text-read text-ink-2">
+              Le decisioni che contano sono annotate accanto al codice che le realizza, anche
+              quando correggono un errore nostro.
+            </p>
+            <ul className="mt-8 max-w-prose space-y-8">
+              {CHOICES.map((c) => (
+                <li key={c.title} className="border-t border-rule pt-6">
+                  <h3 className="text-h3">{c.title}</h3>
+                  <p className="mt-2 text-read text-ink-2">{c.body}</p>
+                  <InCode paths={c.paths} />
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      </footer>
-    </div>
-  )
-}
+        </section>
 
-function StatCard({ n, label, sub }: { n: string; label: string; sub: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-white p-5 shadow-[0_1px_2px_rgba(20,20,19,0.04)]">
-      <div className="font-serif text-3xl text-clay">{n}</div>
-      <div className="mt-1 text-sm font-medium text-night">{label}</div>
-      <div className="mt-1.5 text-xs leading-relaxed text-night-3">{sub}</div>
-    </div>
-  )
-}
+        <section className="border-t border-rule bg-surface-2">
+          <div className="mx-auto max-w-site px-6 py-14">
+            <h2 className="text-h2">Giudica il metodo su una domanda vera.</h2>
+            <p className="mt-4 max-w-prose text-read text-ink-2">
+              Porta un caso reale del tuo lavoro. Se la risposta, citazioni alla mano, non è
+              migliore della tua ricerca attuale, finisce lì.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="mailto:info@normaai.org?subject=NormaAI%20demo">
+                Scrivi per una demo
+              </ButtonLink>
+              <ButtonLink href="/#codex" variant="secondary">
+                Scarica il Codex Post-Omnibus
+              </ButtonLink>
+            </div>
+          </div>
+        </section>
+      </main>
 
-function GateCard({
-  icon,
-  step,
-  title,
-  body,
-}: {
-  icon: React.ReactNode
-  step: string
-  title: string
-  body: string
-}) {
-  return (
-    <div className="rounded-xl border border-line bg-white p-6 shadow-[0_1px_2px_rgba(20,20,19,0.04)]">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-clay-soft text-clay">
-          {icon}
-        </div>
-        <span className="text-xs font-medium uppercase tracking-[0.15em] text-night-3">
-          {step}
-        </span>
-      </div>
-      <h3 className="mt-4 font-serif text-xl text-night">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-night-2">{body}</p>
+      <SiteFooter />
     </div>
   )
 }

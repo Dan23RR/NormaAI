@@ -25,6 +25,9 @@ Usage:
 
     # Single test case
     python -m tests.validation.runner --case GDPR-SANCTION-2024-IT-001-L1 --api
+
+    # Golden set v2 (Q&A with EUR-Lex-verified citations, test_cases/golden_v2.jsonl)
+    python -m tests.validation.runner --suite golden_v2 --api --verbose
 """
 
 import argparse
@@ -35,6 +38,7 @@ import sys
 import time
 from pathlib import Path
 
+from .golden_v2 import load_golden_v2_test_cases
 from .metrics import aggregate_suite_results, calculate_test_metrics
 from .schemas import SuiteResult, TestCase, TestResult
 
@@ -54,38 +58,57 @@ def load_test_cases(
     Load test cases from JSON files.
 
     Args:
-        suite: Suite name ('all', 'golden_set', 'sanctions', 'synthetic', 'greenwashing')
+        suite: Suite name ('all', 'golden_set', 'sanctions', 'synthetic', 'greenwashing',
+            or a JSONL suite such as 'golden_v2' -> test_cases/golden_v2.jsonl)
         framework: Filter by framework (e.g., 'GDPR')
         difficulty: Filter by difficulty level (1-5)
         case_id: Load a specific test case by ID
     """
     cases: list[TestCase] = []
 
+    # A suite is a directory of *.json files (legacy format) or a single
+    # *.jsonl file (golden v2 format); 'all' takes everything under test_cases/.
+    json_files: list[Path] = []
+    jsonl_files: list[Path] = []
     if suite == "all":
-        search_dirs = [TEST_CASES_DIR]
+        json_files = sorted(TEST_CASES_DIR.rglob("*.json"))
+        jsonl_files = sorted(TEST_CASES_DIR.rglob("*.jsonl"))
     else:
         suite_dir = TEST_CASES_DIR / suite
-        search_dirs = [suite_dir] if suite_dir.exists() else [TEST_CASES_DIR]
+        suite_file = TEST_CASES_DIR / f"{suite}.jsonl"
+        if suite_dir.is_dir():
+            json_files = sorted(suite_dir.rglob("*.json"))
+            jsonl_files = sorted(suite_dir.rglob("*.jsonl"))
+        elif suite_file.is_file():
+            jsonl_files = [suite_file]
+        else:
+            json_files = sorted(TEST_CASES_DIR.rglob("*.json"))
+            jsonl_files = sorted(TEST_CASES_DIR.rglob("*.jsonl"))
 
-    for search_dir in search_dirs:
-        for json_file in search_dir.rglob("*.json"):
-            try:
-                data = json.loads(json_file.read_text(encoding="utf-8"))
+    for json_file in json_files:
+        try:
+            data = json.loads(json_file.read_text(encoding="utf-8"))
 
-                # Handle both single case and array of cases
-                if isinstance(data, list):
-                    for item in data:
+            # Handle both single case and array of cases
+            if isinstance(data, list):
+                for item in data:
+                    cases.append(TestCase(**item))
+            elif isinstance(data, dict):
+                # Check if it's a single case or a wrapper
+                if "test_cases" in data:
+                    for item in data["test_cases"]:
                         cases.append(TestCase(**item))
-                elif isinstance(data, dict):
-                    # Check if it's a single case or a wrapper
-                    if "test_cases" in data:
-                        for item in data["test_cases"]:
-                            cases.append(TestCase(**item))
-                    elif "id" in data:
-                        cases.append(TestCase(**data))
+                elif "id" in data:
+                    cases.append(TestCase(**data))
 
-            except Exception as e:
-                logger.warning(f"Failed to load {json_file}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to load {json_file}: {e}")
+
+    for jsonl_file in jsonl_files:
+        try:
+            cases.extend(load_golden_v2_test_cases(jsonl_file))
+        except Exception as e:
+            logger.warning(f"Failed to load {jsonl_file}: {e}")
 
     # Apply filters
     if case_id:
@@ -230,8 +253,22 @@ def _generate_demo_output(test_case: TestCase) -> dict:
             "confidence_score": random.uniform(0.7, 0.95),
         }
     elif test_case.task_type == "qa":
+        answer = "Test answer based on regulatory analysis."
+        expected_answer = test_case.expected_answer or {}
+        if expected_answer.get("abstain"):
+            # Golden v2 refuse/injection record: simulate a correct abstention.
+            return {
+                "answer": (
+                    "I don't have sufficient information in my regulatory database to "
+                    "answer this question with confidence."
+                ),
+                "citations": [],
+                "confidence_score": random.uniform(0.2, 0.5),
+            }
+        if expected_answer.get("answer_must_contain"):
+            answer += " Key facts: " + "; ".join(expected_answer["answer_must_contain"]) + "."
         return {
-            "answer": "Test answer based on regulatory analysis.",
+            "answer": answer,
             "citations": [{"article": f.article, "text": f.description} for f in detected],
             "confidence_score": random.uniform(0.7, 0.95),
         }
@@ -328,6 +365,15 @@ def generate_report(suite_result: SuiteResult, mode: str = "demo") -> str:
         "╠══════════════════════════════════════════════════════════╣",
     ]
 
+    if suite_result.answer_check_pass_rate is not None:
+        n_checked = sum(1 for r in suite_result.results if r.answer_checks is not None)
+        lines.append(
+            f"║  Answer checks (golden v2): {suite_result.answer_check_pass_rate:.1%} pass "
+            f"(n={n_checked})".ljust(59)
+            + "║"
+        )
+        lines.append("╠══════════════════════════════════════════════════════════╣")
+
     if suite_result.framework_metrics:
         lines.append("║  PER-FRAMEWORK BREAKDOWN                                ║")
         for fw, m in sorted(suite_result.framework_metrics.items()):
@@ -411,6 +457,10 @@ def save_report(suite_result: SuiteResult, mode: str = "demo") -> Path:
 
 async def main():
     """CLI entry point."""
+    # The report uses box-drawing characters; a cp1252 Windows console would
+    # otherwise raise UnicodeEncodeError when printing it.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(
         description="NormaAI Validation Test Runner",
         formatter_class=argparse.RawDescriptionHelpFormatter,

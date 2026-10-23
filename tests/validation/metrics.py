@@ -7,6 +7,7 @@ Includes article-level matching with fuzzy logic for partial matches.
 
 import re
 
+from .golden_v2 import check_answer
 from .schemas import (
     SuiteResult,
     TestCase,
@@ -206,14 +207,29 @@ def calculate_test_metrics(
     fp = len(result.false_positives)
     fn = len(result.false_negatives)
 
-    result.precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-    result.recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    if tp + fn == 0:
+        # Nothing was expected (abstain records, false-positive probes): recall is
+        # 1.0 by definition and precision is 1.0 only if nothing was flagged.
+        result.recall = 1.0
+        result.precision = 1.0 if fp == 0 else 0.0
+    else:
+        result.precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        result.recall = tp / (tp + fn)
     result.f1_score = (
         2 * result.precision * result.recall / (result.precision + result.recall)
         if (result.precision + result.recall) > 0
         else 0.0
     )
     result.confidence_score = normaai_output.get("confidence_score", 0.0)
+
+    # Golden v2 answer checks (must-contain / must-not-contain / abstain)
+    if test_case.expected_answer is not None:
+        answer = normaai_output.get("answer")
+        result.answer_checks = check_answer(
+            test_case.expected_answer,
+            answer if isinstance(answer, str) else None,
+            detected,
+        )
 
     return result
 
@@ -248,6 +264,12 @@ def aggregate_suite_results(
         suite.avg_recall = sum(r.recall for r in valid_results) / len(valid_results)
         suite.avg_f1 = sum(r.f1_score for r in valid_results) / len(valid_results)
         suite.min_recall = min(r.recall for r in valid_results)
+
+        checked = [r for r in valid_results if r.answer_checks is not None]
+        if checked:
+            suite.answer_check_pass_rate = sum(
+                1 for r in checked if r.answer_checks.get("passed")
+            ) / len(checked)
 
     # Per-framework breakdown
     case_map = {tc.id: tc for tc in test_cases}

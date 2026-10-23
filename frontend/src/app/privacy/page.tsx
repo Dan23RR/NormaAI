@@ -23,8 +23,8 @@ export default function PrivacyPage() {
         <p>
           Per i dati aziendali necessari all&apos;erogazione del servizio, l&apos;Utente è
           Titolare del trattamento e ne affida il trattamento a Daniel Culotta, quale Responsabile
-          del trattamento ai sensi dell&apos;Art. 28 GDPR. Per i dati di contatto trattati per le
-          comunicazioni descritte al punto 3-bis, Titolare del trattamento è Daniel Culotta.
+          del trattamento ai sensi dell&apos;Art. 28 GDPR. Per i dati di chi scrive a NormaAI
+          via email, Titolare del trattamento è Daniel Culotta.
         </p>
       </LegalSection>
 
@@ -45,21 +45,6 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="3-bis. Prospecting e marketing diretto B2B">
-        <p>
-          Per le sole comunicazioni commerciali B2B (outbound), NormaAI tratta dati di contatto
-          professionali (nome, ruolo, email aziendale, organizzazione) raccolti da fonti pubbliche
-          e professionali, sulla base del <strong className="text-night">legittimo interesse</strong>{' '}
-          al marketing diretto (Art. 6(1)(f) GDPR, Considerando 47). L&apos;interessato può opporsi
-          in qualsiasi momento e senza oneri (Art. 21), rispondendo &laquo;STOP&raquo; o scrivendo a{' '}
-          <a href="mailto:privacy@normaai.org" className="text-clay transition hover:text-clay-deep">
-            privacy@normaai.org
-          </a>
-          ; ogni email include inoltre un header di disiscrizione (List-Unsubscribe). I contatti che
-          si oppongono o non rispondono sono inseriti in una lista di soppressione e non più contattati.
-        </p>
-      </LegalSection>
-
       <LegalSection title="4. Sub-Responsabili del Trattamento">
         <ul className="list-disc space-y-1 pl-5">
           <li>
@@ -69,11 +54,11 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-night">Resend, Inc.</strong> (USA) - invio di email transazionali
-            e di servizio (outbound). Trasferimenti coperti da SCC.
+            e di servizio. Trasferimenti coperti da SCC.
           </li>
           <li>
             <strong className="text-night">Google Workspace / Gmail</strong> (USA) - casella di posta
-            per la gestione delle risposte (inbound). Coperto da DPF/SCC.
+            per la gestione delle email ricevute. Coperto da DPF/SCC.
           </li>
           <li>
             <strong className="text-night">Hetzner Online GmbH</strong> (Germania, UE) - hosting

@@ -118,7 +118,10 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("client_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("clients.id", ondelete="SET NULL")),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("messages", postgresql.JSONB, server_default="'[]'::jsonb"),
+        # sa.text(): a plain string here is rendered as the quoted literal
+        # '''[]''::jsonb', which PostgreSQL rejects ("invalid input syntax for
+        # type json"), so this revision could never run on a fresh database.
+        sa.Column("messages", postgresql.JSONB, server_default=sa.text("'[]'::jsonb")),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
     )

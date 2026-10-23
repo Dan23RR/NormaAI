@@ -1,4 +1,11 @@
-"""SQLAlchemy ORM models matching the NormaAI database schema."""
+"""SQLAlchemy ORM models - the single source of truth for the database schema.
+
+Every table the application touches is declared here. Alembic turns this
+metadata into the live schema (``alembic upgrade head``) and CI runs
+``alembic check`` against a freshly migrated database, so any drift between
+these models and the migrations fails the build. Do not hand-edit the schema
+elsewhere (``scripts/init_db.sql`` only creates extensions).
+"""
 
 import uuid
 from datetime import UTC, date, datetime
@@ -15,7 +22,9 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -102,7 +111,9 @@ class Regulation(Base):
     __tablename__ = "regulations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    celex: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    # The UNIQUE constraint already backs celex with an index; a second,
+    # non-constraint index (the old ``index=True``) was pure duplication.
+    celex: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     framework: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     doc_type: Mapped[str | None] = mapped_column(String(50))
@@ -236,6 +247,42 @@ class CrawlJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ParentDocument(Base):
+    """Full regulatory articles for the Parent Document Retrieval pattern.
+
+    Small sub-chunks live in Qdrant for vector search and resolve back to
+    their parent article here for LLM context. Read and written through raw
+    SQL in ``src/nlp/chunking/parent_retriever.py`` (the upsert relies on the
+    ``(celex, article_number)`` unique constraint and on the server-side id
+    default); the model exists so the ORM metadata describes every table the
+    application relies on. Shared regulatory text, not tenant-scoped.
+    """
+
+    __tablename__ = "parent_documents"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    celex: Mapped[str] = mapped_column(String(20), nullable=False)
+    framework: Mapped[str] = mapped_column(String(50), nullable=False)
+    article_number: Mapped[str | None] = mapped_column(String(50))  # e.g. "Art. 29"
+    section_title: Mapped[str | None] = mapped_column(String(500))
+    full_text: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA-256 for dedup
+    chunk_ids: Mapped[list[str] | None] = mapped_column(ARRAY(Text))  # Qdrant point ids
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("idx_parent_docs_celex", "celex"),
+        Index("idx_parent_docs_framework", "framework"),
+        Index("idx_parent_docs_article", "celex", "article_number"),
+        UniqueConstraint("celex", "article_number", name="uq_parent_docs_celex_article"),
+    )
 
 
 class CitationVerification(Base):

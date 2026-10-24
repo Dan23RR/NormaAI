@@ -8,16 +8,22 @@ against the live Anthropic API:
   down by Google on 2025-11-18;
 * the GEMINI_MODEL / ANTHROPIC_MODEL names used in .env.example were ignored,
   because the settings fields are *_MODEL_ANALYSIS;
-* Claude 5 models reject `temperature` (HTTP 400), and NormaAI always sent it.
+* Claude 5 models reject `temperature` (HTTP 400), and NormaAI always sent it;
+* Claude 5 replies are a list of content blocks (signed reasoning, then text),
+  and reading ``.content`` as a string put the whole list in the answer, so
+  JSON parsing failed and every citation was lost.
 """
 
+import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from langchain_core.messages import AIMessage
 
-from src.agents.llm import anthropic_accepts_temperature, get_llm
+from src.agents.llm import acall_llm, anthropic_accepts_temperature, get_llm, message_text
 from src.config import Settings
+from src.resilience import llm_circuit
 
 _MODEL_ENV = (
     "ANTHROPIC_MODEL",
@@ -111,3 +117,38 @@ def test_get_llm_sends_temperature_only_where_accepted(model, expected_temperatu
         assert "temperature" not in payload
     else:
         assert payload["temperature"] == expected_temperature
+
+
+_REASONING = {"type": "thinking", "thinking": "Check Article 50.", "signature": "c2lnbmF0dXJl"}
+
+
+def test_message_text_keeps_only_the_text_blocks():
+    reply = AIMessage(content=[_REASONING, {"type": "text", "text": '{"answer": "Yes"}'}])
+    assert message_text(reply) == '{"answer": "Yes"}'
+
+
+def test_message_text_plain_string_and_string_lists():
+    assert message_text(AIMessage(content="plain")) == "plain"
+    assert message_text(AIMessage(content=["a", "b"])) == "ab"
+
+
+async def test_acall_llm_parses_the_answer_after_a_reasoning_block():
+    llm_circuit.reset()
+    reply = AIMessage(
+        content=[
+            _REASONING,
+            {
+                "type": "text",
+                "text": '{"answer": "Yes, from 2 August 2026.", "confidence_score": 0.8}',
+            },
+        ]
+    )
+    fake_llm = SimpleNamespace(ainvoke=AsyncMock(return_value=reply))
+    settings = SimpleNamespace(llm_provider="anthropic", active_api_key="k")
+    with (
+        patch("src.config.get_settings", return_value=settings),
+        patch("src.agents.llm.get_llm", return_value=fake_llm),
+    ):
+        result = await acall_llm("system", "question")
+    assert result["answer"] == "Yes, from 2 August 2026."
+    assert "signature" not in json.dumps(result)

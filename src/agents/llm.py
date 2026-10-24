@@ -73,6 +73,29 @@ def anthropic_accepts_temperature(model: str) -> bool:
     return bool(match) and int(match.group(1)) < 5
 
 
+def message_text(message) -> str:
+    """The text of an LLM reply, without reasoning blocks.
+
+    Claude 5 models reply with a list of content blocks (a signed ``thinking``
+    block, then ``text``), and other providers may too; older models return a
+    plain string. Reading ``.content`` as a string turned the whole block list
+    into the "answer" and broke JSON parsing, so every citation was lost. This
+    keeps only the text blocks and works on langchain-core 0.3 and 1.x alike.
+    """
+    content = getattr(message, "content", message)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block.get("text") or ""))
+        return "".join(parts)
+    return str(content)
+
+
 def get_llm(temperature: float | None = None):
     """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter).
 
@@ -212,7 +235,7 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         ]
         response = llm.invoke(messages)
         llm_circuit.record_success()
-        return parse_json_response(response.content)
+        return parse_json_response(message_text(response))
 
     except Exception as e:
         llm_circuit.record_failure()
@@ -241,7 +264,7 @@ async def _ainvoke_llm_with_retry(
             HumanMessage(content=user_message),
         ]
         response = await llm.ainvoke(messages)
-        return response.content
+        return message_text(response)
     except Exception as e:
         raise _classify_error(e) from e
 

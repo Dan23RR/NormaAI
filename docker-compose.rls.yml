@@ -10,8 +10,10 @@
 # enforce tenant isolation at the database.
 #
 # ONE-TIME SETUP (on the live DB, as the `normaai` superuser):
-#   psql "$SUPERUSER_DATABASE_URL" -v app_pw="'<APP_DB_PASSWORD>'" \
+#   psql "$SUPERUSER_DATABASE_URL" -v app_pw="<APP_DB_PASSWORD>" \
 #        -f scripts/setup_app_role.sql
+# (no extra quotes: the script quotes :'app_pw' itself, and quotes passed
+# here would become part of the password, so the app could not log in)
 # then set APP_DB_PASSWORD in .env and deploy WITH this overlay:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #     -f docker-compose.rls.yml up -d

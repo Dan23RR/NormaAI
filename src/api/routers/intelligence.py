@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.agents.citation_verifier import apply_unverified_policy, policy_mode
 from src.api.errors import QDRANT_UNAVAILABLE_DETAIL, llm_not_configured_detail, raise_for_result
 from src.api.streaming.generators import (
     gap_analysis_stream_generator,
@@ -234,6 +235,19 @@ def _build_metadata(
     return meta
 
 
+def _finalize_qa_result(result: dict, language: str) -> dict:
+    """The citation-verification contract at the delivery point of ``/qa``.
+
+    Fresh answers come out of the agent node already verified; cached ones
+    bypass it. Re-applying the (idempotent) unverified-citation policy here
+    guarantees, for both, the ``verified_citations`` / ``citations_total``
+    counters and a decision taken with the CURRENT ``citation_verification``
+    setting and the request language (a flagged answer cached under ``flag``
+    becomes an abstention once the deploy switches to ``strict``).
+    """
+    return apply_unverified_policy(result, mode=policy_mode(get_settings()), language=language)
+
+
 # ─── SSE Streaming Helper ────────────────────────────────────────
 
 
@@ -264,7 +278,11 @@ async def ask_question(
     **Ask a question about EU regulations.**
 
     Returns an AI-generated answer grounded in the regulatory knowledge base,
-    with precise citations to specific articles and paragraphs.
+    with precise citations to specific articles and paragraphs. Every citation
+    carries `verified` (true only when its quote was found word for word in the
+    retrieved official text), `official_quote`, `celex`, `article`, `url` and
+    the other fields of the citation verifier; `data` carries
+    `verified_citations` and `citations_total`.
 
     Set `stream: true` in the request body to receive Server-Sent Events.
 
@@ -305,7 +323,7 @@ async def ask_question(
             if cached:
                 response_body = {
                     "status": "success",
-                    "data": cached,
+                    "data": _finalize_qa_result(cached, payload.language.value),
                     "metadata": _build_metadata(user, cached=True),
                 }
                 if payload.stream:
@@ -323,11 +341,16 @@ async def ask_question(
             logger.debug("cache_get_failed", endpoint="qa", error=str(cache_err))
 
         result = await arun_qa(
-            payload.question, profile_dict, cove_enabled=payload.enable_cove, org_id=org_id
+            payload.question,
+            profile_dict,
+            cove_enabled=payload.enable_cove,
+            org_id=org_id,
+            language=payload.language.value,
         )
         # A failed analysis is an HTTP error (503/502/504/500), never a 200
         # "success" envelope wrapping an error payload - and it is never cached.
         raise_for_result(result, endpoint="qa")
+        result = _finalize_qa_result(result, payload.language.value)
 
         # Cache with org isolation (skip when CoVe ran - see cache-read note above)
         try:

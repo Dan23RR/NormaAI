@@ -18,6 +18,7 @@ import logging
 from collections.abc import AsyncIterator
 from datetime import datetime
 from enum import Enum
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,18 +53,52 @@ class TokenEvent(BaseModel):
 
 
 class CitationEvent(BaseModel):
-    """Regulatory document reference with metadata and verification status."""
+    """Regulatory document reference with metadata and verification status.
+
+    The verification fields come from the deterministic citation verifier
+    (src.agents.citation_verifier): ``verified`` is True only when the quote was
+    found word for word in a retrieved official text, and then ``celex``,
+    ``article``, ``paragraph``, ``url``, ``chunk_id``, ``lang`` and ``quote``
+    describe that text. Fields that are None are omitted from the wire format.
+    """
 
     type: str = Field(default=EventType.CITATION, frozen=True)
+    framework: str | None = Field(default=None, description="Framework key cited (e.g. AI_ACT)")
     celex: str = Field(default="", description="CELEX identifier (EUR-Lex); empty if unknown")
     urn: str | None = Field(default=None, description="URN identifier if available")
-    article: str = Field(..., description="Article or section reference")
+    article: str = Field(
+        ...,
+        description="Article of the verified passage (e.g. 'Art. 50'); else the model's reference",
+    )
+    paragraph: str | None = Field(
+        default=None, description="Paragraph of the verified passage, when known"
+    )
     title: str = Field(..., description="Document title")
     url: str | None = Field(default=None, description="Full URL to document, when resolvable")
+    quote: str | None = Field(
+        default=None,
+        description="Official wording of the passage when verified, else the model's quote",
+    )
     # Honest provenance: True/False only when a verification step actually ran
     # on this citation; omitted (None) when none did - never a default False.
     verified: bool | None = Field(
-        default=None, description="Verification outcome when a verifier ran; absent otherwise"
+        default=None,
+        description="True when the quote was found word for word in a retrieved official text",
+    )
+    match: Literal["exact", "fuzzy"] | None = Field(
+        default=None, description="How the quote matched the official text, when verified"
+    )
+    level: Literal["article", "framework", "any"] | None = Field(
+        default=None,
+        description=(
+            "Where it matched: the cited article, another article of the cited framework, "
+            "or another act"
+        ),
+    )
+    chunk_id: str | None = Field(default=None, description="Id of the matching corpus chunk")
+    lang: str | None = Field(default=None, description="Language of the matching text (IT, EN)")
+    consolidated_as_of: str | None = Field(
+        default=None, description="Date of the consolidated text the passage was found in"
     )
     grounded: bool | None = Field(
         default=None,
@@ -125,7 +160,14 @@ class ErrorEvent(BaseModel):
 
 
 class DoneEvent(BaseModel):
-    """Stream completion marker with final metadata."""
+    """Stream completion marker with final metadata.
+
+    ``abstention_reason`` and ``corpus_as_of`` are always on the wire (null when
+    absent, see NULLABLE_FIELDS); the citation counters are present for Q&A.
+    """
+
+    # Serialized even when None (format_sse), so the client reads an explicit null.
+    NULLABLE_FIELDS: ClassVar[frozenset[str]] = frozenset({"abstention_reason", "corpus_as_of"})
 
     type: str = Field(default=EventType.DONE, frozen=True)
     total_tokens: int = Field(..., description="Total tokens generated")
@@ -137,6 +179,23 @@ class DoneEvent(BaseModel):
     # not the original draft (BUG-002). None when CoVe did not revise.
     revised_text: str | None = Field(
         default=None, description="CoVe-revised answer text; replaces the draft when present"
+    )
+    verified_citations: int | None = Field(
+        default=None, ge=0, description="Citations whose quote was found word for word (Q&A)"
+    )
+    citations_total: int | None = Field(
+        default=None, ge=0, description="Citations the answer proposed (Q&A)"
+    )
+    caveats: list[str] = Field(default_factory=list, description="Caveats of the answer")
+    related_frameworks: list[str] = Field(
+        default_factory=list, description="Other frameworks worth checking"
+    )
+    abstention_reason: str | None = Field(
+        default=None,
+        description="Why the system abstained (e.g. unverified_citations); null when it answered",
+    )
+    corpus_as_of: str | None = Field(
+        default=None, description="Date of the regulatory corpus (ISO); null when not configured"
     )
 
 
@@ -163,7 +222,9 @@ def format_sse(event: SSEEvent) -> str:
     SSE format: `data: {json}\n\n`
 
     Optional fields left unset (None) are omitted rather than sent as null, so
-    an absent ``verified``/``url`` is honestly absent instead of a fake value.
+    an absent ``verified``/``url`` is honestly absent instead of a fake value -
+    except the fields an event lists in ``NULLABLE_FIELDS``, which are always
+    present (``null`` when unknown).
 
     Args:
         event: The SSE event to format
@@ -171,7 +232,9 @@ def format_sse(event: SSEEvent) -> str:
     Returns:
         Properly formatted SSE string with double newline terminator
     """
-    json_str = event.model_dump_json(exclude_none=True)
+    keep_null = getattr(type(event), "NULLABLE_FIELDS", frozenset())
+    exclude = {name for name, value in event if value is None and name not in keep_null}
+    json_str = event.model_dump_json(exclude=exclude)
     return f"data: {json_str}\n\n"
 
 

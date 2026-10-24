@@ -171,6 +171,17 @@ class Settings(BaseSettings):
     expert review and its confidence capped (an answer should not sound authoritative
     on thin evidence). Conservative: fires only when dense scores are present. 0 disables."""
 
+    # ─── Citation verification ───────────────────────────────
+    # Every Q&A citation is checked deterministically against the retrieved
+    # chunks (src.agents.citation_verifier): ``verified`` is True only when its
+    # quote was found word for word in the official text. When an answer has
+    # citations and NONE is verified:
+    #   "flag"   - the answer is served with requires_expert_review, confidence
+    #              capped at 0.6 and a caveat saying so (may be cached);
+    #   "strict" - the answer is replaced by an abstention with
+    #              abstention_reason="unverified_citations" (never cached).
+    citation_verification: Literal["flag", "strict"] = "flag"
+
     # ─── Streaming ────────────────────────────────────────────
     sse_keepalive_interval: int = 15
     sse_enabled: bool = True

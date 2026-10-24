@@ -352,6 +352,10 @@ class TestCreateInitialState:
         assert state["org_id"] is None
         assert state["cove_enabled"] is False
 
+    def test_language_is_normalized_and_defaults_to_unknown(self):
+        assert _create_initial_state("q", "qa", language=" EN ")["language"] == "en"
+        assert _create_initial_state("q", "qa")["language"] == ""
+
     def test_none_profile_becomes_empty_dict(self):
         state = _create_initial_state("q", "qa", company_profile=None)
         assert state["company_profile"] == {}
@@ -446,6 +450,45 @@ class TestApplyCoveToResult:
         state = {"result_json": json.dumps([1, 2])}
         _apply_cove_to_result(state, {"revised_text": "x"})
         assert state["result_json"] == json.dumps([1, 2])
+
+    def test_cove_cannot_clear_the_unverified_citation_flag(self):
+        # CoVe revises the text, not the citations: when none was verified its
+        # high score and "no review" verdict do not stand (policy re-applied).
+        from src.agents.citation_verifier import UNVERIFIED_CAVEAT_IT
+
+        flagged = {
+            "answer": "draft",
+            "citations": [{"framework": "GDPR", "verified": False}],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.6,
+            "requires_expert_review": True,
+            "caveats": [UNVERIFIED_CAVEAT_IT],
+        }
+        state = {"result_json": json.dumps(flagged), "language": "it"}
+        _apply_cove_to_result(
+            state, {"revised_text": "revised", "confidence_score": 0.95, "requires_review": False}
+        )
+        result = json.loads(state["result_json"])
+        assert result["answer"] == "revised"
+        assert result["cove_applied"] is True
+        assert result["requires_expert_review"] is True
+        assert result["confidence_score"] == 0.6
+        assert result["caveats"] == [UNVERIFIED_CAVEAT_IT]
+
+    def test_cove_verdict_stands_when_a_citation_is_verified(self):
+        verified = {
+            "answer": "draft",
+            "citations": [{"verified": True}],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.7,
+        }
+        state = {"result_json": json.dumps(verified)}
+        _apply_cove_to_result(state, {"confidence_score": 0.95, "requires_review": False})
+        result = json.loads(state["result_json"])
+        assert result["confidence_score"] == 0.95
+        assert result["requires_expert_review"] is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -603,6 +646,60 @@ class TestCoVeGate:
         assert out["error_code"] == "llm_provider_error"
         assert "cove_applied" not in out
 
+    def test_cove_gate_skipped_for_an_abstention(self):
+        # A strict-mode "unverified_citations" abstention has no answer to
+        # revise: CoVe must not run (and must not rewrite the abstention text).
+        payload = {
+            "answer": "Non posso fornire una risposta verificata.",
+            "citations": [],
+            "confidence_score": 0.3,
+            "requires_expert_review": True,
+            "abstention_reason": "unverified_citations",
+            "verified_citations": 0,
+            "citations_total": 2,
+        }
+
+        def _abstaining_agent(state):
+            return {
+                "result_json": json.dumps(payload),
+                "confidence_score": 0.3,
+                "requires_review": True,
+            }
+
+        with (
+            _patched_graph(confidence=0.5, fake_cove=True),
+            patch.object(graph_mod, "qa_bot_node", _abstaining_agent),
+        ):
+            graph_mod._sync_graph_instance = None  # rebuild with the abstaining agent
+            out = graph_mod.run_qa("query", cove_enabled=True)
+        assert out["abstention_reason"] == "unverified_citations"
+        assert out["answer"] == payload["answer"]
+        assert "cove_applied" not in out
+
+
+class TestLanguagePropagation:
+    async def test_arun_qa_puts_the_request_language_in_the_state(self):
+        seen = {}
+
+        def _retrieve(state):
+            seen["language"] = state.get("language")
+            return {"retrieved_chunks": []}
+
+        with _patched_graph(), patch.object(graph_mod, "retrieve_node", _retrieve):
+            await graph_mod.arun_qa("q", language="EN")
+        assert seen["language"] == "en"
+
+    def test_run_qa_default_language_is_unknown(self):
+        seen = {}
+
+        def _retrieve(state):
+            seen["language"] = state.get("language")
+            return {"retrieved_chunks": []}
+
+        with _patched_graph(), patch.object(graph_mod, "retrieve_node", _retrieve):
+            graph_mod.run_qa("q")
+        assert seen["language"] == ""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Retrieval failure: the knowledge base is down -> honest 503 payload, no LLM call
@@ -649,6 +746,64 @@ class TestRetrievalFailure:
         assert out["requires_expert_review"] is True
         assert out["confidence_score"] == 0.0
         llm.assert_not_awaited()
+
+
+class TestCitationVerificationEndToEnd:
+    async def test_arun_qa_returns_verified_and_unverified_citations(self):
+        # The REAL async graph, Q&A node and SNC node (off by default) run; only
+        # retrieval and the LLM call are replaced. The caller receives the
+        # verifier's verdict on each citation and the counters.
+        from src.agents import nodes as nodes_mod
+
+        chunk = {
+            "id": "pt-gdpr-33",
+            "framework": "GDPR",
+            "article": "Art. 33",
+            "celex": "32016R0679",
+            "lang": "EN",
+            "text": "Article 33\n1. In the case of a personal data breach, the controller shall "
+            "without undue delay and, where feasible, not later than 72 hours after having "
+            "become aware of it, notify the personal data breach to the supervisory authority.",
+        }
+        llm_answer = {
+            "answer": "Within 72 hours [GDPR, Art. 33(1)].",
+            "citations": [
+                {
+                    "framework": "GDPR",
+                    "reference": "Art. 33(1)",
+                    "quote_snippet": "not later than 72 hours after having become aware of it",
+                },
+                {
+                    "framework": "GDPR",
+                    "reference": "Art. 33(2)",
+                    "quote_snippet": "the processor shall inform the regulator within one week",
+                },
+            ],
+            "confidence_score": 0.9,
+            "requires_expert_review": False,
+            "caveats": [],
+        }
+        prev_async = graph_mod._async_graph_instance
+        with (
+            patch.object(graph_mod, "retrieve_node", lambda state: {"retrieved_chunks": [chunk]}),
+            patch.object(nodes_mod, "acall_llm", AsyncMock(return_value=llm_answer)),
+        ):
+            graph_mod._async_graph_instance = None
+            try:
+                out = await graph_mod.arun_qa("When must a breach be notified?", language="en")
+            finally:
+                graph_mod._async_graph_instance = prev_async
+
+        first, second = out["citations"]
+        assert first["verified"] is True and first["level"] == "article"
+        assert first["official_quote"] == "not later than 72 hours after having become aware of it"
+        assert (
+            first["url"] == "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679"
+        )
+        assert second["verified"] is False and second["official_quote"] is None
+        assert (out["verified_citations"], out["citations_total"]) == (1, 2)
+        # One citation is verified: the answer is not flagged by the policy.
+        assert out["caveats"] == []
 
 
 # ─────────────────────────────────────────────────────────────────────────────

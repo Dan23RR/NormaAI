@@ -27,6 +27,7 @@ asyncio_mode = "auto" (configured in pyproject.toml), so plain ``async def``
 test methods run without an explicit marker.
 """
 
+import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -51,6 +52,17 @@ GRAPH_QA = "src.agents.graph.arun_qa"
 GRAPH_GAP = "src.agents.graph.arun_gap_analysis"
 GRAPH_MONITOR = "src.agents.graph.arun_monitor_check"
 COVE_ORCH = "src.agents.cove.orchestrator.CoVeOrchestrator"
+
+# DoneEvent fields the generator fills from the answer itself (also on the
+# CoVe orchestrator's own done): everything else is the orchestrator's.
+_RESULT_FIELDS = {
+    "verified_citations",
+    "citations_total",
+    "caveats",
+    "related_frameworks",
+    "abstention_reason",
+    "corpus_as_of",
+}
 
 
 # ------------------------------------------------------------------ #
@@ -105,6 +117,10 @@ class TestQaStreamHappyPath:
                     "reference": "Art. 19a",
                     "title": "CSRD",
                     "url": "https://eur-lex.europa.eu/eli/32022L2464",
+                    "quote_snippet": "large undertakings shall include",
+                    # As the citation verifier left it (src.agents.citation_verifier).
+                    "verified": True,
+                    "official_quote": "Large undertakings shall include",
                 }
             ],
             "confidence_score": 0.91,
@@ -140,8 +156,9 @@ class TestQaStreamHappyPath:
         assert citations[0].celex == "32022L2464"
         assert citations[0].article == "Art. 19a"
         assert citations[0].title == "CSRD"
-        # No verifier ran on this citation: the flag is ABSENT, not a fake False.
-        assert citations[0].verified is None
+        # The verifier's verdict is passed through, with the OFFICIAL wording.
+        assert citations[0].verified is True
+        assert citations[0].quote == "Large undertakings shall include"
         # An explicit url in the result is kept as-is.
         assert citations[0].url == "https://eur-lex.europa.eu/eli/32022L2464"
 
@@ -151,6 +168,7 @@ class TestQaStreamHappyPath:
         assert done[0].cove_applied is False
         assert done[0].confidence_score == pytest.approx(0.91)
         assert done[0].requires_review is False
+        assert (done[0].verified_citations, done[0].citations_total) == (1, 1)
         # total_tokens = word count of the answer (one "word" of 100 'A's).
         assert done[0].total_tokens == len(answer.split())
 
@@ -477,12 +495,16 @@ class TestQaCoveEnabled:
         phases = [e.phase for e in events if isinstance(e, PhaseChangeEvent)]
         assert phases == ["draft", "planning", "verification"]
 
-        # Exactly one DoneEvent - the CoVe-emitted one - carrying revised_text.
+        # Exactly one DoneEvent - the CoVe-emitted one - carrying revised_text,
+        # completed with the answer's own fields (counters, caveats, ...).
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        assert done[0] is cove_done
+        assert done[0].model_dump(include=set(DoneEvent.model_fields) - _RESULT_FIELDS) == (
+            cove_done.model_dump(include=set(DoneEvent.model_fields) - _RESULT_FIELDS)
+        )
         assert done[0].cove_applied is True
         assert done[0].revised_text == "VERIFIED answer."
+        assert (done[0].verified_citations, done[0].citations_total) == (0, 0)
 
         # Orchestrator was constructed with config enabled=True.
         cls.assert_called_once()
@@ -544,6 +566,305 @@ class TestQaCoveEnabled:
             events = await _collect(qa_stream_generator("q", None, _fake_user(), enable_cove=True))
         assert not [e for e in events if isinstance(e, DoneEvent)]
         assert [e for e in events if isinstance(e, ErrorEvent)][-1].recoverable is False
+
+
+# ------------------------------------------------------------------ #
+#  qa_stream_generator - deterministic citation verification         #
+# ------------------------------------------------------------------ #
+
+GENERATORS_SETTINGS = "src.api.streaming.generators.get_settings"
+
+
+def _settings(**overrides):
+    from src.config import get_settings
+
+    return get_settings().model_copy(update=overrides)
+
+
+def _verified_citation(**overrides):
+    """A citation as the agent node leaves it after the citation verifier."""
+    citation = {
+        "framework": "AI_ACT",
+        "reference": "Art. 50(2)",
+        "quote_snippet": "garantiscono che gli output siano marcati",
+        "grounded": True,
+        "verified": True,
+        "match": "exact",
+        "level": "article",
+        "chunk_id": "pt-ai-50",
+        "celex": "32024R1689",
+        "article": "Art. 50",
+        "paragraph": "2",
+        "lang": "IT",
+        "consolidated_as_of": "2026-07-27",
+        "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689",
+        "official_quote": "garantiscono che gli output del sistema di IA siano marcati",
+    }
+    citation.update(overrides)
+    return citation
+
+
+def _unverified_citation():
+    return {
+        "framework": "CSRD",
+        "reference": "Art. 19a(1)",
+        "quote_snippet": "le grandi imprese includono nella relazione",
+        "grounded": False,
+        "verified": False,
+        "match": None,
+        "level": None,
+        "chunk_id": None,
+        "celex": None,
+        "article": None,
+        "paragraph": None,
+        "lang": None,
+        "consolidated_as_of": None,
+        "url": None,
+        "official_quote": None,
+    }
+
+
+class TestQaCitationVerification:
+    async def _stream(self, result, *, settings=None, **kwargs):
+        with (
+            patch(GRAPH_QA, AsyncMock(return_value=result)) as arun,
+            patch(GENERATORS_SETTINGS, return_value=settings or _settings()),
+        ):
+            events = await _collect(
+                qa_stream_generator(
+                    "q", None, _fake_user(), enable_cove=kwargs.pop("enable_cove", False), **kwargs
+                )
+            )
+        return events, arun
+
+    async def test_verified_citation_event_describes_the_official_text(self):
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation()],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        events, _ = await self._stream(result, language="en")
+        cit = [e for e in events if isinstance(e, CitationEvent)][0]
+        assert cit.framework == "AI_ACT"
+        assert cit.verified is True and cit.match == "exact" and cit.level == "article"
+        assert cit.celex == "32024R1689"
+        assert cit.article == "Art. 50" and cit.paragraph == "2"
+        # The official wording, not the model's paraphrase of it.
+        assert cit.quote == "garantiscono che gli output del sistema di IA siano marcati"
+        assert cit.chunk_id == "pt-ai-50" and cit.lang == "IT"
+        assert cit.consolidated_as_of == "2026-07-27"
+        # The URL is the verifier's (chunk language), not rebuilt from the request.
+        assert cit.url == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+        assert cit.grounded is True and cit.title == "AI_ACT"
+
+    async def test_unverified_citation_event_keeps_the_models_reference_and_quote(self):
+        result = {"answer": "x", "citations": [_unverified_citation()], "confidence_score": 0.9}
+        events, _ = await self._stream(result)
+        cit = [e for e in events if isinstance(e, CitationEvent)][0]
+        assert cit.verified is False
+        assert cit.quote == "le grandi imprese includono nella relazione"
+        assert cit.article == "Art. 19a(1)"
+        assert cit.match is None and cit.level is None and cit.chunk_id is None
+        assert cit.lang is None and cit.paragraph is None
+        # "Da verificare" still links to the primary act of the cited framework.
+        assert cit.celex == "32022L2464"
+        assert cit.url == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022L2464"
+
+    def test_wire_format_of_citation_events(self):
+        from src.api.streaming.generators import _citation_event
+        from src.api.streaming.sse import format_sse
+
+        verified = json.loads(format_sse(_citation_event(_verified_citation(), "it"))[6:])
+        assert verified == {
+            "type": "citation",
+            "framework": "AI_ACT",
+            "celex": "32024R1689",
+            "article": "Art. 50",
+            "paragraph": "2",
+            "title": "AI_ACT",
+            "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689",
+            "quote": "garantiscono che gli output del sistema di IA siano marcati",
+            "verified": True,
+            "match": "exact",
+            "level": "article",
+            "chunk_id": "pt-ai-50",
+            "lang": "IT",
+            "consolidated_as_of": "2026-07-27",
+            "grounded": True,
+        }
+        unverified = json.loads(format_sse(_citation_event(_unverified_citation(), "it"))[6:])
+        assert unverified == {
+            "type": "citation",
+            "framework": "CSRD",
+            "celex": "32022L2464",
+            "article": "Art. 19a(1)",
+            "title": "CSRD",
+            "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022L2464",
+            "quote": "le grandi imprese includono nella relazione",
+            "verified": False,
+            "grounded": False,
+        }
+
+    def test_verified_passage_without_celex_gets_no_guessed_link(self):
+        # Found in a chunk with no CELEX (e.g. an uploaded document): the event
+        # must not borrow the cited framework's primary act as its source.
+        from src.api.streaming.generators import _citation_event
+
+        event = _citation_event(_verified_citation(celex=None, url=None), "it")
+        assert event.verified is True
+        assert event.celex == "" and event.url is None
+
+    def test_unknown_match_or_level_values_are_not_forwarded(self):
+        from src.api.streaming.generators import _citation_event
+
+        event = _citation_event(_verified_citation(match="maybe", level="somewhere"), "it")
+        assert event.match is None and event.level is None
+
+    async def test_done_event_reports_the_answer(self):
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation(), _unverified_citation()],
+            "verified_citations": 1,
+            "citations_total": 2,
+            "confidence_score": 0.8,
+            "caveats": ["Nota.", {"not": "a string"}, ""],
+            "related_frameworks": ["GDPR", None],
+        }
+        events, _ = await self._stream(result, settings=_settings(corpus_as_of="2026-10-01"))
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert (done.verified_citations, done.citations_total) == (1, 2)
+        assert done.caveats == ["Nota."]
+        assert done.related_frameworks == ["GDPR"]
+        assert done.abstention_reason is None
+        assert done.corpus_as_of == "2026-10-01"
+        assert done.requires_review is False and done.confidence_score == pytest.approx(0.8)
+
+    def test_done_wire_format_always_carries_abstention_reason_and_corpus_date(self):
+        from src.api.streaming.sse import format_sse
+
+        wire = json.loads(
+            format_sse(
+                DoneEvent(
+                    total_tokens=1,
+                    confidence_score=0.5,
+                    requires_review=True,
+                    cove_applied=False,
+                    verified_citations=0,
+                    citations_total=0,
+                )
+            )[6:]
+        )
+        assert wire["abstention_reason"] is None and wire["corpus_as_of"] is None
+        assert wire["caveats"] == [] and wire["related_frameworks"] == []
+        assert (wire["verified_citations"], wire["citations_total"]) == (0, 0)
+        assert "revised_text" not in wire  # other None fields stay omitted
+
+    async def test_no_verified_citation_flags_the_streamed_answer(self):
+        result = {
+            "answer": "x",
+            "citations": [_unverified_citation()],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+            "requires_expert_review": False,
+        }
+        events, _ = await self._stream(result, language="it")
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.6)
+        assert done.caveats == [
+            "Nessuno dei passaggi citati è stato ritrovato testualmente nei testi del corpus: "
+            "verifica le fonti prima di usarla."
+        ]
+
+        events, _ = await self._stream(dict(result, caveats=[]), language="en")
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.caveats == [
+            "None of the cited passages was found verbatim in the corpus texts: "
+            "check the sources before using this answer."
+        ]
+
+    async def test_strict_mode_streams_the_abstention(self):
+        result = {
+            "answer": "risposta non verificata",
+            "citations": [_unverified_citation()],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        events, _ = await self._stream(
+            result, settings=_settings(citation_verification="strict"), language="it"
+        )
+        text = "".join(e.content for e in events if isinstance(e, TokenEvent))
+        assert text.startswith("Non posso fornire una risposta verificata")
+        assert not [e for e in events if isinstance(e, CitationEvent)]
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.abstention_reason == "unverified_citations"
+        assert (done.verified_citations, done.citations_total) == (0, 1)
+        assert done.requires_review is True
+
+    async def test_cove_cannot_clear_the_unverified_flag(self):
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        result = {
+            "answer": "x",
+            "citations": [_unverified_citation()],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.6,
+            "requires_expert_review": True,
+        }
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)]
+        assert len(done) == 1
+        assert done[0].cove_applied is True
+        assert done[0].requires_review is True
+        assert done[0].confidence_score == pytest.approx(0.6)
+        assert (done[0].verified_citations, done[0].citations_total) == (0, 1)
+
+    async def test_cove_verdict_stands_when_a_citation_is_verified(self):
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation()],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.7,
+        }
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is False
+        assert done.confidence_score == pytest.approx(0.97)
+
+    async def test_cove_is_skipped_for_an_abstention(self):
+        cove_patch, cls = _patch_cove([])
+        result = {
+            "answer": "Non posso fornire una risposta sufficientemente affidabile.",
+            "citations": [],
+            "confidence_score": 0.2,
+            "requires_expert_review": True,
+            "abstention_reason": "snc_low_trust",
+        }
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        cls.assert_not_called()
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.cove_applied is False
+        assert done.abstention_reason == "snc_low_trust"
+
+    async def test_request_language_is_forwarded_to_the_agent(self):
+        result = {"answer": "x", "citations": [], "confidence_score": 0.9}
+        _, arun = await self._stream(result, language="en")
+        assert arun.await_args.kwargs["language"] == "en"
 
 
 # ------------------------------------------------------------------ #
@@ -711,7 +1032,11 @@ class TestGapAnalysisStream:
             )
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        assert done[0] is cove_done
+        assert done[0].revised_text == "revised gap"
+        assert done[0].cove_applied is True and done[0].requires_review is False
+        assert done[0].confidence_score == pytest.approx(0.93)
+        # No Q&A citations here: no counters on the gap-analysis done.
+        assert done[0].citations_total is None
         # Orchestrator built once with config enabled=True.
         cls.assert_called_once()
         assert cls.call_args.kwargs["config"].enabled is True
@@ -838,7 +1163,9 @@ class TestMonitorStream:
             )
         done = [e for e in events if isinstance(e, DoneEvent)]
         assert len(done) == 1
-        assert done[0] is cove_done
+        assert done[0].model_dump(include=set(DoneEvent.model_fields) - _RESULT_FIELDS) == (
+            cove_done.model_dump(include=set(DoneEvent.model_fields) - _RESULT_FIELDS)
+        )
         assert done[0].revised_text == "revised impact"
         cls.assert_called_once()
 

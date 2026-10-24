@@ -703,6 +703,12 @@ class HybridIndexer:
                         "eli": payload.get("eli"),
                         "url": payload.get("url"),
                         "consolidated_as_of": payload.get("consolidated_as_of"),
+                        # Additive provenance for the citation verifier and the
+                        # prompt labels (src.agents.citation_verifier, llm).
+                        "source_celex": payload.get("source_celex"),
+                        "act_title": payload.get("act_title"),
+                        "frameworks": payload.get("frameworks"),
+                        "chunk_index": payload.get("chunk_index"),
                         # Additive: raw per-retriever cosine/BM25 score.
                         # None = the chunk was not returned by that retriever.
                         "dense_score": dense_score_map.get(point_id),

@@ -8,7 +8,7 @@ Tests are grouped into:
 """
 
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -325,3 +325,54 @@ class TestCacheability:
         error = {"error": "Rate limited", "error_code": "llm_rate_limited", "confidence_score": 0.0}
         assert _run(cache.set("qa", "What is CSRD?", error)) is False
         client.setex.assert_not_called()
+
+
+class TestCitationPolicyCacheability:
+    """The unverified-citation policy (src.agents.citation_verifier): a FLAGGED
+    answer is a genuine answer and may be cached; the strict-mode abstention
+    describes one generation, not the corpus, and is never cached."""
+
+    @staticmethod
+    def _unverified():
+        return {
+            "answer": "Risposta.",
+            "citations": [{"framework": "GDPR", "verified": False}],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+
+    def test_flagged_answer_is_cacheable(self):
+        from src.agents.citation_verifier import apply_unverified_policy
+
+        flagged = apply_unverified_policy(self._unverified(), mode="flag")
+        assert flagged["requires_expert_review"] is True
+        assert is_cacheable_result(flagged) == (True, "ok")
+
+    def test_strict_abstention_is_not_cacheable(self):
+        from src.agents.citation_verifier import apply_unverified_policy
+
+        abstention = apply_unverified_policy(self._unverified(), mode="strict")
+        assert "unverified_citations" not in CACHEABLE_ABSTENTION_REASONS
+        assert is_cacheable_result(abstention) == (False, "abstention:unverified_citations")
+
+    def test_set_refuses_the_strict_abstention(self, cache):
+        from src.agents.citation_verifier import apply_unverified_policy
+
+        client = AsyncMock()
+        cache._client = client
+        cache._available = True
+        abstention = apply_unverified_policy(self._unverified(), mode="strict")
+        assert _run(cache.set("qa", "What is CSRD?", abstention)) is False
+        client.setex.assert_not_called()
+
+    def test_key_version_keeps_entries_of_an_older_shape_out(self, cache):
+        # Entries cached before the citation verifier (no verified flags, no
+        # counters) live under keys that the current version never computes.
+        import src.cache as cache_module
+
+        current = cache._make_key("qa", "What is CSRD?", org_id="org-1")
+        with patch.object(cache_module, "CACHE_KEY_VERSION", 1):
+            older = cache._make_key("qa", "What is CSRD?", org_id="org-1")
+        assert current != older
+        assert current.startswith("normaai:llm:qa:")

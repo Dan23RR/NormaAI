@@ -205,6 +205,13 @@ class TestResult(BaseModel):
         None,
         description="Result of golden_v2.check_answer when the case carries expected_answer",
     )
+    verified_citation_rate: float | None = Field(
+        None,
+        description=(
+            "Share of the answer's citations whose quote the citation verifier found word "
+            "for word (metrics.verified_citation_rate); None when there is nothing to score"
+        ),
+    )
 
 
 class SuiteResult(BaseModel):
@@ -230,6 +237,10 @@ class SuiteResult(BaseModel):
     # Share of Q&A cases whose answer passed the golden v2 answer checks
     # (must-contain / must-not-contain / abstain). None when no case carries them.
     answer_check_pass_rate: float | None = None
+    # Mean, over the cases that could be scored, of the share of citations whose
+    # quote was found word for word in the official text (the "Verificata" rate).
+    # Informational: it is not part of suite_passed and has no threshold.
+    avg_verified_citation_rate: float | None = None
 
     # Per-framework breakdown
     framework_metrics: dict[str, dict] = Field(default_factory=dict)

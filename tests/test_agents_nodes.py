@@ -596,12 +596,147 @@ class TestSyncAgentNodes:
         assert out["confidence_score"] == 0.6
 
     def test_qa_node_grounded_citation_keeps_confidence(self, sample_qa_response):
-        # With a matching CSRD chunk retrieved, the CSRD citation is grounded.
-        chunks = [{"framework": "CSRD", "article_number": "19a", "text": "Large undertakings..."}]
+        # With a matching CSRD chunk retrieved, the CSRD citation is grounded,
+        # and its quote is found word for word in that chunk: verified.
+        chunks = [
+            {
+                "framework": "CSRD",
+                "article_number": "19a",
+                "text": "Large undertakings shall include in the management report information "
+                "necessary to understand the undertaking's impacts on sustainability matters.",
+            }
+        ]
         with patch.object(nodes, "call_llm", return_value=dict(sample_qa_response)):
             out = qa_bot_node({"query": "Who reports?", "retrieved_chunks": chunks})
         assert out["confidence_score"] == 0.9
         assert out["requires_review"] is False
+        served = json.loads(out["result_json"])
+        assert served["citations"][0]["verified"] is True
+        assert served["verified_citations"] == 1 and served["citations_total"] == 1
+
+
+# ─── Citation verification wired into the Q&A agent ───────────────
+
+
+class TestCitationVerificationWiring:
+    """The Q&A node verifies every citation word for word after the grounding
+    guard (src.agents.citation_verifier) and applies the unverified policy."""
+
+    _CHUNKS = [
+        {
+            "id": "pt-gdpr-17",
+            "framework": "GDPR",
+            "article": "Art. 17",
+            "celex": "32016R0679",
+            "source_celex": "32016R0679",
+            "lang": "IT",
+            "text": "Articolo 17\nDiritto alla cancellazione\n1. L'interessato ha il diritto di "
+            "ottenere dal titolare del trattamento la cancellazione dei dati personali che lo "
+            "riguardano senza ingiustificato ritardo.",
+        }
+    ]
+    _QUOTE = "ha il diritto di ottenere dal titolare del trattamento la cancellazione"
+
+    def _llm(self, quote, confidence=0.9):
+        return {
+            "answer": "Sì [GDPR, Art. 17(1)].",
+            "citations": [{"framework": "GDPR", "reference": "Art. 17(1)", "quote_snippet": quote}],
+            "confidence_score": confidence,
+            "requires_expert_review": False,
+            "related_frameworks": [],
+            "caveats": [],
+        }
+
+    def _run(self, llm, **state):
+        with patch.object(nodes, "call_llm", return_value=llm):
+            out = qa_bot_node({"query": "q", "retrieved_chunks": self._CHUNKS, **state})
+        return out, json.loads(out["result_json"])
+
+    def test_verified_citation_carries_the_official_provenance(self):
+        llm = self._llm(self._QUOTE)
+        cited = llm["citations"][0]
+        snapshot = dict(cited)
+        out, served = self._run(llm, language="it")
+
+        cit = served["citations"][0]
+        assert cit["verified"] is True and cit["match"] == "exact" and cit["level"] == "article"
+        assert cit["chunk_id"] == "pt-gdpr-17"
+        assert cit["celex"] == "32016R0679"
+        assert cit["article"] == "Art. 17" and cit["paragraph"] == "1"
+        assert cit["lang"] == "IT" and cit["consolidated_as_of"] is None
+        assert cit["url"] == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32016R0679"
+        assert cit["official_quote"] == self._QUOTE
+        assert cit["grounded"] is True  # the guard's verdict is kept as it was
+        assert (served["verified_citations"], served["citations_total"]) == (1, 1)
+        assert out["confidence_score"] == 0.9 and out["requires_review"] is False
+        # Written on a copy: the model's citation dict is untouched.
+        assert cited == snapshot
+
+    def test_no_verified_citation_flags_the_answer_in_italian(self):
+        out, served = self._run(self._llm("il titolare paga dieci milioni di euro di sanzione"))
+        assert served["citations"][0]["verified"] is False
+        assert served["citations"][0]["official_quote"] is None
+        assert (served["verified_citations"], served["citations_total"]) == (0, 1)
+        assert served["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.6 and out["requires_review"] is True
+        assert served["caveats"] == [
+            "Nessuno dei passaggi citati è stato ritrovato testualmente nei testi del corpus: "
+            "verifica le fonti prima di usarla."
+        ]
+
+    def test_english_request_gets_the_english_caveat(self):
+        _, served = self._run(
+            self._llm("il titolare paga dieci milioni di euro di sanzione"), language="en"
+        )
+        assert served["caveats"] == [
+            "None of the cited passages was found verbatim in the corpus texts: "
+            "check the sources before using this answer."
+        ]
+
+    def test_strict_mode_turns_the_answer_into_an_abstention(self):
+        from src.config import get_settings
+
+        strict = get_settings().model_copy(update={"citation_verification": "strict"})
+        with patch("src.config.get_settings", return_value=strict):
+            out, served = self._run(self._llm("il titolare paga dieci milioni di euro di sanzione"))
+        assert served["abstention_reason"] == "unverified_citations"
+        assert served["citations"] == []
+        assert served["answer"].startswith("Non posso fornire una risposta verificata")
+        assert (served["verified_citations"], served["citations_total"]) == (0, 1)
+        assert out["requires_review"] is True
+
+    def test_strict_mode_keeps_a_verified_answer(self):
+        from src.config import get_settings
+
+        strict = get_settings().model_copy(update={"citation_verification": "strict"})
+        with patch("src.config.get_settings", return_value=strict):
+            out, served = self._run(self._llm(self._QUOTE))
+        assert "abstention_reason" not in served
+        assert served["citations"][0]["verified"] is True
+
+    def test_llm_error_is_not_verified(self):
+        error = {"error": "LLM timed out", "error_code": "llm_timeout", "confidence_score": 0.0}
+        out, served = self._run(error)
+        assert "citations_total" not in served and out["error"] == "LLM timed out"
+
+    async def test_async_qa_node_verifies_too(self):
+        mock = AsyncMock(return_value=self._llm(self._QUOTE))
+        with patch.object(nodes, "acall_llm", new=mock):
+            out = await async_qa_bot_node({"query": "q", "retrieved_chunks": self._CHUNKS})
+        served = json.loads(out["result_json"])
+        assert served["citations"][0]["verified"] is True
+
+    def test_monitor_and_gap_answers_are_not_citation_verified(self, sample_company_profile):
+        monitor = {"answer": "m", "confidence_score": 0.9, "citations": ["GDPR, Art. 17 - x"]}
+        with patch.object(nodes, "call_llm", return_value=monitor):
+            out = monitor_agent_node(
+                {
+                    "query": "change",
+                    "company_profile": sample_company_profile,
+                    "retrieved_chunks": self._CHUNKS,
+                }
+            )
+        assert "citations_total" not in json.loads(out["result_json"])
 
 
 # ─── Async agent nodes (mocked acall_llm) ─────────────────────────
@@ -719,6 +854,32 @@ class TestAsyncSimpleResponseNode:
         with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
             out = await async_simple_response_node({"query": "Q", "task_type": "qa"})
         assert out["confidence_score"] == 0.95
+        assert out["requires_review"] is True
+
+    async def test_cache_hit_reapplies_the_unverified_citation_policy(self):
+        # A cached Q&A answer bypasses the agent node: the policy is applied
+        # again with the CURRENT setting (here strict) and request language.
+        from src.config import get_settings
+
+        cached = {
+            "answer": "c",
+            "citations": [{"framework": "GDPR", "verified": False}],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.6,
+            "requires_expert_review": True,
+        }
+        strict = get_settings().model_copy(update={"citation_verification": "strict"})
+        with (
+            patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)),
+            patch("src.config.get_settings", return_value=strict),
+        ):
+            out = await async_simple_response_node(
+                {"query": "Q", "task_type": "qa", "language": "en"}
+            )
+        served = json.loads(out["result_json"])
+        assert served["abstention_reason"] == "unverified_citations"
+        assert served["answer"].startswith("I cannot provide a verified answer")
         assert out["requires_review"] is True
 
     async def test_cache_miss_escalates_to_medium(self):

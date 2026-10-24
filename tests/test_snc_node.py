@@ -705,10 +705,15 @@ class TestNodeWiredToRealGovernance:
     async def test_node_admit_high_end_to_end(self):
         # Patch only the prompt/message builders + acall_llm; let the real
         # snc_governance run inside the node and rewrite state.
+        cited = {
+            "framework": "GDPR",
+            "article_number": "5",
+            "quote_snippet": "I dati personali sono trattati secondo i principi",
+        }
         initial = {
             "answer": "Articolo 5 GDPR.",
             "confidence_score": 0.95,
-            "citations": [{"framework": "GDPR", "article_number": "5"}],
+            "citations": [cited],
         }
         resample = dict(initial)
         mocked = AsyncMock(return_value=resample)
@@ -720,7 +725,8 @@ class TestNodeWiredToRealGovernance:
             patch("src.agents.snc_layer.acall_llm", mocked),
         ):
             # SNC runs AFTER retrieval: the served citation must be backed by a
-            # retrieved chunk, else the (re-applied) grounding guard flags it.
+            # retrieved chunk, else the (re-applied) grounding guard flags it,
+            # and its quote must be in that chunk, else the verifier flags it.
             state = {
                 "result_json": json.dumps(initial),
                 "retrieved_chunks": [
@@ -738,12 +744,17 @@ class TestNodeWiredToRealGovernance:
         assert out["confidence_score"] == pytest.approx(0.95)
         # result_json now holds the modal answer (the GDPR:5 cluster rep).
         modal = json.loads(out["result_json"])
-        # ...annotated by the grounding guard with the evidence-backed verdict.
-        assert modal["citations"] == [
-            {"framework": "GDPR", "article_number": "5", "grounded": True}
-        ]
+        # ...annotated by the grounding guard with the evidence-backed verdict
+        # and by the citation verifier with the passage it found.
+        served = modal["citations"][0]
+        assert {k: served[k] for k in cited} == cited
+        assert served["grounded"] is True
+        assert served["verified"] is True and served["match"] == "exact"
+        assert served["official_quote"] == "I dati personali sono trattati secondo i principi"
+        assert modal["verified_citations"] == 1 and modal["citations_total"] == 1
         # The SNC sample itself is left as the model produced it (no mutation).
-        assert initial["citations"] == [{"framework": "GDPR", "article_number": "5"}]
+        assert initial["citations"] == [cited]
+        assert set(cited) == {"framework", "article_number", "quote_snippet"}
 
     async def test_node_abstain_end_to_end_then_abstain_response(self):
         # Divergent samples drive ABSTAIN at the node, then the routing helper
@@ -831,8 +842,17 @@ class TestGroundingGuardOnServedModal:
         assert surfaced["snc_trust"] == pytest.approx(0.9)  # raw trust preserved for audit
 
     async def test_grounded_modal_citation_stays_clean(self):
-        # Sanity: a modal citation backed by the retrieved evidence is not flagged.
-        decision = self._decision([{"framework": "GDPR", "article_number": "5"}])
+        # Sanity: a modal citation backed by the retrieved evidence, whose quote
+        # is in that evidence word for word, is not flagged.
+        decision = self._decision(
+            [
+                {
+                    "framework": "GDPR",
+                    "article_number": "5",
+                    "quote_snippet": "principi applicabili al trattamento dei dati personali",
+                }
+            ]
+        )
         with (
             patch.object(snc_node, "_config_from_settings", return_value=SNCConfig(enabled=True)),
             patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
@@ -844,7 +864,12 @@ class TestGroundingGuardOnServedModal:
                     {"answer": "d", "confidence_score": 0.9, "citations": []}
                 ),
                 "retrieved_chunks": [
-                    {"framework": "GDPR", "article_number": "5", "text": "principi articolo 5"}
+                    {
+                        "framework": "GDPR",
+                        "article_number": "5",
+                        "text": "Articolo 5. I principi applicabili al trattamento dei dati "
+                        "personali sono elencati qui.",
+                    }
                 ],
             }
             out = await async_snc_governance_node(state)
@@ -853,6 +878,68 @@ class TestGroundingGuardOnServedModal:
         surfaced = json.loads(out["result_json"])
         assert "grounding_warning" not in surfaced
         assert surfaced["confidence_score"] == pytest.approx(0.9)
+        assert surfaced["citations"][0]["verified"] is True
+
+    async def test_unverified_modal_quote_is_flagged_despite_admit_high(self):
+        # The served modal answer is a DIFFERENT sample from the checked draft:
+        # its quote must be verified too, at the point of delivery. A grounded
+        # citation (right framework) whose quote is in no chunk is flagged.
+        decision = self._decision(
+            [
+                {
+                    "framework": "GDPR",
+                    "reference": "Art. 5",
+                    "quote_snippet": "il titolare paga una sanzione di dieci milioni di euro",
+                }
+            ]
+        )
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=SNCConfig(enabled=True)),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USR"),
+            patch.object(snc_node, "snc_governance", AsyncMock(return_value=decision)),
+        ):
+            state = {
+                "task_type": "qa",
+                "language": "it",
+                "result_json": json.dumps(
+                    {"answer": "d", "confidence_score": 0.9, "citations": []}
+                ),
+                "retrieved_chunks": [
+                    {
+                        "framework": "GDPR",
+                        "article_number": "5",
+                        "text": "I principi applicabili al trattamento dei dati personali.",
+                    }
+                ],
+            }
+            out = await async_snc_governance_node(state)
+
+        assert out["snc_action"] == "ADMIT_HIGH"
+        assert out["requires_expert_review"] is True
+        surfaced = json.loads(out["result_json"])
+        assert surfaced["citations"][0]["verified"] is False
+        assert surfaced["verified_citations"] == 0 and surfaced["citations_total"] == 1
+        assert surfaced["confidence_score"] <= 0.6
+        assert any("ritrovato testualmente" in c for c in surfaced["caveats"])
+
+    async def test_gap_analysis_modal_is_not_citation_verified(self):
+        # Only Q&A citations carry quotes: a gap-analysis answer is not touched.
+        decision = self._decision([])
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=SNCConfig(enabled=True)),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USR"),
+            patch.object(snc_node, "snc_governance", AsyncMock(return_value=decision)),
+        ):
+            state = {
+                "task_type": "gap_analysis",
+                "result_json": json.dumps({"answer": "d", "confidence_score": 0.9}),
+                "retrieved_chunks": [{"framework": "GDPR", "text": "testo"}],
+            }
+            out = await async_snc_governance_node(state)
+        surfaced = json.loads(out["result_json"])
+        assert "citations_total" not in surfaced
 
 
 # ─── Retrieval support gate (weak evidence -> flag + cap) ─────────────

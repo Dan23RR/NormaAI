@@ -59,3 +59,19 @@ class TestSettings:
         s = _isolated_settings(monkeypatch, google_api_key="test")
         assert s.snc_enabled is False
         assert _isolated_settings(monkeypatch, google_api_key="t", snc_enabled=True).snc_enabled
+
+    def test_citation_verification_defaults_to_flag(self, monkeypatch):
+        monkeypatch.delenv("CITATION_VERIFICATION", raising=False)
+        assert _isolated_settings(monkeypatch).citation_verification == "flag"
+
+    def test_citation_verification_strict_from_the_environment(self, monkeypatch):
+        monkeypatch.setenv("CITATION_VERIFICATION", "strict")
+        assert _isolated_settings(monkeypatch).citation_verification == "strict"
+
+    def test_citation_verification_rejects_unknown_modes(self, monkeypatch):
+        import pytest
+        from pydantic import ValidationError
+
+        monkeypatch.setenv("CITATION_VERIFICATION", "lenient")
+        with pytest.raises(ValidationError):
+            _isolated_settings(monkeypatch)

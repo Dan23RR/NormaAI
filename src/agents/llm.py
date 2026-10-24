@@ -22,6 +22,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.agents.citation_verifier import base_celex
 from src.resilience import ServiceUnavailableError, llm_circuit, require_circuit
 
 logger = logging.getLogger(__name__)
@@ -349,15 +350,42 @@ def extract_confidence(result: dict) -> float:
         return 0.0
 
 
+_ACT_TITLE_MAX = 100
+
+
+def _chunk_label(chunk: dict) -> str:
+    """Header of one source in the prompt: what the model must cite, and from where.
+
+    ``[FRAMEWORK, Art. N]`` is the citation marker the model copies; the base
+    CELEX, the act title and the language tell it which official text the
+    passage below comes from (quotes are verified against that text).
+    """
+    framework = chunk.get("framework") or "?"
+    article = chunk.get("article") or chunk.get("article_number") or "?"
+    parts = [f"[{framework}, {article}]"]
+    celex = base_celex(chunk)
+    if celex:
+        parts.append(f"CELEX {celex}")
+    title = " ".join(str(chunk.get("act_title") or "").split())
+    if title:
+        if len(title) > _ACT_TITLE_MAX:
+            title = title[:_ACT_TITLE_MAX].rstrip() + "..."
+        parts.append(title)
+    if chunk.get("paragraph"):
+        parts.append(f"par. {chunk['paragraph']}")
+    if chunk.get("lang"):
+        parts.append(f"lang {chunk['lang']}")
+    return " | ".join(parts)
+
+
 def format_retrieved_chunks(chunks: list) -> str:
-    """Format retrieved chunks for inclusion in prompts."""
+    """Format retrieved chunks for inclusion in prompts, each under a labelled header."""
     if not chunks:
         return "No relevant regulatory text found."
     parts = []
     for i, chunk in enumerate(chunks, 1):
         if isinstance(chunk, dict):
-            citation = f"[{chunk.get('framework', '?')}, {chunk.get('article_number', '?')}]"
-            parts.append(f"--- Source {i} {citation} ---\n{chunk.get('text', '')}\n")
+            parts.append(f"--- Source {i} {_chunk_label(chunk)} ---\n{chunk.get('text', '')}\n")
         else:
             parts.append(f"--- Source {i} ---\n{str(chunk)}\n")
     return "\n".join(parts)

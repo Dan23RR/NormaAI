@@ -353,6 +353,32 @@ class TestFormatRetrievedChunks:
         assert "[?, ?]" in out
         assert "only text" in out
 
+    def test_label_names_framework_article_act_paragraph_and_language(self):
+        # The model cites "[AI_ACT, Art. 50]" exactly as labelled, and knows the
+        # base act (never the consolidated id) and the language of the passage.
+        out = format_retrieved_chunks(
+            [
+                {
+                    "framework": "AI_ACT",
+                    "article": "Art. 50",
+                    "article_number": "legacy",
+                    "celex": "02024R1689-20260727",
+                    "act_title": "Artificial Intelligence Act",
+                    "paragraph": "3-4",
+                    "lang": "IT",
+                    "text": "Articolo 50 ...",
+                }
+            ]
+        )
+        assert out.startswith(
+            "--- Source 1 [AI_ACT, Art. 50] | CELEX 32024R1689 | Artificial Intelligence Act"
+            " | par. 3-4 | lang IT ---\nArticolo 50 ..."
+        )
+
+    def test_long_act_title_is_shortened(self):
+        out = format_retrieved_chunks([{"framework": "GDPR", "act_title": "T" * 300, "text": "b"}])
+        assert "T" * 100 + "..." in out and "T" * 101 not in out
+
     def test_string_chunk(self):
         out = format_retrieved_chunks(["raw paragraph"])
         assert "Source 1" in out

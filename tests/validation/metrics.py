@@ -31,6 +31,32 @@ def citation_grounding_rate(output: dict, retrieved_chunks: list | None) -> floa
     return _rate(output, retrieved_chunks)
 
 
+def verified_citation_rate(output: dict) -> float | None:
+    """Fraction of an answer's citations whose quote was found word for word.
+
+    Read from the pipeline's own verdicts (src.agents.citation_verifier): the
+    ``verified_citations`` / ``citations_total`` counters when the answer carries
+    them (they also count the citations a strict-mode abstention withheld), else
+    the ``verified`` flags of the citations. None when there is nothing to score:
+    no citations, or an output without any verifier flag (e.g. produced before
+    the verifier existed, or a demo run). Informational: no threshold uses it.
+    """
+    if not isinstance(output, dict):
+        return None
+    verified, total = output.get("verified_citations"), output.get("citations_total")
+    if (
+        isinstance(verified, int)
+        and isinstance(total, int)
+        and not isinstance(verified, bool)
+        and not isinstance(total, bool)
+    ):
+        return verified / total if total > 0 else None
+    citations = [c for c in output.get("citations") or [] if isinstance(c, dict)]
+    if not any(isinstance(c.get("verified"), bool) for c in citations):
+        return None
+    return sum(1 for c in citations if c.get("verified") is True) / len(citations)
+
+
 def normalize_article(article: str) -> str:
     """
     Normalize article references for comparison.
@@ -122,9 +148,14 @@ def extract_findings_from_output(output: dict, task_type: str = "gap_analysis") 
         citations = output.get("citations", [])
         for citation in citations:
             if isinstance(citation, dict):
+                # The article the MODEL cited: a raw pipeline citation carries it as
+                # ``reference`` (its ``article`` is the citation verifier's verdict,
+                # None when the quote was not found); parsed/demo outputs use ``article``.
                 findings.append(
                     {
-                        "article": citation.get("article", citation.get("reference", "unknown")),
+                        "article": citation.get("reference")
+                        or citation.get("article")
+                        or "unknown",
                         "description": citation.get("text", citation.get("content", "")),
                     }
                 )
@@ -221,6 +252,7 @@ def calculate_test_metrics(
         else 0.0
     )
     result.confidence_score = normaai_output.get("confidence_score", 0.0)
+    result.verified_citation_rate = verified_citation_rate(normaai_output)
 
     # Golden v2 answer checks (must-contain / must-not-contain / abstain)
     if test_case.expected_answer is not None:
@@ -270,6 +302,12 @@ def aggregate_suite_results(
             suite.answer_check_pass_rate = sum(
                 1 for r in checked if r.answer_checks.get("passed")
             ) / len(checked)
+
+        rates = [
+            r.verified_citation_rate for r in valid_results if r.verified_citation_rate is not None
+        ]
+        if rates:
+            suite.avg_verified_citation_rate = sum(rates) / len(rates)
 
     # Per-framework breakdown
     case_map = {tc.id: tc for tc in test_cases}

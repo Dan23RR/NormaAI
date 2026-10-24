@@ -76,6 +76,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   )
 })
 
+/** True for links to files served as-is from /public (checkers, PDFs). */
+export function isStaticFile(href: string): boolean {
+  return /\.(html?|pdf)(?:[?#].*)?$/i.test(href)
+}
+
 export function ButtonLink({
   href,
   variant,
@@ -99,6 +104,17 @@ export function ButtonLink({
   if (external) {
     return (
       <a href={href} className={classes} target="_blank" rel="noopener noreferrer">
+        {iconLeft}
+        {children}
+        {iconRight}
+      </a>
+    )
+  }
+  // Static files in /public are not app routes: a Next <Link> would prefetch
+  // them as React Server Component payloads and get a 404.
+  if (isStaticFile(href)) {
+    return (
+      <a href={href} className={classes}>
         {iconLeft}
         {children}
         {iconRight}

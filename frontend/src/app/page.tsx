@@ -125,14 +125,14 @@ export default async function Home() {
               <p className="mt-3 text-body text-ink-2">{t('how.scope.body')}</p>
               <ul className="mt-4 space-y-1.5 text-small">
                 <li>
-                  <Link href="/scope-csrd.html" className="text-union hover:underline">
+                  <a href="/scope-csrd.html" className="text-union hover:underline">
                     {t('how.scope.csrd')}
-                  </Link>
+                  </a>
                 </li>
                 <li>
-                  <Link href="/scope-aiact.html" className="text-union hover:underline">
+                  <a href="/scope-aiact.html" className="text-union hover:underline">
                     {t('how.scope.aiAct')}
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>

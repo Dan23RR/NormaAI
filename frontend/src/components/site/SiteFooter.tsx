@@ -65,6 +65,12 @@ export function SiteFooter() {
                       {t(l.key)}
                     </a>
                   </li>
+                ) : l.href.endsWith('.html') ? (
+                  <li key={l.href}>
+                    <a href={l.href} className="text-small text-ink-2 no-underline hover:text-ink hover:underline">
+                      {t(l.key)}
+                    </a>
+                  </li>
                 ) : (
                   <li key={l.href}>
                     <Link href={l.href} className="text-small text-ink-2 no-underline hover:text-ink hover:underline">

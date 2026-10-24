@@ -374,6 +374,15 @@ def generate_report(suite_result: SuiteResult, mode: str = "demo") -> str:
         )
         lines.append("╠══════════════════════════════════════════════════════════╣")
 
+    if suite_result.avg_verified_citation_rate is not None:
+        n_scored = sum(1 for r in suite_result.results if r.verified_citation_rate is not None)
+        lines.append(
+            f"║  Verified citations (word for word): "
+            f"{suite_result.avg_verified_citation_rate:.1%} (n={n_scored})".ljust(59)
+            + "║"
+        )
+        lines.append("╠══════════════════════════════════════════════════════════╣")
+
     if suite_result.framework_metrics:
         lines.append("║  PER-FRAMEWORK BREAKDOWN                                ║")
         for fw, m in sorted(suite_result.framework_metrics.items()):

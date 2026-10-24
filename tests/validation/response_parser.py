@@ -180,15 +180,17 @@ def _parse_qa(data: dict, metadata: dict) -> dict:
         )
         article = _normalize_article_ref(article)
 
-        normalized.append(
-            {
-                "article": article,
-                "text": cit.get("quote_snippet", cit.get("text", "")),
-                "framework": cit.get("framework", ""),
-            }
-        )
+        entry = {
+            "article": article,
+            "text": cit.get("quote_snippet", cit.get("text", "")),
+            "framework": cit.get("framework", ""),
+        }
+        # The citation verifier's verdict, kept for metrics.verified_citation_rate.
+        if isinstance(cit.get("verified"), bool):
+            entry["verified"] = cit["verified"]
+        normalized.append(entry)
 
-    return {
+    parsed = {
         "answer": data.get("answer", ""),
         "citations": normalized,
         "confidence_score": data.get("confidence_score", 0.0),
@@ -196,6 +198,10 @@ def _parse_qa(data: dict, metadata: dict) -> dict:
         "related_frameworks": data.get("related_frameworks", []),
         "caveats": data.get("caveats", []),
     }
+    for counter in ("verified_citations", "citations_total"):
+        if isinstance(data.get(counter), int):
+            parsed[counter] = data[counter]
+    return parsed
 
 
 def _parse_monitor(data: dict, metadata: dict) -> dict:

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  actNameFromCelex,
   citationToSource,
   citationsToSources,
   isCelex,
@@ -238,5 +239,21 @@ describe('verified citations from the deterministic verifier', () => {
     const s = citationToSource(c, 1, 's', en)
     expect(s.quote).toBe('It shall apply from 2 August 2026.')
     expect(s.status).toBe('verified')
+  })
+})
+
+describe('actNameFromCelex', () => {
+  it('names acts from 2015 on with the (EU) year/number form', () => {
+    expect(actNameFromCelex('32026R1744', it_.t)).toBe('Regolamento (UE) 2026/1744')
+    expect(actNameFromCelex('32022L2464', en.t)).toBe('Directive (EU) 2022/2464')
+  })
+
+  it('names 2010-2014 directives with the year/number/EU form', () => {
+    expect(actNameFromCelex('32013L0034', it_.t)).toBe('Direttiva 2013/34/UE')
+    expect(actNameFromCelex('32013L0034', en.t)).toBe('Directive 2013/34/EU')
+  })
+
+  it('shows the CELEX for older regulations, whose numbering differs', () => {
+    expect(actNameFromCelex('32013R0575', en.t)).toContain('32013R0575')
   })
 })

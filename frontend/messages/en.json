@@ -1956,6 +1956,7 @@
     },
     "actRegulation": "Regulation (EU) {year}/{number}",
     "actDirective": "Directive (EU) {year}/{number}",
+    "actDirectiveLegacy": "Directive {year}/{number}/EU",
     "paragraphShort": "para."
   },
   "errors": {

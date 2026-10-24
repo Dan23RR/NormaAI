@@ -104,15 +104,22 @@ export function actLabel(frameworkKey: string, title: string | undefined, t: Tra
 }
 
 /**
- * The act a CELEX number names, built from the number itself for acts from
- * 2015 on: 32026R1744 -> "Regulation (EU) 2026/1744". Older numbering
- * schemes differ, so for those (and anything else) the CELEX is shown as is.
+ * The act a CELEX number names, built from the number itself: from 2015 on,
+ * 32026R1744 -> "Regulation (EU) 2026/1744"; directives of 2010-2014 used
+ * the year/number/EU form, 32013L0034 -> "Directive 2013/34/EU". Older
+ * regulations were numbered the other way round, so for those (and anything
+ * else) the CELEX is shown as is.
  */
 export function actNameFromCelex(celex: string, t: Translate): string {
   const m = /^3(\d{4})([RL])(\d{4})$/.exec(celex.trim())
-  if (!m || Number(m[1]) < 2015) return `${t('ui.celex')} ${celex}`
+  if (!m) return `${t('ui.celex')} ${celex}`
+  const year = Number(m[1])
   const number = String(Number(m[3]))
-  return t(m[2] === 'R' ? 'ui.actRegulation' : 'ui.actDirective', { year: m[1], number })
+  if (year >= 2015) {
+    return t(m[2] === 'R' ? 'ui.actRegulation' : 'ui.actDirective', { year: m[1], number })
+  }
+  if (m[2] === 'L' && year >= 2010) return t('ui.actDirectiveLegacy', { year: m[1], number })
+  return `${t('ui.celex')} ${celex}`
 }
 
 /** Resolve the framework key of a citation, falling back to its CELEX. */

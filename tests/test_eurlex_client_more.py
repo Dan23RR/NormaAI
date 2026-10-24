@@ -604,7 +604,7 @@ class TestTrackedActRegistry:
     def test_registry_is_unique_and_derives_core_frameworks(self):
         celex_ids = [act.celex for act in TRACKED_ACTS]
         assert len(celex_ids) == len(set(celex_ids))
-        assert len(TRACKED_ACTS) == 17
+        assert len(TRACKED_ACTS) == 18
         for framework, celex_map in CORE_FRAMEWORKS.items():
             assert framework in FRAMEWORK_ORDER
             for celex, title in celex_map.items():

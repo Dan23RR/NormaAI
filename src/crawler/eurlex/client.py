@@ -115,6 +115,13 @@ TRACKED_ACTS: tuple[TrackedAct, ...] = (
         eli_type="dir",
     ),
     TrackedAct(
+        "32013L0034",
+        "CSRD",
+        "Accounting Directive (Directive 2013/34/EU) - the CSRD scope (Art. 19a, 29a) and the "
+        "size categories (Art. 3) live here, as amended by the CSRD and Omnibus I",
+        eli_type="dir",
+    ),
+    TrackedAct(
         "32023R2772",
         "CSRD",
         "ESRS Set 1 (Delegated Regulation (EU) 2023/2772 - sustainability reporting standards)",

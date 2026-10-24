@@ -1,7 +1,7 @@
 """Model settings and request parameters for the LLM providers.
 
-Regression tests for three faults found on 2026-10-24 by running NormaAI
-against the live Anthropic API:
+Regression tests for faults found on 2026-10-24 by running NormaAI against
+the live Anthropic API:
 
 * the default Anthropic model id (claude-sonnet-4-5-20250514) did not exist,
   and the default Gemini model (gemini-2.5-flash-preview-05-20) had been shut
@@ -18,6 +18,12 @@ import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+# The real client is imported here, at collection time, on purpose: other
+# tests stub modules with patch.dict("sys.modules", ...), which on exit also
+# drops modules first imported inside the block. If torch (pulled in lazily
+# through langchain_core and transformers) is dropped that way, importing it
+# again fails with "function '_has_torch_function' already has a docstring".
+import langchain_anthropic  # noqa: F401
 import pytest
 from langchain_core.messages import AIMessage
 

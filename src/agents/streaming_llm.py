@@ -27,6 +27,7 @@ from src.agents.llm import (
     RetryableLLMError,
     _classify_error,
     anthropic_accepts_temperature,
+    anthropic_max_tokens,
 )
 from src.config import get_settings
 from src.resilience import llm_circuit, require_circuit
@@ -132,7 +133,7 @@ async def _astream_anthropic_with_retry(
         # Stream using context manager
         async with client.messages.stream(
             model=model,
-            max_tokens=settings.llm_max_tokens,
+            max_tokens=anthropic_max_tokens(model, settings.llm_max_tokens),
             **sampling,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],

@@ -177,7 +177,9 @@ async def _call_normaai_api(test_case: TestCase, client) -> dict:
         raise RuntimeError("API client not provided. Use --api flag and ensure backend is running.")
 
     # Build company profile dict
-    profile = test_case.company_profile.model_dump()
+    # Omit unset fields: the API's CompanyProfile takes strings, not null
+    # (existing_documents: null was rejected with 422 on every golden case).
+    profile = test_case.company_profile.model_dump(exclude_none=True)
 
     # If the test case has inline document content, pass it as existing_documents
     if test_case.document and test_case.document.content:
@@ -208,7 +210,9 @@ async def _call_normaai_direct(test_case: TestCase) -> dict:
     """
     from src.agents.graph import arun_gap_analysis, arun_monitor_check, arun_qa
 
-    profile = test_case.company_profile.model_dump()
+    # Omit unset fields: the API's CompanyProfile takes strings, not null
+    # (existing_documents: null was rejected with 422 on every golden case).
+    profile = test_case.company_profile.model_dump(exclude_none=True)
 
     # If the document has inline content, add it to the profile
     if test_case.document and test_case.document.content:

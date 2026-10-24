@@ -61,6 +61,18 @@ def _classify_error(e: Exception) -> Exception:
 _CLAUDE_MAJOR = re.compile(r"claude-(?:[a-z]+-)?(\d+)")
 
 
+# Claude 5 models think adaptively by default, and thinking tokens count toward
+# max_tokens: with 4096 the reasoning used up the budget and the JSON answer was
+# cut off. This floor leaves room for the reasoning plus the answer; only the
+# tokens actually generated are billed.
+CLAUDE_5_MIN_MAX_TOKENS = 16000
+
+
+def _claude_major(model: str) -> int | None:
+    match = _CLAUDE_MAJOR.match(model or "")
+    return int(match.group(1)) if match else None
+
+
 def anthropic_accepts_temperature(model: str) -> bool:
     """Whether an Anthropic model accepts the ``temperature`` parameter.
 
@@ -69,8 +81,21 @@ def anthropic_accepts_temperature(model: str) -> bool:
     name that cannot be parsed the parameter is left out, because the API
     default is accepted by every model.
     """
-    match = _CLAUDE_MAJOR.match(model or "")
-    return bool(match) and int(match.group(1)) < 5
+    major = _claude_major(model)
+    return major is not None and major < 5
+
+
+def anthropic_max_tokens(model: str, configured: int) -> int:
+    """``max_tokens`` for an Anthropic request.
+
+    Claude 5 and later (and names that cannot be parsed) get at least
+    CLAUDE_5_MIN_MAX_TOKENS, so adaptive thinking cannot truncate the answer;
+    earlier models keep the configured value.
+    """
+    major = _claude_major(model)
+    if major is not None and major < 5:
+        return configured
+    return max(configured, CLAUDE_5_MIN_MAX_TOKENS)
 
 
 def message_text(message) -> str:
@@ -145,7 +170,7 @@ def get_llm(temperature: float | None = None):
             model=model,
             # None leaves the parameter out of the request (Claude 5 rejects it).
             temperature=temp if anthropic_accepts_temperature(model) else None,
-            max_tokens=settings.llm_max_tokens,
+            max_tokens=anthropic_max_tokens(model, settings.llm_max_tokens),
             timeout=settings.llm_timeout_seconds,
             anthropic_api_key=settings.anthropic_api_key,
         )

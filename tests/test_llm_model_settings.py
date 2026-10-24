@@ -21,7 +21,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from langchain_core.messages import AIMessage
 
-from src.agents.llm import acall_llm, anthropic_accepts_temperature, get_llm, message_text
+from src.agents.llm import (
+    CLAUDE_5_MIN_MAX_TOKENS,
+    acall_llm,
+    anthropic_accepts_temperature,
+    anthropic_max_tokens,
+    get_llm,
+    message_text,
+)
 from src.config import Settings
 from src.resilience import llm_circuit
 
@@ -152,3 +159,24 @@ async def test_acall_llm_parses_the_answer_after_a_reasoning_block():
         result = await acall_llm("system", "question")
     assert result["answer"] == "Yes, from 2 August 2026."
     assert "signature" not in json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    ("model", "configured", "expected"),
+    [
+        ("claude-haiku-5-5", 4096, CLAUDE_5_MIN_MAX_TOKENS),
+        ("claude-sonnet-5-5", 32000, 32000),
+        ("claude-sonnet-4-5-20250929", 4096, 4096),
+        ("unknown-model", 4096, CLAUDE_5_MIN_MAX_TOKENS),
+    ],
+)
+def test_anthropic_max_tokens_leaves_room_for_adaptive_thinking(model, configured, expected):
+    assert anthropic_max_tokens(model, configured) == expected
+
+
+def test_get_llm_raises_max_tokens_for_claude_5():
+    from langchain_core.messages import HumanMessage
+
+    with patch("src.config.get_settings", return_value=_anthropic_stub("claude-haiku-5-5")):
+        llm = get_llm()
+    assert llm._get_request_payload([HumanMessage("hi")])["max_tokens"] == CLAUDE_5_MIN_MAX_TOKENS

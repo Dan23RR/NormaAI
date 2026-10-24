@@ -32,6 +32,7 @@ from src.agents.citation_verifier import (
     normalize_framework,
     parse_article,
     policy_mode,
+    same_article,
     unverified_policy_applies,
     verify_citation,
     verify_citations,
@@ -183,6 +184,15 @@ class TestParseArticle:
         assert parse_article("articolo 12-bis, comma 2") == "art:12bis"
         # A word after the number is not a suffix.
         assert parse_article("Art. 50 paragraph 2") == "art:50"
+
+    def test_same_article_across_languages(self):
+        assert same_article("art:19a", "art:19bis")
+        assert same_article("art:29b", "art:29ter")
+        assert same_article("art:29d", "art:29quinquies")
+        assert same_article("art:50", "art:50")
+        assert not same_article("art:19a", "art:19b")
+        assert not same_article("art:19a", "art:19")
+        assert not same_article(None, "art:19a")
 
     def test_recitals_and_annexes(self):
         assert parse_article("Recital 45") == "recital:45"
@@ -458,6 +468,21 @@ class TestLevels:
             [chunk],
         )
         assert out.verified and out.level == "article"
+
+    def test_english_letter_matches_italian_latin_suffix(self):
+        # "Article 19a" in English is "articolo 19 bis" in Italian: same provision.
+        sentence = "Le grandi imprese includono nella relazione sulla gestione le informazioni."
+        chunk = _chunk(
+            f"Articolo 19 bis\n1. {sentence}",
+            chunk_id="d19bis",
+            article="Art. 19 bis",
+            framework="CSRD",
+            celex="32013L0034",
+        )
+        out = verify_citation(
+            {"framework": "CSRD", "reference": "Art. 19a(1)", "quote": sentence}, [chunk]
+        )
+        assert out.verified and out.level == "article" and out.article == "Art. 19 bis"
 
     def test_article_level_is_preferred_to_another_article(self):
         # The same sentence in two articles: the cited one wins.

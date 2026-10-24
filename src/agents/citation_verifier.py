@@ -270,6 +270,38 @@ def parse_article(reference: Any) -> str | None:
     return None
 
 
+# Inserted articles carry a letter in English ("19a") and a Latin adverb in
+# Italian ("19 bis"): the same provision. Keys keep the form of their language
+# (article_label shows them as the chunker labels units); comparisons go
+# through same_article.
+_LATIN_TO_LETTER = {
+    "bis": "a",
+    "ter": "b",
+    "quater": "c",
+    "quinquies": "d",
+    "sexies": "e",
+    "septies": "f",
+    "octies": "g",
+    "novies": "h",
+    "nonies": "h",
+    "decies": "i",
+}
+
+
+def _canonical_article(key: str) -> str:
+    kind, _, number = key.partition(":")
+    if kind == "art":
+        m = re.match(rf"^(\d+)({_LATIN_SUFFIXES})$", number)
+        if m:
+            return f"art:{m.group(1)}{_LATIN_TO_LETTER[m.group(2)]}"
+    return key
+
+
+def same_article(a: str | None, b: str | None) -> bool:
+    """True when two parse_article keys name the same provision ("art:19a" = "art:19bis")."""
+    return a is not None and b is not None and _canonical_article(a) == _canonical_article(b)
+
+
 def article_label(key: str | None) -> str | None:
     """Display form of a ``parse_article`` key, as the chunker labels units."""
     if not key:
@@ -627,7 +659,9 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
             c for c in chunks if framework in c.frameworks or (c.celex and framework == c.celex)
         ]
         if article:
-            levels.append((LEVEL_ARTICLE, [c for c in of_framework if c.article_key == article]))
+            levels.append(
+                (LEVEL_ARTICLE, [c for c in of_framework if same_article(c.article_key, article)])
+            )
         levels.append((LEVEL_FRAMEWORK, of_framework))
     levels.append((LEVEL_ANY, chunks))
 

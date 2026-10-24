@@ -57,6 +57,21 @@ def verified_citation_rate(output: dict) -> float | None:
     return sum(1 for c in citations if c.get("verified") is True) / len(citations)
 
 
+_LATIN_TO_LETTER = {
+    "bis": "a",
+    "ter": "b",
+    "quater": "c",
+    "quinquies": "d",
+    "sexies": "e",
+    "septies": "f",
+    "octies": "g",
+    "novies": "h",
+    "nonies": "h",
+    "decies": "i",
+}
+_LATIN_SUFFIX_RE = re.compile(r"(\d)\s*-?\s*(" + "|".join(_LATIN_TO_LETTER) + r")\b")
+
+
 def normalize_article(article: str) -> str:
     """
     Normalize article references for comparison.
@@ -64,10 +79,14 @@ def normalize_article(article: str) -> str:
     'Art. 13(2)(a)' → 'art_13_2_a'
     'Article 28(3)(h)' → 'art_28_3_h'
     'ESRS E1-6' → 'esrs_e1_6'
+    'Art. 19 bis(1)' → 'art_19a_1' (Italian Latin adverbs are English letters)
     """
     s = article.lower().strip()
+    s = _LATIN_SUFFIX_RE.sub(lambda m: m.group(1) + _LATIN_TO_LETTER[m.group(2)], s)
     s = re.sub(r"\barticle\b|\bart\.?\b", "art", s)
-    s = re.sub(r"[()§.\-/]", "_", s)
+    # Spaces are separators too, as the examples above show: without them
+    # 'Art. 50' gave 'art_ 50' and 'Article 50' gave 'art 50', so never matched.
+    s = re.sub(r"[()§.\-/\s]", "_", s)
     s = re.sub(r"_+", "_", s)
     s = s.strip("_")
     return s

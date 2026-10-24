@@ -6,7 +6,7 @@ import sys
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode
 
 _config_logger = logging.getLogger("normaai.config")
@@ -19,14 +19,25 @@ class Settings(BaseSettings):
     # Supported: "gemini", "anthropic", "openrouter"
     llm_provider: str = "gemini"
 
-    # Google Gemini
+    # Google Gemini. Read from GEMINI_MODEL_ANALYSIS or, as in .env.example,
+    # GEMINI_MODEL. The previous default (gemini-2.5-flash-preview-05-20) was
+    # shut down by Google on 2025-11-18; gemini-3.6-flash is the stable model
+    # Google lists as its replacement.
     google_api_key: str = ""
-    gemini_model_analysis: str = "gemini-2.5-flash-preview-05-20"
+    gemini_model_analysis: str = Field(
+        default="gemini-3.6-flash",
+        validation_alias=AliasChoices("gemini_model_analysis", "gemini_model"),
+    )
     gemini_model_classification: str = "gemini-2.0-flash"
 
-    # Anthropic (fallback)
+    # Anthropic. Read from ANTHROPIC_MODEL_ANALYSIS or, as in .env.example,
+    # ANTHROPIC_MODEL. The previous default (claude-sonnet-4-5-20250514) was
+    # not a real model id: the API answered 404 to every request.
     anthropic_api_key: str = ""
-    anthropic_model_analysis: str = "claude-sonnet-4-5-20250514"
+    anthropic_model_analysis: str = Field(
+        default="claude-sonnet-5-5",
+        validation_alias=AliasChoices("anthropic_model_analysis", "anthropic_model"),
+    )
 
     # OpenRouter (OpenAI-compatible gateway - many models, free tiers for
     # real-LLM testing without burning paid quota; also a BYO-key path)

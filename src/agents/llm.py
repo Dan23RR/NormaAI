@@ -58,6 +58,21 @@ def _classify_error(e: Exception) -> Exception:
 # ─── LLM Instance Factory ────────────────────────────────────────
 
 
+_CLAUDE_MAJOR = re.compile(r"claude-(?:[a-z]+-)?(\d+)")
+
+
+def anthropic_accepts_temperature(model: str) -> bool:
+    """Whether an Anthropic model accepts the ``temperature`` parameter.
+
+    Claude 5 and later models reject it (HTTP 400, "`temperature` is deprecated
+    for this model"); earlier ones (claude-3-*, claude-*-4-*) accept it. For a
+    name that cannot be parsed the parameter is left out, because the API
+    default is accepted by every model.
+    """
+    match = _CLAUDE_MAJOR.match(model or "")
+    return bool(match) and int(match.group(1)) < 5
+
+
 def get_llm(temperature: float | None = None):
     """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter).
 
@@ -102,9 +117,11 @@ def get_llm(temperature: float | None = None):
     else:
         from langchain_anthropic import ChatAnthropic
 
+        model = settings.anthropic_model_analysis
         return ChatAnthropic(
-            model=settings.anthropic_model_analysis,
-            temperature=temp,
+            model=model,
+            # None leaves the parameter out of the request (Claude 5 rejects it).
+            temperature=temp if anthropic_accepts_temperature(model) else None,
             max_tokens=settings.llm_max_tokens,
             timeout=settings.llm_timeout_seconds,
             anthropic_api_key=settings.anthropic_api_key,

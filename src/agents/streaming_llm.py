@@ -22,7 +22,12 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 
-from src.agents.llm import NonRetryableLLMError, RetryableLLMError, _classify_error
+from src.agents.llm import (
+    NonRetryableLLMError,
+    RetryableLLMError,
+    _classify_error,
+    anthropic_accepts_temperature,
+)
 from src.config import get_settings
 from src.resilience import llm_circuit, require_circuit
 
@@ -116,11 +121,19 @@ async def _astream_anthropic_with_retry(
         client = _get_anthropic_client()
         settings = get_settings()
 
+        model = settings.anthropic_model_analysis
+        # Claude 5 rejects `temperature`: send it only to models that accept it.
+        sampling = (
+            {"temperature": settings.llm_temperature}
+            if anthropic_accepts_temperature(model)
+            else {}
+        )
+
         # Stream using context manager
         async with client.messages.stream(
-            model=settings.anthropic_model_analysis,
+            model=model,
             max_tokens=settings.llm_max_tokens,
-            temperature=settings.llm_temperature,
+            **sampling,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         ) as stream:

@@ -43,12 +43,14 @@ def upgrade() -> None:
         sa.Column("id", pg.UUID(as_uuid=True), primary_key=True),
         sa.Column("code_hash", sa.String(64), nullable=False, unique=True),
         sa.Column("email", sa.String(255), nullable=False),
+        # NULL = the invitee creates a new organization (as admin). Kept as a
+        # code comment, not a column comment: the ORM declares none and
+        # `alembic check` compares comments.
         sa.Column(
             "org_id",
             pg.UUID(as_uuid=True),
             sa.ForeignKey("organizations.id", ondelete="CASCADE"),
             nullable=True,
-            comment="NULL = invitee creates a new organization (as admin)",
         ),
         sa.Column("role", sa.String(50), nullable=False, server_default="member"),
         sa.Column(
@@ -59,12 +61,8 @@ def upgrade() -> None:
         ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "used_by",
-            pg.UUID(as_uuid=True),
-            nullable=True,
-            comment="Registered user id; no FK (flushed before the user row exists)",
-        ),
+        # Registered user id; no FK (flushed before the user row exists).
+        sa.Column("used_by", pg.UUID(as_uuid=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

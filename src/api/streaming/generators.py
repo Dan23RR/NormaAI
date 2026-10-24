@@ -17,7 +17,11 @@ Honesty rules enforced here (audit, phase 1):
   emitted its own ``done``; if CoVe was requested but failed, a recoverable
   ``error`` event says so and the final ``done`` carries ``cove_applied=False``
   and ``requires_review=True`` (the answer is unverified);
-- citation ``verified`` is emitted only when a verifier produced it.
+- citation ``verified`` is emitted only when a verifier produced it: for Q&A
+  the deterministic citation verifier (src.agents.citation_verifier), True only
+  when the quote was found word for word in a retrieved official text; the
+  unverified-citation policy is re-applied here (idempotent) so the stream and
+  ``POST /qa`` serve the same decision, and CoVe cannot clear its flag.
 """
 
 import json
@@ -27,6 +31,13 @@ from typing import Any
 
 import structlog
 
+from src.agents.citation_verifier import (
+    UNVERIFIED_CONFIDENCE_CAP,
+    apply_unverified_policy,
+    citation_counters,
+    policy_mode,
+    unverified_policy_applies,
+)
 from src.api.errors import ResultFailure, classify_result
 from src.api.streaming.sse import (
     CitationEvent,
@@ -37,6 +48,7 @@ from src.api.streaming.sse import (
     TokenEvent,
 )
 from src.auth.dependencies import CurrentUser
+from src.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -85,20 +97,68 @@ def _primary_celex_for_framework(framework: str) -> str:
     return next(iter(celex_map), "")
 
 
+_MATCH_VALUES = frozenset({"exact", "fuzzy"})
+_LEVEL_VALUES = frozenset({"article", "framework", "any"})
+
+
+def _text_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _str_list(value: Any) -> list[str]:
+    """A list of non-empty strings from a result field (a lone string becomes one item)."""
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.strip()]
+
+
 def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
-    """Map a result citation dict to a CitationEvent without inventing fields."""
+    """Map a result citation dict to a CitationEvent without inventing fields.
+
+    A citation the verifier confirmed (``verified`` True) is described by the
+    official text it was found in: its article, paragraph, wording
+    (``official_quote``), chunk, language and server-built URL. Otherwise the
+    event carries the model's reference and quote, and the link falls back to
+    the primary act of the cited framework.
+    """
     framework = str(cit.get("framework") or "")
-    celex = str(cit.get("celex") or "") or _primary_celex_for_framework(framework)
-    url = cit.get("url") or (eurlex_celex_url(celex, language) if celex else None)
     verified = cit.get("verified")
+    verified = verified if isinstance(verified, bool) else None
+    official = verified is True
+    if official:
+        # The verifier's provenance only: the passage may belong to another act
+        # than the cited framework (level "any"), so no fallback is guessed.
+        celex = str(cit.get("celex") or "")
+        url = cit.get("url") or None
+    else:
+        celex = str(cit.get("celex") or "") or _primary_celex_for_framework(framework)
+        url = cit.get("url") or (eurlex_celex_url(celex, language) if celex else None)
+    reference = cit.get("reference") or cit.get("article_ref") or cit.get("article") or ""
+    quote = (cit.get("official_quote") if official else None) or (
+        cit.get("quote_snippet") or cit.get("quote")
+    )
     grounded = cit.get("grounded")
+    match, level = str(cit.get("match") or ""), str(cit.get("level") or "")
     return CitationEvent(
+        framework=framework or None,
         celex=celex,
         urn=cit.get("urn"),
-        article=str(cit.get("reference") or cit.get("article_ref") or cit.get("article") or ""),
+        article=str((cit.get("article") if official else None) or reference),
+        paragraph=_text_or_none(cit.get("paragraph")) if official else None,
         title=str(cit.get("title") or framework),
         url=url,
-        verified=verified if isinstance(verified, bool) else None,
+        quote=_text_or_none(quote),
+        verified=verified,
+        match=match if official and match in _MATCH_VALUES else None,
+        level=level if official and level in _LEVEL_VALUES else None,
+        chunk_id=_text_or_none(cit.get("chunk_id")) if official else None,
+        lang=_text_or_none(cit.get("lang")) if official else None,
+        consolidated_as_of=_text_or_none(cit.get("consolidated_as_of")) if official else None,
         grounded=grounded if isinstance(grounded, bool) else None,
     )
 
@@ -141,7 +201,28 @@ def _honest_confidence(result: dict[str, Any]) -> tuple[float, bool]:
     return confidence, bool(result.get("requires_expert_review"))
 
 
-def _done_event(result: dict[str, Any], text: str, *, cove_failed: bool) -> DoneEvent:
+def _result_fields(result: dict[str, Any], *, with_citations: bool) -> dict[str, Any]:
+    """What the ``done`` event reports about the answer beyond its score.
+
+    ``caveats``, ``related_frameworks``, ``abstention_reason`` and the corpus
+    date for every task; the citation counters for Q&A (``with_citations``).
+    """
+    fields: dict[str, Any] = {
+        "caveats": _str_list(result.get("caveats")),
+        "related_frameworks": _str_list(result.get("related_frameworks")),
+        "abstention_reason": _text_or_none(result.get("abstention_reason")),
+        "corpus_as_of": _text_or_none(getattr(get_settings(), "corpus_as_of", None)),
+    }
+    if with_citations:
+        verified, total = citation_counters(result)
+        fields["verified_citations"] = verified
+        fields["citations_total"] = total
+    return fields
+
+
+def _done_event(
+    result: dict[str, Any], text: str, *, cove_failed: bool, with_citations: bool = False
+) -> DoneEvent:
     """Final event for the non-CoVe path (or the CoVe-failed fallback)."""
     confidence, requires_review = _honest_confidence(result)
     return DoneEvent(
@@ -149,7 +230,21 @@ def _done_event(result: dict[str, Any], text: str, *, cove_failed: bool) -> Done
         confidence_score=confidence,
         requires_review=requires_review or cove_failed,
         cove_applied=False,
+        **_result_fields(result, with_citations=with_citations),
     )
+
+
+def _cove_done_event(done: DoneEvent, result: dict[str, Any], *, with_citations: bool) -> DoneEvent:
+    """The CoVe orchestrator's own ``done``, completed with the answer's fields.
+
+    CoVe revises the text, not the citations: when none of them was verified
+    its score and review verdict cannot clear the unverified-citation flag.
+    """
+    update = _result_fields(result, with_citations=with_citations)
+    if with_citations and unverified_policy_applies(result):
+        update["requires_review"] = True
+        update["confidence_score"] = min(done.confidence_score, UNVERIFIED_CONFIDENCE_CAP)
+    return done.model_copy(update=update)
 
 
 def _gap_summary_text(result: dict[str, Any]) -> str:
@@ -246,6 +341,12 @@ async def _stream_task(
 
         if not isinstance(result, dict):
             result = {"answer": str(result)}
+        if emit_citations:
+            # Q&A: the same unverified-citation decision as POST /qa (idempotent
+            # on an answer the agent node already verified).
+            result = apply_unverified_policy(
+                result, mode=policy_mode(get_settings()), language=language
+            )
         text = text_of(result)
         for token in _token_events(text):
             yield token
@@ -258,9 +359,12 @@ async def _stream_task(
                     continue
 
         cove_failed = False
-        if enable_cove:
+        # An abstention has no answer to revise: CoVe is skipped (as in the graph).
+        if enable_cove and not result.get("abstention_reason"):
             try:
                 async for event in _run_cove(query, profile_dict, result, task):
+                    if isinstance(event, DoneEvent):
+                        event = _cove_done_event(event, result, with_citations=emit_citations)
                     yield event
                 # The orchestrator owns the terminal event (its own done, or a
                 # non-recoverable error): never add a second done after it.
@@ -272,7 +376,7 @@ async def _stream_task(
                     message=_COVE_FAILED_MESSAGE, recoverable=True, error_code="cove_failed"
                 )
 
-        yield _done_event(result, text, cove_failed=cove_failed)
+        yield _done_event(result, text, cove_failed=cove_failed, with_citations=emit_citations)
     except Exception as e:  # noqa: BLE001
         logger.error(f"{task}_stream_error", error=str(e), traceback=traceback.format_exc())
         yield ErrorEvent(
@@ -298,7 +402,11 @@ async def qa_stream_generator(
         from src.agents.graph import arun_qa
 
         return await arun_qa(
-            question, profile_dict, cove_enabled=enable_cove, org_id=str(user.org_id)
+            question,
+            profile_dict,
+            cove_enabled=enable_cove,
+            org_id=str(user.org_id),
+            language=language,
         )
 
     def text_of(result: dict[str, Any]) -> str:

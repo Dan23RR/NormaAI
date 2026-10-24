@@ -26,13 +26,23 @@ logger = logging.getLogger(__name__)
 # Abstention reasons that describe the CORPUS rather than a transient pipeline
 # condition; only these may be cached. SNC abstentions ("snc_low_trust",
 # "snc_degraded") are never cached: the first is stochastic, the second is a
-# provider failure in disguise.
+# provider failure in disguise. Nor is "unverified_citations" (strict citation
+# policy): it describes one generation whose quotes were not found verbatim,
+# and the next generation may quote the official text correctly. An answer
+# merely FLAGGED by that policy (flag mode: review + capped confidence +
+# caveat) is a genuine answer and stays cacheable.
 CACHEABLE_ABSTENTION_REASONS: frozenset[str] = frozenset(
     {"corpus_not_covering", "no_relevant_sources"}
 )
 
 # Below this confidence a result is not worth pinning for the TTL.
 MIN_CACHEABLE_CONFIDENCE = 0.1
+
+# Part of every cache key: bumped when the shape of a cached result changes so
+# entries written by an older build are never served. 2: Q&A citations carry
+# the citation verifier's fields and the answer its verified_citations /
+# citations_total counters.
+CACHE_KEY_VERSION = 2
 
 
 def is_cacheable_result(result: object) -> tuple[bool, str]:
@@ -119,6 +129,7 @@ class ResponseCache:
         are never served to org B, even for identical queries.
         """
         key_data = {
+            "v": CACHE_KEY_VERSION,
             "task_type": task_type,
             "query": query.strip().lower(),
         }

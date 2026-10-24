@@ -299,6 +299,108 @@ class TestQAEndpoint:
         assert response.status_code == 200
 
 
+_VERIFIED_CITATION = {
+    "framework": "GDPR",
+    "reference": "Art. 17(1)",
+    "quote_snippet": "ha il diritto di ottenere la cancellazione",
+    "grounded": True,
+    "verified": True,
+    "match": "exact",
+    "level": "article",
+    "chunk_id": "pt-gdpr-17",
+    "celex": "32016R0679",
+    "article": "Art. 17",
+    "paragraph": "1",
+    "lang": "IT",
+    "consolidated_as_of": None,
+    "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32016R0679",
+    "official_quote": "ha il diritto di ottenere dal titolare la cancellazione",
+}
+
+
+class TestQACitationVerificationContract:
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_enriched_citations_and_counters_in_data(self, mock_qa, client, auth_headers):
+        mock_qa.return_value = {
+            "answer": "Sì [GDPR, Art. 17(1)].",
+            "citations": [dict(_VERIFIED_CITATION)],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+            "requires_expert_review": False,
+        }
+        response = client.post(
+            "/api/v1/qa",
+            json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["citations"] == [_VERIFIED_CITATION]
+        assert (data["verified_citations"], data["citations_total"]) == (1, 1)
+        assert data["requires_expert_review"] is False
+        # The request language reaches the pipeline (caveat/abstention language).
+        assert mock_qa.await_args.kwargs["language"] == "it"
+
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_unverified_citations_are_flagged_at_delivery(self, mock_qa, client, auth_headers):
+        mock_qa.return_value = {
+            "answer": "Sì.",
+            "citations": [{"framework": "GDPR", "reference": "Art. 17", "quote_snippet": "x"}],
+            "confidence_score": 0.9,
+            "requires_expert_review": False,
+        }
+        response = client.post(
+            "/api/v1/qa",
+            json={"question": "Can I ask for erasure?", "language": "en"},
+            headers=auth_headers,
+        )
+        data = response.json()["data"]
+        assert (data["verified_citations"], data["citations_total"]) == (0, 1)
+        assert data["requires_expert_review"] is True
+        assert data["confidence_score"] == 0.6
+        assert data["caveats"] == [
+            "None of the cited passages was found verbatim in the corpus texts: "
+            "check the sources before using this answer."
+        ]
+
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_cached_answer_follows_the_current_policy(self, mock_qa, client, auth_headers):
+        # Cached while the deploy ran in "flag" mode; served after the switch to
+        # "strict": the cached path re-applies the policy -> abstention.
+        from src.config import get_settings
+
+        cached = {
+            "answer": "Risposta non verificata.",
+            "citations": [{"framework": "GDPR", "verified": False}],
+            "verified_citations": 0,
+            "citations_total": 1,
+            "confidence_score": 0.6,
+            "requires_expert_review": True,
+            "caveats": [
+                "Nessuno dei passaggi citati è stato ritrovato testualmente nei testi del "
+                "corpus: verifica le fonti prima di usarla."
+            ],
+        }
+        strict = get_settings().model_copy(update={"citation_verification": "strict"})
+        with (
+            patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)),
+            patch("src.api.routers.intelligence.get_settings", return_value=strict),
+        ):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["metadata"]["cached"] is True
+        assert body["data"]["abstention_reason"] == "unverified_citations"
+        assert body["data"]["citations"] == []
+        assert (body["data"]["verified_citations"], body["data"]["citations_total"]) == (0, 1)
+        mock_qa.assert_not_awaited()
+
+
 class TestGapAnalysisEndpoint:
     @patch("src.agents.graph.arun_gap_analysis", new_callable=AsyncMock)
     def test_gap_analysis_success(self, mock_gap, client, auth_headers):

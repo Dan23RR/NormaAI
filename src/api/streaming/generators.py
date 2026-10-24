@@ -27,7 +27,7 @@ Honesty rules enforced here (audit, phase 1):
 import json
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable
-from typing import Any
+from typing import Any, TypeGuard, get_args
 
 import structlog
 
@@ -41,6 +41,8 @@ from src.agents.citation_verifier import (
 from src.api.errors import ResultFailure, classify_result
 from src.api.streaming.sse import (
     CitationEvent,
+    CitationLevel,
+    CitationMatch,
     DoneEvent,
     ErrorEvent,
     PhaseChangeEvent,
@@ -97,8 +99,16 @@ def _primary_celex_for_framework(framework: str) -> str:
     return next(iter(celex_map), "")
 
 
-_MATCH_VALUES = frozenset({"exact", "fuzzy"})
-_LEVEL_VALUES = frozenset({"article", "framework", "any"})
+_MATCH_VALUES: frozenset[str] = frozenset(get_args(CitationMatch))
+_LEVEL_VALUES: frozenset[str] = frozenset(get_args(CitationLevel))
+
+
+def _is_match(value: str) -> TypeGuard[CitationMatch]:
+    return value in _MATCH_VALUES
+
+
+def _is_level(value: str) -> TypeGuard[CitationLevel]:
+    return value in _LEVEL_VALUES
 
 
 def _text_or_none(value: Any) -> str | None:
@@ -154,8 +164,8 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
         url=url,
         quote=_text_or_none(quote),
         verified=verified,
-        match=match if official and match in _MATCH_VALUES else None,
-        level=level if official and level in _LEVEL_VALUES else None,
+        match=match if official and _is_match(match) else None,
+        level=level if official and _is_level(level) else None,
         chunk_id=_text_or_none(cit.get("chunk_id")) if official else None,
         lang=_text_or_none(cit.get("lang")) if official else None,
         consolidated_as_of=_text_or_none(cit.get("consolidated_as_of")) if official else None,

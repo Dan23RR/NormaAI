@@ -52,6 +52,11 @@ class TokenEvent(BaseModel):
     index: int = Field(..., description="Token position in response")
 
 
+# How and where a verified quote matched the official text (citation verifier).
+CitationMatch = Literal["exact", "fuzzy"]
+CitationLevel = Literal["article", "framework", "any"]
+
+
 class CitationEvent(BaseModel):
     """Regulatory document reference with metadata and verification status.
 
@@ -85,10 +90,10 @@ class CitationEvent(BaseModel):
         default=None,
         description="True when the quote was found word for word in a retrieved official text",
     )
-    match: Literal["exact", "fuzzy"] | None = Field(
+    match: CitationMatch | None = Field(
         default=None, description="How the quote matched the official text, when verified"
     )
-    level: Literal["article", "framework", "any"] | None = Field(
+    level: CitationLevel | None = Field(
         default=None,
         description=(
             "Where it matched: the cited article, another article of the cited framework, "
@@ -232,7 +237,7 @@ def format_sse(event: SSEEvent) -> str:
     Returns:
         Properly formatted SSE string with double newline terminator
     """
-    keep_null = getattr(type(event), "NULLABLE_FIELDS", frozenset())
+    keep_null: frozenset[str] = getattr(type(event), "NULLABLE_FIELDS", frozenset())
     exclude = {name for name, value in event if value is None and name not in keep_null}
     json_str = event.model_dump_json(exclude=exclude)
     return f"data: {json_str}\n\n"

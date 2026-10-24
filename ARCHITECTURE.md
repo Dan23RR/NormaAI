@@ -154,7 +154,8 @@ behaviorally, compute a closed-form trust score, and route three ways:
 
 ```
 User Question → Sanitize → Retrieve (Qdrant hybrid) → Route → QA Agent (LLM)
-    → Confidence Check → [if < 0.85] → CoVe 5-phase verification → Response
+    → Grounding guard → Citation verifier (word for word) → Confidence Check
+    → [if < 0.85] → CoVe 5-phase verification → Response
     → [if ≥ 0.85] → Response with citations
 ```
 
@@ -172,10 +173,75 @@ Normattiva API → Search → Download Text → Chunk → Enrich → Index
 ```
 Request → Agent Graph → Draft PhaseChangeEvent
     → TokenEvents (chunked answer, 80-char blocks)
-    → CitationEvents (per-citation)
+    → CitationEvents (per-citation, with the verifier's fields)
     → [CoVe] → ThinkingEvents → VerificationEvents
-    → DoneEvent (confidence, token count, review flag)
+    → DoneEvent (confidence, token count, review flag, citation counters,
+                 caveats, related frameworks, abstention reason, corpus date)
 ```
+
+## Verifica deterministica delle citazioni
+
+A Q&A citation is shown as "Verificata" only when the passage it quotes was
+found, word for word, in one of the chunks retrieved for that answer. The check
+is deterministic, with no LLM involved: `src/agents/citation_verifier.py` (pure
+functions), run by the Q&A agent node right after the grounding guard (whose
+`grounded` verdict is kept as it is) and again on the answer the SNC layer
+serves.
+
+**Rule.** The quote (`quote_snippet`) and the chunk text are normalized (NFKC,
+casefold, typographic quotes and apostrophes to ASCII, every dash to `-`,
+Unicode spaces to a space, soft hyphens and zero-width characters removed,
+whitespace collapsed; the quote also loses surrounding quotes, punctuation and
+ellipses). A quote shorter than 20 characters or 4 words is never verified (too
+generic). Chunks are searched by level: the cited framework and article
+(`"article"`; `Art. 50`, `articolo 50`, `50`, `50(1)`, `art. 50, par. 1` all
+name article 50), then any chunk of the framework (`"framework"`), then every
+chunk (`"any"`). Within a level the quote must be a substring of one chunk
+(`"exact"`); a quote with omissions (`[...]`, `...`, `…`) is split there and
+every segment of at least 12 characters must appear in the same chunk, in
+order. Failing that, a span of the chunk whose difflib ratio with the quote is
+at least 0.92 is accepted (`"fuzzy"`: punctuation or OCR differences).
+
+**Fields.** Every citation gets, on a copy (the model's dicts are never
+modified, and anything the model put in these keys is overwritten):
+
+| Field | Verified citation | Unverified |
+|-------|-------------------|------------|
+| `verified` | `true` | `false` |
+| `match` | `"exact"` / `"fuzzy"` | `null` |
+| `level` | `"article"` / `"framework"` / `"any"` | `null` |
+| `chunk_id` | Qdrant point id of the matching chunk | `null` |
+| `celex` | base act (`32024R1689`, never a consolidated id) | `null` |
+| `article`, `paragraph` | where the passage is (`"Art. 50"`, `"2"`) | `null` |
+| `lang`, `consolidated_as_of` | language and version date of that text | `null` |
+| `url` | `https://eur-lex.europa.eu/legal-content/{IT\|EN}/TXT/?uri=CELEX:{celex}`, built server-side in the chunk's language | `null` |
+| `official_quote` | the exact span of the official text that matched | `null` |
+
+The answer carries `verified_citations` and `citations_total`.
+
+**Policy** (`CITATION_VERIFICATION`, `Settings.citation_verification`, default
+`flag`). When an answer is not an abstention, has citations and none is
+verified: `flag` serves it with `requires_expert_review = true`, confidence
+capped at 0.6 and the caveat *"Nessuno dei passaggi citati è stato ritrovato
+testualmente nei testi del corpus: verifica le fonti prima di usarla."* (its
+English twin when the request language is English); such an answer may be
+cached. `strict` replaces it with an abstention
+(`abstention_reason = "unverified_citations"`, citations emptied, counters
+kept), which is never cached and skips CoVe. The policy is idempotent and is
+re-applied where an answer is delivered (`POST /qa`, fresh and cached; the SSE
+stream; after CoVe, which revises the text but cannot clear the flag), so a
+cached answer follows the current setting. The cache key carries a version
+(`CACHE_KEY_VERSION = 2`) so answers cached before the verifier are never
+served.
+
+**Prompt.** Every source in the Q&A context is labelled
+`[FRAMEWORK, Art. N] | CELEX … | act title | paragraphs | language`; the model is
+told to cite the article exactly as labelled and to copy `quote_snippet`
+verbatim from the labelled source, marking omissions with `[...]`.
+
+**Golden set.** `tests/validation/metrics.py::verified_citation_rate` reports
+the share of verified citations per case (`SuiteResult.avg_verified_citation_rate`);
+it is informational and does not change the pass thresholds.
 
 ## Module Boundaries
 

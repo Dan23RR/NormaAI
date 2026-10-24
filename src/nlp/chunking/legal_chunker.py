@@ -249,6 +249,11 @@ class EURLexHTMLChunker:
     MAX_CHUNK_SIZE = 2000
     MIN_CHUNK_SIZE = 100  # fallback paragraph chunks only
     MIN_UNIT_SIZE = 20  # articles / annex sections with less body text than this are noise
+    # Annex "sections" with less body text than this are table and glossary rows
+    # whose acronym or code was read as a heading ("ODS", "ESRS S2", "AIH 0101").
+    # As chunks of 50-200 characters they crowd real articles out of the search
+    # results, so they are merged into the neighbouring section of the same annex.
+    TINY_ANNEX_SECTION = 120
     DEFAULT_LANG = "EN"
 
     def __init__(
@@ -298,6 +303,7 @@ class EURLexHTMLChunker:
 
         chunks: list[LegalChunk] = []
         if structured:
+            units = self._merge_tiny_annex_units(units)
             for unit in units:
                 chunks.extend(self._unit_to_chunks(unit))
         else:
@@ -693,6 +699,44 @@ class EURLexHTMLChunker:
         if part is not None:
             meta["part"] = str(part)
         return meta
+
+    @staticmethod
+    def _unit_text_length(unit: _Unit) -> int:
+        return sum(len(line) + 1 for line in unit.heading) + sum(
+            len(line) + 1 for line in unit.body
+        )
+
+    def _merge_tiny_annex_units(self, units: list[_Unit]) -> list[_Unit]:
+        """Merge annex sections below TINY_ANNEX_SECTION into their neighbours.
+
+        Only consecutive sections of the same annex are merged, and only while
+        the merged text still fits one chunk. The merged unit loses its single
+        section title (it now spans several); every merged section keeps its
+        title as a body line, so the text still says where each part sits.
+        """
+        merged: list[_Unit] = []
+        for unit in units:
+            prev = merged[-1] if merged else None
+            if (
+                prev is not None
+                and prev.kind == "annex"
+                and unit.kind == "annex"
+                and prev.article == unit.article
+                and min(prev.body_length, unit.body_length) < self.TINY_ANNEX_SECTION
+            ):
+                extra = ([unit.section] if unit.section else []) + unit.body
+                added = sum(len(line) + 1 for line in extra)
+                if self._unit_text_length(prev) + added <= self.MAX_CHUNK_SIZE:
+                    if prev.section:
+                        if prev.heading and prev.heading[-1] == prev.section:
+                            prev.heading = prev.heading[:-1]
+                        prev.body.insert(0, prev.section)
+                        prev.section = ""
+                        prev.hierarchy = prev.article
+                    prev.body.extend(extra)
+                    continue
+            merged.append(unit)
+        return merged
 
     def _unit_to_chunks(self, unit: _Unit) -> list[LegalChunk]:
         heading = "\n".join(unit.heading)

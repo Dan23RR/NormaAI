@@ -6581,7 +6581,7 @@ description = "Python client for Sentry (https://sentry.io)"
 optional = true
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "extra == \"observability\""
+markers = "extra == \"observability\" or extra == \"sentry\""
 files = [
     {file = "sentry_sdk-2.58.0-py2.py3-none-any.whl", hash = "sha256:688d1c704ddecf382ea3326f21a67453d4caa95592d722b7c780a36a9d23109e"},
     {file = "sentry_sdk-2.58.0.tar.gz", hash = "sha256:c1144d947352d54e5b7daa63596d9f848adf684989c06c4f5a659f0c85a18f6f"},
@@ -8424,8 +8424,9 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 local-llm = ["langchain-ollama"]
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-exporter-otlp-proto-grpc", "opentelemetry-instrumentation-fastapi", "opentelemetry-sdk", "prometheus-client", "sentry-sdk"]
 openrouter = ["langchain-openai"]
+sentry = ["sentry-sdk"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "6dbe0e815be5b49029072eecce7635e6ad792384e99c8a49b4284e59916f073d"
+content-hash = "82dd377c751295bdce5154cf52b1d9e0ea9bd017378cc744cea4107741bd136a"

@@ -6,11 +6,23 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 export interface CitationEvent {
   type: 'citation';
   celex: string;
-  urn: string | null;
+  urn?: string | null;
   article: string;
   title: string;
-  url: string;
+  url?: string;
   verified: boolean;
+  /** Framework key of the citation (e.g. AI_ACT). */
+  framework?: string;
+  /** The official passage when verified, the model's quote otherwise. */
+  quote?: string;
+  paragraph?: string;
+  match?: 'exact' | 'fuzzy';
+  /** Where the passage was found: the cited article, elsewhere in the act, or in another act. */
+  level?: 'article' | 'framework' | 'any';
+  chunk_id?: string;
+  lang?: string;
+  consolidated_as_of?: string;
+  grounded?: boolean;
 }
 
 /**
@@ -72,6 +84,12 @@ export interface DoneStats {
   cove_applied: boolean;
   /** Answer text after CoVe revision, when the backend ran it. */
   revised_text?: string;
+  verified_citations?: number;
+  citations_total?: number;
+  caveats?: string[];
+  related_frameworks?: string[];
+  abstention_reason?: string | null;
+  corpus_as_of?: string | null;
 }
 
 export interface DoneEvent {
@@ -81,6 +99,12 @@ export interface DoneEvent {
   requires_review: boolean;
   cove_applied: boolean;
   revised_text?: string;
+  verified_citations?: number;
+  citations_total?: number;
+  caveats?: string[];
+  related_frameworks?: string[];
+  abstention_reason?: string | null;
+  corpus_as_of?: string | null;
 }
 
 /**
@@ -262,6 +286,12 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
           requires_review: event.requires_review,
           cove_applied: event.cove_applied,
           revised_text: event.revised_text,
+          verified_citations: event.verified_citations,
+          citations_total: event.citations_total,
+          caveats: event.caveats,
+          related_frameworks: event.related_frameworks,
+          abstention_reason: event.abstention_reason,
+          corpus_as_of: event.corpus_as_of,
         };
         setStats(doneStats);
         onDone?.(doneStats);

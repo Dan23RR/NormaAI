@@ -175,15 +175,19 @@ export function ChiediPage() {
           return { ...m, status: 'error', error: t('errors.empty'), phase: undefined }
         }
         const data: ChiediResponse = {
-          answer: m.content,
+          answer: stats.revised_text?.trim() ? stats.revised_text : m.content,
           citations,
           confidence_score: stats.confidence_score,
           requires_expert_review: stats.requires_review,
-          related_frameworks: [],
-          caveats: [],
+          related_frameworks: Array.isArray(stats.related_frameworks) ? stats.related_frameworks : [],
+          caveats: Array.isArray(stats.caveats) ? stats.caveats : [],
           cove_applied: stats.cove_applied,
+          abstention_reason: stats.abstention_reason ?? undefined,
+          verified_citations: stats.verified_citations,
+          citations_total: stats.citations_total,
         }
-        return { ...m, status: 'done', data, phase: undefined, streamCitations: undefined }
+        const corpusAsOf = stats.corpus_as_of ?? m.corpusAsOf
+        return { ...m, status: 'done', content: data.answer, data, corpusAsOf, phase: undefined, streamCitations: undefined }
       })
     },
     [patch, t],

@@ -1953,7 +1953,10 @@
       "label": "Cookie notice",
       "text": "We only use technical cookies the site needs to work (session, language, preferences). No profiling or third-party cookies. Details in the <link>cookie policy</link>.",
       "ok": "Got it"
-    }
+    },
+    "actRegulation": "Regulation (EU) {year}/{number}",
+    "actDirective": "Directive (EU) {year}/{number}",
+    "paragraphShort": "para."
   },
   "errors": {
     "generic": "Something went wrong. Try again.",

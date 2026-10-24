@@ -1953,7 +1953,10 @@
       "label": "Informativa cookie",
       "text": "Usiamo solo cookie tecnici necessari al funzionamento del sito (sessione, lingua, preferenze). Nessun cookie di profilazione o di terze parti. Dettagli nella <link>cookie policy</link>.",
       "ok": "Ho capito"
-    }
+    },
+    "actRegulation": "Regolamento (UE) {year}/{number}",
+    "actDirective": "Direttiva (UE) {year}/{number}",
+    "paragraphShort": "par."
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova.",

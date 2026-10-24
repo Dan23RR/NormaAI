@@ -103,8 +103,25 @@ export function actLabel(frameworkKey: string, title: string | undefined, t: Tra
   return cleanTitle || frameworkKey.replace(/_/g, ' ') || t('ui.source')
 }
 
+/**
+ * The act a CELEX number names, built from the number itself for acts from
+ * 2015 on: 32026R1744 -> "Regulation (EU) 2026/1744". Older numbering
+ * schemes differ, so for those (and anything else) the CELEX is shown as is.
+ */
+export function actNameFromCelex(celex: string, t: Translate): string {
+  const m = /^3(\d{4})([RL])(\d{4})$/.exec(celex.trim())
+  if (!m || Number(m[1]) < 2015) return `${t('ui.celex')} ${celex}`
+  const number = String(Number(m[3]))
+  return t(m[2] === 'R' ? 'ui.actRegulation' : 'ui.actDirective', { year: m[1], number })
+}
+
 /** Resolve the framework key of a citation, falling back to its CELEX. */
 export function frameworkOf(c: ChiediCitation): string {
+  // A verified passage may sit in another act than the one cited (level "any"):
+  // the verifier's CELEX is where it really is, so it wins over the model.
+  if (c.verified === true && isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) {
+    return FRAMEWORK_BY_CELEX[c.celex.trim()]
+  }
   const fromField = normalizeFramework(c.framework)
   if (fromField && (CELEX_BY_FRAMEWORK[fromField] || FRAMEWORK_META[fromField])) return fromField
   if (isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) return FRAMEWORK_BY_CELEX[c.celex.trim()]
@@ -120,19 +137,28 @@ export function frameworkOf(c: ChiediCitation): string {
  */
 export function citationToSource(c: ChiediCitation, index: number, idPrefix: string, ctx: TextContext): Source {
   const key = frameworkOf(c)
-  const celex = isCelex(c.celex) ? c.celex.trim() : CELEX_BY_FRAMEWORK[key]
+  const verified = c.verified === true
+  const ownCelex = isCelex(c.celex) ? c.celex.trim() : undefined
+  const celex = ownCelex ?? CELEX_BY_FRAMEWORK[key]
   const url = isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
-  const quote = (c.quote_snippet ?? '').trim()
-  const article = (c.article ?? c.reference ?? '').trim()
+  // Verified: show the official wording, never the model's paraphrase.
+  const quote = ((verified && c.official_quote) || c.quote_snippet || '').trim()
+  const baseArticle = ((verified && c.article) || c.reference || c.article || '').trim()
+  const paragraph = verified && c.paragraph ? String(c.paragraph).trim() : ''
+  const article =
+    paragraph && !/par/i.test(baseArticle) ? `${baseArticle}, ${ctx.t('ui.paragraphShort')} ${paragraph}` : baseArticle
+  // An act outside the framework table (a delegated act, an amending act) is named from its CELEX.
+  const act =
+    verified && ownCelex && !FRAMEWORK_BY_CELEX[ownCelex] ? actNameFromCelex(ownCelex, ctx.t) : actLabel(key, c.title, ctx.t)
   return {
     id: `${idPrefix}-${index}`,
     index,
-    act: actLabel(key, c.title, ctx.t),
+    act,
     article: article || undefined,
     celex,
     url,
     quote: quote || undefined,
-    status: c.verified === true ? 'verified' : 'unverified',
+    status: verified ? 'verified' : 'unverified',
     origin: originOf(url),
   }
 }
@@ -142,24 +168,33 @@ export function citationsToSources(citations: ChiediCitation[], idPrefix: string
 }
 
 /**
- * An SSE `citation` event (src/api/streaming/sse.py) as a citation. The
- * backend fills `celex` with the article reference and `title` with the
- * framework key when the agent gave nothing better, so each field is
- * checked before it is trusted. The event carries no quoted passage.
+ * An SSE `citation` event (src/api/streaming/sse.py) as a citation. Older
+ * backends fill `celex` with the article reference and `title` with the
+ * framework key, so each field is checked before it is trusted. `quote` is
+ * the official passage when the citation is verified, the model's otherwise.
  */
 export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
   const celex = isCelex(ev.celex) ? ev.celex.trim() : undefined
+  const verified = ev.verified === true
+  const fieldKey = normalizeFramework(ev.framework)
   const titleKey = normalizeFramework(ev.title)
-  const framework = CELEX_BY_FRAMEWORK[titleKey] || FRAMEWORK_META[titleKey] ? titleKey : celex ? (FRAMEWORK_BY_CELEX[celex] ?? '') : ''
+  const known = (k: string) => Boolean(k && (CELEX_BY_FRAMEWORK[k] || FRAMEWORK_META[k]))
+  const framework = known(fieldKey) ? fieldKey : known(titleKey) ? titleKey : celex ? (FRAMEWORK_BY_CELEX[celex] ?? '') : ''
   const article = (ev.article ?? '').trim()
+  const quote = (ev.quote ?? '').trim()
   return {
     framework,
     reference: article || (!celex && ev.celex ? ev.celex.trim() : ''),
-    quote_snippet: '',
+    quote_snippet: verified ? '' : quote,
+    official_quote: verified && quote ? quote : undefined,
     article: article || undefined,
+    paragraph: ev.paragraph,
     celex,
     url: isUsefulUrl(ev.url) ? ev.url : undefined,
     title: ev.title && normalizeFramework(ev.title) !== framework ? ev.title : undefined,
-    verified: ev.verified === true,
+    verified,
+    match: ev.match,
+    level: ev.level,
+    lang: ev.lang,
   }
 }

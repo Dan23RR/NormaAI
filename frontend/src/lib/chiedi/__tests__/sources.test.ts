@@ -167,3 +167,76 @@ describe('sseCitationToChiedi', () => {
     expect(s.status).toBe('verified')
   })
 })
+
+describe('verified citations from the deterministic verifier', () => {
+  const verified: ChiediCitation = {
+    framework: 'AI_ACT',
+    reference: 'Art. 50',
+    quote_snippet: 'le persone sappiano che parlano con una IA',
+    verified: true,
+    match: 'exact',
+    level: 'article',
+    celex: '32024R1689',
+    article: 'Art. 50',
+    paragraph: '1',
+    url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+    official_quote: 'siano informate del fatto che stanno interagendo con un sistema di IA',
+  }
+
+  it('shows the official wording, never the model paraphrase', () => {
+    const s = citationToSource(verified, 1, 's', it_)
+    expect(s.status).toBe('verified')
+    expect(s.quote).toBe('siano informate del fatto che stanno interagendo con un sistema di IA')
+    expect(s.article).toBe('Art. 50, par. 1')
+    expect(s.url).toContain('CELEX:32024R1689')
+  })
+
+  it('names the act where the passage really is when it sits in another act', () => {
+    const elsewhere: ChiediCitation = {
+      ...verified,
+      framework: 'GDPR',
+      reference: 'Art. 13',
+      level: 'any',
+      celex: '32026R1744',
+      article: 'Art. 1',
+      paragraph: null,
+      url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32026R1744',
+    }
+    const s = citationToSource(elsewhere, 1, 's', en)
+    expect(s.act).toBe('Regulation (EU) 2026/1744')
+    expect(s.article).toBe('Art. 1')
+    expect(s.status).toBe('verified')
+  })
+
+  it('keeps the model quote and reference for an unverified citation', () => {
+    const s = citationToSource(
+      { ...verified, verified: false, match: null, level: null, celex: null, url: null, official_quote: null, article: null, paragraph: null },
+      1,
+      's',
+      it_,
+    )
+    expect(s.status).toBe('unverified')
+    expect(s.quote).toBe('le persone sappiano che parlano con una IA')
+    expect(s.article).toBe('Art. 50')
+  })
+
+  it('reads the official quote of a verified stream citation', () => {
+    const c = sseCitationToChiedi({
+      type: 'citation',
+      framework: 'AI_ACT',
+      celex: '32024R1689',
+      article: 'Art. 113',
+      title: 'Artificial Intelligence Act',
+      url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689',
+      quote: 'It shall apply from 2 August 2026.',
+      verified: true,
+      match: 'exact',
+      level: 'article',
+    })
+    expect(c.official_quote).toBe('It shall apply from 2 August 2026.')
+    expect(c.quote_snippet).toBe('')
+    const s = citationToSource(c, 1, 's', en)
+    expect(s.quote).toBe('It shall apply from 2 August 2026.')
+    expect(s.status).toBe('verified')
+  })
+})

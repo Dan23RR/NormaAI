@@ -8,10 +8,24 @@ import type { Citation, QAResponse } from '@/lib/types'
  * in the official text (CoVe); anything else is shown as "Da verificare".
  */
 export interface ChiediCitation extends Citation {
+  /** True only when the quoted passage was found word for word in the official text. */
   verified?: boolean
-  celex?: string
-  url?: string
-  article?: string
+  /** CELEX of the act where the passage was found (base act, not a consolidated id). */
+  celex?: string | null
+  /** EUR-Lex link built by the backend from the CELEX and the language of the text. */
+  url?: string | null
+  /** Article where the passage really is, e.g. "Art. 50"; the model's own reference stays in `reference`. */
+  article?: string | null
+  paragraph?: string | null
+  /** The exact official wording of the matched passage. */
+  official_quote?: string | null
+  match?: 'exact' | 'fuzzy' | null
+  /** article: in the cited article; framework: elsewhere in the act; any: in another act. */
+  level?: 'article' | 'framework' | 'any' | null
+  chunk_id?: string | null
+  lang?: string | null
+  consolidated_as_of?: string | null
+  grounded?: boolean
   /** Document title as the SSE event names it (may be just a framework key). */
   title?: string
 }
@@ -25,6 +39,9 @@ export interface ChiediResponse extends Omit<QAResponse, 'citations'> {
   grounding_warning?: string
   /** Whether the Chain-of-Verification pipeline ran (SSE `done` event). */
   cove_applied?: boolean
+  /** Counters set by the citation verifier. */
+  verified_citations?: number
+  citations_total?: number
   /** Demo data only: example questions offered when the demo does not cover one. */
   suggested_questions?: string[]
   /** Demo data only: the example corpus date. The real one travels in the response metadata. */

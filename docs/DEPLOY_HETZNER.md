@@ -123,10 +123,24 @@ python scripts/validate_rls_two_tenant.py   # deve dare PASSED
 ## 6. Aggancia il frontend (5 min)
 
 Su Vercel → Project → Settings → Environment Variables:
-- `NEXT_PUBLIC_API_URL` = `https://api.normaai.org` → **Redeploy**.
+- `NEXT_PUBLIC_API_BASE_URL` = `https://api.normaai.org` → **Redeploy**.
+  (Il nome vecchio `NEXT_PUBLIC_API_URL` viene ignorato dal codice: se è ancora
+  presente su Vercel, cancellalo.)
 
-Da quel momento il form lead usa il backend completo (HMAC, Postgres,
-suppression list); la route serverless `/api/leads` resta come fallback.
+Senza questa variabile la pagina di accesso dice che gli account sono sospesi
+e propone la demo; i form pubblici (Codex, checker) usano sempre la route
+serverless `/api/leads` e non dipendono dal backend.
+
+Primo accesso: la registrazione è solo su invito. Lo script di bootstrap crea
+il primo invito amministratore; a mano:
+
+```bash
+docker exec normaai-app python scripts/create_invite.py --email tu@dominio.it
+```
+
+Il codice compare una volta sola: usalo su `https://normaai.org/login`
+(link "Hai un codice di invito?"). Gli inviti successivi si creano
+dall'app, in Amministrazione.
 
 ## 7. Backup + cron (5 min)
 

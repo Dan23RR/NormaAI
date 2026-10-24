@@ -247,7 +247,9 @@
       "missingBody": "Apri il link che hai ricevuto via email: contiene il codice necessario.",
       "goToApp": "Vai all’applicazione",
       "goToLogin": "Accedi"
-    }
+    },
+    "unavailableTitle": "L’accesso agli account è sospeso per qualche giorno",
+    "unavailableBody": "Stiamo spostando il server che ospita gli account. Nel frattempo puoi usare la demo con dati di esempio; per i pilot in corso scrivi a <mail>info@normaai.org</mail>."
   },
   "app": {
     "nav": {

@@ -80,6 +80,8 @@ else
   read -r -s -p "   Chiave API del provider: " LLM_KEY; echo
   [ -n "$LLM_KEY" ] || die "chiave API vuota"
   read -r -s -p "   RESEND_API_KEY (invio email; invio vuoto per saltare): " RESEND_KEY; echo
+  read -r -p "   Email del primo amministratore [info@normaai.org]: " ADMIN_EMAIL
+  ADMIN_EMAIL="${ADMIN_EMAIL:-info@normaai.org}"
   POSTGRES_PASSWORD="$(gen 24)"; APP_DB_PASSWORD="$(gen 24)"
   GOOGLE_API_KEY=""; ANTHROPIC_API_KEY=""
   case "$LLM_PROVIDER" in
@@ -93,6 +95,9 @@ APP_ENV=production
 APP_SECRET_KEY=$(gen 64)
 CORS_ORIGINS=$CORS_ORIGINS
 NORMAAI_PUBLIC_URL=$PUBLIC_URL
+# Registrazione solo su invito; lo staff (crawl, inviti per nuove organizzazioni)
+REGISTRATION_MODE=invite
+STAFF_EMAILS=$ADMIN_EMAIL
 API_DOMAIN=$API_DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 
@@ -199,10 +204,22 @@ echo "   readyz (interno):  $(docker exec normaai-app curl -sS http://localhost:
 echo -n "   https://$API_DOMAIN/health: "
 curl -fsS --max-time 20 "https://$API_DOMAIN/health" || echo "(non ancora raggiungibile: controlla il record DNS A -> $(curl -fsS https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}'); Caddy riprova da solo)"
 echo
+
+# First administrator: in invite mode nobody can register without a code, so
+# the very first one is minted here, once (only while the users table is empty).
+ADMIN_EMAIL="${ADMIN_EMAIL:-${STAFF_EMAILS%%,*}}"
+USERS="$(docker exec normaai-postgres psql -U normaai -d normaai -tAc 'SELECT count(*) FROM users' 2>/dev/null | tr -d '[:space:]')"
+if [ "$USERS" = "0" ] && [ -n "$ADMIN_EMAIL" ]; then
+  echo "   Primo invito amministratore per $ADMIN_EMAIL (il codice si vede solo ora):"
+  docker exec normaai-app python scripts/create_invite.py --email "$ADMIN_EMAIL" \
+    || echo "   (invito non creato: lancia a mano 'docker exec normaai-app python scripts/create_invite.py --email $ADMIN_EMAIL')"
+fi
+
 cat <<EOF
 
 Fatto. Prossimi passi:
-  - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_URL=https://$API_DOMAIN, poi Redeploy.
+  - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra.
+  - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_BASE_URL=https://$API_DOMAIN, poi Redeploy.
   - Salva una copia di $APP_DIR/.env e di $APP_DIR/data/jwt_private.pem fuori dal server.
   - Aggiornamenti: un push su main esegue .github/workflows/deploy.yml (build, migrazioni
     come owner, riavvio, verifica di /health). A mano, nello stesso ordine:

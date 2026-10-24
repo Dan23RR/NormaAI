@@ -247,7 +247,9 @@
       "missingBody": "Open the link you received by email: it carries the code.",
       "goToApp": "Open the application",
       "goToLogin": "Sign in"
-    }
+    },
+    "unavailableTitle": "Account sign-in is paused for a few days",
+    "unavailableBody": "We are moving the server that hosts the accounts. Meanwhile you can use the demo with sample data; for running pilots write to <mail>info@normaai.org</mail>."
   },
   "app": {
     "nav": {

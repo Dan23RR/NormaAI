@@ -29,7 +29,7 @@ export function middleware(request: NextRequest) {
       // Vercel Analytics loads its debug script from this host in development only.
       (process.env.NODE_ENV === 'development' ? ' https://va.vercel-scripts.com' : '') +
       "; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'" +
-      (process.env.NEXT_PUBLIC_API_URL ? ' ' + process.env.NEXT_PUBLIC_API_URL : '') +
+      (process.env.NEXT_PUBLIC_API_BASE_URL ? ' ' + process.env.NEXT_PUBLIC_API_BASE_URL : '') +
       "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

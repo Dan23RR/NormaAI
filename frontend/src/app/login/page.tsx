@@ -12,6 +12,7 @@ import { LawQuote } from '@/components/ui/LawQuote'
 import { eurlexLang } from '@/i18n/config'
 import { useErrorText } from '@/i18n/errors'
 import { AI_ACT_ART_50_1_IT } from '@/lib/law-passages'
+import { API_CONFIGURED } from '@/lib/api'
 import { eurlexUrl } from '@/lib/sources'
 
 type Mode = 'login' | 'register'
@@ -76,6 +77,21 @@ function LoginForm() {
       <h1 className="text-h2">{mode === 'register' ? t('titleRegister') : t('titleLogin')}</h1>
       <p className="mt-2 text-body text-ink-2">{mode === 'register' ? t('leadRegister') : t('leadLogin')}</p>
 
+      {!API_CONFIGURED && (
+        <div className="mt-5 rounded-md border border-warn/40 bg-warn/5 px-4 py-3" role="status">
+          <p className="text-body font-medium text-ink">{t('unavailableTitle')}</p>
+          <p className="mt-1 text-small text-ink-2">
+            {t.rich('unavailableBody', {
+              mail: (chunks) => (
+                <a href="mailto:info@normaai.org" className="text-union hover:underline">
+                  {chunks}
+                </a>
+              ),
+            })}
+          </p>
+        </div>
+      )}
+
       {error && (
         <div className="mt-5 rounded-md border border-bad/30 bg-bad/5 px-3 py-2.5 text-small text-bad" role="alert">
           {error}
@@ -133,7 +149,7 @@ function LoginForm() {
             aria-describedby={mode === 'register' ? describedBy('password', { help: true }) : undefined}
           />
         </Field>
-        <Button type="submit" loading={loading} className="w-full" size="lg">
+        <Button type="submit" loading={loading} disabled={!API_CONFIGURED} className="w-full" size="lg">
           {mode === 'register' ? t('submitRegister') : t('submitLogin')}
         </Button>
       </form>

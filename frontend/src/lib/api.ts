@@ -7,10 +7,16 @@ import {
   getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay, DEMO_CORPUS_AS_OF,
 } from './mock-data'
 
-// Empty base URL = same-origin relative calls (/api/v1/...), which Vercel can
-// rewrite to the backend once it is live. Never default to localhost: in
-// production that would point every visitor at their own machine.
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+// Public origin of the backend, e.g. https://api.normaai.org. Read only from
+// NEXT_PUBLIC_API_BASE_URL (renamed from NEXT_PUBLIC_API_URL in v2, so a value
+// left behind in a hosting dashboard is never picked up by accident). Empty
+// means no backend is configured: sign-in says so and the demo stays
+// available. Never default to localhost: in production that would point every
+// visitor at their own machine.
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || ''
+
+/** True when a backend origin is configured for this build. */
+export const API_CONFIGURED = API_URL !== ''
 
 // The client never writes a sentence of its own: it raises an ApiError with a
 // code (translated by the interface) or passes on the server's `detail`.
@@ -21,7 +27,7 @@ function detailOf(body: unknown): string | undefined {
 
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
-  console.error('NEXT_PUBLIC_API_URL must start with http:// or https://')
+  console.error('NEXT_PUBLIC_API_BASE_URL must start with http:// or https://')
 }
 
 class ApiClient {

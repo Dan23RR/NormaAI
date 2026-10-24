@@ -9,7 +9,9 @@ samples, and writes:
   state['confidence_score'] - overwritten with SNC trust score
   state['result_json']      - modal cluster representative, with confidence_score
                               overwritten by the COMPUTED trust (the self-reported
-                              LLM confidence is kept as self_reported_confidence)
+                              LLM confidence is kept as self_reported_confidence),
+                              re-checked by the grounding guard and, for Q&A, by
+                              the word-for-word citation verifier
   state['requires_expert_review'] - True if action == ABSTAIN
   state['snc_audit']        - serialized audit blob for compliance logging
 
@@ -182,9 +184,16 @@ async def async_snc_governance_node(state: dict) -> dict:
     # ungrounded citation that would otherwise reach the user unflagged. This is the
     # product's core promise (no citation absent from the evidence) enforced at the
     # real point of delivery. Deferred import avoids any import-cycle with nodes.py.
-    from src.agents.nodes import _apply_grounding_guard
+    from src.agents.nodes import _apply_citation_verification, _apply_grounding_guard
 
     surfaced = _apply_grounding_guard(surfaced, state.get("retrieved_chunks"))
+    # Same for the word-for-word citation check of a Q&A answer: the served
+    # modal answer's quotes are verified against the evidence (and the
+    # unverified-citation policy applied) at the point of delivery.
+    if state.get("task_type", "qa") == "qa":
+        surfaced = _apply_citation_verification(
+            surfaced, state.get("retrieved_chunks"), state.get("language")
+        )
 
     # Retrieval support gate: even with agreeing samples and grounded citations, an
     # answer built on WEAK evidence (best dense score below threshold) must not sound

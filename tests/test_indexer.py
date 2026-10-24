@@ -476,6 +476,29 @@ class TestHybridSearch:
         assert by_id["c"]["dense_score"] is None
         assert by_id["c"]["sparse_score"] == pytest.approx(3.1)
 
+    def test_hybrid_search_exposes_provenance_for_citation_verification(self):
+        # The citation verifier reads the base act (source_celex) and the prompt
+        # labels name the act; points that predate a field carry None.
+        client = MagicMock()
+        idx = make_indexer(client)
+        payload = {
+            "text": "t",
+            "celex": "32024R1689",
+            "source_celex": "02024R1689-20260727",
+            "act_title": "Artificial Intelligence Act",
+            "frameworks": ["AI_ACT"],
+            "chunk_index": 12,
+        }
+        dense = [SimpleNamespace(id="a", payload=payload)]
+        old = [SimpleNamespace(id="b", payload={"text": "old", "celex": "32016R0679"})]
+        with patch.object(idx, "_search_compat", side_effect=[dense, old]):
+            results = {r["id"]: r for r in idx.hybrid_search("q", limit=10)}
+        assert results["a"]["source_celex"] == "02024R1689-20260727"
+        assert results["a"]["act_title"] == "Artificial Intelligence Act"
+        assert results["a"]["frameworks"] == ["AI_ACT"]
+        assert results["a"]["chunk_index"] == 12
+        assert results["b"]["source_celex"] is None and results["b"]["chunk_index"] is None
+
     def test_hybrid_search_respects_limit(self):
         client = MagicMock()
         idx = make_indexer(client)

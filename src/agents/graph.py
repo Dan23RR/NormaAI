@@ -24,6 +24,7 @@ import threading
 
 from langgraph.graph import END, START, StateGraph
 
+from src.agents.citation_verifier import apply_unverified_policy, policy_mode
 from src.agents.cove.models import CoVeConfig
 from src.agents.cove.orchestrator import CoVeOrchestrator
 from src.agents.nodes import (
@@ -229,9 +230,10 @@ def _build_graph(*, use_async_nodes: bool = False):
 
         A result that already carries an error (LLM or retrieval failure) has
         nothing to verify: running CoVe on it would only burn LLM calls on an
-        error payload, so it goes straight to END.
+        error payload, so it goes straight to END. Nor has an abstention (e.g.
+        ``unverified_citations`` in strict mode): there is no answer to revise.
         """
-        if state.get("error"):
+        if state.get("error") or _result_is_abstention(state):
             return END
         if state.get("cove_enabled") and state.get("confidence_score", 1.0) < 0.85:
             return "cove_verification"
@@ -335,11 +337,15 @@ def _create_initial_state(
     company_profile: dict | None = None,
     cove_enabled: bool = False,
     org_id: str | None = None,
+    language: str | None = None,
 ) -> dict:
     return {
         "query": sanitize_input(query),
         "task_type": task_type,
         "org_id": org_id,
+        # Request language: picks the language of the caveat/abstention text the
+        # citation verifier may add ("" = unknown -> Italian).
+        "language": str(language or "").strip().lower(),
         "company_profile": sanitize_profile(company_profile) if company_profile else {},
         "retrieved_chunks": [],
         "result_json": "{}",
@@ -380,7 +386,23 @@ def _apply_cove_to_result(state: dict, done: dict) -> None:
         done.get("requires_review", result.get("requires_expert_review", False))
     )
     result["cove_applied"] = True
+    if "citations_total" in result:
+        # CoVe revises the text, not the citations: its confidence and review
+        # verdict must not clear the flag of an answer whose citations were all
+        # left unverified by the citation verifier, so the policy is re-applied.
+        result = apply_unverified_policy(
+            result, mode=policy_mode(get_settings()), language=state.get("language")
+        )
     state["result_json"] = json.dumps(result)
+
+
+def _result_is_abstention(state: dict) -> bool:
+    """True when the state's result_json is an abstention payload."""
+    try:
+        result = json.loads(state.get("result_json") or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return False
+    return isinstance(result, dict) and bool(result.get("abstention_reason"))
 
 
 def _extract_result(state: dict) -> dict:
@@ -480,16 +502,24 @@ async def _arun_graph(state: dict) -> dict:
 # ─── Public Sync API (tests/scripts) ─────────────────────────────
 
 
-def run_qa(query: str, company_profile: dict | None = None, cove_enabled: bool = False) -> dict:
+def run_qa(
+    query: str,
+    company_profile: dict | None = None,
+    cove_enabled: bool = False,
+    language: str | None = None,
+) -> dict:
     """Sync Q&A for tests and scripts.
 
     Args:
         query: The user's question
         company_profile: Optional company context
         cove_enabled: If True, enable Chain-of-Verification verification for low-confidence results
+        language: Request language ("it", "en", ...) for the texts the pipeline adds
     """
     return _run_graph(
-        _create_initial_state(query, "qa", company_profile, cove_enabled=cove_enabled)
+        _create_initial_state(
+            query, "qa", company_profile, cove_enabled=cove_enabled, language=language
+        )
     )
 
 
@@ -531,6 +561,7 @@ async def arun_qa(
     company_profile: dict | None = None,
     cove_enabled: bool = False,
     org_id: str | None = None,
+    language: str | None = None,
 ) -> dict:
     """Async Q&A - uses native .ainvoke(), does NOT block the event loop.
 
@@ -539,10 +570,17 @@ async def arun_qa(
         company_profile: Optional company context
         cove_enabled: If True, enable Chain-of-Verification verification for low-confidence results
         org_id: Tenant scope for retrieval (None => shared regulatory corpus only)
+        language: Request language ("it", "en", ...) for the texts the pipeline adds
+            (the citation verifier's caveat or abstention); unknown => Italian
     """
     return await _arun_graph(
         _create_initial_state(
-            query, "qa", company_profile, cove_enabled=cove_enabled, org_id=org_id
+            query,
+            "qa",
+            company_profile,
+            cove_enabled=cove_enabled,
+            org_id=org_id,
+            language=language,
         )
     )
 

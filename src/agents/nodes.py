@@ -12,6 +12,13 @@ from pathlib import Path
 
 from typing_extensions import TypedDict
 
+from src.agents.citation_verifier import (
+    POLICY_STRICT,
+    annotate_citations,
+    apply_unverified_policy,
+    policy_mode,
+    unverified_policy_applies,
+)
 from src.agents.llm import (
     acall_llm,
     call_llm,
@@ -35,6 +42,7 @@ class AgentState(TypedDict, total=False):
     query: str
     task_type: str
     org_id: str | None  # tenant scope for retrieval; None => shared corpus only
+    language: str  # request language ("it", "en", ...); "" when unknown
     company_profile: dict
     retrieved_chunks: list
     result_json: str
@@ -383,8 +391,48 @@ def citation_grounding_rate(result: dict, retrieved_chunks: list | None) -> floa
     return grounded / len(citations)
 
 
-def _pack_llm_result(result: dict, state: AgentState | None = None) -> dict:
+def _apply_citation_verification(
+    result: dict, retrieved_chunks: list | None, language: str | None = None
+) -> dict:
+    """Verify every Q&A citation word for word and apply the unverified-citation policy.
+
+    Runs after the grounding guard (``grounded`` stays as it is). Each citation
+    gets the deterministic verifier's fields (``verified``, ``match``,
+    ``level``, ``chunk_id``, ``celex``, ``article``, ``paragraph``, ``lang``,
+    ``consolidated_as_of``, ``url``, ``official_quote``) on a COPY, the answer
+    gets ``verified_citations`` / ``citations_total``, and an answer with
+    citations but none verified is flagged or turned into an abstention
+    according to ``Settings.citation_verification``. Errors are left alone.
+    """
+    if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
+        return result
+    from src.config import get_settings
+
+    mode = policy_mode(get_settings())
+    annotate_citations(result, retrieved_chunks)
+    outcome = "ok"
+    if unverified_policy_applies(result):
+        outcome = "abstained" if mode == POLICY_STRICT else "flagged"
+    apply_unverified_policy(result, mode=mode, language=language)
+    logger.info(
+        "citation_verification",
+        extra={
+            "verified_citations": result.get("verified_citations"),
+            "citations_total": result.get("citations_total"),
+            "policy": mode,
+            "outcome": outcome,
+        },
+    )
+    return result
+
+
+def _pack_llm_result(
+    result: dict, state: AgentState | None = None, *, verify_citations: bool = False
+) -> dict:
     """Pack LLM result into graph state format, applying the grounding guard.
+
+    With ``verify_citations`` (the Q&A agent) the citations are then verified
+    word for word against the retrieved chunks (_apply_citation_verification).
 
     An LLM failure (``error`` in the result) is also mirrored into the state's
     ``error`` channel so downstream gates (SNC, CoVe) do not spend more LLM calls
@@ -392,6 +440,10 @@ def _pack_llm_result(result: dict, state: AgentState | None = None) -> dict:
     """
     if state is not None:
         result = _apply_grounding_guard(result, state.get("retrieved_chunks"))
+        if verify_citations:
+            result = _apply_citation_verification(
+                result, state.get("retrieved_chunks"), state.get("language")
+            )
     confidence = extract_confidence(result)
     packed = {
         "result_json": json.dumps(result, ensure_ascii=False),
@@ -521,7 +573,7 @@ def qa_bot_node(state: AgentState) -> dict:
     if _retrieval_failed(state):
         return {}
     system_prompt, user_msg = _build_qa_prompt(state)
-    return _pack_llm_result(call_llm(system_prompt, user_msg), state)
+    return _pack_llm_result(call_llm(system_prompt, user_msg), state, verify_citations=True)
 
 
 # ─── Async Nodes (for FastAPI - native .ainvoke) ─────────────────
@@ -548,7 +600,7 @@ async def async_qa_bot_node(state: AgentState) -> dict:
     if _retrieval_failed(state):
         return {}
     system_prompt, user_msg = _build_qa_prompt(state)
-    return _pack_llm_result(await acall_llm(system_prompt, user_msg), state)
+    return _pack_llm_result(await acall_llm(system_prompt, user_msg), state, verify_citations=True)
 
 
 # ─── Shared Nodes (work in both sync & async graphs) ─────────────
@@ -646,6 +698,14 @@ async def async_simple_response_node(state: AgentState) -> dict:
                     SIMPLE_RESPONSE_CACHE_HITS.inc()
             except Exception:
                 pass
+            if task_type == "qa":
+                # A cached answer bypasses the agent node: the unverified-citation
+                # policy is re-applied (idempotent) with the current settings.
+                from src.config import get_settings
+
+                cached = apply_unverified_policy(
+                    cached, mode=policy_mode(get_settings()), language=state.get("language")
+                )
             # Serve the cached entry with ITS confidence (0.0 when it has none) and
             # its own review flag - a cache hit must not fabricate a 0.8 score.
             confidence = extract_confidence(cached)

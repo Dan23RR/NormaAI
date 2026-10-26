@@ -203,13 +203,13 @@ class AcquisitionScheduler:
             # worker thread - the SPARQL re-checks and Qdrant writes are blocking.
             superseded_chunks = 0
             try:
-                from src.nlp.embedding.indexer import HybridIndexer
+                from src.api.app_state import get_indexer
                 from src.pipeline import refresh_in_force_status
 
                 freshness = await asyncio.to_thread(
                     refresh_in_force_status,
                     self.eurlex,
-                    HybridIndexer(),
+                    get_indexer(),
                     all_celex,
                     amendments,
                 )
@@ -243,11 +243,10 @@ class AcquisitionScheduler:
             # Index new chunks
             indexed = 0
             if new_chunks:
-                from src.nlp.embedding.indexer import HybridIndexer
+                from src.api.app_state import get_indexer
 
-                # Create indexer instance (would normally be passed in)
                 try:
-                    indexer = HybridIndexer()
+                    indexer = get_indexer()
                     ctx_chunker = ContextualChunker()
 
                     enriched = []
@@ -312,10 +311,10 @@ class AcquisitionScheduler:
             # Index new chunks
             indexed = 0
             if new_chunks:
-                from src.nlp.embedding.indexer import HybridIndexer
+                from src.api.app_state import get_indexer
 
                 try:
-                    indexer = HybridIndexer()
+                    indexer = get_indexer()
                     ctx_chunker = ContextualChunker()
 
                     enriched = []

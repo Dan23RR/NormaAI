@@ -26,8 +26,9 @@ ART50_HIT = {"article": "Art. 50", "celex": "32024R1689"}
         ("Art. 50", "50"),
         ("Annex XIV", None),
         (None, None),
-        # Known limitation, shared by every run: the Italian suffix is not read.
-        ("Art. 19 bis", "19"),
+        # Italian Latin suffixes are English letters (Art. 19 bis = Art. 19a).
+        ("Art. 19 bis", "19a"),
+        ("Art. 29-quinquies", "29d"),
     ],
 )
 def test_article_number(label, number):

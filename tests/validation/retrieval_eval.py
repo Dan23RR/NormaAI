@@ -30,8 +30,10 @@ the pytest suite (test_retrieval_eval.py covers the scoring offline). Exit code
 0; 1 when retrieval fails; 2 when the collection was built with another model.
 
 Matching: an expected article counts as found when a retrieved chunk labelled
-"Art. ..." carries the same number, letter suffix included ("19a"). An Italian
-label such as "Art. 19 bis" reads as "19"; every run shares that limitation.
+"Art. ..." carries the same number, letter suffix included ("19a"). Italian
+Latin suffixes read as letters, as in the golden set metric
+(tests.validation.metrics.normalize_article): "Art. 19 bis" is "19a". Runs before
+2026-10-26 read it as "19", which undercounted the CSRD cases on Art. 19a and 29a.
 """
 
 from __future__ import annotations
@@ -47,6 +49,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .golden_v2 import GOLDEN_V2_PATH, load_golden_v2_test_cases
+from .metrics import normalize_article
 
 DEFAULT_OUT_DIR = pathlib.Path(__file__).parent / "reports" / "retrieval"
 AI_ACT_CELEX = "32024R1689"
@@ -67,9 +70,9 @@ Retrieve = Callable[[str], list[dict[str, Any]]]
 
 
 def article_number(label: object) -> str | None:
-    """First article number of a label, lower-case: "Art. 19a(1)" -> "19a"; None if none."""
-    m = re.search(r"(\d+[a-z]?)", str(label or ""))
-    return m.group(1).lower() if m else None
+    """First article number of a label, lower-case: "Art. 19a(1)" and "Art. 19 bis" -> "19a"."""
+    m = re.search(r"(\d+[a-z]?)", normalize_article(str(label or "")))
+    return m.group(1) if m else None
 
 
 def expected_articles(case: Any) -> set[str]:

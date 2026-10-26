@@ -93,11 +93,11 @@ async def trigger_crawl(
 
             # Apply temporal freshness: mark chunks of regulations no longer in
             # force as superseded - not just count amendments.
-            from src.nlp.embedding.indexer import HybridIndexer
+            from src.api.app_state import get_indexer
             from src.pipeline import refresh_in_force_status
 
             freshness = await asyncio.to_thread(
-                refresh_in_force_status, client, HybridIndexer(), all_celex, amendments
+                refresh_in_force_status, client, get_indexer(), all_celex, amendments
             )
             return {
                 "status": "success",

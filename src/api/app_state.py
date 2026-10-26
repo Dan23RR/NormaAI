@@ -18,3 +18,19 @@ class AppState:
 
 
 app_state = AppState()
+
+
+def get_indexer():
+    """The API's shared HybridIndexer, or one built from the settings outside the API.
+
+    A bare HybridIndexer() uses its own defaults (localhost, the default
+    collection and dense model), which miss Qdrant inside Docker and any other
+    configured collection or model. Reusing the API's instance also avoids
+    loading the dense model twice in one process.
+    """
+    if app_state.indexer is not None:
+        return app_state.indexer
+    from src.config import get_settings
+    from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
+
+    return HybridIndexer(**indexer_kwargs_from_settings(get_settings()))

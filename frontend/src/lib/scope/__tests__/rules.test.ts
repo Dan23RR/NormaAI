@@ -154,7 +154,7 @@ describe('AI Act art. 50 result (port of public/scope-aiact.html)', () => {
   it('in English the quoted passage stays Italian while the act and the article follow the reader', () => {
     const r = result(company({ ai: keysToAi(['chat']) }), 'AI_ACT', en)
     expect(r.headline).toBe('From 2 August 2026 Art. 50 covers the situations you indicated.')
-    expect(r.passages[0].quote).toBe('siano informate del fatto che stanno interagendo con un sistema di IA')
+    expect(r.passages[0].quote).toBe('siano informate del fatto di stare interagendo con un sistema di IA')
     expect(r.passages[0].lang).toBe('it')
     expect(r.passages[0].act).toBe('Regulation (EU) 2024/1689')
     expect(r.passages[0].article).toBe('Art. 50(1)')

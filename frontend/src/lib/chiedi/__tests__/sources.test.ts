@@ -181,13 +181,13 @@ describe('verified citations from the deterministic verifier', () => {
     article: 'Art. 50',
     paragraph: '1',
     url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
-    official_quote: 'siano informate del fatto che stanno interagendo con un sistema di IA',
+    official_quote: 'siano informate del fatto di stare interagendo con un sistema di IA',
   }
 
   it('shows the official wording, never the model paraphrase', () => {
     const s = citationToSource(verified, 1, 's', it_)
     expect(s.status).toBe('verified')
-    expect(s.quote).toBe('siano informate del fatto che stanno interagendo con un sistema di IA')
+    expect(s.quote).toBe('siano informate del fatto di stare interagendo con un sistema di IA')
     expect(s.article).toBe('Art. 50, par. 1')
     expect(s.url).toContain('CELEX:32024R1689')
   })

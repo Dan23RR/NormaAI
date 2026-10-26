@@ -56,8 +56,8 @@ const ANSWER = {
     answer:
       "Sì. L'articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un chatbot a dirlo [1]. L'obbligo si applica dal 2 agosto 2026 [2].",
     citations: [
-      { framework: 'AI_ACT', reference: 'art. 50, par. 1', quote_snippet: 'siano informate del fatto che stanno interagendo con un sistema di IA', celex: '32024R1689', verified: true },
-      { framework: 'AI_ACT', reference: 'art. 113', quote_snippet: 'Esso si applica a decorrere dal 2 agosto 2026.', celex: '32024R1689' },
+      { framework: 'AI_ACT', reference: 'art. 50, par. 1', quote_snippet: 'siano informate del fatto di stare interagendo con un sistema di IA', celex: '32024R1689', verified: true },
+      { framework: 'AI_ACT', reference: 'art. 113', quote_snippet: 'Si applica a decorrere dal 2 agosto 2026.', celex: '32024R1689' },
     ],
     confidence_score: 0.94,
     requires_expert_review: false,
@@ -113,7 +113,7 @@ describe('ChiediPage (demo mode)', () => {
     expect(within(margin).getByRole('heading', { name: 'Fonti (2)' })).toBeInTheDocument()
     expect(within(margin).getAllByText('Regolamento (UE) 2024/1689 (AI Act)')).toHaveLength(2)
     expect(within(margin).getByText('art. 50, par. 1')).toBeInTheDocument()
-    expect(within(margin).getByText('siano informate del fatto che stanno interagendo con un sistema di IA')).toBeInTheDocument()
+    expect(within(margin).getByText('siano informate del fatto di stare interagendo con un sistema di IA')).toBeInTheDocument()
     expect(within(margin).getByText('Verificata')).toBeInTheDocument()
     expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
     expect(within(margin).getAllByRole('link', { name: /EUR-Lex/ })[0]).toHaveAttribute(

@@ -85,25 +85,25 @@ export type DemoQAResponse = Omit<QAResponse, 'citations'> & {
 export const DEMO_CORPUS_AS_OF = '2026-02-28'
 
 const AI_ACT_ART50_QUOTE =
-  'I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate siano informate del fatto che stanno interagendo con un sistema di IA'
+  'I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate siano informate del fatto di stare interagendo con un sistema di IA'
 
 const AI_ACT_ART9_QUOTE =
   'In relazione ai sistemi di IA ad alto rischio è istituito, attuato, documentato e mantenuto un sistema di gestione dei rischi.'
 
 const CSRD_ART19A_QUOTE =
-  "includono nella relazione sulla gestione le informazioni necessarie alla comprensione dell'impatto dell'impresa sulle questioni di sostenibilità, nonché le informazioni necessarie alla comprensione del modo in cui le questioni di sostenibilità influiscono sull'andamento dell'impresa, sui suoi risultati e sulla sua situazione"
+  "includono nella relazione sulla gestione informazioni necessarie alla comprensione dell'impatto dell'impresa sulle questioni di sostenibilità, nonché informazioni necessarie alla comprensione del modo in cui le questioni di sostenibilità influiscono sull'andamento dell'impresa, sui suoi risultati e sulla sua situazione"
 
 const CSDDD_ART5_QUOTE =
-  'Gli Stati membri provvedono affinché le società esercitino il dovere di diligenza in materia di diritti umani e di ambiente basato sul rischio di cui agli articoli da 7 a 16 («dovere di diligenza»)'
+  'Gli Stati membri provvedono a che ciascuna società eserciti il dovere di diligenza basato sul rischio in materia di diritti umani e di ambiente di cui agli articoli da 7 a 16 («dovere di diligenza»)'
 
 const DORA_ART6_QUOTE =
-  'Le entità finanziarie dispongono di un quadro per la gestione dei rischi informatici solido, completo e ben documentato, che fa parte del loro sistema generale di gestione dei rischi'
+  "Nell'ambito del sistema di gestione globale del rischio, le entità finanziarie predispongono un quadro per la gestione dei rischi informatici solido, esaustivo e adeguatamente documentato"
 
 const DORA_ART19_QUOTE =
-  "Le entità finanziarie segnalano all'autorità competente pertinente di cui all'articolo 46 i gravi incidenti connessi alle TIC"
+  "Le entità finanziarie segnalano gli gravi incidenti TIC all'autorità competente interessata di cui all'articolo 46"
 
 const NIS2_ART23_4A_QUOTE =
-  "senza indebito ritardo, e comunque entro 24 ore dalla conoscenza dell'incidente significativo, un preallarme"
+  "senza indebito ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, un preallarme"
 
 const OMNIBUS_NOT_IN_CORPUS =
   "Il testo della Direttiva (UE) 2026/470 (Omnibus I) non è ancora nel corpus: la citazione che la riguarda va verificata su EUR-Lex prima di decidere."
@@ -148,7 +148,7 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'CSDDD',
         reference: 'art. 14, par. 1',
-        quote_snippet: 'la possibilità di presentare loro reclami qualora nutrano legittime preoccupazioni riguardo agli impatti negativi effettivi o potenziali',
+        quote_snippet: 'consenta alle persone e ai soggetti elencati al paragrafo 2 di presentarle un reclamo qualora tali persone o soggetti nutrano un legittimo timore circa gli impatti negativi, siano essi effettivi o potenziali',
         celex: '32024L1760',
         verified: true,
       },
@@ -201,7 +201,7 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'AI_ACT',
         reference: 'art. 113',
-        quote_snippet: 'Esso si applica a decorrere dal 2 agosto 2026.',
+        quote_snippet: 'Si applica a decorrere dal 2 agosto 2026.',
         celex: '32024R1689',
         verified: true,
       },
@@ -234,7 +234,7 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'AI_ACT',
         reference: 'art. 113',
-        quote_snippet: 'Esso si applica a decorrere dal 2 agosto 2026.',
+        quote_snippet: 'Si applica a decorrere dal 2 agosto 2026.',
         celex: '32024R1689',
         verified: true,
       },
@@ -324,14 +324,14 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'DORA',
         reference: 'art. 26, par. 1',
-        quote_snippet: 'effettuano test avanzati mediante TLPT almeno ogni tre anni',
+        quote_snippet: 'effettuano test avanzati sotto forma di test di penetrazione basati su minacce con cadenza almeno triennale',
         celex: '32022R2554',
         verified: true,
       },
       {
         framework: 'DORA',
         reference: 'art. 28, par. 1',
-        quote_snippet: "Le entità finanziarie gestiscono i rischi informatici derivanti da terzi come parte integrante dei rischi informatici nell'ambito del quadro per la gestione dei rischi informatici",
+        quote_snippet: 'Le entità finanziarie gestiscono i rischi informatici derivanti da terzi quali componenti integranti dei rischi informatici nel contesto del proprio quadro per la gestione di detti rischi',
         celex: '32022R2554',
         verified: true,
       },
@@ -357,7 +357,7 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'NIS2',
         reference: 'art. 23, par. 4, lett. b)',
-        quote_snippet: "senza indebito ritardo, e comunque entro 72 ore dalla conoscenza dell'incidente significativo, una notifica dell'incidente",
+        quote_snippet: "senza indebito ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente",
         celex: '32022L2555',
         verified: true,
       },
@@ -402,14 +402,14 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'TAXONOMY',
         reference: 'art. 18, par. 1',
-        quote_snippet: "sono procedure attuate da un'impresa che svolge un'attività economica al fine di garantire l'allineamento con le linee guida OCSE destinate alle imprese multinazionali e con i principi guida delle Nazioni Unite su imprese e diritti umani",
+        quote_snippet: "sono procedure attuate da un'impresa che svolge un'attività economica al fine di garantire che sia in linea con le linee guida OCSE destinate alle imprese multinazionali e con i Principi guida delle Nazioni Unite su imprese e diritti umani",
         celex: '32020R0852',
         verified: true,
       },
       {
         framework: 'TAXONOMY',
         reference: 'art. 8, par. 1',
-        quote_snippet: "includono nella dichiarazione di carattere non finanziario o nella dichiarazione consolidata di carattere non finanziario informazioni su come e in che misura le attività dell'impresa sono associate ad attività economiche considerate ecosostenibili",
+        quote_snippet: "include, nella dichiarazione di carattere non finanziario o nella dichiarazione consolidata di carattere non finanziario, informazioni su come e in che misura le attività dell'impresa sono associate ad attività economiche considerate ecosostenibili",
         celex: '32020R0852',
         verified: true,
       },
@@ -492,14 +492,14 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'NIS2',
         reference: 'art. 4, par. 1',
-        quote_snippet: "le pertinenti disposizioni della presente direttiva, comprese le disposizioni relative alla vigilanza e all'esecuzione di cui al capo VII, non si applicano a tali soggetti",
+        quote_snippet: "a tali soggetti non si applicano le pertinenti disposizioni della presente direttiva, comprese le disposizioni relative alla vigilanza e all'esecuzione di cui al capo VII",
         celex: '32022L2555',
         verified: true,
       },
       {
         framework: 'DORA',
         reference: 'art. 1, par. 2',
-        quote_snippet: "il presente regolamento è considerato un atto giuridico settoriale dell'Unione ai fini dell'articolo 4 di detta direttiva",
+        quote_snippet: "il presente regolamento è considerato un atto giuridico settoriale dell'Unione ai sensi dell'articolo 4 di tale direttiva",
         celex: '32022R2554',
         verified: true,
       },
@@ -586,7 +586,7 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'AI_ACT',
         reference: 'art. 9, par. 2',
-        quote_snippet: "Il sistema di gestione dei rischi è inteso come un processo iterativo continuo pianificato ed eseguito nel corso dell'intero ciclo di vita di un sistema di IA ad alto rischio, che richiede un riesame e un aggiornamento sistematici periodici.",
+        quote_snippet: "Il sistema di gestione dei rischi è inteso come un processo iterativo continuo pianificato ed eseguito nel corso dell'intero ciclo di vita di un sistema di IA ad alto rischio, che richiede un riesame e un aggiornamento costanti e sistematici.",
         celex: '32024R1689',
         verified: true,
       },
@@ -641,21 +641,21 @@ const QA_RESPONSES: Record<string, DemoQAResponse> = {
       {
         framework: 'DORA',
         reference: 'art. 30, par. 2',
-        quote_snippet: "Gli accordi contrattuali relativi all'uso di servizi TIC comprendono almeno gli elementi seguenti",
+        quote_snippet: "Gli accordi contrattuali per l'utilizzo di servizi TIC comprendono almeno gli elementi seguenti",
         celex: '32022R2554',
         verified: true,
       },
       {
         framework: 'DORA',
         reference: 'art. 30, par. 3',
-        quote_snippet: "Gli accordi contrattuali relativi all'uso di servizi TIC a supporto di funzioni essenziali o importanti comprendono, oltre agli elementi di cui al paragrafo 2, almeno gli elementi seguenti",
+        quote_snippet: "Gli accordi contrattuali per l'utilizzo di servizi TIC a supporto di funzioni essenziali o importanti comprendono, in aggiunta agli elementi di cui al paragrafo 2, almeno quanto segue",
         celex: '32022R2554',
         verified: true,
       },
       {
         framework: 'DORA',
         reference: 'art. 28, par. 1',
-        quote_snippet: "Le entità finanziarie gestiscono i rischi informatici derivanti da terzi come parte integrante dei rischi informatici nell'ambito del quadro per la gestione dei rischi informatici",
+        quote_snippet: 'Le entità finanziarie gestiscono i rischi informatici derivanti da terzi quali componenti integranti dei rischi informatici nel contesto del proprio quadro per la gestione di detti rischi',
         celex: '32022R2554',
         verified: true,
       },

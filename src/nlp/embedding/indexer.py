@@ -259,8 +259,15 @@ class HybridIndexer:
         embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         embedding_dim: int = 768,
         collection_name: str | None = None,
+        qdrant_timeout: int | None = None,
     ):
-        self.client = QdrantClient(host=qdrant_host, port=qdrant_port)
+        # qdrant_timeout: seconds per request (None = qdrant-client's default). Long
+        # batch jobs on a busy machine need more, e.g. scripts/reembed_collection.py.
+        self.client = (
+            QdrantClient(host=qdrant_host, port=qdrant_port)
+            if qdrant_timeout is None
+            else QdrantClient(host=qdrant_host, port=qdrant_port, timeout=qdrant_timeout)
+        )
         self.COLLECTION_NAME = collection_name or self.DEFAULT_COLLECTION_NAME
         self.embedding_model_name = embedding_model
         self.embedding_dim = embedding_dim

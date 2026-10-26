@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, SparseVectorParams, VectorParams
+from qdrant_client.models import Distance, PointIdsList, SparseVectorParams, VectorParams
 
 import src.pipeline as pipeline_mod
 from src.nlp.chunking.contextual_chunker import ContextualChunker
@@ -258,3 +258,27 @@ def test_unreachable_qdrant_is_reported(script, capsys):
         code = script.main(args("--dry-run"))
     assert code == 1
     assert "cannot read Qdrant" in capsys.readouterr().err
+
+
+def test_resume_embeds_only_the_points_target_lacks(script, qdrant):
+    build_source()
+    loaded: dict = {}
+    fake = fake_fastembed({E5: TARGET_DIM}, loaded)
+    with patch.dict("sys.modules", {"fastembed": fake}):
+        assert script.main(args("--batch-size", "2")) == 0
+    complete = {k: v for k, v in snapshot(qdrant, TARGET).items() if k != CORPUS_META_ID}
+    missing = sorted(complete)[:2]
+    # An interrupted run: two chunks never reached TARGET.
+    qdrant.delete(TARGET, points_selector=PointIdsList(points=missing))
+    loaded.clear()
+    with patch.dict("sys.modules", {"fastembed": fake}):
+        assert script.main(args("--batch-size", "2", "--resume")) == 0
+
+    assert len(loaded[E5].texts) == 2  # only the missing points were embedded
+    resumed = {k: v for k, v in snapshot(qdrant, TARGET).items() if k != CORPUS_META_ID}
+    assert resumed == complete
+
+
+def test_resume_and_recreate_exclude_each_other(script):
+    with pytest.raises(SystemExit):
+        script.main(args("--resume", "--recreate-target"))

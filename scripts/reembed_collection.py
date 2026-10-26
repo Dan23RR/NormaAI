@@ -130,14 +130,17 @@ def copy_points(
     batch_size: int,
     total: int,
     log: Callable[[str], None] = print,
+    resume: bool = False,
 ) -> int:
     """Stream SOURCE into TARGET, re-embedding the dense vectors; returns the points copied.
 
     SOURCE is only scrolled. Its corpus metadata point is skipped (see
     rewrite_corpus_meta); every other point keeps its id, payload and sparse vector.
+    With ``resume`` the points TARGET already holds (an interrupted run wrote them
+    whole: an upsert is applied as a unit) are counted as copied, not embedded again.
     """
     client = target.client
-    copied, batches, offset = 0, 0, None
+    copied, skipped, batches, offset = 0, 0, 0, None
     started = time.monotonic()
     while True:
         records, offset = client.scroll(
@@ -152,6 +155,19 @@ def copy_points(
             for r in records
             if str(r.id) != CORPUS_META_ID and (r.payload or {}).get("kind") != CORPUS_META_KIND
         ]
+        if chunks and resume:
+            present = {
+                str(p.id)
+                for p in client.retrieve(
+                    collection_name=target.COLLECTION_NAME,
+                    ids=[r.id for r in chunks],
+                    with_payload=False,
+                    with_vectors=False,
+                )
+            }
+            kept = [r for r in chunks if str(r.id) not in present]
+            skipped += len(chunks) - len(kept)
+            chunks = kept
         if chunks:
             dense = target.embed_passages([stored_passage_text(r.payload or {}) for r in chunks])
             client.upsert(
@@ -171,9 +187,10 @@ def copy_points(
             elapsed = time.monotonic() - started
             rate = copied / elapsed if elapsed > 0 else 0.0
             left = f", ~{(total - copied) / rate / 60:.0f} min left" if rate and offset else ""
-            log(f"  {copied}/{total} points re-embedded ({rate:.1f}/s{left})")
+            done = f", {skipped} already in TARGET" if skipped else ""
+            log(f"  {copied + skipped}/{total} points copied ({rate:.1f}/s{left}{done})")
         if offset is None:
-            return copied
+            return copied + skipped
 
 
 def rewrite_corpus_meta(target: HybridIndexer, source: str, meta: dict[str, Any]) -> dict:
@@ -228,11 +245,24 @@ def main(argv: list[str] | None = None) -> int:
         "--recreate-target", action="store_true", help="drop TARGET first if it exists"
     )
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="keep the points TARGET already holds (after an interrupted run)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=_positive,
+        default=120,
+        help="seconds per Qdrant request (default: 120; a busy machine needs time)",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="print the plan; load no model, write nothing"
     )
     args = parser.parse_args(argv)
     if args.target == args.source:
         parser.error("--target must differ from --source (SOURCE is never written)")
+    if args.resume and args.recreate_target:
+        parser.error("--resume keeps TARGET's points, --recreate-target drops them: pick one")
 
     settings = get_settings()
     host = args.host or settings.qdrant_host
@@ -245,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
         embedding_model=args.model,
         embedding_dim=args.dim,
         collection_name=args.target,
+        qdrant_timeout=args.timeout,
     )
     # Read-only view of SOURCE, used for its corpus metadata point only.
     source_view = HybridIndexer(qdrant_host=host, qdrant_port=port, collection_name=args.source)
@@ -280,6 +311,8 @@ def main(argv: list[str] | None = None) -> int:
         target_state = created
     elif args.recreate_target:
         target_state = f"exists ({target_layout['points']} points), dropped and {created}"
+    elif args.resume:
+        target_state = f"exists ({target_layout['points']} points), only missing ids embedded"
     else:
         target_state = f"exists ({target_layout['points']} points), same ids overwritten"
     print("Re-embed plan")
@@ -315,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         target.setup_collection(recreate=args.recreate_target)
-        copied = copy_points(args.source, target, batch_size, total)
+        copied = copy_points(args.source, target, batch_size, total, resume=args.resume)
         if source_meta:
             rewrite_corpus_meta(target, args.source, source_meta)
         written = target.client.count(collection_name=args.target, exact=True).count

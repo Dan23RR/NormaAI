@@ -53,6 +53,8 @@ pytest-cache-files-*
 htmlcov/
 .tox/
 coverage.xml
+# Retrieval-only eval output (tests/validation/retrieval_eval.py): local A/B results
+tests/validation/reports/retrieval/
 
 # ─── Development artifacts ──────────────────────────────────────
 *.jpeg

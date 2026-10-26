@@ -492,12 +492,9 @@ def retrieve_node(state: AgentState) -> dict:
             pass
 
         if indexer is None:
-            from src.nlp.embedding.indexer import HybridIndexer
+            from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
 
-            settings = get_settings()
-            indexer = HybridIndexer(
-                qdrant_host=settings.qdrant_host, qdrant_port=settings.qdrant_port
-            )
+            indexer = HybridIndexer(**indexer_kwargs_from_settings(get_settings()))
 
         # Prefer frameworks from local router, fallback to keyword detection
         detected_frameworks = state.get("detected_frameworks") or detect_frameworks_in_query(query)

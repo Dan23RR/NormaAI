@@ -75,12 +75,11 @@ async def lifespan(app: FastAPI):
 
     # Check Qdrant
     try:
-        from src.nlp.embedding.indexer import HybridIndexer
+        from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
 
-        indexer = HybridIndexer(
-            qdrant_host=settings.qdrant_host,
-            qdrant_port=settings.qdrant_port,
-        )
+        # Same collection, dense model and dimension as the seed pipeline: a
+        # query embedded with another model would search the wrong vector space.
+        indexer = HybridIndexer(**indexer_kwargs_from_settings(settings))
         indexer.setup_collection(recreate=False)
         app_state.indexer = indexer
         app_state.qdrant_available = True

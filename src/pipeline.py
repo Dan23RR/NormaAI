@@ -32,7 +32,7 @@ from src.crawler.eurlex.client import (
 )
 from src.nlp.chunking.contextual_chunker import ContextualChunker
 from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
-from src.nlp.embedding.indexer import HybridIndexer
+from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
 from src.nlp.processing.dots_ocr_processor import UnifiedDocumentProcessor
 
 logger = logging.getLogger("normaai.pipeline")
@@ -49,12 +49,7 @@ class IngestionPipeline:
             endpoint=settings.eurlex_sparql_endpoint,
             request_delay=1.5,
         )
-        self.indexer = HybridIndexer(
-            qdrant_host=settings.qdrant_host,
-            qdrant_port=settings.qdrant_port,
-            embedding_model=settings.embedding_model,
-            embedding_dim=settings.embedding_dimension,
-        )
+        self.indexer = HybridIndexer(**indexer_kwargs_from_settings(settings))
         self.contextual_chunker = ContextualChunker()
         self.doc_processor = UnifiedDocumentProcessor()
 

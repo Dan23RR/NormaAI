@@ -2,7 +2,9 @@
 Qdrant Hybrid Indexer - Dense + BM25 sparse vectors for EU regulations.
 
 Implements hybrid search with Reciprocal Rank Fusion (RRF):
-- Dense vectors: FastEmbed (paraphrase-multilingual-mpnet-base-v2, 768 dim) for semantic similarity
+- Dense vectors: FastEmbed (EMBEDDING_MODEL, default paraphrase-multilingual-mpnet-base-v2,
+  768 dim) for semantic similarity; models trained with input prefixes (e5: "query: " /
+  "passage: ") get them from EMBEDDING_PREFIXES
 - Sparse vectors: hashed term frequencies with Qdrant's IDF modifier (BM25-style)
 - RRF fusion: combines both rankings without tuning weights
 
@@ -25,6 +27,7 @@ import os
 import uuid
 from collections import Counter
 from datetime import UTC, datetime
+from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -43,6 +46,8 @@ from qdrant_client.models import (
     VectorParams,
 )
 
+from src.nlp.chunking.contextual_chunker import ContextualChunker
+
 logger = logging.getLogger(__name__)
 
 # ─── Deterministic ids ───────────────────────────────────────────────
@@ -55,6 +60,10 @@ CORPUS_META_KIND = "corpus_meta"
 # The meta point is never a search hit: it carries a sentinel org_id (so the
 # fail-closed tenant filter drops it) AND hybrid_search excludes its kind.
 CORPUS_META_ORG = "__corpus_meta__"
+
+# Named vectors of every point (scripts/reembed_collection.py copies them by name).
+DENSE_VECTOR = "dense"
+SPARSE_VECTOR = "bm25"
 
 # Payload fields with a keyword index (filtering / per-act deletes).
 PAYLOAD_INDEX_FIELDS: tuple[str, ...] = (
@@ -141,12 +150,97 @@ def _text_to_sparse_vector(text: str, vocab_size: int = 30000) -> SparseVector:
     return SparseVector(indices=indices, values=values)
 
 
+# ─── What the dense model sees ───────────────────────────────────────
+# Some dense models are trained with a marker in front of every input and lose
+# accuracy without it: the multilingual e5 models expect "query: " before a
+# search query and "passage: " before a document. FastEmbed does not add them
+# (in 0.4.2 query_embed / passage_embed just call embed), so the indexer does,
+# in embed_query and embed_passages. Keys are lower-case because FastEmbed
+# matches model names case-insensitively. A model that is not listed (the
+# default paraphrase-multilingual-mpnet-base-v2 included) gets no prefix.
+# Editing an entry changes the vectors of that model: re-embed afterwards.
+EMBEDDING_PREFIXES: dict[str, tuple[str, str]] = {
+    # (query_prefix, passage_prefix). multilingual-e5-large-instruct uses another
+    # format ("Instruct: ...\nQuery: " on queries only) and is deliberately absent.
+    "intfloat/multilingual-e5-small": ("query: ", "passage: "),
+    "intfloat/multilingual-e5-base": ("query: ", "passage: "),
+    "intfloat/multilingual-e5-large": ("query: ", "passage: "),
+}
+
+
+def embedding_prefixes(model_name: str) -> tuple[str, str]:
+    """``(query_prefix, passage_prefix)`` of a dense model; ``("", "")`` when it needs none."""
+    return EMBEDDING_PREFIXES.get(str(model_name or "").lower(), ("", ""))
+
+
+def passage_text(chunk: Any, contextual: bool) -> str:
+    """The text whose dense vector represents a chunk, before the model's passage prefix.
+
+    A contextual chunk is embedded through its ``contextualized_text`` (the
+    ContextualChunker "[framework | article | section]" header + the text), a
+    plain chunk through its ``text``. The payload and the sparse vector always
+    keep the original text.
+    """
+    text: str = getattr(chunk, "contextualized_text", chunk.text) if contextual else chunk.text
+    return text
+
+
+def stored_passage_text(payload: dict[str, Any]) -> str:
+    """Rebuild, from a stored point's payload, the text ``passage_text`` gave for it.
+
+    Only the original text is stored. Every indexing path (seed, update, upload,
+    scheduler) builds contextual chunks with ContextualChunker.enrich_single from
+    the chunk's framework / article_number / section_title, which the payload
+    records, and marks them ``has_context``; any other point was embedded on its
+    bare text. Used to re-embed a collection with another model without
+    re-downloading the corpus (scripts/reembed_collection.py). The header is
+    rebuilt with today's ContextualChunker, as a fresh seed would build it. Like
+    passage_text, the result carries no model prefix: embed it with embed_passages.
+    """
+    text = payload.get("text") or ""
+    if not payload.get("has_context"):
+        return text
+    return (
+        ContextualChunker()
+        .enrich_single(
+            text=text,
+            framework=payload.get("framework") or "",
+            article=payload.get("article_number") or "",
+            section=payload.get("section_title") or "",
+        )
+        .contextualized_text
+    )
+
+
+def _vector_to_list(vector: Any) -> list[float]:
+    """A FastEmbed vector (numpy array) or any sequence of floats, as a plain list."""
+    values: list[float] = vector.tolist() if hasattr(vector, "tolist") else list(vector)
+    return values
+
+
+def indexer_kwargs_from_settings(settings: Any) -> dict[str, Any]:
+    """``HybridIndexer`` arguments from the application settings.
+
+    Every component that reads or writes the corpus must use the same Qdrant
+    server, collection, dense model and dimension, or queries are embedded in
+    another vector space than the documents: build it with
+    ``HybridIndexer(**indexer_kwargs_from_settings(settings))``.
+    """
+    return {
+        "qdrant_host": settings.qdrant_host,
+        "qdrant_port": settings.qdrant_port,
+        "embedding_model": settings.embedding_model,
+        "embedding_dim": settings.embedding_dimension,
+        "collection_name": settings.qdrant_collection,
+    }
+
+
 class HybridIndexer:
     """
     Manages the Qdrant collection for EU regulatory documents.
 
     Collection schema:
-    - Vector "dense": 768-dim multilingual embeddings (semantic)
+    - Vector "dense": embedding_dim multilingual embeddings, 768 by default (semantic)
     - Vector "bm25": sparse hashed term-frequency vectors, IDF modifier (keyword)
     - Payload: text, celex, source_celex, framework, frameworks, lang, article,
                paragraph, title, eli, url, consolidated_as_of, chunk_index,
@@ -170,6 +264,8 @@ class HybridIndexer:
         self.COLLECTION_NAME = collection_name or self.DEFAULT_COLLECTION_NAME
         self.embedding_model_name = embedding_model
         self.embedding_dim = embedding_dim
+        # Input markers the dense model was trained with ("" for most models).
+        self.query_prefix, self.passage_prefix = embedding_prefixes(embedding_model)
         self._embedder = None  # Lazy init
         # None = not checked yet; set by setup_collection on an existing collection.
         self.sparse_idf_enabled: bool | None = None
@@ -190,6 +286,20 @@ class HybridIndexer:
                 model_name=self.embedding_model_name, cache_dir=cache_dir
             )
         return self._embedder
+
+    # ─── Dense embeddings ───────────────────────────────────────
+    # The only two places that call the dense model: everything indexed goes
+    # through embed_passages, every search through embed_query, so the model's
+    # prefixes are applied on both sides or on neither.
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        """Dense vectors for documents, each text embedded behind the passage prefix."""
+        vectors = self.embedder.embed([f"{self.passage_prefix}{text}" for text in texts])
+        return [_vector_to_list(vector) for vector in vectors]
+
+    def embed_query(self, query: str) -> list[float]:
+        """Dense vector for a search query, embedded behind the query prefix."""
+        return _vector_to_list(list(self.embedder.embed([f"{self.query_prefix}{query}"]))[0])
 
     # ─── Collection lifecycle ───────────────────────────────────
 
@@ -217,12 +327,12 @@ class HybridIndexer:
         self.client.create_collection(
             collection_name=self.COLLECTION_NAME,
             vectors_config={
-                "dense": VectorParams(
+                DENSE_VECTOR: VectorParams(
                     size=self.embedding_dim,
                     distance=Distance.COSINE,
                 )
             },
-            sparse_vectors_config={"bm25": SparseVectorParams(modifier=Modifier.IDF)},
+            sparse_vectors_config={SPARSE_VECTOR: SparseVectorParams(modifier=Modifier.IDF)},
         )
         self.sparse_idf_enabled = True
 
@@ -247,7 +357,7 @@ class HybridIndexer:
             return
 
         sparse_cfg = getattr(params, "sparse_vectors", None)
-        bm25 = sparse_cfg.get("bm25") if isinstance(sparse_cfg, dict) else None
+        bm25 = sparse_cfg.get(SPARSE_VECTOR) if isinstance(sparse_cfg, dict) else None
         modifier = getattr(bm25, "modifier", None)
         modifier_name = getattr(modifier, "value", modifier)
         self.sparse_idf_enabled = str(modifier_name).lower() == "idf"
@@ -262,7 +372,7 @@ class HybridIndexer:
             )
 
         dense_cfg = getattr(params, "vectors", None)
-        dense = dense_cfg.get("dense") if isinstance(dense_cfg, dict) else None
+        dense = dense_cfg.get(DENSE_VECTOR) if isinstance(dense_cfg, dict) else None
         dense_size = getattr(dense, "size", None)
         if isinstance(dense_size, int) and dense_size != self.embedding_dim:
             logger.warning(
@@ -343,8 +453,8 @@ class HybridIndexer:
         return PointStruct(
             id=make_point_id(celex, lang, article, chunk_index, text, org_id=org_id),
             vector={
-                "dense": dense_vec.tolist() if hasattr(dense_vec, "tolist") else list(dense_vec),
-                "bm25": _text_to_sparse_vector(text),  # sparse always on the ORIGINAL text
+                DENSE_VECTOR: _vector_to_list(dense_vec),
+                SPARSE_VECTOR: _text_to_sparse_vector(text),  # sparse always on the ORIGINAL text
             },
             payload=payload,
         )
@@ -365,12 +475,10 @@ class HybridIndexer:
             batch_chunks = chunks[batch_start:batch_end]
 
             # Dense embeddings for THIS BATCH ONLY (avoids OOM). Contextual
-            # chunks embed the prefixed text; the payload keeps the original.
-            if contextual:
-                batch_texts = [getattr(c, "contextualized_text", c.text) for c in batch_chunks]
-            else:
-                batch_texts = [c.text for c in batch_chunks]
-            batch_dense = list(self.embedder.embed(batch_texts))
+            # chunks embed the text behind its context header; the payload
+            # keeps the original.
+            batch_texts = [passage_text(c, contextual) for c in batch_chunks]
+            batch_dense = self.embed_passages(batch_texts)
 
             points = [
                 self._build_point(chunk, dense_vec, batch_start + i, org_id, contextual)
@@ -511,7 +619,10 @@ class HybridIndexer:
             points=[
                 PointStruct(
                     id=CORPUS_META_ID,
-                    vector={"dense": dense, "bm25": SparseVector(indices=[], values=[])},
+                    vector={
+                        DENSE_VECTOR: dense,
+                        SPARSE_VECTOR: SparseVector(indices=[], values=[]),
+                    },
                     payload=payload,
                 )
             ],
@@ -623,8 +734,9 @@ class HybridIndexer:
             org_id: If provided, filter to chunks belonging to this org or shared (org_id is null)
             lang_filter: Restrict to one language ("IT") or several; None = all languages
         """
-        # Generate query vectors
-        query_dense = list(self.embedder.embed([query]))[0]
+        # Generate query vectors (the model prefix is for the dense side only:
+        # BM25 sees the raw query, as the documents' sparse vectors use raw text)
+        dense_vec = self.embed_query(query)
         query_sparse = _text_to_sparse_vector(query)
 
         # Build filter (the corpus metadata point is never a hit)
@@ -639,12 +751,10 @@ class HybridIndexer:
             )
         )
 
-        dense_vec = query_dense.tolist() if hasattr(query_dense, "tolist") else list(query_dense)
-
         # Dense search
         dense_results = self._search_compat(
             collection_name=self.COLLECTION_NAME,
-            query_vector=NamedVector(name="dense", vector=dense_vec),
+            query_vector=NamedVector(name=DENSE_VECTOR, vector=dense_vec),
             query_filter=search_filter,
             limit=limit * 3,
             with_payload=True,
@@ -653,7 +763,7 @@ class HybridIndexer:
         # Sparse search
         sparse_results = self._search_compat(
             collection_name=self.COLLECTION_NAME,
-            query_vector=NamedSparseVector(name="bm25", vector=query_sparse),
+            query_vector=NamedSparseVector(name=SPARSE_VECTOR, vector=query_sparse),
             query_filter=search_filter,
             limit=limit * 3,
             with_payload=True,

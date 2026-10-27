@@ -141,7 +141,9 @@ def test_main_builds_the_indexer_from_settings_and_writes_the_report(tmp_path):
 
     assert code == 0
     # The fixed bug: model, dimension and collection come from the settings.
-    indexer_cls.assert_called_once_with(**indexer_kwargs_from_settings(get_settings()))
+    indexer_cls.assert_called_once_with(
+        **indexer_kwargs_from_settings(get_settings()), qdrant_timeout=120
+    )
     report = json.loads((tmp_path / "retrieval_unit.json").read_text(encoding="utf-8"))
     assert report["cases_with_expected_article"] == 90
     assert report["config"]["collection"] == "eu_regulations"

@@ -198,7 +198,8 @@ def main(argv: list[str] | None = None) -> int:
     from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
 
     settings = get_settings()
-    indexer = HybridIndexer(**indexer_kwargs_from_settings(settings))
+    # A batch job: allow slow Qdrant answers on a busy machine (default request timeout: 5 s).
+    indexer = HybridIndexer(**indexer_kwargs_from_settings(settings), qdrant_timeout=120)
     corpus = indexer.get_corpus_info() or {}
     built_with = corpus.get("embedding_model")
     if built_with and str(built_with).lower() != str(settings.embedding_model).lower():

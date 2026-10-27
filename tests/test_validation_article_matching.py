@@ -35,3 +35,14 @@ def test_italian_citation_matches_the_expected_english_article():
 def test_different_insertions_do_not_match():
     assert not articles_match("Art. 19a", "Art. 19 ter")
     assert normalize_article("Art. 50") == normalize_article("Article 50")
+
+
+def test_a_parent_article_ends_at_a_separator():
+    # Found on 2026-10-27: "Art. 1" (the article of the Digital Omnibus that amends
+    # the AI Act) passed questions expecting AI Act Art. 113(3)(b) and (c).
+    assert articles_match("Art. 113(3)(b)", "Art. 113")
+    assert articles_match("Art. 113", "Art. 113(3)(b)")
+    assert not articles_match("Art. 113(3)(b)", "Art. 1")
+    assert not articles_match("Art. 50(1)", "Art. 5")
+    assert not articles_match("Art. 19a(1)", "Art. 19 bis(10)")
+    assert not articles_match("Recital 7", "Recital 71")

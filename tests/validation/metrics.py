@@ -99,6 +99,12 @@ def articles_match(expected: str, detected: str, fuzzy: bool = True) -> bool:
     With fuzzy=True:
     - 'Art. 13' matches 'Art. 13(2)(a)' (parent matches child)
     - Exact match always works
+
+    A parent ends at a separator: 'Art. 1' is not a parent of 'Art. 113(3)(b)',
+    nor 'Art. 19a(1)' of 'Art. 19a(10)'. Until 2026-10-27 any prefix matched:
+    citations of the Digital Omnibus's 'Art. 1' passed questions on AI Act
+    Art. 113 and 'Art. 19 bis(10)' one on Art. 19a(1), two false passes in each
+    of two live golden runs that day.
     """
     norm_exp = normalize_article(expected)
     norm_det = normalize_article(detected)
@@ -109,7 +115,7 @@ def articles_match(expected: str, detected: str, fuzzy: bool = True) -> bool:
 
     # Fuzzy: parent-child match (Art. 13 matches Art. 13(2)(a))
     if fuzzy:
-        if norm_det.startswith(norm_exp) or norm_exp.startswith(norm_det):
+        if norm_det.startswith(norm_exp + "_") or norm_exp.startswith(norm_det + "_"):
             return True
 
     return False

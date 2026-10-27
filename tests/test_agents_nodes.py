@@ -114,6 +114,7 @@ class TestRetrieveNode:
         _, kwargs = indexer.hybrid_search.call_args
         assert kwargs["framework_filter"] == "CSRD"
         assert kwargs["limit"] == 15
+        assert kwargs["depth"] == 45  # 3 x limit, the search's own default
 
     def test_no_framework_detected_passes_none_filter(self):
         indexer = _indexer_returning([])
@@ -152,7 +153,7 @@ class TestRetrieveNode:
     def test_multi_framework_dedups_and_sorts(self):
         # Two detected frameworks -> per-framework searches, dedup by id,
         # results sorted by descending score.
-        def per_fw(query, limit, framework_filter, org_id):
+        def per_fw(query, limit, depth, framework_filter, org_id):
             if framework_filter == "DORA":
                 return [
                     {"id": "a", "score": 0.4},
@@ -174,8 +175,10 @@ class TestRetrieveNode:
         # Sorted by score descending.
         scores = [c["score"] for c in out["retrieved_chunks"]]
         assert scores == sorted(scores, reverse=True)
-        # One search per detected framework.
+        # One search per detected framework, 7 results from the 21 of each retriever.
         assert indexer.hybrid_search.call_count == 2
+        calls = indexer.hybrid_search.call_args_list
+        assert [(c.kwargs["limit"], c.kwargs["depth"]) for c in calls] == [(7, 21), (7, 21)]
 
     def test_detected_frameworks_from_router_preferred(self):
         # state['detected_frameworks'] (from local router) overrides keyword
@@ -240,29 +243,53 @@ class TestRetrieveNodeWithReranker:
             out = retrieve_node({"query": "What does CSRD require?"})
 
         _, kwargs = indexer.hybrid_search.call_args
-        assert kwargs["limit"] == 30
+        assert (kwargs["limit"], kwargs["depth"]) == (30, 90)
         ids = [c["id"] for c in out["retrieved_chunks"]]
         assert len(ids) == 15
         assert ids[0] == "0"
         assert "25" in ids
 
-    def test_several_frameworks_split_the_candidates_and_keep_20(self):
-        def per_fw(query, limit, framework_filter, org_id):
-            return [
-                {"id": f"{framework_filter}-{i}", "text": "x", "score": 1.0 - i / 100}
-                for i in range(limit)
-            ]
+    @staticmethod
+    def _per_fw(query, limit, depth, framework_filter, org_id):
+        return [
+            {"id": f"{framework_filter}-{i}", "text": "x", "score": 1.0 - i / 100}
+            for i in range(limit)
+        ]
 
+    def test_several_frameworks_split_the_candidates_and_keep_20(self):
         indexer = MagicMock()
-        indexer.hybrid_search.side_effect = per_fw
+        indexer.hybrid_search.side_effect = self._per_fw
         with (
             patch("src.api.app_state.app_state.indexer", indexer),
             patch("src.api.app_state.app_state.reranker", self._scorer()),
         ):
             out = retrieve_node({"query": "How does DORA relate to NIS2?"})
 
-        assert [c.kwargs["limit"] for c in indexer.hybrid_search.call_args_list] == [15, 15]
+        calls = indexer.hybrid_search.call_args_list
+        assert [(c.kwargs["limit"], c.kwargs["depth"]) for c in calls] == [(15, 45), (15, 45)]
         assert len(out["retrieved_chunks"]) == 20
+
+    def test_search_depth_45_extends_the_ranking_without_reranker(self):
+        # RERANKER_SEARCH_DEPTH=45 fuses as many results as the search without a
+        # reranker, so the candidates start with the chunks it would return.
+        from src.config import get_settings
+
+        shallow = get_settings().model_copy(update={"reranker_search_depth": 45})
+        single, multi = _indexer_returning([]), MagicMock()
+        multi.hybrid_search.side_effect = self._per_fw
+        with (
+            patch("src.config.get_settings", return_value=shallow),
+            patch("src.api.app_state.app_state.reranker", self._scorer()),
+        ):
+            with patch("src.api.app_state.app_state.indexer", single):
+                retrieve_node({"query": "What does CSRD require?"})
+            with patch("src.api.app_state.app_state.indexer", multi):
+                retrieve_node({"query": "How does DORA relate to NIS2?"})
+
+        _, kwargs = single.hybrid_search.call_args
+        assert (kwargs["limit"], kwargs["depth"]) == (30, 45)
+        calls = multi.hybrid_search.call_args_list
+        assert [(c.kwargs["limit"], c.kwargs["depth"]) for c in calls] == [(15, 21), (15, 21)]
 
     def test_a_failing_reranker_keeps_the_hybrid_order(self):
         chunks = [{"id": str(i), "text": "x", "score": 1.0 - i / 100} for i in range(30)]

@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     # Candidates the hybrid search returns for reranking; the agents still read
     # 15 chunks (20 with several frameworks). 30 was measured: 20 lose most of the gain.
     reranker_candidates: int = 30
+    # Dense and sparse results the hybrid search fuses into those candidates (45
+    # without a reranker). 90 suits mpnet; with e5, 45 keeps AI Act Art. 50 for
+    # the chatbot questions, which a deeper fusion pushes down (docs/MODELS.md 4.1).
+    reranker_search_depth: int = 90
 
     # ─── App ──────────────────────────────────────────────────
     app_env: str = "development"

@@ -724,6 +724,7 @@ class HybridIndexer:
         org_id: str | None = None,
         allow_all_orgs: bool = False,
         lang_filter: str | list[str] | None = None,
+        depth: int | None = None,
     ) -> list[dict]:
         """
         Hybrid search with Reciprocal Rank Fusion.
@@ -734,6 +735,11 @@ class HybridIndexer:
         Args:
             query: Search query text
             limit: Max number of results to return
+            depth: How many dense and how many sparse results enter the fusion
+                (default 3 x limit). The fused order depends on it: a deeper
+                fusion favours chunks both retrievers find over a chunk only one
+                of them ranks high. With a fixed depth, a larger limit returns
+                more of the same ranking (the reranker's candidates).
             framework_filter: Filter to a specific framework (str) or multiple (list[str])
             chunk_type_filter: Filter to a specific chunk type
             rrf_k: RRF constant (default 60)
@@ -758,12 +764,14 @@ class HybridIndexer:
             )
         )
 
+        depth = max(depth or limit * 3, limit)
+
         # Dense search
         dense_results = self._search_compat(
             collection_name=self.COLLECTION_NAME,
             query_vector=NamedVector(name=DENSE_VECTOR, vector=dense_vec),
             query_filter=search_filter,
-            limit=limit * 3,
+            limit=depth,
             with_payload=True,
         )
 
@@ -772,7 +780,7 @@ class HybridIndexer:
             collection_name=self.COLLECTION_NAME,
             query_vector=NamedSparseVector(name=SPARSE_VECTOR, vector=query_sparse),
             query_filter=search_filter,
-            limit=limit * 3,
+            limit=depth,
             with_payload=True,
         )
 

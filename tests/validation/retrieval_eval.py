@@ -232,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         "corpus_as_of": corpus.get("corpus_as_of"),
         "reranker": str(app_state.reranker.model_path) if app_state.reranker else None,
         "reranker_candidates": settings.reranker_candidates if app_state.reranker else None,
+        "reranker_search_depth": settings.reranker_search_depth if app_state.reranker else None,
         "golden_file": args.golden.name,
         "run_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }

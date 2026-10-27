@@ -512,14 +512,22 @@ def retrieve_node(state: AgentState) -> dict:
 
         # With a reranker the hybrid search returns more candidates and the
         # reranker picks the ones the agents read (docs/MODELS.md, section 4).
-        candidates = get_settings().reranker_candidates if reranker is not None else 15
+        # depth = dense and sparse results fused for the query (3 x 15 without).
+        settings = get_settings()
+        if reranker is not None:
+            candidates, depth = settings.reranker_candidates, settings.reranker_search_depth
+        else:
+            candidates, depth = 15, 3 * 15
         if len(target_frameworks) > 1:
+            # Each framework gets its share of the results and of the depth.
             per_fw_limit = max(5, candidates // len(target_frameworks))
+            per_fw_depth = 3 * max(5, depth // (3 * len(target_frameworks)))
             all_results, seen_ids = [], set()
             for fw in target_frameworks:
                 for r in indexer.hybrid_search(
                     query=query,
                     limit=per_fw_limit,
+                    depth=per_fw_depth,
                     framework_filter=fw,
                     org_id=state.get("org_id"),
                 ):
@@ -533,6 +541,7 @@ def retrieve_node(state: AgentState) -> dict:
             results = indexer.hybrid_search(
                 query=query,
                 limit=candidates,
+                depth=depth,
                 framework_filter=framework_filter,
                 org_id=state.get("org_id"),
             )

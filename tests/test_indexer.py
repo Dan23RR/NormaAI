@@ -448,6 +448,31 @@ class TestHybridSearch:
         assert results[0]["celex"] == "C2"
         assert all({"id", "score", "text", "celex", "framework"} <= set(r) for r in results)
 
+    def test_depth_sets_how_many_results_enter_the_fusion(self):
+        # Each retriever returns `depth` results, 3 x limit by default. With a fixed
+        # depth a larger limit returns more of the same ranking: the reranker's
+        # candidates start with the results of the search without reranker.
+        idx = make_indexer(MagicMock())
+        dense = [SimpleNamespace(id=f"c{i}", payload={"text": "t"}) for i in range(60)]
+        sparse = [SimpleNamespace(id=f"c{i * 7 % 60}", payload={"text": "t"}) for i in range(60)]
+
+        def search(**kwargs):
+            ranked = dense if isinstance(kwargs["query_vector"], NamedVector) else sparse
+            return ranked[: kwargs["limit"]]
+
+        with patch.object(idx, "_search_compat", side_effect=search) as mock_sc:
+            default = idx.hybrid_search("q", limit=10)
+            assert [c.kwargs["limit"] for c in mock_sc.call_args_list] == [30, 30]
+            small = idx.hybrid_search("q", limit=15, depth=45)
+            large = idx.hybrid_search("q", limit=30, depth=45)
+            assert [c.kwargs["limit"] for c in mock_sc.call_args_list[2:]] == [45, 45, 45, 45]
+            idx.hybrid_search("q", limit=30, depth=5)
+            assert mock_sc.call_args_list[-1].kwargs["limit"] == 30  # never below limit
+
+        assert len(default) == 10
+        assert len(large) == 30
+        assert [r["id"] for r in large[:15]] == [r["id"] for r in small]
+
     def test_hybrid_search_exposes_raw_per_retriever_scores(self):
         # Additive dense_score / sparse_score let a downstream consumer gate on
         # retrieval strength. A chunk in both carries both; a chunk from only one

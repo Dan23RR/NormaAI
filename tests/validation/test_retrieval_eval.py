@@ -171,6 +171,7 @@ def test_main_reranks_like_the_api_and_records_it(tmp_path):
     config = json.loads((tmp_path / "retrieval_unit.json").read_text(encoding="utf-8"))["config"]
     assert config["reranker"] == str(Path("/app/models/reranker/model.onnx"))
     assert config["reranker_candidates"] == get_settings().reranker_candidates
+    assert config["reranker_search_depth"] == get_settings().reranker_search_depth
 
 
 def test_main_refuses_a_collection_built_with_another_model(tmp_path, capsys):

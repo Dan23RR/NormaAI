@@ -46,10 +46,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # The runtime container is read-only, so fastembed cannot fetch the model at
 # first use; it caches by $HOME (differs build-root vs runtime-normaai), so we
 # pin an explicit FASTEMBED_CACHE_DIR used identically here and by the indexer.
-# Runtime loads it offline from the in-image copy.
+# Runtime loads it offline from the in-image copy. EMBEDDING_MODEL must name the
+# model the API reads from its own EMBEDDING_MODEL (docker-compose.yml passes it):
+# intfloat/multilingual-e5-large adds ~2.1 GB (docs/MODELS.md, section 6).
+ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
 ENV FASTEMBED_CACHE_DIR=/app/models
 RUN python -c "from fastembed import TextEmbedding; \
-    TextEmbedding(model_name='sentence-transformers/paraphrase-multilingual-mpnet-base-v2', cache_dir='/app/models')"
+    TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/app/models')"
 
 # Copy application code (changes here no longer trigger a model re-download)
 COPY src/ src/
@@ -73,14 +76,17 @@ USER normaai
 
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
 # network/lock writes - it loads the baked model purely from the local cache.
+# WEB_CONCURRENCY = uvicorn worker processes; each loads its own copy of the
+# models (2.1 GB per process with mpnet, 2.8 GB with multilingual-e5-large).
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HUB_OFFLINE=1
+    HF_HUB_OFFLINE=1 \
+    WEB_CONCURRENCY=2
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -255,13 +255,15 @@ model, set by the variable in brackets.
    their own passages.
 3. **Prefixes**: a model trained with input prefixes needs an `EMBEDDING_PREFIXES` entry,
    otherwise it silently loses accuracy. e5 is listed.
-4. **Docker image**: the Dockerfile bakes only mpnet into `/app/models` and the runtime
-   filesystem is read-only. Bake the new model too, or the API cannot load it: e5 adds
-   2.1 GB to the image.
-5. **Memory**: each uvicorn worker loads its own copy of the models (the Dockerfile
-   starts 2) and the app container is limited to 4 GB (`docker-compose.yml`). Measured
-   per process (§2.1): 2.1 GB with mpnet, 2.8 GB with e5, 0.6 GB more with the reranker.
-   With e5, run 1 worker or raise the limit (about 7 GB for 2 workers with the reranker).
+4. **Docker image**: the runtime filesystem is read-only, so the Dockerfile bakes the
+   dense model into `/app/models` at build time: the one its build argument
+   `EMBEDDING_MODEL` names, which `docker-compose.yml` takes from the same
+   `EMBEDDING_MODEL` the API reads (mpnet by default). e5 adds 2.1 GB to the image.
+5. **Memory**: each uvicorn worker loads its own copy of the models. Measured per process
+   (§2.1): 2.1 GB with mpnet, 2.8 GB with e5, 0.6 GB more with the reranker.
+   `WEB_CONCURRENCY` sets the workers (2 in the Dockerfile) and `APP_MEMORY_LIMIT` the
+   app container's limit (4G by default, `docker-compose.yml`): with e5 set
+   `WEB_CONCURRENCY=1`, or `APP_MEMORY_LIMIT=7G` for 2 workers with the reranker.
 6. **SNC**: `SNC_WEAK_EVIDENCE_DENSE_SCORE` (0.25) is a raw cosine threshold set on mpnet
    scores. e5 models give cosine scores in a narrow, high band (the best passage scored
    0.85 to 0.88 for the four chatbot questions), so with e5 the gate would never fire:
@@ -281,4 +283,4 @@ model, set by the variable in brackets.
 |---|---|
 | 2026-10-24 | Baseline measured (§1) |
 | 2026-10-26 | Registry created; the indexer adds the e5 prefixes; re-embed script and retrieval-only evaluation in the repository |
-| 2026-10-27 | Retrieval-only baseline read with the "bis" fix (80 / 90); multilingual MiniLM cross-encoder measured (§4.1), licence question (§4.2); multilingual-e5-large measured alone and with the reranker, search depth of the reranker's candidates (`RERANKER_SEARCH_DEPTH`), memory and re-embedding time (§2.1) |
+| 2026-10-27 | Retrieval-only baseline read with the "bis" fix (80 / 90); multilingual MiniLM cross-encoder measured (§4.1), licence question (§4.2); multilingual-e5-large measured alone and with the reranker, search depth of the reranker's candidates (`RERANKER_SEARCH_DEPTH`), memory and re-embedding time (§2.1); the Docker image bakes the configured dense model, workers and container memory are settings (§6) |

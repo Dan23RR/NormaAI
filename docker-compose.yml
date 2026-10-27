@@ -81,6 +81,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # The dense model baked into the image: the one the API reads (.env).
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-mpnet-base-v2}
     container_name: normaai-app
     ports:
       - "8000:8000"
@@ -113,7 +116,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          # WEB_CONCURRENCY workers x the models' memory (docs/MODELS.md, section 6):
+          # with multilingual-e5-large, 1 worker or APP_MEMORY_LIMIT=7G for 2.
+          memory: ${APP_MEMORY_LIMIT:-4G}
           cpus: '2.0'
     security_opt:
       - no-new-privileges:true

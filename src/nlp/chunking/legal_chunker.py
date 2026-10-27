@@ -66,6 +66,10 @@ class LegalChunk:
     # - consolidated_as_of: str | None - ISO date of the consolidated text
     # - chunk_index: int - position of the chunk in the document
     # - chunk_type: str - preamble, recital, article, annex, paragraph
+    # - quoted_article: str | None - in an amending act, the article of the amended act
+    #   whose quoted text starts the chunk ("Art. 2a"); ``article`` stays the amending
+    #   act's own article ("Art. 25")
+    # - amended_celex: str | None - CELEX of the act that amending article amends
     # - article_number / section_title / hierarchy / part / char_count - legacy fields
 
 
@@ -111,6 +115,67 @@ _WHEREAS_RE = re.compile(
 )
 _SENTENCE_PUNCT_RE = re.compile(r"[.;:]")
 _OPENING_QUOTES = "‘“'\"«"
+# An article heading quoted by an amending act: "«Article 2a", "‘Article 29ca",
+# "«Articolo 29 quater bis". The quoted article belongs to the amended act.
+_LATIN_SUFFIX = r"(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies)"
+_QUOTED_ARTICLE_RE = re.compile(
+    rf"^[{re.escape(_OPENING_QUOTES)}]\s*{_ARTICLE_WORDS}\s*(?P<num>\d{{1,4}})"
+    rf"(?:(?P<letters>[a-z]{{1,2}})\b|\s(?P<latin>{_LATIN_SUFFIX}(?:\s{_LATIN_SUFFIX})?)\b)?"
+)
+# The act an amending article amends, in its title: "Amendments to Directive
+# 2013/34/EU", "Modifiche del regolamento (UE) 2024/1689", "... Regulation (EU)
+# No 1093/2010" (number first in the old regulation numbering, after "No"/"n.").
+_AMENDED_ACT_RE = re.compile(
+    r"\b(?P<kind>Regulation|Directive|Decision|regolamento|direttiva|decisione)\s+"
+    r"(?:\((?:EU|EC|EEC|UE|CE|CEE)(?:,\s*Euratom)?\)\s+)?(?P<no>No\s+|n\.\s*)?"
+    r"(?P<a>\d{1,4})/(?P<b>\d{1,4})\b",
+    re.IGNORECASE,
+)
+_ACT_TYPE_LETTER = {
+    "regulation": "R",
+    "regolamento": "R",
+    "directive": "L",
+    "direttiva": "L",
+    "decision": "D",
+    "decisione": "D",
+}
+
+
+def quoted_article_number(text: str) -> str | None:
+    """Number of an article heading quoted by an amending act, else None.
+
+    "«Article 2a" -> "2a", "‘Article 29ca" -> "29ca",
+    "«Articolo 29 quater bis" -> "29 quater bis".
+    """
+    m = _QUOTED_ARTICLE_RE.match(text)
+    if m is None:
+        return None
+    if m.group("latin"):
+        return f"{m.group('num')} {m.group('latin')}"
+    return m.group("num") + (m.group("letters") or "")
+
+
+def amended_act_celex(title: str | None) -> str | None:
+    """CELEX of the act named in an amending article's title, else None.
+
+    "Amendments to Regulation (EU) 2024/1689" -> "32024R1689",
+    "Modifiche della direttiva 2013/34/UE" -> "32013L0034".
+    """
+    m = _AMENDED_ACT_RE.search(title or "")
+    if m is None:
+        return None
+    a, b = int(m.group("a")), int(m.group("b"))
+    year, number = (b, a) if m.group("no") else (a, b)
+    if year < 100:  # "Directive 95/46/EC"
+        year += 1900 if year > 50 else 2000
+    return f"3{year}{_ACT_TYPE_LETTER[m.group('kind').lower()]}{number:04d}"
+
+
+def continues_article_numbering(number: str, previous: str | None) -> bool:
+    """True when article ``number`` follows the act's own ``previous`` one ("3" after "Art. 2")."""
+    m = re.fullmatch(r"Art\. (\d+)", previous or "")
+    return bool(m) and number.isdigit() and int(number) == int(m.group(1)) + 1
+
 
 # ─── HTML traversal ────────────────────────────────────────────────
 
@@ -195,6 +260,8 @@ class _Unit:
     hierarchy: str = ""
     heading: list[str] = field(default_factory=list)  # repeated on every part
     body: list[str] = field(default_factory=list)
+    quoted_article: str | None = None  # "Art. 2a": the quoted article this unit starts with
+    amended_celex: str | None = None  # the act the quoting article amends
 
     @property
     def body_length(self) -> int:
@@ -540,6 +607,16 @@ class EURLexHTMLChunker:
         section_heading = ""
         pending_section_title = False
         expect_article_title = False
+        # Amending acts quote whole articles and chapters of the act they amend
+        # ("«Article 2a ...»"). Those headings still start a unit, as before, but
+        # the unit keeps the label, title and chapter of the act's own article that
+        # quotes them (``own_article``) and records the quoted article. Only the
+        # first heading of a quotation carries the quote: inside one, a heading that
+        # does not continue the act's own numbering ("Article 75b" after its own
+        # Article 1) is quoted too.
+        own_article: _Unit | None = None
+        quoted_section = False  # the pending section title belongs to a quoted chapter
+        in_quotation = False  # a quoted article or chapter since the last own article
         annex_label = ""
         annex_title: str | None = None
         expect_annex_title = False
@@ -599,17 +676,36 @@ class EURLexHTMLChunker:
             art = self._article_heading(line)
             if art is not None:
                 number, inline_title = art
+                quoted = quoted_article_number(text) if number == "?" else None
+                if quoted is None and in_quotation and own_article is not None:
+                    if not continues_article_numbering(number, own_article.article):
+                        quoted = number  # "Article 75b" after «Article 75a, or in «CHAPTER 6c
                 close()
                 state = "articles"
-                label = f"Art. {number}"
-                current = _Unit(
-                    "article",
-                    label,
-                    title=inline_title,
-                    section=section_heading,
-                    hierarchy=f"{section_heading} > {label}" if section_heading else label,
-                    heading=[text],
-                )
+                if quoted is not None and own_article is not None:
+                    current = _Unit(
+                        "article",
+                        own_article.article,
+                        title=own_article.title,
+                        section=own_article.section,
+                        hierarchy=own_article.hierarchy,
+                        heading=[text],
+                        quoted_article=f"Art. {quoted}",
+                        amended_celex=amended_act_celex(own_article.title),
+                    )
+                    in_quotation = True
+                else:
+                    label = f"Art. {number}"
+                    current = _Unit(
+                        "article",
+                        label,
+                        title=inline_title,
+                        section=section_heading,
+                        hierarchy=f"{section_heading} > {label}" if section_heading else label,
+                        heading=[text],
+                    )
+                    own_article = current
+                    in_quotation = False
                 expect_article_title = inline_title is None
                 pending_section_title = False
                 continue
@@ -618,16 +714,22 @@ class EURLexHTMLChunker:
                 if expect_article_title:
                     expect_article_title = False
                     if current is not None and self._looks_like_article_title(line):
-                        current.title = text
+                        if current.quoted_article is None:
+                            current.title = text
                         current.heading.append(text)
                         continue
                 if self._section_heading(line):
                     close()
-                    section_heading = text
+                    quoted_section = text[0] in _OPENING_QUOTES and own_article is not None
+                    if quoted_section:
+                        in_quotation = True  # a chapter of the amended act
+                    else:
+                        section_heading = text
                     pending_section_title = True
                     continue
                 if pending_section_title and self._looks_like_section_title(line):
-                    section_heading = f"{section_heading} - {text}"
+                    if not quoted_section:
+                        section_heading = f"{section_heading} - {text}"
                     pending_section_title = False
                     continue
                 pending_section_title = False
@@ -695,6 +797,8 @@ class EURLexHTMLChunker:
             "section_title": unit.section,
             "hierarchy": unit.hierarchy,
             "act_title": self.act_title,
+            "quoted_article": unit.quoted_article,
+            "amended_celex": unit.amended_celex,
         }
         if part is not None:
             meta["part"] = str(part)

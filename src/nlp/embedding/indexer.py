@@ -446,6 +446,10 @@ class HybridIndexer:
             "hierarchy": meta.get("hierarchy", ""),
             "part": meta.get("part"),
             "act_title": meta.get("act_title"),
+            # Amending acts: the amended act's article quoted at the start of the
+            # chunk, and that act (src/nlp/chunking/legal_chunker.py).
+            "quoted_article": meta.get("quoted_article"),
+            "amended_celex": meta.get("amended_celex"),
             "source": meta.get("source"),
             "char_count": meta.get("char_count", len(text)),
             "effective_date": meta.get("effective_date", None),
@@ -834,6 +838,8 @@ class HybridIndexer:
                         "act_title": payload.get("act_title"),
                         "frameworks": payload.get("frameworks"),
                         "chunk_index": payload.get("chunk_index"),
+                        "quoted_article": payload.get("quoted_article"),
+                        "amended_celex": payload.get("amended_celex"),
                         # Additive: raw per-retriever cosine/BM25 score.
                         # None = the chunk was not returned by that retriever.
                         "dense_score": dense_score_map.get(point_id),

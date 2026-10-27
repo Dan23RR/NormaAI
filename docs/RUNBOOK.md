@@ -64,6 +64,12 @@ docker compose restart qdrant
   `python -m src.pipeline --action seed --recreate`.
 - `python -m src.pipeline --action stats` mostra `corpus.corpus_as_of` (data del seed) e gli atti indicizzati
   (CELEX, lingua, versione consolidata).
+- Atti di modifica che citano articoli dell'atto modificato (per esempio «Article 2a» nell'art. 25 del
+  regolamento (UE) 2020/852): dal 2026-10-27 il chunker dà a quei passaggi l'articolo dell'atto di modifica
+  e registra l'articolo citato (`quoted_article`) e l'atto modificato (`amended_celex`); prima uscivano come
+  "Art. ?" o come falsi articoli dell'atto di modifica. Una collection indicizzata prima si corregge senza
+  riscaricare gli atti: `python scripts/relabel_quoted_articles.py` (prova, non scrive) e poi `--apply`,
+  una volta per collection, con QDRANT_COLLECTION, EMBEDDING_MODEL ed EMBEDDING_DIMENSION di quella collection.
 - I dati Qdrant sono **ricostruibili** dal crawl: non è una perdita dati permanente.
 
 ## 4. LLM provider down (Gemini/Anthropic)

@@ -121,6 +121,18 @@ class Settings(BaseSettings):
     embedding_dimension: int = 768
     embedding_batch_size: int = 32
 
+    # ─── Reranker (optional) ──────────────────────────────────
+    # A cross-encoder re-scores the hybrid search candidates and its ranking is
+    # fused with the hybrid one (src/nlp/embedding/reranker.py, docs/MODELS.md
+    # section 4). Off while RERANKER_MODEL_DIR is empty. When set, the directory
+    # holds the ONNX export (RERANKER_ONNX_FILE, relative to it) and its
+    # tokenizer.json, and the API refuses to start if they cannot be loaded.
+    reranker_model_dir: str = ""
+    reranker_onnx_file: str = "model.onnx"
+    # Candidates the hybrid search returns for reranking; the agents still read
+    # 15 chunks (20 with several frameworks). 30 was measured: 20 lose most of the gain.
+    reranker_candidates: int = 30
+
     # ─── App ──────────────────────────────────────────────────
     app_env: str = "development"
     max_concurrent_requests: int = 10

@@ -483,11 +483,13 @@ def retrieve_node(state: AgentState) -> dict:
         from src.config import get_settings
 
         indexer = None
+        reranker = None
         try:
             from src.api.app_state import app_state
 
             if app_state.indexer is not None:
                 indexer = app_state.indexer
+            reranker = app_state.reranker
         except (ImportError, AttributeError):
             pass
 
@@ -508,8 +510,11 @@ def retrieve_node(state: AgentState) -> dict:
         else:
             target_frameworks = []
 
+        # With a reranker the hybrid search returns more candidates and the
+        # reranker picks the ones the agents read (docs/MODELS.md, section 4).
+        candidates = get_settings().reranker_candidates if reranker is not None else 15
         if len(target_frameworks) > 1:
-            per_fw_limit = max(5, 15 // len(target_frameworks))
+            per_fw_limit = max(5, candidates // len(target_frameworks))
             all_results, seen_ids = [], set()
             for fw in target_frameworks:
                 for r in indexer.hybrid_search(
@@ -521,17 +526,28 @@ def retrieve_node(state: AgentState) -> dict:
                     if r.get("id") not in seen_ids:
                         seen_ids.add(r.get("id"))
                         all_results.append(r)
-            results = sorted(all_results, key=lambda x: x.get("score", 0), reverse=True)[:20]
+            results = sorted(all_results, key=lambda x: x.get("score", 0), reverse=True)
+            keep = 20
         else:
             framework_filter = target_frameworks[0] if len(target_frameworks) == 1 else None
             results = indexer.hybrid_search(
                 query=query,
-                limit=15,
+                limit=candidates,
                 framework_filter=framework_filter,
                 org_id=state.get("org_id"),
             )
+            keep = 15
 
-        return {"retrieved_chunks": results}
+        if reranker is not None:
+            from src.nlp.embedding.reranker import rerank
+
+            try:
+                results = rerank(query, results, reranker, keep)
+            except Exception as e:
+                # The hybrid order is still a sound answer: keep it, do not fail the request.
+                logger.warning(f"Reranking failed, hybrid order kept: {e}")
+
+        return {"retrieved_chunks": results[:keep]}
     except Exception as e:
         logger.error(f"Retrieval failed: {e}")
         error = f"{RETRIEVAL_ERROR_PREFIX}: {str(e)}"

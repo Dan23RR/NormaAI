@@ -81,7 +81,7 @@ reseed (`python -m src.pipeline --action seed --recreate`).
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
 |---|---|---|---|---|---|
 | none: the fused hybrid results go to the LLM as they are | **in use** | — | `hybrid_search` in `src/nlp/embedding/indexer.py` | 2026-10-26 code | baseline, §1 |
-| `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | candidate, measured; licence question open (§4.2) | Apache-2.0 on the model card; trained on a translation of MS MARCO (§4.2) | [model card](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1), ONNX exports (fp32, int8) in the same repository; not in FastEmbed 0.4.2 | 2026-10-27 model card | 88 / 90 retrieval only, fused with the hybrid rank (§4.1) |
+| `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | candidate, measured; code ready, off (§4.3); licence question open (§4.2) | Apache-2.0 on the model card; trained on a translation of MS MARCO (§4.2) | [model card](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1), ONNX exports (fp32, int8) in the same repository; not in FastEmbed 0.4.2 | 2026-10-27 model card | 88 / 90 retrieval only, fused with the hybrid rank (§4.1) |
 | `BAAI/bge-reranker-v2-m3` | candidate; too slow to measure on the laptop CPU (§4.1) | Apache-2.0 | [model card](https://huggingface.co/BAAI/bge-reranker-v2-m3); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
 | `Qwen/Qwen3-Reranker-0.6B` | candidate | Apache-2.0 | [model card](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
 | `jinaai/jina-reranker-v2-base-multilingual` | **excluded** (§7) | CC-BY-NC-4.0 | [model card](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual), FastEmbed 0.4.2 | 2026-10-26 notes, FastEmbed | — |
@@ -124,8 +124,9 @@ and section title, then the chunk text, cut at 384 tokens.
 - The fusion was chosen on the same 90 questions it is measured on: confirm it end to
   end (golden v2 with the LLM) before switching it on.
 
-Measured with scripts kept outside the repository; they will join
-`tests/validation/retrieval_eval.py` with the reranker code.
+The table was measured with scripts kept outside the repository. The same measure
+now runs through the app's own code: `tests/validation/retrieval_eval.py` calls
+`retrieve_node`, which reranks when the settings of §4.3 are set.
 
 ### 4.2 Licence question
 
@@ -134,6 +135,26 @@ is a machine translation of MS MARCO, whose terms say the MS MARCO datasets are 
 for non-commercial research purposes only". Most open rerankers are trained on MS MARCO,
 and whether those terms reach the users of a trained model is not settled. Check before
 commercial use.
+
+### 4.3 Switching it on
+
+The code is in place and off by default: `src/nlp/embedding/reranker.py`, called by
+`retrieve_node` in `src/agents/nodes.py`. CoVe's evidence search is not reranked.
+
+1. **Files**: a directory with the ONNX export and `tokenizer.json`. The model
+   repository ships `onnx/model_quint8_avx2.onnx` (int8, 119 MB, any AVX2 CPU) and
+   `onnx/model.onnx` (fp32, 471 MB). The int8 model of §4.1 is an export of the same
+   weights quantized with onnxruntime (`quantize_dynamic`, uint8 weights); measure the
+   repository's own int8 file before using it.
+2. **Settings**: `RERANKER_MODEL_DIR`, `RERANKER_ONNX_FILE` (path inside the directory)
+   and `RERANKER_CANDIDATES` (30). The API loads the model at startup and refuses to
+   start if a file is missing; a reranking error at query time keeps the hybrid order.
+3. **Docker image**: the runtime filesystem is read-only and offline
+   (`HF_HUB_OFFLINE=1`), so bake the files into `/app/models` at build time, as for the
+   dense model.
+4. **Server**: about 120 MB of memory for the int8 model and 2-3 s of CPU per question
+   on 4 cores; questions answered at the same time share the CPU.
+5. **Measure**: `retrieval_eval` with these settings, then golden v2 end to end.
 
 ## 5. LLM
 

@@ -10,6 +10,7 @@ class AppState:
     """Shared application state initialized at startup."""
 
     indexer = None
+    reranker = None  # CrossEncoderReranker when RERANKER_MODEL_DIR is set
     qdrant_available: bool = False
     llm_available: bool = False
     local_llm_available: bool = False

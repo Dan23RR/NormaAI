@@ -214,6 +214,69 @@ class TestRetrieveNode:
         assert out["requires_review"] is True
 
 
+class TestRetrieveNodeWithReranker:
+    """RERANKER_MODEL_DIR set: more candidates, the fused best 15 (20) reach the agents."""
+
+    @staticmethod
+    def _scorer(scores=None, error=None):
+        scorer = MagicMock()
+        if error is not None:
+            scorer.score.side_effect = error
+        else:
+            scorer.score.side_effect = lambda query, passages: (
+                scores if scores is not None else [0.0] * len(passages)
+            )
+        return scorer
+
+    def test_asks_for_more_candidates_and_keeps_the_fused_best(self):
+        chunks = [{"id": str(i), "text": f"t{i}", "score": 1.0 - i / 100} for i in range(30)]
+        scores = [-float(i) for i in range(30)]
+        scores[25] = 100.0  # the cross-encoder's pick, 26th for the hybrid search
+        indexer = _indexer_returning(chunks)
+        with (
+            patch("src.api.app_state.app_state.indexer", indexer),
+            patch("src.api.app_state.app_state.reranker", self._scorer(scores)),
+        ):
+            out = retrieve_node({"query": "What does CSRD require?"})
+
+        _, kwargs = indexer.hybrid_search.call_args
+        assert kwargs["limit"] == 30
+        ids = [c["id"] for c in out["retrieved_chunks"]]
+        assert len(ids) == 15
+        assert ids[0] == "0"
+        assert "25" in ids
+
+    def test_several_frameworks_split_the_candidates_and_keep_20(self):
+        def per_fw(query, limit, framework_filter, org_id):
+            return [
+                {"id": f"{framework_filter}-{i}", "text": "x", "score": 1.0 - i / 100}
+                for i in range(limit)
+            ]
+
+        indexer = MagicMock()
+        indexer.hybrid_search.side_effect = per_fw
+        with (
+            patch("src.api.app_state.app_state.indexer", indexer),
+            patch("src.api.app_state.app_state.reranker", self._scorer()),
+        ):
+            out = retrieve_node({"query": "How does DORA relate to NIS2?"})
+
+        assert [c.kwargs["limit"] for c in indexer.hybrid_search.call_args_list] == [15, 15]
+        assert len(out["retrieved_chunks"]) == 20
+
+    def test_a_failing_reranker_keeps_the_hybrid_order(self):
+        chunks = [{"id": str(i), "text": "x", "score": 1.0 - i / 100} for i in range(30)]
+        indexer = _indexer_returning(chunks)
+        with (
+            patch("src.api.app_state.app_state.indexer", indexer),
+            patch("src.api.app_state.app_state.reranker", self._scorer(error=RuntimeError("onnx"))),
+        ):
+            out = retrieve_node({"query": "What does CSRD require?"})
+
+        assert "error" not in out
+        assert [c["id"] for c in out["retrieved_chunks"]] == [str(i) for i in range(15)]
+
+
 # ─── Agents skip the LLM when the knowledge base failed ──────────
 
 

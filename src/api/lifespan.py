@@ -88,6 +88,18 @@ async def lifespan(app: FastAPI):
         logger.error("qdrant_unavailable", error=str(e))
         app_state.qdrant_available = False
 
+    # Optional cross-encoder reranker (docs/MODELS.md, section 4). Configured but
+    # not loadable is a deploy error: refuse to start rather than rank silently worse.
+    if settings.reranker_model_dir:
+        from src.nlp.embedding.reranker import reranker_from_settings
+
+        app_state.reranker = reranker_from_settings(settings)
+        logger.info(
+            "reranker_ready",
+            model=str(app_state.reranker.model_path),
+            candidates=settings.reranker_candidates,
+        )
+
     # Check API key for configured provider
     app_state.llm_available = bool(settings.active_api_key)
     if not app_state.llm_available:

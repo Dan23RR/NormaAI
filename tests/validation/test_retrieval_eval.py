@@ -150,6 +150,29 @@ def test_main_builds_the_indexer_from_settings_and_writes_the_report(tmp_path):
     assert report["config"]["corpus_as_of"] == "2026-10-24"
 
 
+def test_main_reranks_like_the_api_and_records_it(tmp_path):
+    from src.api.app_state import app_state
+
+    reranker = MagicMock(model_path=Path("/app/models/reranker/model.onnx"))
+    with (
+        patch(
+            "src.nlp.embedding.indexer.HybridIndexer",
+            return_value=_fake_indexer(get_settings().embedding_model),
+        ),
+        patch("src.nlp.embedding.reranker.reranker_from_settings", return_value=reranker),
+        patch("src.api.app_state.app_state.indexer", None),
+        patch("src.api.app_state.app_state.reranker", None),
+        patch.object(ev, "retrieve", return_value=[ART50_HIT]),
+    ):
+        code = ev.main(["--label", "unit", "--out-dir", str(tmp_path)])
+        assert app_state.reranker is reranker  # retrieve_node reranks as in the API
+
+    assert code == 0
+    config = json.loads((tmp_path / "retrieval_unit.json").read_text(encoding="utf-8"))["config"]
+    assert config["reranker"] == str(Path("/app/models/reranker/model.onnx"))
+    assert config["reranker_candidates"] == get_settings().reranker_candidates
+
+
 def test_main_refuses_a_collection_built_with_another_model(tmp_path, capsys):
     indexer = _fake_indexer("intfloat/multilingual-e5-large")
     retrieval = MagicMock()

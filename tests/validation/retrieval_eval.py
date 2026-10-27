@@ -2,9 +2,10 @@
 
 For every golden v2 question that expects an article, run the retrieval the Q&A
 agents run (src.agents.nodes.retrieve_node: keyword framework detection, hybrid
-search, 15 chunks, up to 20 when several frameworks are detected) and check
-whether a chunk of the expected article is among the results. Also reports the
-rank of AI Act Art. 50 for four chatbot questions that do not name the article.
+search, 15 chunks, up to 20 when several frameworks are detected, reranked when
+RERANKER_MODEL_DIR is set) and check whether a chunk of the expected article is
+among the results. Also reports the rank of AI Act Art. 50 for four chatbot
+questions that do not name the article.
 
 The question is searched alone, without the record's company profile (the API
 golden run sends it, and retrieve_node falls back to its single framework when
@@ -196,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     from src.api.app_state import app_state
     from src.config import get_settings
     from src.nlp.embedding.indexer import HybridIndexer, indexer_kwargs_from_settings
+    from src.nlp.embedding.reranker import reranker_from_settings
 
     settings = get_settings()
     # A batch job: allow slow Qdrant answers on a busy machine (default request timeout: 5 s).
@@ -211,6 +213,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     app_state.indexer = indexer  # retrieve_node reuses it (one model load, not one per query)
+    app_state.reranker = reranker_from_settings(settings)  # as the API loads it; None = off
 
     try:
         rows, art50 = evaluate(load_golden_v2_test_cases(args.golden), retrieve)
@@ -227,6 +230,8 @@ def main(argv: list[str] | None = None) -> int:
         "passage_prefix": indexer.passage_prefix,
         "corpus_embedding_model": built_with,
         "corpus_as_of": corpus.get("corpus_as_of"),
+        "reranker": str(app_state.reranker.model_path) if app_state.reranker else None,
+        "reranker_candidates": settings.reranker_candidates if app_state.reranker else None,
         "golden_file": args.golden.name,
         "run_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }

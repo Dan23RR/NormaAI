@@ -42,8 +42,9 @@ The retrieval-only measure got the same fix in commit `49d669b`: 77 / 90 on 2026
 
 The retrieval-only measure covers the 90 questions that expect an article (the others
 test abstention) and makes no LLM call, so it is the first gate for any retrieval change:
-dense model, sparse vectors, reranker. Measured since: multilingual-e5-large (§2.1) and a
-cross-encoder reranker (§4.1).
+dense model, sparse vectors, reranker. Measured since: multilingual-e5-large, retrieval
+only (§2.1) and end to end (§2.2), and a cross-encoder reranker (§4.1). The matching of
+parent articles was made strict on 2026-10-27 (§2.2); 84 / 101 does not change.
 
 ## 2. Dense embedding
 
@@ -125,6 +126,51 @@ nostra azienda deve dichiarare di essere un'intelligenza artificiale? Da quando?
     a server by the private bytes. The e5 weights are 2.1 GB on disk (`model.onnx_data`).
 - The fusion and the depth were chosen on the same 90 questions they are measured on:
   confirm them end to end (golden v2 with the LLM) before switching.
+
+### 2.2 Measured: golden v2 end to end, 2026-10-27
+
+Golden v2 through the API with Claude Haiku 5.5, as in §1, on the local corpus of
+2026-10-27: labels of the articles quoted by amending acts fixed, inserted articles cited
+as in `src/agents/quoted_articles.py`, no reranker. Each run used a new organisation and an
+emptied Redis, so no answer came from the cache. All rows are scored with the article
+matching fixed on this date (below).
+
+| Run | Questions passed | Recall | Answer checks | Verified citations | Mean time |
+|---|---|---|---|---|---|
+| mpnet, 2026-10-24 (§1) | 84 / 101 | 0.83 | 78.2 % | 99.6 % | 18.1 s |
+| mpnet | 81 / 101 | 0.80 | 75.2 % | 99.2 % | 15.4 s |
+| multilingual-e5-large | 85 / 101 | 0.84 | 78.2 % | 100 % | 16.1 s |
+| multilingual-e5-large, response parser fixed (`d2562d0`) | **89 / 101** | 0.88 | 80.2 % | 99.4 % | 14.8 s |
+
+- **Cost**: $0.25 to $0.27 per run of 101 questions.
+- **Run-to-run variation.** The LLM does not answer twice the same way. Against
+  2026-10-24, mpnet gained 1 question and lost 4 whose article it retrieves
+  (aiact-026-003, csrd-19a-001, dora-005-002, inj-005); the corpus labels changed in
+  between too. Read a difference of a few questions with care.
+- **e5 against mpnet**, same corpus and day: +9 -5. The gains the retrieval-only measure
+  predicts (§2.1) are there: csrd-003-001, dora-005-003, gdpr-030-002, tax-008-002 and
+  inj-003, the chatbot question without an article number (Art. 50). Lost: cra-071-002 and
+  tax-008-001 (retrieval, as in §2.1) and three answers lost by the response parser.
+- **Response parser.** In the first e5 run 4 answers out of 101 were not JSON: three in
+  prose, one JSON with the quotes of the quoted law left unescaped. `parse_json_response`
+  returned them with no citations (one shown as raw JSON), so they failed although right:
+  aiact-113-002, csrd-005-001, gdpr-030-001, nis2-023-004. Since `d2562d0` such JSON is
+  repaired, and an answer in prose keeps the citations written in its text, checked by the
+  verifier like the others. The rerun passed all four; one answer came in prose
+  (tax-008-002) and kept 5 citations, 4 verified word for word. The mpnet runs had none.
+- **Article matching.** Until this date the metric took any prefix for a parent article:
+  "Art. 1" (the article of Regulation 2026/1744 that amends the AI Act, cited for questions
+  on Art. 113) passed aiact-113-003 and aiact-113-005, and "Art. 19 bis(10)" passed
+  csrd-19a-001. Two false passes in the mpnet run and two in the first e5 run, none on
+  2026-10-24 and none in the rerun; the reports the runner wrote that day show 83 and 87.
+- **Still failing** in the rerun (12). Retrieval, the expected article is not among the
+  chunks the agents read: aiact-113-003, cra-071-002, csrd-19a-001, dora-028-001,
+  nis2-021-003, tax-003-002, tax-008-001 (three of them abstain). The answer cites another
+  article, another paragraph or the recitals: csddd-037-001, csrd-19a-002, csrd-29a-001,
+  inj-005.
+  gdpr-035-003 abstains rightly: paragraph 7 of Art. 35 is not retrieved.
+- The gate of month 1 asks for at least 90 / 101: e5 with the fixed parser is one
+  question short.
 
 ## 3. Sparse vectors
 
@@ -284,3 +330,4 @@ model, set by the variable in brackets.
 | 2026-10-24 | Baseline measured (§1) |
 | 2026-10-26 | Registry created; the indexer adds the e5 prefixes; re-embed script and retrieval-only evaluation in the repository |
 | 2026-10-27 | Retrieval-only baseline read with the "bis" fix (80 / 90); multilingual MiniLM cross-encoder measured (§4.1), licence question (§4.2); multilingual-e5-large measured alone and with the reranker, search depth of the reranker's candidates (`RERANKER_SEARCH_DEPTH`), memory and re-embedding time (§2.1); the Docker image bakes the configured dense model, workers and container memory are settings (§6) |
+| 2026-10-27 | Golden v2 end to end: mpnet 81, e5 85, e5 with the response parser fixed 89 (§2.2); parent articles match only at a separator |

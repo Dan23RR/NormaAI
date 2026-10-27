@@ -25,6 +25,12 @@ export interface ChiediCitation extends Citation {
   chunk_id?: string | null
   lang?: string | null
   consolidated_as_of?: string | null
+  /**
+   * The amending act (CELEX and article) whose text the passage was verified in,
+   * when the cited article is the one that act quotes and the consolidated text is missing.
+   */
+  amending_celex?: string | null
+  amending_article?: string | null
   grounded?: boolean
   /** Document title as the SSE event names it (may be just a framework key). */
   title?: string

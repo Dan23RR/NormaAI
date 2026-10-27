@@ -22,6 +22,9 @@ export interface CitationEvent {
   chunk_id?: string;
   lang?: string;
   consolidated_as_of?: string;
+  /** The amending act whose text the passage was verified in, when the cited article is quoted by it. */
+  amending_celex?: string;
+  amending_article?: string;
   grounded?: boolean;
 }
 

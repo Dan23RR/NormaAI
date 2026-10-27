@@ -22,6 +22,8 @@ export interface Source {
   verifiedAt?: string
   /** Where the text comes from, e.g. "EUR-Lex" or "Normattiva". */
   origin?: string
+  /** Where the verified wording was found when it is not the cited act, e.g. the act that amends it. */
+  note?: string
 }
 
 /** The words for each status live in the `ui.sourceStatus` messages (short and long form). */

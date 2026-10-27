@@ -658,6 +658,26 @@ class TestQaCitationVerification:
         # The URL is the verifier's (chunk language), not rebuilt from the request.
         assert cit.url == "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
         assert cit.grounded is True and cit.title == "AI_ACT"
+        assert cit.amending_celex is None and cit.amending_article is None
+
+    async def test_article_verified_in_the_amending_act_names_it(self):
+        url = "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32020R0852"
+        citation = _verified_citation(
+            framework="32019R2088",
+            reference="Art. 2a",
+            celex="32019R2088",
+            article="Art. 2a",
+            consolidated_as_of=None,
+            url=url,
+            amending_celex="32020R0852",
+            amending_article="Art. 25",
+        )
+        result = {"answer": "x", "citations": [citation], "confidence_score": 0.9}
+        events, _ = await self._stream(result, language="en")
+        cit = [e for e in events if isinstance(e, CitationEvent)][0]
+        assert (cit.celex, cit.article) == ("32019R2088", "Art. 2a")
+        assert (cit.amending_celex, cit.amending_article) == ("32020R0852", "Art. 25")
+        assert cit.url == url
 
     async def test_unverified_citation_event_keeps_the_models_reference_and_quote(self):
         result = {"answer": "x", "citations": [_unverified_citation()], "confidence_score": 0.9}

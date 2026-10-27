@@ -122,6 +122,12 @@ export function actNameFromCelex(celex: string, t: Translate): string {
   return `${t('ui.celex')} ${celex}`
 }
 
+/** The act a CELEX number names: from the framework table when it is there, else from the number. */
+export function actOfCelex(celex: string, t: Translate): string {
+  const key = FRAMEWORK_BY_CELEX[celex.trim()]
+  return key ? actLabel(key, undefined, t) : actNameFromCelex(celex, t)
+}
+
 /** Resolve the framework key of a citation, falling back to its CELEX. */
 export function frameworkOf(c: ChiediCitation): string {
   // A verified passage may sit in another act than the one cited (level "any"):
@@ -157,6 +163,11 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
   // An act outside the framework table (a delegated act, an amending act) is named from its CELEX.
   const act =
     verified && ownCelex && !FRAMEWORK_BY_CELEX[ownCelex] ? actNameFromCelex(ownCelex, ctx.t) : actLabel(key, c.title, ctx.t)
+  // An article verified in the text of the act that amends it: say so (the link goes there).
+  const note =
+    verified && isCelex(c.amending_celex)
+      ? ctx.t('ui.quotedIn', { act: actOfCelex(c.amending_celex, ctx.t), article: (c.amending_article ?? '').trim() })
+      : undefined
   return {
     id: `${idPrefix}-${index}`,
     index,
@@ -167,6 +178,7 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
     quote: quote || undefined,
     status: verified ? 'verified' : 'unverified',
     origin: originOf(url),
+    note,
   }
 }
 
@@ -203,5 +215,7 @@ export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
     match: ev.match,
     level: ev.level,
     lang: ev.lang,
+    amending_celex: verified && isCelex(ev.amending_celex) ? ev.amending_celex.trim() : undefined,
+    amending_article: verified ? ev.amending_article : undefined,
   }
 }

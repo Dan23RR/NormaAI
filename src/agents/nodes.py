@@ -556,7 +556,17 @@ def retrieve_node(state: AgentState) -> dict:
                 # The hybrid order is still a sound answer: keep it, do not fail the request.
                 logger.warning(f"Reranking failed, hybrid order kept: {e}")
 
-        return {"retrieved_chunks": results[:keep]}
+        results = results[:keep]
+        # Passages of amending acts are cited from the consolidated text, else as
+        # the amended act's article they quote (src/agents/quoted_articles.py).
+        if any(r.get("quoted_article") for r in results):
+            from src.agents.quoted_articles import resolve_quoted_articles
+
+            try:
+                results = resolve_quoted_articles(results, indexer.article_chunks)
+            except Exception as e:
+                logger.warning(f"Quoted articles not resolved, passages kept as retrieved: {e}")
+        return {"retrieved_chunks": results}
     except Exception as e:
         logger.error(f"Retrieval failed: {e}")
         error = f"{RETRIEVAL_ERROR_PREFIX}: {str(e)}"

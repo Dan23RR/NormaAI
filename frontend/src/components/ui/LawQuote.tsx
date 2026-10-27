@@ -93,6 +93,7 @@ export function SourceRow({ source, active, onSelect }: { source: Source; active
       <div className="min-w-0 flex-1">
         <p className="text-small font-medium text-ink">{source.act}</p>
         {source.article && <p className="text-small text-ink-2">{source.article}</p>}
+        {source.note && <p className="text-caption text-ink-3">{source.note}</p>}
         {source.quote && (
           <p className="mt-1.5 font-serif text-small leading-relaxed text-ink">
             <mark>{source.quote}</mark>

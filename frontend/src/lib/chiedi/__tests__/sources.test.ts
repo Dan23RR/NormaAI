@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   actNameFromCelex,
+  actOfCelex,
   citationToSource,
   citationsToSources,
   isCelex,
@@ -255,5 +256,60 @@ describe('actNameFromCelex', () => {
 
   it('shows the CELEX for older regulations, whose numbering differs', () => {
     expect(actNameFromCelex('32013R0575', en.t)).toContain('32013R0575')
+  })
+})
+
+describe('articles verified in the act that amends them', () => {
+  // Backend case B (src/agents/quoted_articles.py): the cited article is the
+  // amended act's, its wording was found in the amending act, which the link opens.
+  const amended: ChiediCitation = {
+    framework: '32019R2088',
+    reference: 'Art. 2a',
+    quote_snippet: '',
+    verified: true,
+    celex: '32019R2088',
+    article: 'Art. 2a',
+    official_quote: 'The European Supervisory Authorities shall develop draft regulatory technical standards',
+    url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32020R0852',
+    amending_celex: '32020R0852',
+    amending_article: 'Art. 25',
+  }
+
+  it('names the amended act and says where the wording was verified', () => {
+    const s = citationToSource(amended, 1, 'a', it_)
+    expect(s.act).toBe('Regolamento (UE) 2019/2088')
+    expect(s.article).toBe('Art. 2a')
+    expect(s.note).toBe(`Testo verificato in ${actOfCelex('32020R0852', it_.t)}, Art. 25, che lo modifica`)
+    expect(s.url).toBe(amended.url)
+    expect(citationToSource(amended, 1, 'a', en).note).toBe(
+      `Wording verified in ${actOfCelex('32020R0852', en.t)}, Art. 25, which amends it`,
+    )
+  })
+
+  it('has no note when the citation is not verified or not quoted', () => {
+    expect(citationToSource({ ...amended, verified: false }, 1, 'a', it_).note).toBeUndefined()
+    expect(citationToSource({ ...amended, amending_celex: null }, 1, 'a', it_).note).toBeUndefined()
+  })
+
+  it('reads the amending act from a verified stream event only', () => {
+    const event = {
+      type: 'citation' as const,
+      celex: '32019R2088',
+      article: 'Art. 2a',
+      title: '32019R2088',
+      verified: true,
+      amending_celex: '32020R0852',
+      amending_article: 'Art. 25',
+    }
+    expect(sseCitationToChiedi(event).amending_celex).toBe('32020R0852')
+    expect(sseCitationToChiedi(event).amending_article).toBe('Art. 25')
+    expect(sseCitationToChiedi({ ...event, verified: false }).amending_celex).toBeUndefined()
+  })
+})
+
+describe('actOfCelex', () => {
+  it('uses the framework table first, the CELEX number otherwise', () => {
+    expect(actOfCelex('32024R1689', en.t)).toBe('Regulation (EU) 2024/1689 (AI Act)')
+    expect(actOfCelex('32026R1744', it_.t)).toBe('Regolamento (UE) 2026/1744')
   })
 })

@@ -105,6 +105,16 @@ class CitationEvent(BaseModel):
     consolidated_as_of: str | None = Field(
         default=None, description="Date of the consolidated text the passage was found in"
     )
+    amending_celex: str | None = Field(
+        default=None,
+        description=(
+            "CELEX of the amending act whose text the passage was found in, when the cited "
+            "article is quoted by it (the cited act is in celex)"
+        ),
+    )
+    amending_article: str | None = Field(
+        default=None, description="Article of the amending act that quotes the cited one"
+    )
     grounded: bool | None = Field(
         default=None,
         description="Whether the citation is backed by the retrieved evidence (grounding guard)",

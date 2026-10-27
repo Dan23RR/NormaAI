@@ -1957,7 +1957,8 @@
     "actRegulation": "Regulation (EU) {year}/{number}",
     "actDirective": "Directive (EU) {year}/{number}",
     "actDirectiveLegacy": "Directive {year}/{number}/EU",
-    "paragraphShort": "para."
+    "paragraphShort": "para.",
+    "quotedIn": "Wording verified in {act}, {article}, which amends it"
   },
   "errors": {
     "generic": "Something went wrong. Try again.",

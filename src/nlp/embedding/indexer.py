@@ -812,42 +812,84 @@ class HybridIndexer:
             seen_ids.add(point_id)
 
             if point_id in all_results_map:
-                r = all_results_map[point_id]
-                payload = r.payload if hasattr(r, "payload") else {}
                 results.append(
-                    {
-                        "id": r.id,
-                        "score": rrf_score,
-                        "text": payload.get("text", ""),
-                        "celex": payload.get("celex", ""),
-                        "framework": payload.get("framework", ""),
-                        "chunk_type": payload.get("chunk_type", ""),
-                        "article_number": payload.get("article_number", ""),
-                        "section_title": payload.get("section_title", ""),
-                        # Additive provenance fields (None when a point predates them).
-                        "lang": payload.get("lang"),
-                        "article": payload.get("article") or payload.get("article_number", ""),
-                        "paragraph": payload.get("paragraph"),
-                        "title": payload.get("title"),
-                        "eli": payload.get("eli"),
-                        "url": payload.get("url"),
-                        "consolidated_as_of": payload.get("consolidated_as_of"),
-                        # Additive provenance for the citation verifier and the
-                        # prompt labels (src.agents.citation_verifier, llm).
-                        "source_celex": payload.get("source_celex"),
-                        "act_title": payload.get("act_title"),
-                        "frameworks": payload.get("frameworks"),
-                        "chunk_index": payload.get("chunk_index"),
-                        "quoted_article": payload.get("quoted_article"),
-                        "amended_celex": payload.get("amended_celex"),
-                        # Additive: raw per-retriever cosine/BM25 score.
-                        # None = the chunk was not returned by that retriever.
-                        "dense_score": dense_score_map.get(point_id),
-                        "sparse_score": sparse_score_map.get(point_id),
-                    }
+                    self._result_dict(
+                        all_results_map[point_id],
+                        rrf_score,
+                        dense_score_map.get(point_id),
+                        sparse_score_map.get(point_id),
+                    )
                 )
 
         return results
+
+    @staticmethod
+    def _result_dict(
+        point: Any,
+        score: float | None,
+        dense_score: float | None = None,
+        sparse_score: float | None = None,
+    ) -> dict:
+        """A search result as the agents read it, from a Qdrant point."""
+        payload = getattr(point, "payload", None) or {}
+        return {
+            "id": point.id,
+            "score": score,
+            "text": payload.get("text", ""),
+            "celex": payload.get("celex", ""),
+            "framework": payload.get("framework", ""),
+            "chunk_type": payload.get("chunk_type", ""),
+            "article_number": payload.get("article_number", ""),
+            "section_title": payload.get("section_title", ""),
+            # Additive provenance fields (None when a point predates them).
+            "lang": payload.get("lang"),
+            "article": payload.get("article") or payload.get("article_number", ""),
+            "paragraph": payload.get("paragraph"),
+            "title": payload.get("title"),
+            "eli": payload.get("eli"),
+            "url": payload.get("url"),
+            "consolidated_as_of": payload.get("consolidated_as_of"),
+            # Additive provenance for the citation verifier and the
+            # prompt labels (src.agents.citation_verifier, llm).
+            "source_celex": payload.get("source_celex"),
+            "act_title": payload.get("act_title"),
+            "frameworks": payload.get("frameworks"),
+            "chunk_index": payload.get("chunk_index"),
+            "part": payload.get("part"),  # "2" for the second part of a split unit
+            "quoted_article": payload.get("quoted_article"),
+            "amended_celex": payload.get("amended_celex"),
+            # Additive: raw per-retriever cosine/BM25 score.
+            # None = the chunk was not returned by that retriever.
+            "dense_score": dense_score,
+            "sparse_score": sparse_score,
+        }
+
+    def article_chunks(
+        self, celex: str, article: str, lang: str | None = None, limit: int = 50
+    ) -> list[dict]:
+        """The shared, in-force chunks of one article of an act, in document order.
+
+        No search: a filter on ``celex`` and ``article`` (and ``lang``). Used to
+        find, in the consolidated text of an amended act, the article an amending
+        act quotes (src/agents/quoted_articles.py). The results have the shape
+        of hybrid_search's, with no score.
+        """
+        if not celex or not article:
+            return []
+        base = self._with_meta_exclusion(self._build_filter(lang=lang))  # shared corpus only
+        must = list(base.must or []) + [
+            FieldCondition(key="celex", match=MatchValue(value=celex)),
+            FieldCondition(key="article", match=MatchValue(value=article)),
+        ]
+        records, _ = self.client.scroll(
+            collection_name=self.COLLECTION_NAME,
+            scroll_filter=Filter(must=must, must_not=base.must_not),
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+        records = sorted(records, key=lambda r: (r.payload or {}).get("chunk_index") or 0)
+        return [self._result_dict(r, None) for r in records]
 
     @staticmethod
     def _reciprocal_rank_fusion(

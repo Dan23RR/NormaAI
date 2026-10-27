@@ -10,7 +10,10 @@ whether the quote is in one of them and, when it is, where: the chunk id, the
 base act (CELEX), article, paragraph, language, consolidation date, a
 server-built EUR-Lex URL and ``official_quote``, the exact span of the chunk
 text that matched, so the interface shows the official wording rather than
-the model's.
+the model's. An article that an amending act quotes and that is cited as the
+amended act's article (case B of src/agents/quoted_articles.py) also reports
+that amending act and article (``amending_celex``, ``amending_article``): its
+wording was found there, and ``url`` is its page.
 
 The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
 
@@ -387,6 +390,10 @@ class VerificationResult:
     consolidated_as_of: str | None = None
     url: str | None = None
     official_quote: str | None = None
+    # An article verified in the text of the act that amends it (B in
+    # src/agents/quoted_articles.py): that act and its article; ``url`` is its page.
+    amending_celex: str | None = None
+    amending_article: str | None = None
 
     def as_fields(self) -> dict[str, Any]:
         """The fields written on the citation dict (all keys, None included)."""
@@ -420,6 +427,9 @@ def _prepare(chunks: Any) -> list[_Chunk]:
         if not norm:
             continue
         names = [data.get("framework"), *(data.get("frameworks") or [])]
+        # An article quoted by an amending act is cited as the amended act's article.
+        quoted = bool(data.get("citation_celex"))
+        article = data.get("article") or data.get("article_number")
         prepared.append(
             _Chunk(
                 data=data,
@@ -428,8 +438,8 @@ def _prepare(chunks: Any) -> list[_Chunk]:
                 starts=starts,
                 ends=ends,
                 frameworks=frozenset(k for k in (normalize_framework(n) for n in names) if k),
-                article_key=parse_article(data.get("article") or data.get("article_number")),
-                celex=base_celex(data),
+                article_key=parse_article(data["citation_article"] if quoted else article),
+                celex=str(data["citation_celex"]) if quoted else base_celex(data),
             )
         )
     return prepared
@@ -629,6 +639,7 @@ def _result(
     data = chunk.data
     lang = celex_utils.normalize_lang(data.get("lang"), "") or None
     raw_article = str(data.get("article") or data.get("article_number") or "").strip()
+    amending_celex = base_celex(data) if data.get("citation_celex") else None
     return VerificationResult(
         verified=True,
         match=match,
@@ -639,8 +650,10 @@ def _result(
         paragraph=_paragraph_at(chunk, chunk.starts[spans[0][0]]),
         lang=lang,
         consolidated_as_of=_consolidated_as_of(data),
-        url=eurlex_url(chunk.celex, lang),
+        url=eurlex_url(amending_celex or chunk.celex, lang),
         official_quote=" [...] ".join(pieces),
+        amending_celex=amending_celex,
+        amending_article=(raw_article or None) if amending_celex else None,
     )
 
 

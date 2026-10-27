@@ -618,6 +618,8 @@ class TestVerifyCitations:
             "consolidated_as_of",
             "url",
             "official_quote",
+            "amending_celex",
+            "amending_article",
         }
 
 

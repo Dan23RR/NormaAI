@@ -1957,7 +1957,8 @@
     "actRegulation": "Regolamento (UE) {year}/{number}",
     "actDirective": "Direttiva (UE) {year}/{number}",
     "actDirectiveLegacy": "Direttiva {year}/{number}/UE",
-    "paragraphShort": "par."
+    "paragraphShort": "par.",
+    "quotedIn": "Testo verificato in {act}, {article}, che lo modifica"
   },
   "errors": {
     "generic": "Qualcosa non ha funzionato. Riprova.",

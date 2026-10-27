@@ -216,8 +216,27 @@ modified, and anything the model put in these keys is overwritten):
 | `lang`, `consolidated_as_of` | language and version date of that text | `null` |
 | `url` | `https://eur-lex.europa.eu/legal-content/{IT\|EN}/TXT/?uri=CELEX:{celex}`, built server-side in the chunk's language | `null` |
 | `official_quote` | the exact span of the official text that matched | `null` |
+| `amending_celex`, `amending_article` | only for an article verified in the text of the act that amends it (below): that act and article; `url` is its page | `null` |
 
 The answer carries `verified_citations` and `citations_total`.
+
+**Articles quoted by amending acts** (decided 2026-10-27,
+`src/agents/quoted_articles.py`, run by `retrieve_node` on the chunks it keeps).
+An amending act quotes whole articles of the act it amends; the chunker labels
+such a passage with the amending act's own article and records the quoted one
+(`quoted_article`, `amended_celex`). Such a passage is cited:
+
+1. from the consolidated text, when the corpus holds the amended act and its
+   article contains the passage's own words: the passage is replaced by that
+   chunk (the prompt label names the amending act), so the answer cites the
+   law as it stands and never a consolidated version older than the amendment;
+2. otherwise as the amended act's article, cut where the quotation ends:
+   labelled `[CELEX, Art. N]` in the prompt and verified as that article, with
+   `amending_celex` / `amending_article` saying where its wording was found
+   (the interface shows it under the source). Only for the first part of a
+   quoted unit, which surely starts with the quoted article;
+3. as retrieved in every other case (a later part that may already hold the
+   next amendments, or one that starts with an amending instruction).
 
 **Policy** (`CITATION_VERIFICATION`, `Settings.citation_verification`, default
 `flag`). When an answer is not an abstention, has citations and none is

@@ -375,6 +375,48 @@ class TestFormatRetrievedChunks:
             " | par. 3-4 | lang IT ---\nArticolo 50 ..."
         )
 
+    def test_article_quoted_by_an_amending_act_is_labelled_as_the_amended_one(self):
+        # Case B of src/agents/quoted_articles.py: the marker names the amended
+        # act and article, the label says whose text the wording comes from.
+        out = format_retrieved_chunks(
+            [
+                {
+                    "framework": "TAXONOMY",
+                    "article": "Art. 25",
+                    "celex": "32020R0852",
+                    "act_title": "Taxonomy Regulation",
+                    "citation_celex": "32019R2088",
+                    "citation_article": "Art. 2a",
+                    "paragraph": "1-2",
+                    "lang": "EN",
+                    "text": "‘Article 2a\nPrinciple of do no significant harm",
+                }
+            ]
+        )
+        assert out.startswith(
+            "--- Source 1 [32019R2088, Art. 2a] | CELEX 32019R2088"
+            " | as worded in CELEX 32020R0852 Art. 25, which amends it | par. 1-2 | lang EN ---"
+        )
+
+    def test_consolidated_article_names_the_act_that_amended_it(self):
+        out = format_retrieved_chunks(
+            [
+                {
+                    "framework": "AI_ACT",
+                    "article": "Art. 4a",
+                    "celex": "32024R1689",
+                    "lang": "EN",
+                    "amended_by_celex": "32026R1744",
+                    "amended_by_article": "Art. 1",
+                    "text": "Article 4a ...",
+                }
+            ]
+        )
+        assert (
+            "[AI_ACT, Art. 4a] | CELEX 32024R1689 | lang EN | amended by CELEX 32026R1744 Art. 1"
+            in out
+        )
+
     def test_long_act_title_is_shortened(self):
         out = format_retrieved_chunks([{"framework": "GDPR", "act_title": "T" * 300, "text": "b"}])
         assert "T" * 100 + "..." in out and "T" * 101 not in out

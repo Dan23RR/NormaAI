@@ -423,23 +423,38 @@ def _chunk_label(chunk: dict) -> str:
 
     ``[FRAMEWORK, Art. N]`` is the citation marker the model copies; the base
     CELEX, the act title and the language tell it which official text the
-    passage below comes from (quotes are verified against that text).
+    passage below comes from (quotes are verified against that text). An
+    article an amending act quotes (src/agents/quoted_articles.py) is labelled
+    as the amended act's article, ``[CELEX, Art. N]``, with the amending act
+    where its wording comes from; a consolidated article names the act that
+    amended it.
     """
-    framework = chunk.get("framework") or "?"
-    article = chunk.get("article") or chunk.get("article_number") or "?"
-    parts = [f"[{framework}, {article}]"]
     celex = base_celex(chunk)
-    if celex:
-        parts.append(f"CELEX {celex}")
-    title = " ".join(str(chunk.get("act_title") or "").split())
-    if title:
-        if len(title) > _ACT_TITLE_MAX:
-            title = title[:_ACT_TITLE_MAX].rstrip() + "..."
-        parts.append(title)
+    if chunk.get("citation_celex"):
+        parts = [
+            f"[{chunk['citation_celex']}, {chunk['citation_article']}]",
+            f"CELEX {chunk['citation_celex']}",
+            f"as worded in CELEX {celex} {chunk.get('article')}, which amends it",
+        ]
+    else:
+        framework = chunk.get("framework") or "?"
+        article = chunk.get("article") or chunk.get("article_number") or "?"
+        parts = [f"[{framework}, {article}]"]
+        if celex:
+            parts.append(f"CELEX {celex}")
+        title = " ".join(str(chunk.get("act_title") or "").split())
+        if title:
+            if len(title) > _ACT_TITLE_MAX:
+                title = title[:_ACT_TITLE_MAX].rstrip() + "..."
+            parts.append(title)
     if chunk.get("paragraph"):
         parts.append(f"par. {chunk['paragraph']}")
     if chunk.get("lang"):
         parts.append(f"lang {chunk['lang']}")
+    if chunk.get("amended_by_celex"):
+        parts.append(
+            f"amended by CELEX {chunk['amended_by_celex']} {chunk.get('amended_by_article') or ''}".rstrip()
+        )
     return " | ".join(parts)
 
 

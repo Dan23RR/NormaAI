@@ -169,6 +169,8 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
         chunk_id=_text_or_none(cit.get("chunk_id")) if official else None,
         lang=_text_or_none(cit.get("lang")) if official else None,
         consolidated_as_of=_text_or_none(cit.get("consolidated_as_of")) if official else None,
+        amending_celex=_text_or_none(cit.get("amending_celex")) if official else None,
+        amending_article=_text_or_none(cit.get("amending_article")) if official else None,
         grounded=grounded if isinstance(grounded, bool) else None,
     )
 

@@ -24,11 +24,14 @@ import hashlib
 import logging
 import math
 import os
+import threading
 import uuid
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -49,6 +52,39 @@ from qdrant_client.models import (
 from src.nlp.chunking.contextual_chunker import ContextualChunker
 
 logger = logging.getLogger(__name__)
+
+# One lock for every indexer, so the dense model is built once per process even
+# when the first questions arrive together. Two concurrent builds also race on
+# the download progress bars: in the live golden run of 2026-10-27 the first
+# question failed with "type object 'tqdm' has no attribute '_lock'".
+_EMBEDDER_LOCK = threading.Lock()
+
+
+def _is_timeout(error: BaseException | None) -> bool:
+    """True when a request timed out, however the Qdrant client wrapped it."""
+    seen: set[int] = set()
+    while error is not None and id(error) not in seen:
+        seen.add(id(error))
+        if isinstance(error, TimeoutError | httpx.TimeoutException):
+            return True
+        error = getattr(error, "source", None) or error.__cause__ or error.__context__
+    return False
+
+
+def _once_more_on_timeout(call: Callable[..., Any], **kwargs: Any) -> Any:
+    """``call(**kwargs)``, sent a second time when the first request times out.
+
+    In the live golden run of 2026-10-27 one slow answer from a busy Qdrant
+    failed a whole question; a single retry absorbs such a blip.
+    """
+    try:
+        return call(**kwargs)
+    except Exception as e:
+        if not _is_timeout(e):
+            raise
+        logger.warning("qdrant_timeout_retry: %s", e)
+        return call(**kwargs)
+
 
 # ─── Deterministic ids ───────────────────────────────────────────────
 # Fixed namespace so the same (act, language, article, position, text) always
@@ -279,19 +315,25 @@ class HybridIndexer:
 
     @property
     def embedder(self):
-        """Lazy-load embedding model (avoids import overhead if not needed)."""
-        if self._embedder is None:
-            from fastembed import TextEmbedding
+        """Lazy-load embedding model (avoids import overhead if not needed).
 
-            # In the read-only production image the model is baked at build time
-            # under FASTEMBED_CACHE_DIR; pin the same dir so fastembed loads it
-            # offline instead of trying (and failing) to download to a read-only
-            # FS. fastembed caches by $HOME otherwise, which differs build (root)
-            # vs runtime (normaai). Unset locally -> None -> fastembed default.
-            cache_dir = os.getenv("FASTEMBED_CACHE_DIR") or None
-            self._embedder = TextEmbedding(
-                model_name=self.embedding_model_name, cache_dir=cache_dir
-            )
+        Built under _EMBEDDER_LOCK, so concurrent first calls share one build.
+        """
+        if self._embedder is None:
+            with _EMBEDDER_LOCK:
+                if self._embedder is None:
+                    from fastembed import TextEmbedding
+
+                    # In the read-only production image the model is baked at build
+                    # time under FASTEMBED_CACHE_DIR; pin the same dir so fastembed
+                    # loads it offline instead of trying (and failing) to download to
+                    # a read-only FS. fastembed caches by $HOME otherwise, which
+                    # differs build (root) vs runtime (normaai). Unset locally ->
+                    # None -> fastembed default.
+                    cache_dir = os.getenv("FASTEMBED_CACHE_DIR") or None
+                    self._embedder = TextEmbedding(
+                        model_name=self.embedding_model_name, cache_dir=cache_dir
+                    )
         return self._embedder
 
     # ─── Dense embeddings ───────────────────────────────────────
@@ -681,7 +723,8 @@ class HybridIndexer:
         passing the Named* object straight to `query` raises
         ValueError("Unsupported query type"). The legacy .search() still accepts
         the Named* form. We extract (name, vector), try the modern API first, and
-        fall back to legacy on any incompatibility.
+        fall back to legacy on any incompatibility. A request that times out is
+        sent once more (_once_more_on_timeout).
         """
         name = getattr(query_vector, "name", None)
         vector = getattr(query_vector, "vector", query_vector)
@@ -689,7 +732,8 @@ class HybridIndexer:
         # Try modern API first (qdrant-client >= 1.12)
         if name is not None and hasattr(self.client, "query_points"):
             try:
-                response = self.client.query_points(
+                response = _once_more_on_timeout(
+                    self.client.query_points,
                     collection_name=collection_name,
                     query=vector,
                     using=name,
@@ -704,7 +748,8 @@ class HybridIndexer:
 
         # Fallback to legacy .search() API
         if hasattr(self.client, "search"):
-            return self.client.search(
+            return _once_more_on_timeout(
+                self.client.search,
                 collection_name=collection_name,
                 query_vector=query_vector,
                 query_filter=query_filter,

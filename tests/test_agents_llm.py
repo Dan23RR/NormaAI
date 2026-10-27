@@ -298,6 +298,92 @@ class TestParseJsonResponse:
         result = parse_json_response(content)
         assert result["answer"] == "from_block"
 
+    def test_raw_line_break_inside_a_string_is_accepted(self):
+        result = parse_json_response('{"answer": "first line\nsecond line"}')
+        assert result["answer"] == "first line\nsecond line"
+
+    def test_unescaped_quotes_of_quoted_law_are_repaired(self):
+        # Live golden v2 of 2026-10-27 (csrd-005-001): the model quoted the directive
+        # inside the answer without escaping the quotes, and the whole JSON was lost.
+        content = (
+            '```json\n{\n  "answer": "Gli Stati membri applicano le misure '
+            '"per gli esercizi aventi inizio il 1 o gennaio 2027" alle imprese [CSRD, Art. 5(2)].",\n'
+            '  "citations": [{"framework": "CSRD", "reference": "Art. 5(2)", '
+            '"quote_snippet": "per gli esercizi aventi inizio il 1 o gennaio 2027"}],\n'
+            '  "confidence_score": 0.85\n}\n```'
+        )
+        result = parse_json_response(content)
+        assert "parse_warning" not in result
+        assert result["answer"] == (
+            'Gli Stati membri applicano le misure "per gli esercizi aventi inizio il 1 o '
+            'gennaio 2027" alle imprese [CSRD, Art. 5(2)].'
+        )
+        assert result["citations"][0]["reference"] == "Art. 5(2)"
+        assert result["confidence_score"] == 0.85
+
+    def test_a_quote_closed_before_a_comma_is_repaired(self):
+        content = '{"answer": "Il testo dice "salvo deroga", poi elenca i casi", "citations": []}'
+        result = parse_json_response(content)
+        assert result["answer"] == 'Il testo dice "salvo deroga", poi elenca i casi'
+        assert result["citations"] == []
+
+    def test_prose_answer_keeps_the_citations_written_in_it(self):
+        # Live golden v2 of 2026-10-27 (aiact-113-002, nis2-023-004): correct answers
+        # written in prose instead of JSON reached the user without sources.
+        content = (
+            "**Direct answer:** The prohibitions apply from 2 February 2025.\n\n"
+            'Point (a) provides that "Chapters I and II shall apply from 2 February 2025" '
+            "[AI_ACT, Art. 113]. An incident is significant under [NIS2, Art. 23(3)]."
+        )
+        result = parse_json_response(content)
+        assert result["answer"] == content
+        assert result["citations"] == [
+            {
+                "framework": "AI_ACT",
+                "reference": "Art. 113",
+                "quote_snippet": "Chapters I and II shall apply from 2 February 2025",
+            },
+            {"framework": "NIS2", "reference": "Art. 23(3)", "quote_snippet": ""},
+        ]
+        assert result["confidence_score"] == 0.5
+        assert result["requires_expert_review"] is True
+        assert "parse_warning" in result
+
+    def test_an_unquoted_repeat_of_a_quoted_article_is_dropped(self):
+        content = (
+            'Il registro indica "il nome e i dati di contatto del titolare del trattamento" '
+            "[GDPR, Art. 30(1)], le finalità [GDPR, Art. 30(1)] e i destinatari [GDPR, Art. 30(1)]."
+        )
+        result = parse_json_response(content)
+        assert result["citations"] == [
+            {
+                "framework": "GDPR",
+                "reference": "Art. 30(1)",
+                "quote_snippet": "il nome e i dati di contatto del titolare del trattamento",
+            }
+        ]
+
+    def test_an_article_cited_by_celex_is_kept(self):
+        # Case B of src/agents/quoted_articles.py: the label names the amended act.
+        content = "L'obbligo è nell'articolo inserito [32013L0034, Art. 29 quater bis]."
+        result = parse_json_response(content)
+        assert result["citations"] == [
+            {"framework": "32013L0034", "reference": "Art. 29 quater bis", "quote_snippet": ""}
+        ]
+
+    def test_json_too_broken_to_repair_shows_its_answer_not_the_json(self):
+        # Cut off inside the citations (max_tokens): no closing brace to repair.
+        content = (
+            '{"answer": "Si applica dal 2 agosto 2026 [AI_ACT, Art. 113].", '
+            '"citations": [{"framework": "AI_ACT", "reference": "Art. 1'
+        )
+        result = parse_json_response(content)
+        assert result["answer"] == "Si applica dal 2 agosto 2026 [AI_ACT, Art. 113]."
+        assert result["citations"] == [
+            {"framework": "AI_ACT", "reference": "Art. 113", "quote_snippet": ""}
+        ]
+        assert "parse_warning" in result
+
 
 # ─── TestExtractConfidence ───────────────────────────────────────
 

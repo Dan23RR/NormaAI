@@ -23,11 +23,15 @@ lazy fastembed import.
 
 import hashlib
 import logging
+import threading
+import time
 import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
+from qdrant_client.http.exceptions import ResponseHandlingException
 from qdrant_client.models import (
     FieldCondition,
     Filter,
@@ -45,6 +49,7 @@ from src.nlp.embedding.indexer import (
     NORMAAI_ID_NAMESPACE,
     PAYLOAD_INDEX_FIELDS,
     HybridIndexer,
+    _is_timeout,
     _text_to_sparse_vector,
     make_point_id,
     point_id_key,
@@ -134,6 +139,32 @@ class TestConstruction:
         assert second is fake_te_instance
         # Lazy import constructs the model exactly once (cached in _embedder).
         fake_te_cls.assert_called_once()
+
+    def test_concurrent_first_calls_build_the_model_once(self):
+        """Questions arriving together on a fresh process share one model build.
+
+        Live golden run of 2026-10-27: two concurrent builds raced on the download
+        progress bars and the first question failed with a 503.
+        """
+        with patch(INDEXER_PATH, return_value=MagicMock()):
+            idx = HybridIndexer()
+        builds = []
+
+        def slow_build(**kwargs):
+            time.sleep(0.05)
+            builds.append(kwargs)
+            return object()
+
+        seen = []
+        with patch.dict("sys.modules", {"fastembed": SimpleNamespace(TextEmbedding=slow_build)}):
+            threads = [threading.Thread(target=lambda: seen.append(idx.embedder)) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        assert len(builds) == 1
+        assert len(seen) == 4
+        assert all(model is seen[0] for model in seen)
 
 
 # --------------------------------------------------------------------------- #
@@ -412,6 +443,65 @@ class TestSearchCompat:
                 limit=1,
                 with_payload=True,
             )
+
+
+def _timeout() -> ResponseHandlingException:
+    """What qdrant-client raises when Qdrant answers too late."""
+    return ResponseHandlingException(httpx.ReadTimeout("timed out"))
+
+
+def _search(idx):
+    return idx._search_compat(
+        collection_name="eu_regulations",
+        query_vector=NamedVector(name="dense", vector=[0.1, 0.2]),
+        query_filter=None,
+        limit=5,
+        with_payload=True,
+    )
+
+
+class TestTimeoutRetry:
+    """A search that times out is sent once more (live golden run of 2026-10-27)."""
+
+    def test_a_timed_out_search_is_sent_once_more(self):
+        client = MagicMock()
+        points = [SimpleNamespace(id=1)]
+        client.query_points.side_effect = [_timeout(), SimpleNamespace(points=points)]
+        assert _search(make_indexer(client)) == points
+        assert client.query_points.call_count == 2
+
+    def test_a_second_timeout_is_raised(self):
+        client = MagicMock()
+        client.query_points.side_effect = [_timeout(), _timeout()]
+        with pytest.raises(ResponseHandlingException):
+            _search(make_indexer(client))
+        assert client.query_points.call_count == 2
+
+    def test_other_errors_are_not_retried(self):
+        client = MagicMock()
+        client.query_points.side_effect = RuntimeError("collection not found")
+        with pytest.raises(RuntimeError, match="collection not found"):
+            _search(make_indexer(client))
+        client.query_points.assert_called_once()
+
+    def test_the_legacy_search_is_retried_too(self):
+        client = MagicMock(spec=["search"])
+        client.search.side_effect = [_timeout(), ["hit"]]
+        assert _search(make_indexer(client)) == ["hit"]
+        assert client.search.call_count == 2
+
+    def test_timeouts_are_recognised_through_wrappers(self):
+        assert _is_timeout(_timeout())
+        assert _is_timeout(TimeoutError())
+        try:
+            try:
+                raise httpx.ConnectTimeout("slow")
+            except httpx.ConnectTimeout as inner:
+                raise RuntimeError("wrapped") from inner
+        except RuntimeError as outer:
+            assert _is_timeout(outer)
+        assert not _is_timeout(ValueError("Unsupported query type"))
+        assert not _is_timeout(None)
 
 
 # --------------------------------------------------------------------------- #

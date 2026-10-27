@@ -12,6 +12,7 @@ fail immediately.
 import json
 import logging
 import re
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from tenacity import (
@@ -363,15 +364,111 @@ async def acall_llm(
 
 # ─── Response Parsing ─────────────────────────────────────────────
 
+# An inline citation as prompts/qa_bot.txt asks the model to write it, [AI_ACT,
+# Art. 50(2)] or [GDPR, Recital 42]; an article quoted by an amending act and cited
+# as the amended act's (case B of quoted_articles.py) names the CELEX instead,
+# [32013L0034, Art. 29 quater bis].
+_INLINE_CITATION = re.compile(
+    r"\[([A-Z][A-Z0-9_]*|\d{5}[A-Z]\d{4}),\s*"
+    r"((?:Art\.|Article|Articolo|Recital|Considerando|Annex|Allegato)[^\[\]]{0,60}?)\s*\]"
+)
+# A passage the answer quotes: "...", “...” or «...».
+_QUOTED_PASSAGE = re.compile(r'"([^"]+)"|“([^”]+)”|«([^»]+)»')
+# The answer field of a JSON response too broken to parse.
+_ANSWER_FIELD = re.compile(
+    r'"answer"\s*:\s*"(.*?)"\s*,\s*"(?:citations|confidence_score|requires_expert_review'
+    r'|related_frameworks|caveats)"\s*:',
+    re.DOTALL,
+)
+_MAX_QUOTE_REPAIRS = 50
+
+
+def _loads(text: str) -> Any:
+    # strict=False accepts the raw line breaks models leave inside JSON strings.
+    return json.loads(text, strict=False)
+
+
+def _repair_stray_quotes(text: str) -> dict[str, Any] | None:
+    """Parse JSON whose strings contain unescaped double quotes.
+
+    Quoting the law, a model writes ... prevede "per gli esercizi ..." inside the
+    answer string without escaping the quotes: the string ends early and parsing
+    fails right after one of them (or after a comma that followed it). Each such
+    failure is repaired by escaping that quote; a failure anywhere else gives up.
+    """
+    for _ in range(_MAX_QUOTE_REPAIRS):
+        try:
+            value = _loads(text)
+        except json.JSONDecodeError as e:
+            i = e.pos - 1
+            while i >= 0 and text[i].isspace():
+                i -= 1
+            if i >= 0 and text[i] == ",":
+                i -= 1
+                while i >= 0 and text[i].isspace():
+                    i -= 1
+            if i < 1 or text[i] != '"' or text[i - 1] == "\\":
+                return None
+            text = text[:i] + "\\" + text[i:]
+            continue
+        return value if isinstance(value, dict) else None
+    return None
+
+
+def _json_string(raw: str) -> str:
+    """The value of a JSON string literal, tolerating unescaped quotes in it."""
+    try:
+        value = _loads(f'"{raw}"')
+        if isinstance(value, str):
+            return value
+    except json.JSONDecodeError:
+        pass
+    return raw.replace('\\"', '"').replace("\\n", "\n").replace("\\\\", "\\")
+
+
+def _inline_citations(answer: str) -> list[dict[str, str]]:
+    """Citations rebuilt from the references an answer writes in its text.
+
+    A model that answers in prose instead of the JSON schema still names its
+    sources inline, as qa_bot.txt asks ("... [GDPR, Art. 30(1)]"). Each reference
+    becomes a citation that the grounding guard and the verifier check like any
+    other. Its quote is the last passage the answer quotes before it, if any, so
+    a verbatim quote can still be verified; an unquoted reference to an article
+    that is also cited with a quote adds nothing and is dropped.
+    """
+    found: dict[tuple[str, str], list[str]] = {}
+    start = 0
+    for ref in _INLINE_CITATION.finditer(answer):
+        passages = [
+            next(group for group in passage.groups() if group is not None)
+            for passage in _QUOTED_PASSAGE.finditer(answer, start, ref.start())
+        ]
+        quote = passages[-1].strip() if passages else ""
+        quotes = found.setdefault((ref.group(1), ref.group(2).strip()), [])
+        if quote not in quotes:
+            quotes.append(quote)
+        start = ref.end()
+    return [
+        {"framework": framework, "reference": reference, "quote_snippet": quote}
+        for (framework, reference), quotes in found.items()
+        for quote in ([q for q in quotes if q] or [""])
+    ]
+
 
 def parse_json_response(content: str) -> dict:
-    """Robust JSON extraction from LLM response."""
+    """Robust JSON extraction from LLM response.
+
+    A response that is not JSON, or JSON too broken to repair, becomes the
+    answer with the citations written in its text (_inline_citations): in the
+    live golden v2 of 2026-10-27, 4 correct answers out of 101 reached the user
+    without sources because this fallback returned no citations.
+    """
     if not isinstance(content, str):
         content = str(content)
 
     # Step 1: Try direct parse
     try:
-        return json.loads(content.strip())
+        return _loads(content.strip())
     except json.JSONDecodeError:
         pass
 
@@ -380,24 +477,38 @@ def parse_json_response(content: str) -> dict:
     match = json_block_pattern.search(content)
     if match:
         try:
-            return json.loads(match.group(1).strip())
+            return _loads(match.group(1).strip())
         except json.JSONDecodeError:
             pass
 
     # Step 3: Find JSON object boundaries { ... }
     brace_start = content.find("{")
     brace_end = content.rfind("}")
-    if brace_start != -1 and brace_end > brace_start:
+    has_braces = brace_start != -1 and brace_end > brace_start
+    if has_braces:
         try:
-            return json.loads(content[brace_start : brace_end + 1])
+            return _loads(content[brace_start : brace_end + 1])
         except json.JSONDecodeError:
             pass
 
-    # Step 4: Fallback
+    # Step 4: Escape the stray quotes of quoted law inside the JSON strings
+    if match:
+        repaired = _repair_stray_quotes(match.group(1).strip())
+    elif has_braces:
+        repaired = _repair_stray_quotes(content[brace_start : brace_end + 1])
+    else:
+        repaired = None
+    if repaired is not None:
+        return repaired
+
+    # Step 5: Fallback: the text is the answer (or the answer field of a JSON too
+    # broken to repair), with the citations it writes inline
     logger.warning("Failed to parse JSON from LLM response, returning raw text")
+    field = _ANSWER_FIELD.search(content)
+    answer = _json_string(field.group(1)) if field else content
     return {
-        "answer": content,
-        "citations": [],
+        "answer": answer,
+        "citations": _inline_citations(answer),
         "confidence_score": 0.5,
         "requires_expert_review": True,
         "parse_warning": "Response was not valid JSON; returning raw text.",

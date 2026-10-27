@@ -3,6 +3,7 @@
 Extracted from main.py for single-responsibility.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
 import structlog
@@ -87,6 +88,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("qdrant_unavailable", error=str(e))
         app_state.qdrant_available = False
+
+    # Load the dense model now rather than on the first question, so the questions
+    # that arrive right after a restart find it ready (in the live golden run of
+    # 2026-10-27 two of them built it at once and one failed).
+    if app_state.qdrant_available and app_state.indexer is not None:
+        try:
+            await asyncio.to_thread(app_state.indexer.embed_query, "warm-up")
+            logger.info("embedder_ready", model=app_state.indexer.embedding_model_name)
+        except Exception as e:
+            logger.warning("embedder_warmup_failed", error=str(e))
 
     # Optional cross-encoder reranker (docs/MODELS.md, section 4). Configured but
     # not loadable is a deploy error: refuse to start rather than rank silently worse.

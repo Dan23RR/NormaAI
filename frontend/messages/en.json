@@ -620,7 +620,7 @@
         "notAnswered": "Answer the four AI questions to assess the transparency obligations of Art. 50.",
         "noneHeadline": "From your answers, the transparency obligations of Art. 50 do not concern you directly.",
         "noneReason": "None of the four situations of Art. 50 applies. Outside Art. 50 does not mean outside the AI Act.",
-        "noneNote1": "AI literacy (Art. 4): applicable from {date} to anyone who provides or uses AI systems: staff using AI must have an adequate level of competence.",
+        "noneNote1": "AI literacy (Art. 4): anyone who provides or uses AI systems takes measures to support the AI literacy of the staff who use them, without having to guarantee a specific level. This is the text as replaced by Regulation (EU) 2026/1744 from 27 July 2026; the version applicable from {date} required a sufficient level.",
         "noneNote2": "Prohibited practices (Art. 5): in force from {date} (for example harmful manipulation, social scoring, emotion recognition at work).",
         "noneNote3": "General-purpose AI models: if you provide GPAI models, the Chapter V obligations apply from {date}, with enforcement powers from 2026.",
         "noneNote4": "High risk: postponed, not cancelled. The rules apply from {annexIII} for stand-alone systems (Annex III) and from {annexI} for AI built into regulated products (Annex I); preparation takes months.",
@@ -789,7 +789,7 @@
       "aiact-art4-art5": {
         "title": "AI Act: AI literacy (Art. 4) and prohibited practices (Art. 5)",
         "who": "Anyone who provides or uses AI systems",
-        "what": "Adequate competence of the staff using AI; prohibitions already in force, for example harmful manipulation, social scoring, emotion recognition in the workplace."
+        "what": "Measures to support the AI literacy of the staff using AI, with no specific level to guarantee (Art. 4 as replaced by Regulation (EU) 2026/1744 from 27 July 2026); prohibitions already in force, for example harmful manipulation, social scoring, emotion recognition in the workplace."
       },
       "aiact-gpai": {
         "title": "AI Act: obligations for general-purpose AI models (Chapter V)",

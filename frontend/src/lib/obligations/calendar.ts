@@ -66,7 +66,8 @@ export const OBLIGATION_DATA: ObligationData[] = [
     date: '2025-02-02',
     framework: 'AI_ACT',
     source: 'aiAct5',
-    sourceNote: 'public/scope-aiact.html, note del verdetto',
+    sourceNote:
+      'public/scope-aiact.html, note del verdetto; art. 4 sostituito dal Reg. (UE) 2026/1744 (CELEX 32026R1744, art. 1, punto 5)',
   }),
   entry({
     id: 'aiact-gpai',

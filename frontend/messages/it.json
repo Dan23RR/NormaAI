@@ -620,7 +620,7 @@
         "notAnswered": "Rispondi alle quattro domande sull’IA per valutare gli obblighi di trasparenza dell’art. 50.",
         "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell’art. 50 non vi toccano direttamente.",
         "noneReason": "Nessuna delle quattro situazioni dell’art. 50 risulta applicabile. Fuori dall’art. 50 non significa fuori dall’AI Act.",
-        "noneNote1": "Alfabetizzazione in materia di IA (art. 4): applicabile dal {date} a chiunque fornisca o utilizzi sistemi di IA: il personale che usa l’IA deve avere un livello adeguato di competenza.",
+        "noneNote1": "Alfabetizzazione in materia di IA (art. 4): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione del personale che li usa, senza dover garantire un livello specifico. È il testo sostituito dal regolamento (UE) 2026/1744 dal 27 luglio 2026; la versione applicabile dal {date} chiedeva di garantire un livello sufficiente.",
         "noneNote2": "Pratiche vietate (art. 5): in vigore dal {date} (per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul lavoro).",
         "noneNote3": "Modelli di IA per finalità generali: se fornite modelli GPAI, gli obblighi del Capo V si applicano dal {date}, con poteri di enforcement dal 2026.",
         "noneNote4": "Alto rischio: rinviato, non cancellato. La disciplina si applica dal {annexIII} per i sistemi stand-alone (allegato III) e dal {annexI} per l’IA integrata in prodotti regolamentati (allegato I); la preparazione richiede mesi.",
@@ -789,7 +789,7 @@
       "aiact-art4-art5": {
         "title": "AI Act: alfabetizzazione (art. 4) e pratiche vietate (art. 5)",
         "who": "Chiunque fornisca o utilizzi sistemi di IA",
-        "what": "Competenza adeguata del personale che usa l’IA; divieti già in vigore, per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul luogo di lavoro."
+        "what": "Misure per sostenere l’alfabetizzazione del personale che usa l’IA, senza un livello specifico da garantire (art. 4 sostituito dal regolamento (UE) 2026/1744 dal 27 luglio 2026); divieti già in vigore, per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul luogo di lavoro."
       },
       "aiact-gpai": {
         "title": "AI Act: obblighi per i modelli di IA per finalità generali (Capo V)",

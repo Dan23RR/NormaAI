@@ -501,6 +501,39 @@ class EurLexClient:
         self._consolidated_cache[base] = latest
         return latest
 
+    def list_consolidated_celex(self, celex: str) -> list[str]:
+        """Every CELLAR consolidated id of an act, oldest first.
+
+        The same prefix match as ``fetch_latest_consolidated_celex``, for callers
+        that need the text in force at a given date (src/document_check). It does
+        not degrade: a network or endpoint failure raises, because "the act has
+        no consolidated text" and "CELLAR could not be asked" must not look the
+        same to a verification tool. An act without consolidated texts gives [].
+        """
+        base = celex_utils.base_celex(self._sanitize_celex(celex))
+        prefix = celex_utils.consolidated_prefix(base)
+        if prefix is None:
+            return []
+        query = self._build_sparql_query(
+            """
+        SELECT DISTINCT ?celex WHERE {{
+            ?work cdm:resource_legal_id_celex ?celex .
+            FILTER(STRSTARTS(STR(?celex), "{{prefix}}"))
+        }}
+        ORDER BY ?celex
+        LIMIT 500
+        """,
+            {"prefix": prefix},
+        )
+        bindings = self._execute_sparql(query).get("results", {}).get("bindings", [])
+        return sorted(
+            {
+                value
+                for value in (b.get("celex", {}).get("value", "").strip() for b in bindings)
+                if celex_utils.is_consolidated_celex(value)
+            }
+        )
+
     def resolve_download_celex(self, celex: str, prefer_consolidated: bool = True) -> str:
         """The CELEX to download for an act: its latest consolidated text when
         available and wanted, else the original act."""

@@ -176,7 +176,8 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v7
         with:
-          file: coverage.xml
+          # `files` (plural): v5 dropped the `file` input, so v7 ignores it.
+          files: coverage.xml
         continue-on-error: true
 
   schema:

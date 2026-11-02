@@ -12,15 +12,11 @@ updates:
     open-pull-requests-limit: 5
     labels: ["dependencies", "python"]
     # Held back on purpose; patch releases still come through.
-    # - qdrant-client 1.19 removed NamedVector and NamedSparseVector, which
-    #   src/nlp/embedding/indexer.py imports: move with the Qdrant server.
     # - fastembed changes the embeddings: move with a re-embedding of the
     #   corpus and the retrieval eval (docs/MODELS.md).
     # - docling is mocked in the tests: move after a real conversion check.
     # - sqlalchemy 2.1 is a new minor line (pyproject.toml pins ~2.0).
     ignore:
-      - dependency-name: "qdrant-client"
-        update-types: ["version-update:semver-minor"]
       - dependency-name: "fastembed"
         update-types: ["version-update:semver-minor"]
       - dependency-name: "docling"

@@ -25,7 +25,7 @@ langchain-openai = {version = "^0.3.0", optional = true}
 langgraph = "^0.2.60"
 
 # Vector DB
-qdrant-client = "^1.12.1"
+qdrant-client = "^1.20.0"
 fastembed = "^0.4.2"
 
 # Document processing

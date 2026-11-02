@@ -290,7 +290,7 @@ normaai/
 | **API Framework** | FastAPI 0.115+ with async/await |
 | **Agent Orchestration** | LangGraph (StateGraph) |
 | **LLM Providers** | Google Gemini 2.5 Flash / Anthropic Claude Sonnet 4.5 |
-| **Vector Database** | Qdrant 1.16 (hybrid: multilingual-mpnet dense + BM25 sparse + RRF) |
+| **Vector Database** | Qdrant 1.20 (hybrid: multilingual-mpnet dense + BM25 sparse + RRF) |
 | **Relational Database** | PostgreSQL 16 with SQLAlchemy 2.0 async |
 | **Cache** | Redis 7 |
 | **Authentication** | JWT RS256 + bcrypt password hashing |

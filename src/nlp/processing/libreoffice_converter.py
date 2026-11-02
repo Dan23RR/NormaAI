@@ -142,8 +142,7 @@ def convert_file_to_pdf(input_path: str | Path) -> Path:
     suffix = input_path.suffix.lower().lstrip(".")
     if suffix not in SUPPORTED_INPUT_FORMATS:
         raise ValueError(
-            f"Unsupported input format '.{suffix}'. "
-            f"Supported: {sorted(SUPPORTED_INPUT_FORMATS)}"
+            f"Unsupported input format '.{suffix}'. Supported: {sorted(SUPPORTED_INPUT_FORMATS)}"
         )
 
     # If already PDF, no-op (idempotent)
@@ -179,7 +178,7 @@ def convert_to_pdf(
     fmt = source_format.lower().lstrip(".")
     if fmt not in SUPPORTED_INPUT_FORMATS:
         raise ValueError(
-            f"Unsupported source_format '{fmt}'. " f"Supported: {sorted(SUPPORTED_INPUT_FORMATS)}"
+            f"Unsupported source_format '{fmt}'. Supported: {sorted(SUPPORTED_INPUT_FORMATS)}"
         )
 
     tmpdir = Path(tempfile.mkdtemp(prefix="normaai_loconv_"))

@@ -8,7 +8,7 @@
 ```
 Vercel (frontend, fra1) ──rewrite /api/v1──▶ api.normaai.org (FastAPI, Docker)
                                               ├── PostgreSQL 16 (RLS multi-tenant)
-                                              ├── Qdrant v1.16 (hybrid search)
+                                              ├── Qdrant v1.20 (hybrid search)
                                               ├── Redis 7 (cache + blacklist + lockout)
                                               └── Ollama Qwen (opzionale, local LLM)
 Observability: Prometheus :9090 · Grafana :3001 · Jaeger :16686
@@ -71,6 +71,22 @@ docker compose restart qdrant
   riscaricare gli atti: `python scripts/relabel_quoted_articles.py` (prova, non scrive) e poi `--apply`,
   una volta per collection, con QDRANT_COLLECTION, EMBEDDING_MODEL ed EMBEDDING_DIMENSION di quella collection.
 - I dati Qdrant sono **ricostruibili** dal crawl: non è una perdita dati permanente.
+- **Aggiornare Qdrant.** Server (immagine in `docker-compose.yml`, `docker-compose.infra.yml` e nella CI)
+  e `qdrant-client` (`pyproject.toml`) vanno alla stessa minor: il client avvisa se distano più di una.
+  I dati su disco sono compatibili solo tra due minor consecutive, quindi un volume creato con una
+  versione più vecchia passa da tutte le minor intermedie, una per volta. Dalla 1.16 alla 1.20:
+  ```powershell
+  docker compose stop qdrant
+  docker volume ls | findstr qdrant_data          # il nome del volume, con il prefisso del progetto
+  foreach ($v in "v1.17.1", "v1.18.3", "v1.19.2") {
+    docker run -d --name qdrant-upgrade -p 127.0.0.1:6333:6333 -v <volume>:/qdrant/storage qdrant/qdrant:$v
+    # aspetta che http://localhost:6333/healthz risponda e che i log non mostrino errori, poi:
+    docker rm -f qdrant-upgrade
+  }
+  docker compose up -d qdrant                     # parte con l'immagine nuova
+  ```
+  In alternativa si ricrea la collection con il seed (`--recreate`). Un server nuovo parte vuoto e non
+  ha questo problema.
 
 ## 4. LLM provider down (Gemini/Anthropic)
 

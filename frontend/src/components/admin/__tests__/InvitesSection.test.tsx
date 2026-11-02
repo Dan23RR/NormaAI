@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -27,6 +27,10 @@ const CREATED = {
   used_at: null,
 }
 
+// The status badge compares expires_at with the clock: pin it inside the
+// invitation's validity so the pending invite reads "Attivo" on any run date.
+const NOW = new Date('2026-10-24T12:00:00Z')
+
 function renderSection(language: 'it' | 'en' = 'it') {
   return renderWithIntl(
     <ToastProvider>
@@ -38,9 +42,14 @@ function renderSection(language: 'it' | 'en' = 'it') {
 
 describe('InvitesSection', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: NOW })
     vi.clearAllMocks()
     ;(api.get as Mock).mockResolvedValue([])
     ;(api.post as Mock).mockResolvedValue(CREATED)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('asks for a valid email before calling the API', async () => {

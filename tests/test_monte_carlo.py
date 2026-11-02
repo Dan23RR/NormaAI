@@ -111,9 +111,9 @@ class TestFineStructures:
 
     def test_fine_percentages_are_positive(self):
         for fw, structure in FINE_STRUCTURES.items():
-            assert (
-                structure.max_percentage_turnover > 0
-            ), f"{fw}: max_percentage_turnover should be positive"
+            assert structure.max_percentage_turnover > 0, (
+                f"{fw}: max_percentage_turnover should be positive"
+            )
 
     def test_fine_absolute_maximums_are_positive(self):
         for fw, structure in FINE_STRUCTURES.items():
@@ -121,9 +121,9 @@ class TestFineStructures:
 
     def test_enforcement_probability_in_valid_range(self):
         for fw, structure in FINE_STRUCTURES.items():
-            assert (
-                0 < structure.enforcement_probability_base < 1
-            ), f"{fw}: enforcement_probability_base should be in (0, 1)"
+            assert 0 < structure.enforcement_probability_base < 1, (
+                f"{fw}: enforcement_probability_base should be in (0, 1)"
+            )
 
     def test_typical_fine_range_is_ordered(self):
         """Lower bound should be less than upper bound."""
@@ -141,9 +141,9 @@ class TestFineStructures:
 
     def test_remediation_cost_multiplier_reasonable(self):
         for fw, structure in FINE_STRUCTURES.items():
-            assert (
-                0 < structure.remediation_cost_multiplier < 1
-            ), f"{fw}: remediation should be a fraction of max fine"
+            assert 0 < structure.remediation_cost_multiplier < 1, (
+                f"{fw}: remediation should be a fraction of max fine"
+            )
 
 
 class TestSeverityMultipliers:

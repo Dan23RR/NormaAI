@@ -407,7 +407,7 @@ def generate_judge_report(evaluations: list[JudgeEvaluation]) -> str:
         [
             "╠══════════════════════════════════════════════════════════╣",
             f"║  Overall Score: {avg_overall:.2f}/5.0                   ║",
-            f"║  Passed: {passed}/{len(evaluations)} ({100*passed/len(evaluations):.0f}%)                        ║",
+            f"║  Passed: {passed}/{len(evaluations)} ({100 * passed / len(evaluations):.0f}%)                        ║",
             "╚══════════════════════════════════════════════════════════╝",
         ]
     )

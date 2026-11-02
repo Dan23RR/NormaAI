@@ -678,8 +678,7 @@ class EurLexClient:
 
                 if status == 200 and response.text:
                     logger.info(
-                        f"Downloaded full text for {celex} "
-                        f"({len(response.text)} chars) via CELLAR"
+                        f"Downloaded full text for {celex} ({len(response.text)} chars) via CELLAR"
                     )
                     return response.text
 

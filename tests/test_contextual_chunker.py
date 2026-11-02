@@ -42,8 +42,7 @@ class TestEnrichSingle:
         assert result.text == "Member States shall ensure compliance."
         # Framework key resolved to its display name.
         expected_prefix = (
-            "[General Data Protection Regulation (EU) 2016/679 | "
-            "Art. 32 | Security of Processing]"
+            "[General Data Protection Regulation (EU) 2016/679 | Art. 32 | Security of Processing]"
         )
         assert result.contextualized_text == (
             f"{expected_prefix}\nMember States shall ensure compliance."
@@ -94,7 +93,7 @@ class TestEnrichSingle:
         )
         # Empty article is filtered; prefix is framework | section.
         assert result.contextualized_text == (
-            "[Digital Operational Resilience Act (EU) 2022/2554 | " "Operational Resilience]\nbody"
+            "[Digital Operational Resilience Act (EU) 2022/2554 | Operational Resilience]\nbody"
         )
 
     def test_known_frameworks_resolve_to_display_names(self):

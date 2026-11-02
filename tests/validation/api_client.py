@@ -220,7 +220,7 @@ class NormaAIClient:
         if resp.status_code == 422:
             detail = resp.json().get("detail", resp.text)
             raise AuthenticationError(
-                f"Login validation error (422): {detail}\n" f"Email used: {email}"
+                f"Login validation error (422): {detail}\nEmail used: {email}"
             )
         resp.raise_for_status()
         return resp.json()
@@ -239,7 +239,7 @@ class NormaAIClient:
         if resp.status_code == 422:
             detail = resp.json().get("detail", resp.text)
             raise AuthenticationError(
-                f"Registration validation error (422): {detail}\n" f"Email used: {email}"
+                f"Registration validation error (422): {detail}\nEmail used: {email}"
             )
         resp.raise_for_status()
         return resp.json()
@@ -417,7 +417,7 @@ class NormaAIClient:
                 self._error_count += 1
                 delay = self.config.retry_delay_base * (2**attempt)
                 logger.warning(
-                    f"Timeout on {endpoint} (attempt {attempt + 1}), " f"retrying in {delay:.1f}s"
+                    f"Timeout on {endpoint} (attempt {attempt + 1}), retrying in {delay:.1f}s"
                 )
                 if attempt < self.config.max_retries:
                     await asyncio.sleep(delay)
@@ -430,8 +430,7 @@ class NormaAIClient:
 
             except httpx.ConnectError:
                 raise ConnectionError(
-                    f"Cannot connect to NormaAI at {self.config.base_url}. "
-                    f"Is the backend running?"
+                    f"Cannot connect to NormaAI at {self.config.base_url}. Is the backend running?"
                 )
 
         raise APIError(f"Failed after {self.config.max_retries + 1} attempts on {endpoint}")

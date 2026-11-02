@@ -174,25 +174,25 @@ class TestIndexingPrefixes:
 class TestSearchPrefixes:
     def test_e5_query_is_embedded_with_query_prefix(self):
         idx = make_indexer(E5)
-        with patch.object(idx, "_search_compat", side_effect=[[], []]) as mock_sc:
+        with patch.object(idx, "_query_points", side_effect=[[], []]) as mock_qp:
             idx.hybrid_search("obblighi di rendicontazione", limit=5)
 
         assert idx._embedder.calls == [["query: obblighi di rendicontazione"]]
-        dense_qv = mock_sc.call_args_list[0].kwargs["query_vector"]
-        sparse_qv = mock_sc.call_args_list[1].kwargs["query_vector"]
-        assert dense_qv.name == "dense" and dense_qv.vector == [0.5] * 4
+        dense = mock_qp.call_args_list[0].kwargs
+        sparse = mock_qp.call_args_list[1].kwargs
+        assert dense["using"] == "dense" and dense["query"] == [0.5] * 4
         # BM25 searches the raw query: "query:" must not become a search term.
-        assert sparse_qv.vector == _text_to_sparse_vector("obblighi di rendicontazione")
+        assert sparse["query"] == _text_to_sparse_vector("obblighi di rendicontazione")
 
     def test_mpnet_query_is_embedded_unchanged(self):
         idx = make_indexer(MPNET)
-        with patch.object(idx, "_search_compat", side_effect=[[], []]):
+        with patch.object(idx, "_query_points", side_effect=[[], []]):
             idx.hybrid_search("sustainability reporting")
         assert idx._embedder.calls == [["sustainability reporting"]]
 
     def test_default_model_query_is_embedded_unchanged(self):
         idx = make_indexer()
-        with patch.object(idx, "_search_compat", side_effect=[[], []]):
+        with patch.object(idx, "_query_points", side_effect=[[], []]):
             idx.hybrid_search("q")
         assert idx._embedder.calls == [["q"]]
 

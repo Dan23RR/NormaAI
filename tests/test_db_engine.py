@@ -111,9 +111,9 @@ class TestInitListenerRegistration:
             assert mgr._engine is not None
             assert mgr._sessionmaker is not None
             assert mgr._engine.url.get_backend_name() == "postgresql"
-            assert event.contains(
-                mgr._engine.sync_engine, "checkin", _reset_rls_on_checkin
-            ), "postgresql engine must register the RLS checkin reset hook"
+            assert event.contains(mgr._engine.sync_engine, "checkin", _reset_rls_on_checkin), (
+                "postgresql engine must register the RLS checkin reset hook"
+            )
         finally:
             # dispose without awaiting close() (no event loop needed here): the
             # lazily-built engine never opened a connection.

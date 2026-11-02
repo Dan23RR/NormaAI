@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: golden-set-results
           path: tests/validation/reports/
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: full-regression-results
           path: tests/validation/reports/
@@ -217,7 +217,7 @@ jobs:
 
       - name: Upload Red Team Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: red-team-results
           path: tests/validation/report.json

@@ -125,7 +125,7 @@ npx promptfoo eval -c tests/validation/promptfoo_config.yaml --filter-pattern "c
     "document": {...},  # Privacy policy, DPA, etc.
     "company_profile": {...},  # Size, sector, jurisdiction
     "expected_findings": [...],  # GDPR Art. X, severity, type
-    "difficulty": 1-5,
+    "difficulty": 1 - 5,
     "tags": ["golden", "edge_case", ...],
     "enabled": True,
 }

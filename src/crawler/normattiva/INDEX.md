@@ -32,9 +32,9 @@ Async HTTP client for the Normattiva Open Data API.
 ```python
 client = NormattivaOpenDataClient(
     base_url="https://www.normattiva.it/opendata",
-    rate_limit_delay=1.0,    # 1 second between requests
-    timeout=30.0,             # 30 second timeout
-    max_retries=3             # 3 retry attempts
+    rate_limit_delay=1.0,  # 1 second between requests
+    timeout=30.0,  # 30 second timeout
+    max_retries=3,  # 3 retry attempts
 )
 ```
 
@@ -93,15 +93,11 @@ Static URN validation, parsing, and extraction utilities.
 async with NormattivaOpenDataClient() as client:
     # Search
     results = await client.search(query="energy", anno=2024)
-    
+
     # Get first result's full text
     if results.results:
         act = results.results[0]
-        text = await client.get_atto(
-            tipo=act.tipo,
-            anno=act.anno,
-            numero=act.numero
-        )
+        text = await client.get_atto(tipo=act.tipo, anno=act.anno, numero=act.numero)
 ```
 
 ### Pattern 2: URN Extraction and Validation
@@ -124,10 +120,7 @@ valid = await URNValidator.verify_remote(urn, client)
 
 ```python
 async with NormattivaOpenDataClient() as client:
-    tasks = [
-        client.search(query=q)
-        for q in ["tax", "health", "environment"]
-    ]
+    tasks = [client.search(query=q) for q in ["tax", "health", "environment"]]
     results = await asyncio.gather(*tasks)
 ```
 
@@ -170,6 +163,7 @@ All methods implement comprehensive error handling:
 Enable logging:
 ```python
 import logging
+
 logging.basicConfig(level=logging.INFO)
 ```
 

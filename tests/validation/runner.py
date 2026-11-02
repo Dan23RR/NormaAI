@@ -599,8 +599,7 @@ Examples:
         if api_client:
             stats = api_client.stats
             print(
-                f"\nAPI Stats: {stats['total_requests']} requests, "
-                f"{stats['total_errors']} errors"
+                f"\nAPI Stats: {stats['total_requests']} requests, {stats['total_errors']} errors"
             )
 
     finally:

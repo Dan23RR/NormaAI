@@ -11,6 +11,18 @@ updates:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
     labels: ["dependencies", "python"]
+    # Held back on purpose; patch releases still come through.
+    # - fastembed changes the embeddings: move with a re-embedding of the
+    #   corpus and the retrieval eval (docs/MODELS.md).
+    # - docling is mocked in the tests: move after a real conversion check.
+    # - sqlalchemy 2.1 is a new minor line (pyproject.toml pins ~2.0).
+    ignore:
+      - dependency-name: "fastembed"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "docling"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "sqlalchemy"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: npm
     directory: "/frontend"
@@ -22,12 +34,22 @@ updates:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
     labels: ["dependencies", "frontend"]
+    # Tailwind 4 is a migration (CSS-first configuration, new PostCSS plugin,
+    # renamed utilities), not a version bump.
+    ignore:
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
       day: monday
+    # One weekly pull request for all actions: three separate ones filled the
+    # limit and held back the rest.
+    groups:
+      github-actions:
+        patterns: ["*"]
     open-pull-requests-limit: 3
     labels: ["dependencies", "ci"]
 
@@ -38,3 +60,8 @@ updates:
       day: monday
     open-pull-requests-limit: 3
     labels: ["dependencies", "docker"]
+    # The image follows pyproject.toml (python >=3.11,<3.13) and the CI (3.11):
+    # change the three together, not through a bump of the tag.
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

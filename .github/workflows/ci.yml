@@ -19,6 +19,15 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  # Trivy for the report-only scans in the docker and security jobs, pinned by
+  # digest: a tag can be repointed, and in March 2026 a malicious Trivy 0.69.4
+  # was published on every registry, GHCR included. Keep the version equal to
+  # the `version` default of the trivy-action pinned in release.yml, so CI
+  # reports what the release gate will find. Dependabot does not update images
+  # in run steps; to update, check that the release is not in Trivy's security
+  # advisories, then copy the "Digest:" line (the multi-arch index) printed by
+  #   docker buildx imagetools inspect ghcr.io/aquasecurity/trivy:<version>
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
 
 jobs:
   lint:
@@ -323,7 +332,7 @@ jobs:
         # Dependabot; this step never blocks the build.
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            ghcr.io/aquasecurity/trivy:latest image \
+            "$TRIVY_IMAGE" image \
             --severity CRITICAL,HIGH --exit-code 0 --no-progress \
             normaai:${{ github.sha }} || true
 
@@ -386,7 +395,7 @@ jobs:
         # CVEs are also tracked by Dependabot.
         run: |
           docker run --rm -v "${{ github.workspace }}:/work" \
-            ghcr.io/aquasecurity/trivy:latest fs \
+            "$TRIVY_IMAGE" fs \
             --severity CRITICAL,HIGH --exit-code 0 --no-progress /work || true
 
   sbom:

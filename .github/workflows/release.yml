@@ -61,7 +61,12 @@ jobs:
         # Dependabot still updates SHA pins and keeps the version comment.
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          # The image loaded above, by the first tag metadata-action generated
+          # (ghcr.io/dan23rr/normaai:0.3.0 for the tag v0.3.0). Not built from
+          # github.repository and github.ref_name: Docker rejects the uppercase
+          # in Dan23RR/NormaAI (metadata-action lowercases the name) and the
+          # image tags carry no leading v.
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           format: 'table'
@@ -80,7 +85,8 @@ jobs:
       - name: Generate SBOM for release image
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          # Same image as the Trivy gate.
+          image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           format: cyclonedx-json
           output-file: sbom-release.cdx.json
 

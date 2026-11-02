@@ -8,8 +8,8 @@ RRF and basic filter shape). This file targets the parts NOT exercised there:
   payload-index creation)
 - index_chunks / index_contextual_chunks (point building, upsert calls,
   empty-input -> 0, contextualized_text vs original text)
-- _search_compat (modern query_points path with NamedVector `using=`,
-  legacy .search fallback, and the no-API RuntimeError)
+- _query_points (query_points with `using=` for the dense and the sparse
+  vector; qdrant-client 1.19 removed the legacy .search)
 - the IsEmptyCondition (NOT IsNullCondition) null-filter logic for
   superseded_by and org_id (the e6346c0 commit fix: missing-or-null keys)
 - delete_org_chunks (falsy org_id no-op guard) and get_collection_stats
@@ -37,9 +37,8 @@ from qdrant_client.models import (
     Filter,
     IsEmptyCondition,
     Modifier,
-    NamedSparseVector,
-    NamedVector,
     PointStruct,
+    SparseVector,
 )
 
 from src.nlp.embedding.indexer import (
@@ -340,23 +339,22 @@ class TestIndexChunks:
 
 
 # --------------------------------------------------------------------------- #
-#  _search_compat                                                             #
+#  _query_points                                                              #
 # --------------------------------------------------------------------------- #
 
 
-class TestSearchCompat:
-    def test_modern_query_points_uses_named_vector_using_param(self):
-        """Modern API: query=<raw vector>, using=<name> (the NamedVector fix)."""
+class TestQueryPoints:
+    def test_dense_search_passes_the_vector_and_its_name(self):
+        """query=<raw vector>, using=<vector name>: the Query API form."""
         client = MagicMock()
-        # query_points returns a QueryResponse with .points
         response_points = [SimpleNamespace(id=1), SimpleNamespace(id=2)]
         client.query_points.return_value = SimpleNamespace(points=response_points)
         idx = make_indexer(client)
 
-        nv = NamedVector(name="dense", vector=[0.1, 0.2, 0.3])
-        out = idx._search_compat(
+        out = idx._query_points(
             collection_name="eu_regulations",
-            query_vector=nv,
+            using="dense",
+            query=[0.1, 0.2, 0.3],
             query_filter=None,
             limit=5,
             with_payload=True,
@@ -365,23 +363,20 @@ class TestSearchCompat:
         assert out == response_points
         client.query_points.assert_called_once()
         kw = client.query_points.call_args.kwargs
-        # query gets the RAW vector, not the NamedVector object.
         assert kw["query"] == [0.1, 0.2, 0.3]
         assert kw["using"] == "dense"
         assert kw["limit"] == 5
-        # Legacy .search must NOT be used when modern path succeeds.
-        client.search.assert_not_called()
 
-    def test_modern_path_extracts_name_from_sparse_named_vector(self):
+    def test_sparse_search_passes_the_sparse_vector_and_its_name(self):
         client = MagicMock()
         client.query_points.return_value = SimpleNamespace(points=[])
         idx = make_indexer(client)
 
         sparse = _text_to_sparse_vector("article 29 threshold")
-        nsv = NamedSparseVector(name="bm25", vector=sparse)
-        idx._search_compat(
+        idx._query_points(
             collection_name="eu_regulations",
-            query_vector=nsv,
+            using="bm25",
+            query=sparse,
             query_filter=None,
             limit=3,
             with_payload=True,
@@ -390,59 +385,22 @@ class TestSearchCompat:
         assert kw["using"] == "bm25"
         assert kw["query"] == sparse
 
-    def test_falls_back_to_legacy_search_on_value_error(self):
-        """If query_points raises ValueError('Unsupported query type'), fall back."""
+    def test_an_error_is_raised_not_hidden(self):
+        """There is no legacy fallback any more: a rejected query surfaces."""
         client = MagicMock()
         client.query_points.side_effect = ValueError("Unsupported query type")
-        legacy_results = [SimpleNamespace(id="x")]
-        client.search.return_value = legacy_results
         idx = make_indexer(client)
 
-        nv = NamedVector(name="dense", vector=[0.5, 0.5])
-        out = idx._search_compat(
-            collection_name="eu_regulations",
-            query_vector=nv,
-            query_filter=None,
-            limit=2,
-            with_payload=True,
-        )
-
-        assert out is legacy_results
-        # Legacy path receives the ORIGINAL NamedVector via query_vector=.
-        kw = client.search.call_args.kwargs
-        assert kw["query_vector"] is nv
-
-    def test_response_without_points_attr_returned_as_is(self):
-        """query_points returning a bare list (older shape) is returned directly."""
-        client = MagicMock()
-        bare = [SimpleNamespace(id=9)]
-        client.query_points.return_value = bare
-        idx = make_indexer(client)
-
-        out = idx._search_compat(
-            collection_name="eu_regulations",
-            query_vector=NamedVector(name="dense", vector=[1.0]),
-            query_filter=None,
-            limit=1,
-            with_payload=False,
-        )
-        assert out is bare
-
-    def test_raises_when_no_search_api_available(self):
-        """Neither query_points nor search -> explicit RuntimeError."""
-        # A spec'd object exposes ONLY the listed attributes; everything else
-        # raises AttributeError, so hasattr(...) is False for both APIs.
-        client = MagicMock(spec=["get_collections"])
-        idx = make_indexer(client)
-
-        with pytest.raises(RuntimeError, match="neither .query_points"):
-            idx._search_compat(
+        with pytest.raises(ValueError, match="Unsupported query type"):
+            idx._query_points(
                 collection_name="eu_regulations",
-                query_vector=NamedVector(name="dense", vector=[1.0]),
+                using="dense",
+                query=[0.5, 0.5],
                 query_filter=None,
-                limit=1,
+                limit=2,
                 with_payload=True,
             )
+        client.query_points.assert_called_once()
 
 
 def _timeout() -> ResponseHandlingException:
@@ -451,9 +409,10 @@ def _timeout() -> ResponseHandlingException:
 
 
 def _search(idx):
-    return idx._search_compat(
+    return idx._query_points(
         collection_name="eu_regulations",
-        query_vector=NamedVector(name="dense", vector=[0.1, 0.2]),
+        using="dense",
+        query=[0.1, 0.2],
         query_filter=None,
         limit=5,
         with_payload=True,
@@ -484,12 +443,6 @@ class TestTimeoutRetry:
             _search(make_indexer(client))
         client.query_points.assert_called_once()
 
-    def test_the_legacy_search_is_retried_too(self):
-        client = MagicMock(spec=["search"])
-        client.search.side_effect = [_timeout(), ["hit"]]
-        assert _search(make_indexer(client)) == ["hit"]
-        assert client.search.call_count == 2
-
     def test_timeouts_are_recognised_through_wrappers(self):
         assert _is_timeout(_timeout())
         assert _is_timeout(TimeoutError())
@@ -505,7 +458,7 @@ class TestTimeoutRetry:
 
 
 # --------------------------------------------------------------------------- #
-#  hybrid_search end-to-end (with mocked search compat)                       #
+#  hybrid_search end-to-end (with mocked _query_points)                       #
 # --------------------------------------------------------------------------- #
 
 
@@ -522,16 +475,16 @@ class TestHybridSearch:
             SimpleNamespace(id="b", payload={"text": "tb", "celex": "C2", "framework": "CSRD"}),
             SimpleNamespace(id="c", payload={"text": "tc", "celex": "C3", "framework": "DORA"}),
         ]
-        # First _search_compat call = dense, second = sparse.
-        with patch.object(idx, "_search_compat", side_effect=[dense, sparse]) as mock_sc:
+        # First _query_points call = dense, second = sparse.
+        with patch.object(idx, "_query_points", side_effect=[dense, sparse]) as mock_qp:
             results = idx.hybrid_search("sustainability reporting", limit=10)
 
-        assert mock_sc.call_count == 2
-        # The first call must carry a NamedVector(name="dense"), second a sparse one.
-        first_qv = mock_sc.call_args_list[0].kwargs["query_vector"]
-        second_qv = mock_sc.call_args_list[1].kwargs["query_vector"]
-        assert isinstance(first_qv, NamedVector) and first_qv.name == "dense"
-        assert isinstance(second_qv, NamedSparseVector) and second_qv.name == "bm25"
+        assert mock_qp.call_count == 2
+        # The first call searches the dense vector, the second the BM25 one.
+        first = mock_qp.call_args_list[0].kwargs
+        second = mock_qp.call_args_list[1].kwargs
+        assert first["using"] == "dense" and isinstance(first["query"], list)
+        assert second["using"] == "bm25" and isinstance(second["query"], SparseVector)
 
         # Result dicts carry payload-derived fields; "b" (in both) ranks first.
         assert [r["id"] for r in results][0] == "b"
@@ -547,17 +500,17 @@ class TestHybridSearch:
         sparse = [SimpleNamespace(id=f"c{i * 7 % 60}", payload={"text": "t"}) for i in range(60)]
 
         def search(**kwargs):
-            ranked = dense if isinstance(kwargs["query_vector"], NamedVector) else sparse
+            ranked = dense if kwargs["using"] == "dense" else sparse
             return ranked[: kwargs["limit"]]
 
-        with patch.object(idx, "_search_compat", side_effect=search) as mock_sc:
+        with patch.object(idx, "_query_points", side_effect=search) as mock_qp:
             default = idx.hybrid_search("q", limit=10)
-            assert [c.kwargs["limit"] for c in mock_sc.call_args_list] == [30, 30]
+            assert [c.kwargs["limit"] for c in mock_qp.call_args_list] == [30, 30]
             small = idx.hybrid_search("q", limit=15, depth=45)
             large = idx.hybrid_search("q", limit=30, depth=45)
-            assert [c.kwargs["limit"] for c in mock_sc.call_args_list[2:]] == [45, 45, 45, 45]
+            assert [c.kwargs["limit"] for c in mock_qp.call_args_list[2:]] == [45, 45, 45, 45]
             idx.hybrid_search("q", limit=30, depth=5)
-            assert mock_sc.call_args_list[-1].kwargs["limit"] == 30  # never below limit
+            assert mock_qp.call_args_list[-1].kwargs["limit"] == 30  # never below limit
 
         assert len(default) == 10
         assert len(large) == 30
@@ -577,7 +530,7 @@ class TestHybridSearch:
             SimpleNamespace(id="b", score=7.5, payload={"text": "tb", "framework": "CSRD"}),
             SimpleNamespace(id="c", score=3.1, payload={"text": "tc", "framework": "DORA"}),
         ]
-        with patch.object(idx, "_search_compat", side_effect=[dense, sparse]):
+        with patch.object(idx, "_query_points", side_effect=[dense, sparse]):
             results = idx.hybrid_search("q", limit=10)
 
         by_id = {r["id"]: r for r in results}
@@ -606,7 +559,7 @@ class TestHybridSearch:
         }
         dense = [SimpleNamespace(id="a", payload=payload)]
         old = [SimpleNamespace(id="b", payload={"text": "old", "celex": "32016R0679"})]
-        with patch.object(idx, "_search_compat", side_effect=[dense, old]):
+        with patch.object(idx, "_query_points", side_effect=[dense, old]):
             results = {r["id"]: r for r in idx.hybrid_search("q", limit=10)}
         assert results["a"]["source_celex"] == "02024R1689-20260727"
         assert results["a"]["act_title"] == "Artificial Intelligence Act"
@@ -619,7 +572,7 @@ class TestHybridSearch:
         idx = make_indexer(client)
         dense = [SimpleNamespace(id=f"d{i}", payload={"text": f"d{i}"}) for i in range(10)]
         sparse = [SimpleNamespace(id=f"s{i}", payload={"text": f"s{i}"}) for i in range(10)]
-        with patch.object(idx, "_search_compat", side_effect=[dense, sparse]):
+        with patch.object(idx, "_query_points", side_effect=[dense, sparse]):
             results = idx.hybrid_search("query", limit=3)
         assert len(results) == 3
 
@@ -627,10 +580,10 @@ class TestHybridSearch:
         """The same built filter is handed to both the dense and sparse search."""
         client = MagicMock()
         idx = make_indexer(client)
-        with patch.object(idx, "_search_compat", side_effect=[[], []]) as mock_sc:
+        with patch.object(idx, "_query_points", side_effect=[[], []]) as mock_qp:
             idx.hybrid_search("q", org_id="org-1")
-        f1 = mock_sc.call_args_list[0].kwargs["query_filter"]
-        f2 = mock_sc.call_args_list[1].kwargs["query_filter"]
+        f1 = mock_qp.call_args_list[0].kwargs["query_filter"]
+        f2 = mock_qp.call_args_list[1].kwargs["query_filter"]
         assert f1 is f2
         assert isinstance(f1, Filter)
 
@@ -1142,9 +1095,9 @@ class TestCorpusMeta:
     def test_hybrid_search_never_returns_the_meta_point(self):
         client = MagicMock()
         idx = make_indexer(client)
-        with patch.object(idx, "_search_compat", side_effect=[[], []]) as mock_sc:
+        with patch.object(idx, "_query_points", side_effect=[[], []]) as mock_qp:
             idx.hybrid_search("q", include_superseded=True, allow_all_orgs=True)
-        flt = mock_sc.call_args_list[0].kwargs["query_filter"]
+        flt = mock_qp.call_args_list[0].kwargs["query_filter"]
         assert isinstance(flt, Filter)
         excluded = [c for c in (flt.must_not or []) if isinstance(c, FieldCondition)]
         assert [(c.key, c.match.value) for c in excluded] == [("kind", CORPUS_META_KIND)]
@@ -1188,8 +1141,8 @@ class TestFilterExtensions:
     def test_hybrid_search_passes_lang_filter(self):
         client = MagicMock()
         idx = make_indexer(client)
-        with patch.object(idx, "_search_compat", side_effect=[[], []]) as mock_sc:
+        with patch.object(idx, "_query_points", side_effect=[[], []]) as mock_qp:
             idx.hybrid_search("q", lang_filter="IT")
-        flt = mock_sc.call_args_list[0].kwargs["query_filter"]
+        flt = mock_qp.call_args_list[0].kwargs["query_filter"]
         keys = {c.key for c in _leaf_conditions(flt) if isinstance(c, FieldCondition)}
         assert "lang" in keys

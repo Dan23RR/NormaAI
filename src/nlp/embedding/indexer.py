@@ -40,8 +40,6 @@ from qdrant_client.models import (
     IsEmptyCondition,
     MatchValue,
     Modifier,
-    NamedSparseVector,
-    NamedVector,
     PayloadField,
     PointStruct,
     SparseVector,
@@ -712,55 +710,33 @@ class HybridIndexer:
 
     # ─── Search ─────────────────────────────────────────────────
 
-    def _search_compat(
-        self, collection_name: str, query_vector, query_filter, limit: int, with_payload: bool
-    ):
+    def _query_points(
+        self,
+        collection_name: str,
+        using: str,
+        query: list[float] | SparseVector,
+        query_filter: Filter | None,
+        limit: int,
+        with_payload: bool,
+    ) -> list[Any]:
         """
-        Compatibility wrapper across qdrant-client versions.
+        One search on a named vector: query_points(query=<vector>, using=<name>).
 
-        query_vector is a NamedVector / NamedSparseVector. The modern API
-        (qdrant-client >= 1.12) wants query_points(query=<vector>, using=<name>):
-        passing the Named* object straight to `query` raises
-        ValueError("Unsupported query type"). The legacy .search() still accepts
-        the Named* form. We extract (name, vector), try the modern API first, and
-        fall back to legacy on any incompatibility. A request that times out is
-        sent once more (_once_more_on_timeout).
+        qdrant-client 1.19 removed the legacy .search() and its NamedVector /
+        NamedSparseVector wrappers, so the Query API is the only path, for the
+        dense and the sparse vector alike. A request that times out is sent once
+        more (_once_more_on_timeout); any other error is raised.
         """
-        name = getattr(query_vector, "name", None)
-        vector = getattr(query_vector, "vector", query_vector)
-
-        # Try modern API first (qdrant-client >= 1.12)
-        if name is not None and hasattr(self.client, "query_points"):
-            try:
-                response = _once_more_on_timeout(
-                    self.client.query_points,
-                    collection_name=collection_name,
-                    query=vector,
-                    using=name,
-                    query_filter=query_filter,
-                    limit=limit,
-                    with_payload=with_payload,
-                )
-                # query_points returns a QueryResponse with .points attribute
-                return response.points if hasattr(response, "points") else response
-            except (TypeError, AttributeError, ImportError, ValueError):
-                pass
-
-        # Fallback to legacy .search() API
-        if hasattr(self.client, "search"):
-            return _once_more_on_timeout(
-                self.client.search,
-                collection_name=collection_name,
-                query_vector=query_vector,
-                query_filter=query_filter,
-                limit=limit,
-                with_payload=with_payload,
-            )
-
-        raise RuntimeError(
-            "qdrant-client has neither .query_points() nor .search(). "
-            "Install qdrant-client >= 1.7: pip install --upgrade qdrant-client"
+        response = _once_more_on_timeout(
+            self.client.query_points,
+            collection_name=collection_name,
+            query=query,
+            using=using,
+            query_filter=query_filter,
+            limit=limit,
+            with_payload=with_payload,
         )
+        return list(response.points)
 
     def hybrid_search(
         self,
@@ -778,8 +754,8 @@ class HybridIndexer:
         """
         Hybrid search with Reciprocal Rank Fusion.
 
-        Runs dense + sparse search separately, then fuses rankings.
-        Compatible with qdrant-client v1.7+ (search) and v1.12+ (query_points).
+        Runs dense + sparse search separately (query_points on each named
+        vector), then fuses rankings.
 
         Args:
             query: Search query text
@@ -816,18 +792,20 @@ class HybridIndexer:
         depth = max(depth or limit * 3, limit)
 
         # Dense search
-        dense_results = self._search_compat(
+        dense_results = self._query_points(
             collection_name=self.COLLECTION_NAME,
-            query_vector=NamedVector(name=DENSE_VECTOR, vector=dense_vec),
+            using=DENSE_VECTOR,
+            query=dense_vec,
             query_filter=search_filter,
             limit=depth,
             with_payload=True,
         )
 
         # Sparse search
-        sparse_results = self._search_compat(
+        sparse_results = self._query_points(
             collection_name=self.COLLECTION_NAME,
-            query_vector=NamedSparseVector(name=SPARSE_VECTOR, vector=query_sparse),
+            using=SPARSE_VECTOR,
+            query=query_sparse,
             query_filter=search_filter,
             limit=depth,
             with_payload=True,

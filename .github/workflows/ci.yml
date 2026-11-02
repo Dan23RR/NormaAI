@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -109,7 +109,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -167,7 +167,7 @@ jobs:
           POSTGRES_RLS_TEST_URL: postgresql+asyncpg://rls_tester:rls-test-pw@localhost:5432/normaai_test
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: coverage.xml
@@ -213,7 +213,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -401,7 +401,7 @@ jobs:
           format: cyclonedx-json
           output-file: sbom.cdx.json
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx
           path: sbom.cdx.json

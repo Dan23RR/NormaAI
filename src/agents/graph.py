@@ -254,9 +254,9 @@ def _build_graph(*, use_async_nodes: bool = False):
         # If cache miss → complexity_tier becomes "medium" → need retrieve
         graph.add_conditional_edges(
             "simple_response",
-            lambda state: "confidence_check"
-            if state.get("result_json", "{}") != "{}"
-            else "retrieve",
+            lambda state: (
+                "confidence_check" if state.get("result_json", "{}") != "{}" else "retrieve"
+            ),
             {"confidence_check": "confidence_check", "retrieve": "retrieve"},
         )
     else:

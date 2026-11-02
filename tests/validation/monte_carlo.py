@@ -519,9 +519,9 @@ class MonteCarloEngine:
 def format_eur(amount: float) -> str:
     """Format EUR amount with thousands separator."""
     if amount >= 1_000_000:
-        return f"€{amount/1_000_000:.1f}M"
+        return f"€{amount / 1_000_000:.1f}M"
     elif amount >= 1_000:
-        return f"€{amount/1_000:.0f}K"
+        return f"€{amount / 1_000:.0f}K"
     else:
         return f"€{amount:.0f}"
 

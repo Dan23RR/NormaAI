@@ -543,7 +543,7 @@ class TestCrawlAllCoreFrameworks:
         for meta in out:
             assert meta.framework in CORE_FRAMEWORKS
             assert meta.full_text_url == (
-                "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/" f"?uri=CELEX:{meta.celex}"
+                f"https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:{meta.celex}"
             )
 
     def test_amendments_attached_to_metadata(self, client):

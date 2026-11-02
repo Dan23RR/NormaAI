@@ -68,9 +68,9 @@ class TestRLSEnforcement:
         from src.db.engine import DatabaseSessionManager
 
         sig = inspect.signature(DatabaseSessionManager.session)
-        assert (
-            "org_id" in sig.parameters
-        ), "DatabaseSessionManager.session() must accept org_id parameter for RLS"
+        assert "org_id" in sig.parameters, (
+            "DatabaseSessionManager.session() must accept org_id parameter for RLS"
+        )
 
     def test_db_engine_session_org_id_is_optional(self):
         """Verify org_id parameter has a default (Optional[str] = None)."""
@@ -78,6 +78,6 @@ class TestRLSEnforcement:
 
         sig = inspect.signature(DatabaseSessionManager.session)
         param = sig.parameters["org_id"]
-        assert (
-            param.default is None
-        ), "org_id parameter must default to None for backward compatibility"
+        assert param.default is None, (
+            "org_id parameter must default to None for backward compatibility"
+        )

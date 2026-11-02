@@ -660,7 +660,7 @@ class CoVeOrchestrator:
 
                 elif citation["type"] == "celex":
                     celex = citation["value"]
-                    url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/" f"?uri=CELEX:{celex}"
+                    url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:{celex}"
                     if not _CELEX_RE.match(celex):
                         # Malformed CELEX - almost certainly fabricated.
                         checks.append(

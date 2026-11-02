@@ -89,8 +89,7 @@ class AcquisitionScheduler:
                     pass
 
         logger.info(
-            f"Scheduler stopped. Completed {self._cycle_count} cycles, "
-            f"{self._error_count} errors"
+            f"Scheduler stopped. Completed {self._cycle_count} cycles, {self._error_count} errors"
         )
 
     async def _background_loop(self) -> None:

@@ -112,7 +112,7 @@ class ContextualChunker:
             )
 
         logger.info(
-            f"Enriched {len(enriched)} chunks with contextual prefixes " f"(framework: {framework})"
+            f"Enriched {len(enriched)} chunks with contextual prefixes (framework: {framework})"
         )
         return enriched
 

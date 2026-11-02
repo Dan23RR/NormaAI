@@ -50,9 +50,7 @@ async def manager():
     async with engine.begin() as conn:
         privileged = (
             await conn.execute(
-                text(
-                    "SELECT rolsuper OR rolbypassrls FROM pg_roles " "WHERE rolname = current_user"
-                )
+                text("SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")
             )
         ).scalar()
         if privileged:

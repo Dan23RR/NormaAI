@@ -11,6 +11,7 @@ name: Deploy
 #      files: under the RLS overlay the app connects as normaai_app, which
 #      cannot ALTER tables, so `exec app alembic upgrade head` would fail)
 #   4. docker compose up -d app caddy with the prod + RLS overlays
+#   5. docker image prune -f        (the previous, now dangling, image)
 # then waits until https://api.normaai.org/health answers 200 and reports the
 # deployed SHA.
 #
@@ -104,6 +105,10 @@ jobs:
             $BASE run --rm -T app alembic upgrade head < /dev/null
             # The long-lived app connects as the non-superuser role (RLS overlay).
             $BASE -f docker-compose.rls.yml up -d app caddy < /dev/null
+            # Each build leaves the previous image dangling, and after a dependency
+            # update its own layers weigh gigabytes: drop the images no container
+            # uses, or the disk fills after a few deploys.
+            docker image prune -f < /dev/null
           }
           deploy
           REMOTE

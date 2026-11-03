@@ -17,7 +17,9 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
+  # Node 20 reached end of life in April 2026. Keep it equal to the Node.js
+  # version of the Vercel project (Settings, Build and Deployment).
+  NODE_VERSION: "22"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
   # Trivy for the report-only scans in the docker and security jobs, pinned by
   # digest: a tag can be repointed, and in March 2026 a malicious Trivy 0.69.4

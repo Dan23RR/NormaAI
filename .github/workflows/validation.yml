@@ -94,7 +94,9 @@ jobs:
           --health-retries 5
 
       qdrant:
-        image: qdrant/qdrant:latest
+        # Same server as ci.yml and the compose files: qdrant-client and the
+        # server move together (docs/RUNBOOK.md, "Aggiornare Qdrant").
+        image: qdrant/qdrant:v1.20.0
         ports:
           - 6333:6333
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================================
 # NormaAI - one-shot production bootstrap for a FRESH Ubuntu 24.04 server
-# (Hetzner CX22 or any VPS with 4 GB RAM). Run as root. Idempotent: re-running
-# resumes where it stopped and never overwrites an existing .env or JWT keys.
+# with at least 8 GB RAM (Hetzner CX33 or CPX32, docs/DEPLOY_CHECKLIST.md).
+# Run as root. Idempotent: re-running resumes where it stopped and never
+# overwrites an existing .env or JWT keys.
 #
 #   curl -fsSL https://raw.githubusercontent.com/Dan23RR/NormaAI/main/scripts/bootstrap_hetzner.sh -o bootstrap.sh
 #   bash bootstrap.sh
@@ -12,12 +13,20 @@
 #   2. Clones (or updates) the repo into /opt/normaai
 #   3. Generates every secret and writes .env (asks only for the LLM key;
 #      Resend is optional)
-#   4. Generates the RS256 JWT key pair
+#   4. Builds the image (bakes the embedding model) and the RS256 JWT key pair
 #   5. Starts postgres / qdrant / redis and runs the alembic migrations
 #   6. Creates the NON-superuser DB role (RLS is inert for superusers)
-#   7. Seeds the EUR-Lex / Normattiva corpus (~30-40 min, runs in the foreground)
+#   7. Restores the Qdrant collections from the snapshots in $SNAPSHOT_DIR
+#      (minutes); without snapshots it seeds the corpus from EUR-Lex, which
+#      with multilingual-e5-large takes hours of CPU
 #   8. Starts the app behind Caddy with the RLS overlay (TLS via Let's Encrypt)
 #   9. Nightly Postgres backup cron + final health checks
+#
+# The dense model is multilingual-e5-large (docs/MODELS.md, section 2.2): each
+# API worker holds 2.8 GB, hence one worker (WEB_CONCURRENCY=1) in the 4G app
+# limit and the 8 GB minimum. EMBEDDING_MODEL, EMBEDDING_DIMENSION,
+# QDRANT_COLLECTION, WEB_CONCURRENCY and APP_MEMORY_LIMIT can be set in the
+# environment before the first run; afterwards .env is the source.
 #
 # DNS must already point api.normaai.org (A record, Cloudflare proxy OFF) to
 # this server's IPv4, otherwise Caddy cannot obtain the certificate in step 8.
@@ -30,6 +39,14 @@ API_DOMAIN="${API_DOMAIN:-api.normaai.org}"
 ACME_EMAIL="${ACME_EMAIL:-info@normaai.org}"
 PUBLIC_URL="${PUBLIC_URL:-https://normaai.org}"
 CORS_ORIGINS="${CORS_ORIGINS:-https://normaai.org,https://www.normaai.org,https://normaai-psi.vercel.app}"
+# Qdrant snapshots to restore in step 7, one file per collection named
+# <collection>.snapshot. Outside APP_DIR: git clone needs an empty directory.
+SNAPSHOT_DIR="${SNAPSHOT_DIR:-/opt/normaai-snapshots}"
+EMBEDDING_MODEL="${EMBEDDING_MODEL:-intfloat/multilingual-e5-large}"
+EMBEDDING_DIMENSION="${EMBEDDING_DIMENSION:-1024}"
+QDRANT_COLLECTION="${QDRANT_COLLECTION:-eu_regulations_e5}"
+WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
+APP_MEMORY_LIMIT="${APP_MEMORY_LIMIT:-4G}"
 COMPOSE_BASE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 COMPOSE_RLS="$COMPOSE_BASE -f docker-compose.rls.yml"
 
@@ -39,6 +56,12 @@ gen()  { python3 -c "import secrets; print(secrets.token_urlsafe($1))"; }
 
 [ "$(id -u)" -eq 0 ] || die "esegui come root (sudo -i)"
 command -v python3 >/dev/null || apt-get install -y python3 >/dev/null
+# An 8 GB server reports about 7.6 GiB. Below 7 GiB the e5 worker, Postgres and
+# Qdrant do not fit: the app would be killed for memory at the first question.
+MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
+if [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
+  die "servono almeno 8 GB di RAM (trovati $((MEM_KB / 1024)) MB); ALLOW_LOW_MEMORY=1 per procedere comunque"
+fi
 
 # ── 1. Base system ───────────────────────────────────────────────────────────
 log "1/9" "Docker, swap, aggiornamenti automatici, firewall"
@@ -113,11 +136,22 @@ QDRANT_HOST=qdrant
 QDRANT_PORT=6333
 REDIS_URL=redis://redis:6379/0
 
+# Collection and dense model: docker compose also bakes EMBEDDING_MODEL into the image.
+QDRANT_COLLECTION=$QDRANT_COLLECTION
+EMBEDDING_MODEL=$EMBEDDING_MODEL
+EMBEDDING_DIMENSION=$EMBEDDING_DIMENSION
+# Uvicorn workers and app container memory: 2.8 GB per worker with e5 (docs/MODELS.md, section 6).
+WEB_CONCURRENCY=$WEB_CONCURRENCY
+APP_MEMORY_LIMIT=$APP_MEMORY_LIMIT
+# Cross-encoder reranker off (docs/MODELS.md, section 4).
+RERANKER_MODEL_DIR=
+
 JWT_PRIVATE_KEY_PATH=/app/data/jwt_private.pem
 JWT_PUBLIC_KEY_PATH=/app/data/jwt_public.pem
 
 DATA_SOURCE=both
-CORPUS_AS_OF=$(date -u +%Y-%m-%d)
+# Step 7 writes the corpus date of the collection here (its metadata point).
+CORPUS_AS_OF=
 ACQUISITION_SCHEDULER_ENABLED=false
 
 RESEND_API_KEY=$RESEND_KEY
@@ -135,7 +169,7 @@ fi
 set -a; . ./.env; set +a
 
 # ── 4. Image build + JWT keys ────────────────────────────────────────────────
-log "4/9" "Build dell'immagine (scarica il modello di embedding, ~1 GB) e chiavi JWT RS256"
+log "4/9" "Build dell'immagine (scarica $EMBEDDING_MODEL, circa 2,2 GB con e5) e chiavi JWT RS256"
 $COMPOSE_BASE build app
 if [ ! -f data/jwt_private.pem ]; then
   openssl genrsa -out data/jwt_private.pem 2048 2>/dev/null
@@ -164,24 +198,52 @@ $COMPOSE_BASE exec -T postgres psql -U normaai -d normaai -v app_pw="$APP_DB_PAS
 ROLE_CHECK="$($COMPOSE_BASE exec -T postgres psql -U normaai -d normaai -tA -c "SELECT rolsuper||'|'||rolbypassrls FROM pg_roles WHERE rolname='normaai_app';")"
 [ "$ROLE_CHECK" = "f|f" ] || die "il ruolo normaai_app non e' non-privilegiato (atteso f|f, trovato '$ROLE_CHECK')"
 
-# ── 7. Corpus seed ───────────────────────────────────────────────────────────
-log "7/9" "Seed del corpus EUR-Lex / Normattiva (30-40 minuti, non chiudere la sessione)"
-POINTS="$(python3 - <<'PY' 2>/dev/null || echo 0
-import json, urllib.request
-base = "http://127.0.0.1:6333"
-total = 0
-for c in json.load(urllib.request.urlopen(base + "/collections", timeout=10))["result"]["collections"]:
-    info = json.load(urllib.request.urlopen(f"{base}/collections/{c['name']}", timeout=10))["result"]
-    total += int(info.get("points_count") or 0)
-print(total)
-PY
-)"
+# ── 7. Corpus: snapshots, or a seed ─────────────────────────────────────────
+log "7/9" "Corpus in Qdrant: snapshot da $SNAPSHOT_DIR, altrimenti seed"
+QDRANT_URL="http://127.0.0.1:6333"
+# Points of one collection, 0 when it does not exist yet.
+points() {
+  curl -fsS "$QDRANT_URL/collections/$1" 2>/dev/null \
+    | python3 -c 'import json,sys; print(int(json.load(sys.stdin)["result"].get("points_count") or 0))' 2>/dev/null \
+    || echo 0
+}
+for _ in $(seq 1 30); do curl -fsS "$QDRANT_URL/readyz" >/dev/null 2>&1 && break; sleep 2; done
+for f in "$SNAPSHOT_DIR"/*.snapshot; do
+  [ -f "$f" ] || continue
+  name="$(basename "$f" .snapshot)"
+  if [ "$(points "$name")" != "0" ] && [ "${RESTORE:-0}" != "1" ]; then
+    echo "   $name contiene gia' $(points "$name") punti: non la ripristino (RESTORE=1 per sovrascriverla)."
+    continue
+  fi
+  echo "   ripristino $name da $f"
+  curl -fsS -X POST "$QDRANT_URL/collections/$name/snapshots/upload?priority=snapshot&wait=true" \
+    -F "snapshot=@$f" >/dev/null || die "ripristino di $name non riuscito"
+  echo "   $name: $(points "$name") punti"
+done
+POINTS="$(points "$QDRANT_COLLECTION")"
 if [ "${SKIP_SEED:-0}" = "1" ]; then
   echo "   SKIP_SEED=1: salto il seed."
 elif [ "$POINTS" != "0" ] && [ "${RESEED:-0}" != "1" ]; then
-  echo "   Qdrant contiene gia' $POINTS chunk: salto il seed (RESEED=1 per rifarlo)."
+  echo "   $QDRANT_COLLECTION contiene $POINTS punti: salto il seed (RESEED=1 per rifarlo)."
 else
+  echo "   Seed di $QDRANT_COLLECTION con $EMBEDDING_MODEL: con e5 su CPU dura ore, non chiudere la sessione."
   $COMPOSE_BASE run --rm app python -m src.pipeline --action seed ${RESEED:+--recreate}
+fi
+# Corpus date of answers and reports: the one recorded in the collection (its
+# corpus_meta point, written by the seed and carried by the snapshot), not today.
+AS_OF="$(curl -fsS -X POST "$QDRANT_URL/collections/$QDRANT_COLLECTION/points/scroll" \
+  -H 'Content-Type: application/json' \
+  -d '{"filter":{"must":[{"key":"kind","match":{"value":"corpus_meta"}}]},"limit":1,"with_payload":["corpus_as_of"]}' 2>/dev/null \
+  | python3 -c 'import json,sys; p=json.load(sys.stdin)["result"]["points"]; print(p[0]["payload"].get("corpus_as_of","") if p else "")' 2>/dev/null \
+  || true)"
+if [ -n "$AS_OF" ] && [ "$AS_OF" != "${CORPUS_AS_OF:-}" ]; then
+  if grep -q '^CORPUS_AS_OF=' .env; then
+    sed -i "s/^CORPUS_AS_OF=.*/CORPUS_AS_OF=$AS_OF/" .env
+  else
+    echo "CORPUS_AS_OF=$AS_OF" >> .env
+  fi
+  export CORPUS_AS_OF="$AS_OF"
+  echo "   CORPUS_AS_OF=$AS_OF in .env (punto dei metadati di $QDRANT_COLLECTION)"
 fi
 
 # ── 8. App + Caddy with RLS overlay ─────────────────────────────────────────
@@ -217,10 +279,12 @@ fi
 
 cat <<EOF
 
-Fatto. Prossimi passi:
-  - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra.
+Fatto. Prossimi passi (docs/DEPLOY_CHECKLIST.md):
   - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_BASE_URL=https://$API_DOMAIN, poi Redeploy.
+  - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra.
+  - Dal portatile: pwsh scripts/verify_live_site.ps1 -BaseUrl $PUBLIC_URL
   - Salva una copia di $APP_DIR/.env e di $APP_DIR/data/jwt_private.pem fuori dal server.
+  - Gli snapshot in $SNAPSHOT_DIR sono anche il backup di Qdrant: tienili.
   - Aggiornamenti: un push su main esegue .github/workflows/deploy.yml (build, migrazioni
     come owner, riavvio, verifica di /health). A mano, nello stesso ordine:
       cd $APP_DIR && git pull && export GIT_SHA=\$(git rev-parse --short=7 HEAD)

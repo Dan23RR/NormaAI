@@ -200,7 +200,9 @@ $COMPOSE_BASE run --rm app alembic upgrade head
 # ── 6. Non-superuser role (real RLS) ────────────────────────────────────────
 log "6/9" "Ruolo applicativo normaai_app (isolamento multi-tenant reale)"
 $COMPOSE_BASE exec -T postgres psql -U normaai -d normaai -v app_pw="$APP_DB_PASSWORD" < scripts/setup_app_role.sql >/dev/null
-ROLE_CHECK="$($COMPOSE_BASE exec -T postgres psql -U normaai -d normaai -tA -c "SELECT rolsuper||'|'||rolbypassrls FROM pg_roles WHERE rolname='normaai_app';")"
+# Two columns, which psql -tA joins with "|" as t/f. Concatenated in SQL the
+# booleans become 'false|false' and the check below would always fail.
+ROLE_CHECK="$($COMPOSE_BASE exec -T postgres psql -U normaai -d normaai -tA -c "SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname='normaai_app';")"
 [ "$ROLE_CHECK" = "f|f" ] || die "il ruolo normaai_app non e' non-privilegiato (atteso f|f, trovato '$ROLE_CHECK')"
 
 # ── 7. Corpus: snapshots, or a seed ─────────────────────────────────────────

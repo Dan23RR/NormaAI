@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # NormaAI - one-shot production bootstrap for a FRESH Ubuntu 24.04 server
-# with at least 8 GB RAM (Hetzner CX33 or CPX32, docs/DEPLOY_CHECKLIST.md).
+# (8 GB RAM with the recommended e5 model, docs/DEPLOY_CHECKLIST.md).
 # Run as root. Idempotent: re-running resumes where it stopped and never
 # overwrites an existing .env or JWT keys.
 #
@@ -22,11 +22,13 @@
 #   8. Starts the app behind Caddy with the RLS overlay (TLS via Let's Encrypt)
 #   9. Nightly Postgres backup cron + final health checks
 #
-# The dense model is multilingual-e5-large (docs/MODELS.md, section 2.2): each
-# API worker holds 2.8 GB, hence one worker (WEB_CONCURRENCY=1) in the 4G app
-# limit and the 8 GB minimum. EMBEDDING_MODEL, EMBEDDING_DIMENSION,
-# QDRANT_COLLECTION, WEB_CONCURRENCY and APP_MEMORY_LIMIT can be set in the
-# environment before the first run; afterwards .env is the source.
+# The dense model is chosen at the first run (EMBEDDING_CHOICE=e5|mpnet in the
+# environment skips the question): e5, multilingual-e5-large, recommended
+# (golden v2 89/101 against 81, docs/MODELS.md 2.2) but 2.1 GB more in the image
+# and an 8 GB server; or mpnet, the default of the code. It sets EMBEDDING_MODEL,
+# EMBEDDING_DIMENSION and QDRANT_COLLECTION in .env; WEB_CONCURRENCY and
+# APP_MEMORY_LIMIT can also be set in the environment before the first run.
+# Afterwards .env is the source.
 #
 # DNS must already point api.normaai.org (A record, Cloudflare proxy OFF) to
 # this server's IPv4, otherwise Caddy cannot obtain the certificate in step 8.
@@ -42,11 +44,7 @@ CORS_ORIGINS="${CORS_ORIGINS:-https://normaai.org,https://www.normaai.org,https:
 # Qdrant snapshots to restore in step 7, one file per collection named
 # <collection>.snapshot. Outside APP_DIR: git clone needs an empty directory.
 SNAPSHOT_DIR="${SNAPSHOT_DIR:-/opt/normaai-snapshots}"
-EMBEDDING_MODEL="${EMBEDDING_MODEL:-intfloat/multilingual-e5-large}"
-EMBEDDING_DIMENSION="${EMBEDDING_DIMENSION:-1024}"
-QDRANT_COLLECTION="${QDRANT_COLLECTION:-eu_regulations_e5}"
-WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
-APP_MEMORY_LIMIT="${APP_MEMORY_LIMIT:-4G}"
+E5_MODEL="intfloat/multilingual-e5-large"
 COMPOSE_BASE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 COMPOSE_RLS="$COMPOSE_BASE -f docker-compose.rls.yml"
 
@@ -56,12 +54,6 @@ gen()  { python3 -c "import secrets; print(secrets.token_urlsafe($1))"; }
 
 [ "$(id -u)" -eq 0 ] || die "esegui come root (sudo -i)"
 command -v python3 >/dev/null || apt-get install -y python3 >/dev/null
-# An 8 GB server reports about 7.6 GiB. Below 7 GiB the e5 worker, Postgres and
-# Qdrant do not fit: the app would be killed for memory at the first question.
-MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
-if [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
-  die "servono almeno 8 GB di RAM (trovati $((MEM_KB / 1024)) MB); ALLOW_LOW_MEMORY=1 per procedere comunque"
-fi
 
 # ── 1. Base system ───────────────────────────────────────────────────────────
 log "1/9" "Docker, swap, aggiornamenti automatici, firewall"
@@ -105,6 +97,20 @@ else
   read -r -s -p "   RESEND_API_KEY (invio email; invio vuoto per saltare): " RESEND_KEY; echo
   read -r -p "   Email del primo amministratore [info@normaai.org]: " ADMIN_EMAIL
   ADMIN_EMAIL="${ADMIN_EMAIL:-info@normaai.org}"
+  echo "   Modello di ricerca (docs/DEPLOY_CHECKLIST.md): e5 = multilingual-e5-large, consigliato"
+  echo "   (golden set 89/101, 2,1 GB in piu' nell'immagine, server da 8 GB); mpnet = predefinito del codice (81/101)."
+  EMBEDDING_CHOICE="${EMBEDDING_CHOICE:-}"
+  until [ "$EMBEDDING_CHOICE" = e5 ] || [ "$EMBEDDING_CHOICE" = mpnet ]; do
+    read -r -p "   Modello (e5 o mpnet): " EMBEDDING_CHOICE
+  done
+  # Each collection was built with its model: the snapshots carry both.
+  case "$EMBEDDING_CHOICE" in
+    e5) EMBEDDING_MODEL="$E5_MODEL"; EMBEDDING_DIMENSION=1024; QDRANT_COLLECTION=eu_regulations_e5 ;;
+    mpnet) EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+           EMBEDDING_DIMENSION=768; QDRANT_COLLECTION=eu_regulations ;;
+  esac
+  WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
+  APP_MEMORY_LIMIT="${APP_MEMORY_LIMIT:-4G}"
   POSTGRES_PASSWORD="$(gen 24)"; APP_DB_PASSWORD="$(gen 24)"
   GOOGLE_API_KEY=""; ANTHROPIC_API_KEY=""
   case "$LLM_PROVIDER" in
@@ -172,6 +178,15 @@ EOF
 fi
 # shellcheck disable=SC1091
 set -a; . ./.env; set +a
+# An .env written before the model choice existed: what the app falls back to.
+: "${EMBEDDING_MODEL:=sentence-transformers/paraphrase-multilingual-mpnet-base-v2}"
+: "${QDRANT_COLLECTION:=eu_regulations}"
+# e5 needs an 8 GB server, which reports about 7.6 GiB: below 7 GiB the worker,
+# Postgres and Qdrant do not fit and the app is killed at the first question.
+MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
+if [ "${EMBEDDING_MODEL:-}" = "$E5_MODEL" ] && [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
+  die "con e5 servono almeno 8 GB di RAM (trovati $((MEM_KB / 1024)) MB); mpnet in .env, oppure ALLOW_LOW_MEMORY=1"
+fi
 
 # ── 4. Image build + JWT keys ────────────────────────────────────────────────
 log "4/9" "Build dell'immagine (scarica $EMBEDDING_MODEL, circa 2,2 GB con e5) e chiavi JWT RS256"

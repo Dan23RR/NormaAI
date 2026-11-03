@@ -290,7 +290,9 @@ jobs:
         run: npm ci
       - name: TypeScript type check
         working-directory: frontend
-        run: npx tsc --noEmit
+        # next-env.d.ts and the route types are generated, not tracked:
+        # typegen writes them so tsc also checks the typed routes.
+        run: npx next typegen && npx tsc --noEmit
       - name: Run tests
         working-directory: frontend
         run: npx vitest run --reporter=verbose

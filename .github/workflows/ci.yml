@@ -19,18 +19,27 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  # Trivy for the report-only scans in the docker and security jobs, pinned by
+  # digest: a tag can be repointed, and in March 2026 a malicious Trivy 0.69.4
+  # was published on every registry, GHCR included. Keep the version equal to
+  # the `version` default of the trivy-action pinned in release.yml, so CI
+  # reports what the release gate will find. Dependabot does not update images
+  # in run steps; to update, check that the release is not in Trivy's security
+  # advisories, then copy the "Digest:" line (the multi-arch index) printed by
+  #   docker buildx imagetools inspect ghcr.io/aquasecurity/trivy:<version>
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
 
 jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -104,12 +113,12 @@ jobs:
           --health-timeout 3s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -174,9 +183,10 @@ jobs:
           retention-days: 30
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
-          file: coverage.xml
+          # `files` (plural): v5 dropped the `file` input, so v7 ignores it.
+          files: coverage.xml
         continue-on-error: true
 
   schema:
@@ -208,12 +218,12 @@ jobs:
       PGPASSWORD: ci-test-password
       DB_URL_BASE: postgresql+asyncpg://normaai:ci-test-password@localhost:5432
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Cache poetry venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
@@ -269,8 +279,8 @@ jobs:
     name: Frontend Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -293,10 +303,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test-backend, schema, test-frontend]
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build Docker image (with layer cache)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -322,7 +332,7 @@ jobs:
         # Dependabot; this step never blocks the build.
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            ghcr.io/aquasecurity/trivy:latest image \
+            "$TRIVY_IMAGE" image \
             --severity CRITICAL,HIGH --exit-code 0 --no-progress \
             normaai:${{ github.sha }} || true
 
@@ -333,11 +343,11 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # full history for gitleaks
       - name: Gitleaks secret scan (full history)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Check for secrets in source code (regex fallback)
@@ -371,7 +381,7 @@ jobs:
             fi
           done
           if [ "$MISSING" -eq 1 ]; then exit 1; fi
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Bandit SAST (Python)
@@ -385,7 +395,7 @@ jobs:
         # CVEs are also tracked by Dependabot.
         run: |
           docker run --rm -v "${{ github.workspace }}:/work" \
-            ghcr.io/aquasecurity/trivy:latest fs \
+            "$TRIVY_IMAGE" fs \
             --severity CRITICAL,HIGH --exit-code 0 --no-progress /work || true
 
   sbom:
@@ -393,7 +403,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [docker]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Generate SBOM (CycloneDX)
         uses: anchore/sbom-action@v0
         with:

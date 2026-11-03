@@ -1,4 +1,7 @@
 # Automated dependency updates - grouped weekly to keep PR noise low.
+# No `labels:`: Dependabot then applies its default labels (`dependencies`
+# plus one per ecosystem) and creates them itself; custom labels must already
+# exist in the repository, otherwise every pull request gets a warning comment.
 version: 2
 updates:
   - package-ecosystem: pip
@@ -10,7 +13,6 @@ updates:
       python-minor-patch:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
-    labels: ["dependencies", "python"]
     # Held back on purpose; patch releases still come through.
     # - fastembed changes the embeddings: move with a re-embedding of the
     #   corpus and the retrieval eval (docs/MODELS.md).
@@ -33,7 +35,6 @@ updates:
       npm-minor-patch:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
-    labels: ["dependencies", "frontend"]
     # Tailwind 4 is a migration (CSS-first configuration, new PostCSS plugin,
     # renamed utilities), not a version bump.
     ignore:
@@ -51,7 +52,6 @@ updates:
       github-actions:
         patterns: ["*"]
     open-pull-requests-limit: 3
-    labels: ["dependencies", "ci"]
 
   - package-ecosystem: docker
     directory: "/"
@@ -59,7 +59,6 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
-    labels: ["dependencies", "docker"]
     # The image follows pyproject.toml (python >=3.11,<3.13) and the CI (3.11):
     # change the three together, not through a bump of the tag.
     ignore:

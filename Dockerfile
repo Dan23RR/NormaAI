@@ -39,19 +39,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies. torch and torchvision come from the CPU-only
 # index of download.pytorch.org: the server has no GPU, and the PyPI wheels pull
-# about 2.7 GB of CUDA libraries (nvidia-*, triton) that nothing loads. Their
-# versions are the ones requirements.txt exports from poetry.lock, with +cpu;
-# the CUDA-only packages stay out of the second install.
+# about 2.7 GB of CUDA libraries that nothing loads. Their versions are the ones
+# requirements.txt exports from poetry.lock, with +cpu. Everything only the CUDA
+# build of torch needs stays out of the second install: triton, nvidia-* and
+# cuda-* (cuda-toolkit[...] would bring every nvidia-* package back).
 COPY --from=builder /app/requirements.txt .
 RUN set -e; \
     pins="$(grep -E '^(torch|torchvision)==' requirements.txt | cut -d' ' -f1 | sed 's/$/+cpu/')"; \
     if [ -n "$pins" ]; then \
         pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu $pins; \
     fi; \
-    grep -vE '^(torch|torchvision|triton|nvidia-[a-z0-9-]+)==' requirements.txt > requirements-cpu.txt; \
+    grep -vE '^(torch|torchvision|triton|nvidia-[a-z0-9-]+|cuda-[a-z0-9-]+)(\[[^]]*\])?==' \
+        requirements.txt > requirements-cpu.txt; \
     pip install --no-cache-dir -r requirements-cpu.txt; \
     if [ -n "$pins" ]; then \
         python -c "import sys, torch; sys.exit(None if torch.__version__.endswith('+cpu') else 'not the CPU build: ' + torch.__version__)"; \
+    fi; \
+    if pip freeze | grep -iE '^(triton|nvidia-|cuda-)'; then \
+        echo "CUDA packages in the image" >&2; exit 1; \
     fi
 
 # Bake the embedding model into the image BEFORE copying the app code, so that

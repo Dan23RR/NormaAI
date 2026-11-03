@@ -94,6 +94,9 @@ docker compose restart qdrant
   il punto dei metadati (`corpus_as_of`). Si ripristina sulla stessa versione di Qdrant; tra
   minor diverse vale la regola delle minor consecutive di «Aggiornare Qdrant» qui sotto. Rifallo
   dopo ogni aggiornamento del corpus e tienine una copia fuori dal server.
+- **Cambiare modello di ricerca** (e5 o mpnet, una collection per modello, tutte e due negli
+  snapshot): `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` e `QDRANT_COLLECTION` nel `.env`, poi build
+  dell'immagine e riavvio come al §9. Valori e memoria in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) §1.
 - Log di avvio `collection_sparse_modifier_missing` o `collection_embedding_model_mismatch` → la collection è
   stata creata con la vecchia configurazione (sparse senza IDF o altro modello di embedding): ricreala con
   `python -m src.pipeline --action seed --recreate`.

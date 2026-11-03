@@ -68,6 +68,11 @@ jobs:
           # image tags carry no leading v.
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           severity: 'CRITICAL,HIGH'
+          # Only findings with a fixed version block the release: the ones
+          # without (mostly Debian packages of the base image) cannot be acted
+          # on until the distribution ships a fix, and the report-only image
+          # scan in ci.yml still lists them.
+          ignore-unfixed: 'true'
           exit-code: '1'
           format: 'table'
 

@@ -73,22 +73,24 @@ RUN python -c "from fastembed import TextEmbedding; \
     TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/app/models')"
 
 # Copy application code (changes here no longer trigger a model re-download)
-COPY src/ src/
-COPY prompts/ prompts/
-COPY scripts/ scripts/
+COPY --chown=normaai:normaai src/ src/
+COPY --chown=normaai:normaai prompts/ prompts/
+COPY --chown=normaai:normaai scripts/ scripts/
 # Migrations: needed so `docker compose run app alembic upgrade head` works in the
 # container (without these, alembic loads an empty config -> "No script_location").
-COPY alembic/ alembic/
-COPY alembic.ini ./
+COPY --chown=normaai:normaai alembic/ alembic/
+COPY --chown=normaai:normaai alembic.ini ./
 # Public Codex PDF served by GET /api/v1/codex/download (src/api/routers/leads.py).
 # The historical marketing/ render is gitignored and never reached the image,
 # so the endpoint answered 503 in production; the tracked copy under
 # frontend/public/ is baked in here and CODEX_PDF_PATH points the router at it.
-COPY frontend/public/codex-post-omnibus-2025-2029.pdf assets/codex-post-omnibus-2025-2029.pdf
+COPY --chown=normaai:normaai frontend/public/codex-post-omnibus-2025-2029.pdf assets/codex-post-omnibus-2025-2029.pdf
 ENV CODEX_PDF_PATH=/app/assets/codex-post-omnibus-2025-2029.pdf
 
-# Set ownership (covers the baked model cache too)
-RUN chown -R normaai:normaai /app
+# The code is normaai's through COPY --chown. No recursive chown: it would copy every
+# file already in /app, the baked model included (1.1 GB with mpnet, 2.1 GB with e5),
+# into one more layer. The model is only read, and the runtime root is read-only.
+RUN chown normaai:normaai /app
 
 USER normaai
 

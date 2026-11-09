@@ -104,7 +104,8 @@ USER normaai
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
 # network/lock writes - it loads the baked model purely from the local cache.
 # WEB_CONCURRENCY = uvicorn worker processes; each loads its own copy of the
-# models (2.1 GB per process with mpnet, 2.8 GB with multilingual-e5-large).
+# models: in this image 1.6 GiB per worker with multilingual-e5-large and 1.8 GiB
+# with mpnet (docker stats, dress rehearsal of 2026-11-09).
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -117,4 +118,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# With more than one worker, uvicorn kills a worker that does not answer its ping
+# within --timeout-worker-healthcheck (5 s by default), and a worker loading the
+# dense model does not answer for longer than that: with the default, two workers
+# were killed and restarted in a loop. 300 s, as the healthcheck start period.
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-worker-healthcheck", "300"]

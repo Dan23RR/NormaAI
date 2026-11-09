@@ -175,7 +175,7 @@ matching fixed on this date (below).
 - The gate of month 1 asks for at least 90 / 101: e5 with the fixed parser is one
   question short.
 
-### 2.3 Measured: golden v2 end to end, 2026-11-03
+### 2.3 Measured: golden v2 end to end, 2026-11-03 and 2026-11-09
 
 Golden v2 through the API with Claude Haiku 5.5, as in §2.2, with `eu_regulations_e5` as
 indexed on 2026-10-27 and the retrieval of §3.1 and §3.2 (sparse terms, named articles),
@@ -185,9 +185,28 @@ own (Postgres, Redis, a copy of the local Qdrant volume).
 | Run | Questions passed | Recall | Answer checks | Verified citations | Mean time |
 |---|---|---|---|---|---|
 | e5, 2026-10-27 (§2.2) | 89 / 101 | 0.88 | 80.2 % | 99.4 % | 14.8 s |
-| e5, named articles without the opening rule (§3.2) | 95 / 101 | 0.94 | 83.2 % | 98.6 % | 19.5 s |
-| same code, second run | 96 / 101 | 0.95 | 83.2 % | 99.48 % | 18.9 s |
+| e5, named articles without the opening rule (§3.2), 2026-11-03 | 95 / 101 | 0.94 | 83.2 % | 98.6 % | 19.5 s |
+| same code, second run, 2026-11-03 | 96 / 101 | 0.95 | 83.2 % | 99.48 % | 18.9 s |
+| **e5, final: opening rule and a second attempt for replies in prose, 2026-11-09** | **96 / 101** | 0.95 | 80.2 % | **99.79 %** | 16.0 s |
 
+- **The gate of month 1 is met** by the final run: at least 90 / 101 questions passed (96)
+  with at least 99.5 % of citations verified (99.79 %, 406 of 407), and on the retrieval
+  side 89 / 90 without a reranker and Art. 50 9th for the chatbot question (§3.1).
+- **Against 2026-10-27** the final run gains nine questions (aiact-113-003, gdpr-035-003,
+  nis2-021-003, csrd-19a-001, csrd-19a-002, csrd-29a-001, tax-003-002, tax-008-001,
+  cra-071-002) and loses two (aiact-113-005, aiact-003-004). Against the second run of
+  2026-11-03 it gains csrd-19a-001 and csrd-29a-001, the two the opening rule targets,
+  and loses aiact-003-004 and csddd-037-001.
+- **Second attempt for replies in prose** (`src/agents/llm.py`): a reply with no JSON
+  object in it is sent back once, with a request for only the JSON object. In the final
+  run it fired twice, and both second replies were JSON (`llm_json_retry outcome=json` in
+  the API log, about 10 s each); no answer stayed in prose.
+- **Still failing** in the final run: dora-028-001 (retrieval, §3.1); aiact-003-004
+  abstains because definition 63 of Art. 3 sits in a part of the article that does not
+  come (it passed in one run of three); three answers cite the amending act or its
+  recitals instead of the amended article: aiact-113-005 (Regulation 2026/1744 instead of
+  Art. 113(3)(c)), csddd-037-001 and inj-005 (Directive 2026/470 instead of Art. 37(1) and
+  Art. 19a(1)).
 - **Cost**: $0.27 per run.
 - **Stable gains.** Both runs gain the same eight questions against 2026-10-27, the ones
   the retrieval-only measure predicts (§3.1): aiact-113-003, gdpr-035-003, nis2-021-003,
@@ -200,12 +219,13 @@ own (Postgres, Redis, a copy of the local Qdrant volume).
   could not be verified (gdpr-030-001, 0 of 5; the answer passed): without it the run
   scores 99.65 %. The second run had no answer in prose; two quotes were cut or joined
   (nis2-003-001, csddd-037-001).
-- **Still failing in both**: dora-028-001 (retrieval, §3.1); csrd-19a-001, csrd-29a-001
-  and inj-005, which cite the recitals of Directive 2026/470 instead of Art. 19a(1) or
-  29a(1). These two runs predate the opening rule of §3.2, which brings paragraph 1 of
-  both articles to the agents.
-- **Mean time** is not comparable with §2.2: the laptop ran the test suite during the
-  first run, and the second ran on the API process of the first.
+- **Still failing in both runs of 2026-11-03**: dora-028-001 (retrieval, §3.1);
+  csrd-19a-001, csrd-29a-001 and inj-005, which cite the recitals of Directive 2026/470
+  instead of Art. 19a(1) or 29a(1). Those runs predate the opening rule of §3.2, which
+  brings paragraph 1 of both articles to the agents: the final run passes the first two.
+- **Mean time** of the two runs of 2026-11-03 is not comparable with §2.2: the laptop ran
+  the test suite during the first, and the second ran on the API process of the first. The
+  final run had the laptop to itself.
 
 ## 3. Sparse vectors
 
@@ -453,3 +473,4 @@ model, set by the variable in brackets.
 | 2026-10-27 | Retrieval-only baseline read with the "bis" fix (80 / 90); multilingual MiniLM cross-encoder measured (§4.1), licence question (§4.2); multilingual-e5-large measured alone and with the reranker, search depth of the reranker's candidates (`RERANKER_SEARCH_DEPTH`), memory and re-embedding time (§2.1); the Docker image bakes the configured dense model, workers and container memory are settings (§6) |
 | 2026-10-27 | Golden v2 end to end: mpnet 81, e5 85, e5 with the response parser fixed 89 (§2.2); parent articles match only at a separator |
 | 2026-11-03 | Sparse terms split on punctuation and lookup of the articles a question names, retrieval only: e5 83 → 89 / 90, mpnet 80 → 85 (§3.1, §3.2); the retrieval-only measure counts the expected paragraph; golden v2 end to end 95 and 96 / 101 with e5 (§2.3); licences and training data of two permissive rerankers, MS MARCO in e5's fine-tuning data too (§4, §4.2) |
+| 2026-11-09 | Golden v2 end to end with the final retrieval and a second attempt for replies in prose: 96 / 101, citations verified 99.79 %; the gate of month 1 is met (§2.3) |

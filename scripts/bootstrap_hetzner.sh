@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # NormaAI - one-shot production bootstrap for a FRESH Ubuntu 24.04 server
-# (8 GB RAM with the recommended e5 model, docs/DEPLOY_CHECKLIST.md).
+# (8 GB RAM recommended, docs/DEPLOY_CHECKLIST.md).
 # Run as root. Idempotent: re-running resumes where it stopped and never
 # overwrites an existing .env or JWT keys.
 #
@@ -24,8 +24,8 @@
 #
 # The dense model is chosen at the first run (EMBEDDING_CHOICE=e5|mpnet in the
 # environment skips the question): e5, multilingual-e5-large, recommended
-# (golden v2 89/101 against 81, docs/MODELS.md 2.2) but 2.1 GB more in the image
-# and an 8 GB server; or mpnet, the default of the code. It sets EMBEDDING_MODEL,
+# (golden v2 89/101 against 81, docs/MODELS.md 2.2), 2.1 GB of model in the image
+# against 1.1; or mpnet, the default of the code. It sets EMBEDDING_MODEL,
 # EMBEDDING_DIMENSION and QDRANT_COLLECTION in .env; WEB_CONCURRENCY and
 # APP_MEMORY_LIMIT can also be set in the environment before the first run.
 # Afterwards .env is the source.
@@ -98,7 +98,7 @@ else
   read -r -p "   Email del primo amministratore [info@normaai.org]: " ADMIN_EMAIL
   ADMIN_EMAIL="${ADMIN_EMAIL:-info@normaai.org}"
   echo "   Modello di ricerca (docs/DEPLOY_CHECKLIST.md): e5 = multilingual-e5-large, consigliato"
-  echo "   (golden set 89/101, 2,1 GB in piu' nell'immagine, server da 8 GB); mpnet = predefinito del codice (81/101)."
+  echo "   (golden set 89/101, modello di 2,1 GB nell'immagine); mpnet = predefinito del codice (81/101, 1,1 GB)."
   EMBEDDING_CHOICE="${EMBEDDING_CHOICE:-}"
   until [ "$EMBEDDING_CHOICE" = e5 ] || [ "$EMBEDDING_CHOICE" = mpnet ]; do
     read -r -p "   Modello (e5 o mpnet): " EMBEDDING_CHOICE
@@ -181,11 +181,12 @@ set -a; . ./.env; set +a
 # An .env written before the model choice existed: what the app falls back to.
 : "${EMBEDDING_MODEL:=sentence-transformers/paraphrase-multilingual-mpnet-base-v2}"
 : "${QDRANT_COLLECTION:=eu_regulations}"
-# e5 needs an 8 GB server, which reports about 7.6 GiB: below 7 GiB the worker,
-# Postgres and Qdrant do not fit and the app is killed at the first question.
+# 8 GB recommended (an 8 GB server reports about 7.6 GiB). With 4 GB one worker
+# fits, 1.6 GiB with e5 and 1.8 GiB with mpnet in the dress rehearsal, but with
+# little room for requests, the deploys' image builds and a second worker.
 MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
-if [ "${EMBEDDING_MODEL:-}" = "$E5_MODEL" ] && [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
-  die "con e5 servono almeno 8 GB di RAM (trovati $((MEM_KB / 1024)) MB); mpnet in .env, oppure ALLOW_LOW_MEMORY=1"
+if [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
+  die "consigliati 8 GB di RAM (trovati $((MEM_KB / 1024)) MB): con 4 GB un solo worker e poco margine; ALLOW_LOW_MEMORY=1 per procedere"
 fi
 
 # ── 4. Image build + JWT keys ────────────────────────────────────────────────

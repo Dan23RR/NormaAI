@@ -23,9 +23,9 @@ downloaded from `main`, so deploy from a `main` that contains this checklist.
 
 ## 1. Model and server
 
-The bootstrap asks which search model the API serves (step 4), and the model sets the size of
-the server. Both collections travel in the snapshots of step 3, so either choice works without
-re-embedding, and switching later is a change of `.env` (RUNBOOK §3).
+The bootstrap asks which search model the API serves (step 4). Both collections travel in the
+snapshots of step 3, so either choice works without re-embedding, and switching later is a
+change of `.env` (RUNBOOK §3). In the container the two models need about the same memory.
 
 | | e5, recommended | mpnet, the alternative |
 |---|---|---|
@@ -34,22 +34,30 @@ re-embedding, and switching later is a change of `.env` (RUNBOOK §3).
 | AI Act Art. 50 for the chatbot question without an article number | found | not among the first 30 candidates |
 | Collection | `eu_regulations_e5` | `eu_regulations` |
 | Model in the image | 2.1 GB | 1.1 GB |
-| Memory of one API process (laptop) | 2.8 GB | 2.1 GB |
-| Server | 8 GB | 8 GB |
+| App container, 1 worker | 1.6 GiB | 1.8 GiB |
+| App container, 2 workers | 3.2 GiB | 3.7 GiB |
+| Server | 8 GB recommended; 4 GB holds 1 worker | 8 GB recommended; 4 GB holds 1 worker |
 
 Golden v2 and retrieval figures: docs/MODELS.md, sections 2.1 and 2.2 (a few questions change
-from run to run). Memory: private bytes of one API process on the laptop, docs/MODELS.md
-section 6; each uvicorn worker holds its own copy of the model. The app container is limited
-to `APP_MEMORY_LIMIT` (4G by default), so the bootstrap writes `WEB_CONCURRENCY=1`.
+from run to run). Memory: `docker stats` of the app container in the production image, read-only
+root, after the model warm-up, in the local dress rehearsal of 2026-11-09; Postgres, Qdrant with
+both collections, Redis and Caddy added 0.25 GiB. Each uvicorn worker holds its own copy of the
+model. The bootstrap writes `WEB_CONCURRENCY=1` and `APP_MEMORY_LIMIT=4G`; for 2 workers set
+`WEB_CONCURRENCY=2` and `APP_MEMORY_LIMIT=6G` in `.env` on an 8 GB server. On 4 GB one worker
+fits, with little room for long answers, the image builds of the deploys, the monitoring stack
+or the reranker later (0.6 GB more per worker, docs/MODELS.md); the bootstrap asks for
+`ALLOW_LOW_MEMORY=1` below 8 GB.
 
 Prices from hetzner.com on 2026-11-03, per month, excluding VAT, IPv4 included:
 
 | Type | vCPU | RAM | Disk | EUR/month | Note |
 |---|---|---|---|---|---|
-| CX33 | 4 shared | 8 GB | 80 GB | 8.99 | Cheapest fit for e5. Cost-optimized line: reported not orderable since September 2026 |
+| CX33 | 4 shared | 8 GB | 80 GB | 8.99 | Cheapest recommended size. Cost-optimized line: reported not orderable since September 2026 |
 | CPX32 | 4 shared | 8 GB | 160 GB | 35.99 | Regular performance, when CX33 cannot be ordered |
 | CCX13 | 2 dedicated | 8 GB | 80 GB | 43.49 | Dedicated vCPUs |
 | CX43 | 8 shared | 16 GB | 160 GB | 16.49 | Room for 2 workers, the reranker or the monitoring stack |
+| CX23 | 2 shared | 4 GB | 40 GB | 5.99 | 1 worker only, little headroom; same availability as CX33 |
+| CPX22 | 2 shared | 4 GB | 80 GB | 19.99 | 1 worker only, little headroom |
 
 Availability changes: the console shows which types can be created. In the Hetzner console,
 Create Server:
@@ -132,10 +140,10 @@ step 1). Then, with every step numbered:
 |---|---|---|
 | 1-2 | Docker, swap, security updates, firewall; clone into `/opt/normaai` | 3-5 min |
 | 3 | `.env` with fresh secrets (permissions 600), the model settings, `COMPOSE_FILE` | seconds |
-| 4 | Image build: Python packages and the model from Hugging Face (2.1 GB for e5, 1.1 GB for mpnet); JWT keys | 10-15 min |
+| 4 | Image build: about 0.6 GB of Python packages and the model from Hugging Face (2.1 GB for e5, 1.1 GB for mpnet); JWT keys | 10-15 min on a server; 85 min on the laptop at 1-2 MB/s |
 | 5-6 | Postgres, Qdrant, Redis, migrations, the non-superuser role `normaai_app` | 2 min |
 | 7 | Restore of the two snapshots; `CORPUS_AS_OF` from the collection | 2-4 min |
-| 8 | App and Caddy with the RLS overlay; Let's Encrypt certificate | 2-3 min |
+| 8 | App and Caddy with the RLS overlay: the app listens once the model is loaded (31-90 s with e5), then Caddy starts and gets the Let's Encrypt certificate | 2-3 min |
 | 9 | Nightly backup cron, health checks, the administrator's invite code | seconds |
 
 The invite code is printed once: keep it for step 7. A failed step can be fixed and the script run
@@ -204,9 +212,20 @@ pwsh scripts/verify_live_site.ps1 -BaseUrl https://normaai.org -ApiVersion (git 
 ```
 
 Every check must pass: the site, `/health`, `/readyz` (Qdrant, model key and corpus up), the
-corpus in `/api/v1/stats`, CORS from normaai.org, and the site's CSP naming the API. Then
+corpus in `/api/v1/stats`, CORS from normaai.org, and the site's CSP naming the API. (Run
+against a local `next start`, the `/codex` check fails: Vercel does that redirect, from
+`vercel.json`.) Then
 register at https://normaai.org/login with the invite code, ask a question in Chiedi, and check
 that the answer quotes a verified passage.
+
+## Known limits
+
+- **PDF uploads index nothing.** `POST /api/v1/documents/upload` with a PDF answers 200, "Document
+  processed", with `chunks_indexed: 0`. The PDF goes to docling, which needs its layout models from
+  Hugging Face; the image does not have them and the runtime is offline with a read-only root, so
+  docling fails ("Cannot find an appropriate cached snapshot folder") and the log says "No PDF
+  processor available". The user sees no error. HTML uploads and the corpus are not affected.
+  Seen in the dress rehearsal with the Codex PDF; not fixed.
 
 ## If something fails
 

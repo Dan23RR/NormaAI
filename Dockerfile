@@ -5,17 +5,24 @@
 # Stage 1: Build dependencies
 FROM python:3.11-slim AS builder
 
-RUN pip install --no-cache-dir poetry==1.8.5
+# The Poetry of the CI (POETRY_VERSION in .github/workflows/ci.yml, keep them
+# equal) with its export plugin, which Poetry 2 no longer bundles.
+ARG POETRY_VERSION=2.5.1
+RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}" poetry-plugin-export==1.10.1
 
 WORKDIR /app
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml poetry.lock ./
 
-# Generate lock file if missing, then export to requirements.txt.
+# Export exactly the locked versions the CI tested. No `poetry lock` first: it
+# used to rewrite, silently, a lock it did not accept, so the image could get
+# other versions than the CI. The export fails by itself when poetry.lock does
+# not match pyproject.toml ("pyproject.toml changed significantly since
+# poetry.lock was last generated"). (`poetry check --lock` would also stop on the
+# README, which .dockerignore keeps out of the context.)
 # Include the `openrouter` extra so langchain-openai (the OpenRouter/OpenAI-
 # compatible provider, imported lazily in src/agents/llm.py) ships in the image
 # - without it the openrouter path fails at runtime with ModuleNotFoundError.
-RUN poetry lock --no-update --no-interaction 2>/dev/null || true && \
-    poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter > requirements.txt
+RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter -o requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime

@@ -20,6 +20,9 @@ env:
   # Node 20 reached end of life in April 2026. Keep it equal to the Node.js
   # version of the Vercel project (Settings, Build and Deployment).
   NODE_VERSION: "22"
+  # The Poetry that wrote poetry.lock; the Dockerfile builds with the same
+  # (ARG POETRY_VERSION there, keep them equal).
+  POETRY_VERSION: "2.5.1"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
   # Trivy for the report-only scans in the docker and security jobs, pinned by
   # digest: a tag can be repointed, and in March 2026 a malicious Trivy 0.69.4
@@ -47,7 +50,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Ruff lint
         run: poetry run ruff check src/ tests/ --output-format=github
@@ -126,7 +129,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Wait for Qdrant to be ready
         run: |
@@ -231,7 +234,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Fresh database - alembic upgrade head, then alembic check
         env:

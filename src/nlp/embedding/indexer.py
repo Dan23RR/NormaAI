@@ -995,7 +995,7 @@ class HybridIndexer:
         """
         refs = [ref for ref in article_refs(query) if ref.celex or scoped]
         points: list[Any] = []
-        seen: set = set()
+        seen: set[Any] = set()
         for ref in refs:
             conditions: list[Any] = [
                 search_filter,
@@ -1034,7 +1034,7 @@ class HybridIndexer:
         dense_results: list,
         sparse_results: list,
         k: int = 60,
-        named_results: list | None = None,
+        named_results: list[Any] | None = None,
     ) -> list[tuple]:
         """
         Combine dense and sparse rankings using RRF.

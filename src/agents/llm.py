@@ -14,7 +14,7 @@ import logging
 import re
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from tenacity import (
     before_sleep_log,
     retry,
@@ -246,12 +246,12 @@ _JSON_RETRY_PROMPT = (
 )
 
 
-def _needs_json_retry(result: dict) -> bool:
+def _needs_json_retry(result: dict[str, Any]) -> bool:
     """Whether parse_json_response found no JSON object (its fallback to the text)."""
     return isinstance(result, dict) and "parse_warning" in result
 
 
-def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> list:
+def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> list[BaseMessage]:
     return [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_message),
@@ -260,7 +260,9 @@ def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> l
     ]
 
 
-def _after_json_retry(first: dict, reply: str | None, error: Exception | None = None) -> dict:
+def _after_json_retry(
+    first: dict[str, Any], reply: str | None, error: Exception | None = None
+) -> dict[str, Any]:
     """The second reply when it is JSON, else the first; logs the outcome."""
     second = parse_json_response(reply) if reply is not None else None
     if second is None:

@@ -131,9 +131,12 @@ def found(results: list[dict]) -> list[str]:
 
 
 def server_ready() -> bool:
+    # Any failure means not ready. In the full suite of 2026-11-09, on a busy
+    # laptop, the probe timed out and raised httpcore.ReadTimeout, which is not an
+    # httpx error: every test of the module errored instead of skipping.
     try:
-        return httpx.get(f"http://{QDRANT_HOST}:{QDRANT_PORT}/readyz", timeout=2).is_success
-    except httpx.HTTPError:
+        return httpx.get(f"http://{QDRANT_HOST}:{QDRANT_PORT}/readyz", timeout=10).is_success
+    except Exception:
         return False
 
 
@@ -143,6 +146,7 @@ def server_indexer(collection_name: str) -> HybridIndexer:
         qdrant_port=QDRANT_PORT,
         embedding_dim=len(TOPICS) + 1,
         collection_name=collection_name,
+        qdrant_timeout=60,  # a busy server is slow, not missing
     )
     idx._embedder = TopicEmbedder()
     return idx

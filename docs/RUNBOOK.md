@@ -6,13 +6,22 @@
 ## 0. Vista d'insieme
 
 ```
-Vercel (frontend, fra1) ──rewrite /api/v1──▶ api.normaai.org (FastAPI, Docker)
+Vercel (frontend, fra1) ──browser, CORS──▶ api.normaai.org (Caddy → FastAPI, Docker)
                                               ├── PostgreSQL 16 (RLS multi-tenant)
-                                              ├── Qdrant v1.20 (hybrid search)
+                                              ├── Qdrant v1.20 (hybrid search, collection eu_regulations_e5)
                                               ├── Redis 7 (cache + blacklist + lockout)
                                               └── Ollama Qwen (opzionale, local LLM)
 Observability: Prometheus :9090 · Grafana :3001 · Jaeger :16686
 ```
+
+Il browser chiama l'API all'indirizzo di `NEXT_PUBLIC_API_BASE_URL` (variabile del progetto
+Vercel), senza rewrite. Server nuovo e messa in produzione: [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md).
+
+Sul server il `.env` contiene `COMPOSE_FILE` (file base, prod e RLS): `docker compose` senza `-f`
+usa i file di produzione. Le migrazioni e il seed girano invece con i soli file base e prod
+(`docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app ...`), perché il
+ruolo `normaai_app` dell'overlay RLS non può modificare le tabelle. In locale `docker compose`
+usa il file base e l'override di sviluppo.
 
 Comandi base:
 
@@ -20,9 +29,14 @@ Comandi base:
 docker compose ps                      # stato servizi
 docker compose logs -f app             # log applicazione
 docker compose restart app             # riavvio app (ultima risorsa, vedi §2)
-curl http://localhost:8000/health      # liveness
+curl http://localhost:8000/health      # liveness (in locale; sul server vedi sotto)
 curl http://localhost:8000/readyz      # readiness (503 = dipendenze giù)
 ```
+
+Sul server l'app non pubblica la porta 8000: `docker exec normaai-app curl -fsS http://localhost:8000/readyz`
+oppure, da fuori, `curl https://api.normaai.org/readyz`. Prometheus, Grafana e Jaeger non partono
+con il deploy: `docker compose up -d prometheus grafana jaeger`, poi tunnel SSH
+(`ssh -L 3001:localhost:3001 -L 9090:localhost:9090 root@<server>`).
 
 ## 1. Diagnosi rapida (primi 5 minuti)
 
@@ -42,6 +56,9 @@ docker compose up -d app                # restart pulito
 
 - Crash loop all'avvio → quasi sempre config: `validate_settings_or_exit` stampa
   il motivo (APP_SECRET_KEY corta, chiavi JWT mancanti in production, LLM key assente).
+  `FATAL: the app connects to PostgreSQL as a SUPERUSER` = app avviata senza l'overlay RLS
+  (per esempio `docker compose -f docker-compose.yml up -d app`): rilancia `docker compose up -d app`
+  con il `COMPOSE_FILE` del `.env`.
 - `pg_isready` fallisce → §5 Postgres.
 - Dopo il restart verifica `/readyz` E fai un login di prova.
 
@@ -56,9 +73,30 @@ docker compose restart qdrant
 ```
 
 - Il circuit breaker qdrant si richiude da solo (recovery 30s) dopo che il servizio torna su.
-- Collection corrotta/persa → re-seed: `python -m src.pipeline --action seed` (~minuti, usa EUR-Lex).
+- Collection corrotta/persa → ripristina l'ultimo snapshot (sotto): con multilingual-e5-large il seed
+  sulla CPU del server dura ore. Il re-seed resta possibile: `python -m src.pipeline --action seed`
+  (sul server dentro `docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app`).
   Il seed è idempotente (id dei chunk deterministici, re-index per atto/lingua): rilanciarlo non duplica nulla.
   Un singolo atto o framework: `--acts 32022L2464` / `--acts DORA`; una sola lingua: `--lang IT`.
+- **Snapshot delle collection** (backup e trasferimento su un server nuovo). Sul server Qdrant
+  risponde su `127.0.0.1:6333`. Uno snapshot per collection:
+  ```bash
+  curl -fsS -X POST "http://127.0.0.1:6333/collections/eu_regulations_e5/snapshots?wait=true"   # "name" del file
+  curl -fsS -o eu_regulations_e5.snapshot "http://127.0.0.1:6333/collections/eu_regulations_e5/snapshots/<name>"
+  ```
+  Ripristino, che sostituisce la collection se esiste già:
+  ```bash
+  curl -fsS -X POST "http://127.0.0.1:6333/collections/eu_regulations_e5/snapshots/upload?priority=snapshot&wait=true" \
+    -F "snapshot=@eu_regulations_e5.snapshot"
+  ```
+  Su un server nuovo lo fa il passo 7 di `scripts/bootstrap_hetzner.sh` con i file
+  `/opt/normaai-snapshots/<collection>.snapshot`. Lo snapshot porta con sé vettori, indici, IDF e
+  il punto dei metadati (`corpus_as_of`). Si ripristina sulla stessa versione di Qdrant; tra
+  minor diverse vale la regola delle minor consecutive di «Aggiornare Qdrant» qui sotto. Rifallo
+  dopo ogni aggiornamento del corpus e tienine una copia fuori dal server.
+- **Cambiare modello di ricerca** (e5 o mpnet, una collection per modello, tutte e due negli
+  snapshot): `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION` e `QDRANT_COLLECTION` nel `.env`, poi build
+  dell'immagine e riavvio come al §9. Valori e memoria in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) §1.
 - Log di avvio `collection_sparse_modifier_missing` o `collection_embedding_model_mismatch` → la collection è
   stata creata con la vecchia configurazione (sparse senza IDF o altro modello di embedding): ricreala con
   `python -m src.pipeline --action seed --recreate`.
@@ -149,20 +187,25 @@ docker compose restart redis   # recovery cache: immediato; nessun dato critico 
 
 ## 9. Deploy / rollback
 
-```powershell
-# Deploy backend (Docker)
-git pull
-docker compose build app
-docker compose up -d app
-curl http://localhost:8000/readyz
+- **Deploy backend**: un push su `main` esegue `.github/workflows/deploy.yml`: via SSH, sul server,
+  `git reset --hard origin/main`, build dell'immagine con lo SHA, migrazioni come owner, riavvio di
+  app e Caddy con l'overlay RLS, poi attesa di `https://api.normaai.org/health` con la versione
+  nuova. Senza i segreti `DEPLOY_*` ([DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md)) il job salta con un avviso.
+- A mano, sul server, nello stesso ordine:
 
-# Rollback backend
-git checkout <ultimo-tag-buono>
-docker compose build app && docker compose up -d app
+```bash
+cd /opt/normaai && git pull && export GIT_SHA=$(git rev-parse --short=7 HEAD)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build app
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
+docker compose up -d app caddy                    # COMPOSE_FILE del .env: base, prod e RLS
+curl -fsS https://api.normaai.org/health          # "version" = GIT_SHA
 
-# Migrazioni
-poetry run alembic upgrade head          # applica
-poetry run alembic downgrade -1          # rollback ultima (ATTENZIONE: vedi nota)
+# Rollback backend: gli stessi passi da uno SHA buono (il deploy successivo riparte da origin/main)
+git checkout <sha-buono> && export GIT_SHA=$(git rev-parse --short=7 HEAD)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build app && docker compose up -d app caddy
+
+# Migrazioni: rollback dell'ultima (ATTENZIONE: vedi nota)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic downgrade -1
 ```
 
 - Le migrazioni 001-008 sono additive; il downgrade di 002 (RLS) **disabilita
@@ -173,9 +216,9 @@ poetry run alembic downgrade -1          # rollback ultima (ATTENZIONE: vedi not
 
 | Cadenza | Azione |
 |---|---|
-| Giornaliera (auto) | Backup Postgres (`scripts/backup_postgres.ps1`, task scheduler) |
+| Giornaliera (auto) | Backup Postgres: sul server cron alle 02:00 (`scripts/backup_postgres.sh`, installato dal bootstrap, dump in `/opt/normaai/backups`, log in `/var/log/normaai-backup.log`); in locale `scripts/backup_postgres.ps1` con il task scheduler. I dump restano sul server: copiarli fuori |
 | Settimanale | Controlla Dependabot PR + alert CodeQL/Trivy in GitHub Security tab |
-| Settimanale (auto) | Crawl EUR-Lex update (`python -m src.pipeline --action update --days-back 7`) |
+| Settimanale (a mano) | Aggiornamento EUR-Lex: `python -m src.pipeline --action update --days-back 7` (sul server dentro `docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app`; lo scheduler interno è spento, `ACQUISITION_SCHEDULER_ENABLED=false`), poi un nuovo snapshot della collection (§3) |
 | Mensile | Test di RESTORE del backup (un backup non testato non è un backup) |
 | Trimestrale | Rotazione chiavi (SECURITY.md § Key Rotation) + review accessi |
 

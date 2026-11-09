@@ -43,10 +43,10 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
@@ -94,15 +94,17 @@ jobs:
           --health-retries 5
 
       qdrant:
-        image: qdrant/qdrant:latest
+        # Same server as ci.yml and the compose files: qdrant-client and the
+        # server move together (docs/RUNBOOK.md, "Aggiornare Qdrant").
+        image: qdrant/qdrant:v1.20.0
         ports:
           - 6333:6333
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
@@ -197,12 +199,12 @@ jobs:
     needs: full-regression
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Promptfoo
         run: npm install -g promptfoo

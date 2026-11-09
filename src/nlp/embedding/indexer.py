@@ -7,6 +7,8 @@ Implements hybrid search with Reciprocal Rank Fusion (RRF):
   "passage: ") get them from EMBEDDING_PREFIXES
 - Sparse vectors: hashed term frequencies with Qdrant's IDF modifier (BM25-style)
 - RRF fusion: combines both rankings without tuning weights
+- Named articles: an article the query names ("art. 8 del regolamento (UE)
+  2020/852") is looked up and fused as a third ranking (article_refs.py)
 
 Why hybrid:
 - Dense catches "sustainability reporting obligations" ≈ "CSRD compliance requirements"
@@ -39,6 +41,7 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     IsEmptyCondition,
+    MatchAny,
     MatchValue,
     Modifier,
     PayloadField,
@@ -49,6 +52,7 @@ from qdrant_client.models import (
 )
 
 from src.nlp.chunking.contextual_chunker import ContextualChunker
+from src.nlp.embedding.article_refs import article_refs, paragraph_range
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +103,18 @@ CORPUS_META_ORG = "__corpus_meta__"
 # Named vectors of every point (scripts/reembed_collection.py copies them by name).
 DENSE_VECTOR = "dense"
 SPARSE_VECTOR = "bm25"
+
+# Articles a question names (src/nlp/embedding/article_refs.py) enter the fusion
+# as a third ranking: the best chunks of each named article, by the dense search
+# within the article. A named chunk weighs as much as one the two searches both
+# rank there (each search weighs 1).
+NAMED_ARTICLE_CHUNKS = 2
+NAMED_ARTICLE_WEIGHT = 2.0
+# Chunks read per named article, best first. Art. 19a of Directive 2013/34/EU has
+# 13 per language; only the article of an amending act that lists every amendment
+# has more (Art. 1 of Regulation 2026/1744: 51 in Italian), and of those the best
+# 50 are read.
+NAMED_ARTICLE_SCAN = 50
 
 # Payload fields with a keyword index (filtering / per-act deletes).
 PAYLOAD_INDEX_FIELDS: tuple[str, ...] = (
@@ -269,6 +285,20 @@ def _vector_to_list(vector: Any) -> list[float]:
     """A FastEmbed vector (numpy array) or any sequence of floats, as a plain list."""
     values: list[float] = vector.tolist() if hasattr(vector, "tolist") else list(vector)
     return values
+
+
+def _paragraphs(point: Any) -> range | None:
+    """Paragraphs a stored chunk holds, from its ``paragraph`` payload; None if unknown."""
+    return paragraph_range((getattr(point, "payload", None) or {}).get("paragraph"))
+
+
+def _is_opening(point: Any) -> bool:
+    """Whether a stored chunk opens its article: it holds paragraph 1, or, for a
+    chunk without paragraph numbers, it is the first part (or the only one)."""
+    paragraphs = _paragraphs(point)
+    if paragraphs is not None:
+        return 1 in paragraphs
+    return str((getattr(point, "payload", None) or {}).get("part") or "1") == "1"
 
 
 def indexer_kwargs_from_settings(settings: Any) -> dict[str, Any]:
@@ -774,7 +804,9 @@ class HybridIndexer:
         Hybrid search with Reciprocal Rank Fusion.
 
         Runs dense + sparse search separately (query_points on each named
-        vector), then fuses rankings.
+        vector), then fuses rankings. When the query names articles ("art. 8
+        del regolamento (UE) 2020/852"), their best chunks are fused as a third
+        ranking (_named_article_points).
 
         Args:
             query: Search query text
@@ -830,15 +862,22 @@ class HybridIndexer:
             with_payload=True,
         )
 
+        # Articles the query names, looked up within the same filter
+        named_results = self._named_article_points(
+            query, dense_vec, search_filter, scoped=bool(framework_filter)
+        )
+
         # RRF fusion
-        fused = self._reciprocal_rank_fusion(dense_results, sparse_results, k=rrf_k)
+        fused = self._reciprocal_rank_fusion(
+            dense_results, sparse_results, k=rrf_k, named_results=named_results
+        )
 
         # Get top results with payloads. Keep each retriever's RAW score so a
         # downstream consumer can gate on retrieval strength (e.g. abstain harder
         # when the best evidence is weak) - the RRF score alone hides that.
         results = []
         seen_ids = set()
-        all_results_map = {}
+        all_results_map = {r.id: r for r in named_results}
         dense_score_map = {}
         sparse_score_map = {}
         for r in dense_results:
@@ -933,15 +972,74 @@ class HybridIndexer:
         records = sorted(records, key=lambda r: (r.payload or {}).get("chunk_index") or 0)
         return [self._result_dict(r, None) for r in records]
 
+    def _named_article_points(
+        self,
+        query: str,
+        dense_vec: list[float],
+        search_filter: Filter,
+        scoped: bool,
+    ) -> list[Any]:
+        """The best chunks of the articles ``query`` names, as Qdrant points (best first).
+
+        A reference counts when it gives its act's number ("art. 8 del
+        regolamento (UE) 2020/852") or when the search is restricted to
+        frameworks (``scoped``): "art. 35 del GDPR" reaches the search with the
+        GDPR framework filter, while a bare "art. 5" could be any act's. Within
+        an article the chunks are ranked by the dense search. The chunks that
+        hold a named paragraph ("art. 35, paragrafo 7") come first; without a
+        paragraph the article's opening does (paragraph 1, else its first
+        part), which states the article's rule: the best other chunk follows
+        it. Each reference adds NAMED_ARTICLE_CHUNKS chunks. The search filter
+        still applies (framework, tenant, superseded chunks). A failed lookup
+        leaves the hybrid ranking as it is.
+        """
+        refs = [ref for ref in article_refs(query) if ref.celex or scoped]
+        points: list[Any] = []
+        seen: set = set()
+        for ref in refs:
+            conditions: list[Any] = [
+                search_filter,
+                FieldCondition(key="article", match=MatchAny(any=ref.labels())),
+            ]
+            if ref.celex:
+                conditions.append(FieldCondition(key="celex", match=MatchValue(value=ref.celex)))
+            try:
+                found = self._query_points(
+                    collection_name=self.COLLECTION_NAME,
+                    using=DENSE_VECTOR,
+                    query=dense_vec,
+                    query_filter=Filter(must=conditions),
+                    limit=NAMED_ARTICLE_SCAN,
+                    with_payload=True,
+                )
+            except Exception as e:
+                logger.warning("named_article_lookup_failed: %s", e)
+                return points
+            if ref.paragraph is not None:
+                first = [p for p in found if ref.paragraph in (_paragraphs(p) or ())]
+                first_ids = {p.id for p in first}
+                rest = [p for p in found if p.id not in first_ids]
+            else:
+                # One opening: the other language's copy would only repeat it.
+                first = [p for p in found if _is_opening(p)][:1]
+                rest = [p for p in found if not _is_opening(p)]
+            for point in (first + rest)[:NAMED_ARTICLE_CHUNKS]:
+                if point.id not in seen:
+                    seen.add(point.id)
+                    points.append(point)
+        return points
+
     @staticmethod
     def _reciprocal_rank_fusion(
         dense_results: list,
         sparse_results: list,
         k: int = 60,
+        named_results: list | None = None,
     ) -> list[tuple]:
         """
         Combine dense and sparse rankings using RRF.
-        Formula: RRF(d) = sum(1 / (k + rank_i(d))) for each ranking i
+        Formula: RRF(d) = sum(w_i / (k + rank_i(d))) for each ranking i, w = 1 for
+        the two searches and NAMED_ARTICLE_WEIGHT for the named articles' chunks.
         """
         rrf_scores: dict = {}
 
@@ -950,6 +1048,9 @@ class HybridIndexer:
 
         for rank, result in enumerate(sparse_results, 1):
             rrf_scores[result.id] = rrf_scores.get(result.id, 0) + 1.0 / (k + rank)
+
+        for rank, result in enumerate(named_results or [], 1):
+            rrf_scores[result.id] = rrf_scores.get(result.id, 0) + NAMED_ARTICLE_WEIGHT / (k + rank)
 
         return sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
 

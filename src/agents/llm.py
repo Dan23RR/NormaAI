@@ -309,10 +309,12 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         result = parse_json_response(content)
         if _needs_json_retry(result):
             try:
-                retry = llm.invoke(_json_retry_messages(system_prompt, user_message, content))
+                second_reply = llm.invoke(
+                    _json_retry_messages(system_prompt, user_message, content)
+                )
             except Exception as retry_error:
                 return _after_json_retry(result, None, retry_error)
-            return _after_json_retry(result, message_text(retry))
+            return _after_json_retry(result, message_text(second_reply))
         return result
 
     except Exception as e:
@@ -390,12 +392,12 @@ async def acall_llm(
             # One call, no backoff retries: at most one more request per answer.
             try:
                 async with get_llm_semaphore():
-                    retry = await get_llm(temperature=temperature).ainvoke(
+                    second_reply = await get_llm(temperature=temperature).ainvoke(
                         _json_retry_messages(system_prompt, user_message, content)
                     )
             except Exception as retry_error:
                 return _after_json_retry(result, None, retry_error)
-            return _after_json_retry(result, message_text(retry))
+            return _after_json_retry(result, message_text(second_reply))
         return result
 
     except NonRetryableLLMError as e:

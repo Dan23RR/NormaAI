@@ -19,7 +19,7 @@ uvicorn = {extras = ["standard"], version = "^0.54.0"}
 # LLM & Agents
 langchain = "^0.3.12"
 langchain-google-genai = "^2.1.0"
-langchain-anthropic = {version = "^0.3.2", optional = true}
+langchain-anthropic = "^0.3.2"
 langchain-ollama = {version = "^0.3.0", optional = true}
 langchain-openai = {version = "^0.3.0", optional = true}
 langgraph = "^0.2.60"

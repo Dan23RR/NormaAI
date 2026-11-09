@@ -273,10 +273,10 @@ log "8/9" "Avvio applicazione dietro Caddy (TLS automatico per $API_DOMAIN)"
 $COMPOSE_RLS up -d --build app caddy
 echo -n "   attendo che l'app sia healthy"
 for _ in $(seq 1 40); do
-  if docker inspect -f '{{.State.Health.Status}}' normaai-app 2>/dev/null | grep -q healthy; then echo " ok"; break; fi
+  if [ "$(docker inspect -f '{{.State.Health.Status}}' normaai-app 2>/dev/null)" = healthy ]; then echo " ok"; break; fi
   echo -n "."; sleep 5
 done
-docker inspect -f '{{.State.Health.Status}}' normaai-app | grep -q healthy || {
+[ "$(docker inspect -f '{{.State.Health.Status}}' normaai-app)" = healthy ] || {
   docker logs --tail 60 normaai-app; die "l'app non e' diventata healthy (log sopra)"; }
 
 # ── 9. Backups + verification ───────────────────────────────────────────────

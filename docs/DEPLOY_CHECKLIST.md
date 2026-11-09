@@ -9,7 +9,7 @@ describes a 4 GB server and mpnet, and the `up -d` of [DEPLOY_READINESS.md](DEPL
 
 | Step | Where | Time |
 |---|---|---|
-| 1. Server | Hetzner console | 5 min |
+| 1. Model and server | Hetzner console | 5 min |
 | 2. DNS record | Cloudflare | 2 min, plus up to 5 for the old TTL |
 | 3. Corpus snapshots | laptop | 5 min, plus the upload |
 | 4. Bootstrap | server (SSH) | 25-35 min |
@@ -21,15 +21,32 @@ Before you start: an API key for the answering model (Gemini or Anthropic), an S
 the laptop (`ssh-keygen -t ed25519`), and Docker Desktop running for step 3. The bootstrap is
 downloaded from `main`, so deploy from a `main` that contains this checklist.
 
-## 1. Server
+## 1. Model and server
 
-At least **8 GB of RAM**. One API worker with multilingual-e5-large holds about 2.8 GB
-(docs/MODELS.md, section 6); the bootstrap sets one worker (`WEB_CONCURRENCY=1`) and refuses to
-run below 7 GiB. Prices from hetzner.com on 2026-11-03, per month, excluding VAT, IPv4 included:
+The bootstrap asks which search model the API serves (step 4), and the model sets the size of
+the server. Both collections travel in the snapshots of step 3, so either choice works without
+re-embedding, and switching later is a change of `.env` (RUNBOOK §3).
+
+| | e5, recommended | mpnet, the alternative |
+|---|---|---|
+| Model | `intfloat/multilingual-e5-large` | `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`, the code default |
+| Golden v2 end to end (2026-10-27, Haiku 5.5) | 89 / 101 | 81 / 101 |
+| AI Act Art. 50 for the chatbot question without an article number | found | not among the first 30 candidates |
+| Collection | `eu_regulations_e5` | `eu_regulations` |
+| Model in the image | 2.1 GB | 1.1 GB |
+| Memory of one API process (laptop) | 2.8 GB | 2.1 GB |
+| Server | 8 GB | 8 GB |
+
+Golden v2 and retrieval figures: docs/MODELS.md, sections 2.1 and 2.2 (a few questions change
+from run to run). Memory: private bytes of one API process on the laptop, docs/MODELS.md
+section 6; each uvicorn worker holds its own copy of the model. The app container is limited
+to `APP_MEMORY_LIMIT` (4G by default), so the bootstrap writes `WEB_CONCURRENCY=1`.
+
+Prices from hetzner.com on 2026-11-03, per month, excluding VAT, IPv4 included:
 
 | Type | vCPU | RAM | Disk | EUR/month | Note |
 |---|---|---|---|---|---|
-| CX33 | 4 shared | 8 GB | 80 GB | 8.99 | Cheapest fit. Cost-optimized line: reported not orderable since September 2026 |
+| CX33 | 4 shared | 8 GB | 80 GB | 8.99 | Cheapest fit for e5. Cost-optimized line: reported not orderable since September 2026 |
 | CPX32 | 4 shared | 8 GB | 160 GB | 35.99 | Regular performance, when CX33 cannot be ordered |
 | CCX13 | 2 dedicated | 8 GB | 80 GB | 43.49 | Dedicated vCPUs |
 | CX43 | 8 shared | 16 GB | 160 GB | 16.49 | Room for 2 workers, the reranker or the monitoring stack |
@@ -108,13 +125,14 @@ bash bootstrap.sh
 ```
 
 It asks for the answering provider (`gemini` or `anthropic`), its API key (not echoed), an
-optional Resend key, and the first administrator's email. Then, with every step numbered:
+optional Resend key, the first administrator's email and the search model (`e5` or `mpnet`,
+step 1). Then, with every step numbered:
 
 | Step | What | Time |
 |---|---|---|
 | 1-2 | Docker, swap, security updates, firewall; clone into `/opt/normaai` | 3-5 min |
-| 3 | `.env` with fresh secrets (permissions 600), e5 settings, `COMPOSE_FILE` | seconds |
-| 4 | Image build: Python packages and the e5 model (2.2 GB from Hugging Face); JWT keys | 10-15 min |
+| 3 | `.env` with fresh secrets (permissions 600), the model settings, `COMPOSE_FILE` | seconds |
+| 4 | Image build: Python packages and the model from Hugging Face (2.1 GB for e5, 1.1 GB for mpnet); JWT keys | 10-15 min |
 | 5-6 | Postgres, Qdrant, Redis, migrations, the non-superuser role `normaai_app` | 2 min |
 | 7 | Restore of the two snapshots; `CORPUS_AS_OF` from the collection | 2-4 min |
 | 8 | App and Caddy with the RLS overlay; Let's Encrypt certificate | 2-3 min |

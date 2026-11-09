@@ -66,6 +66,27 @@ def _patch_settings(settings):
     return patch("src.config.get_settings", return_value=settings)
 
 
+# A reply in prose, as in the golden v2 run of 2026-11-03, and the JSON one asked for.
+PROSE = "Yes. Each controller keeps a record of processing activities [GDPR, Art. 30(1)]."
+JSON_REPLY = json.dumps(
+    {
+        "answer": "Yes.",
+        "citations": [
+            {
+                "framework": "GDPR",
+                "article": "Art. 30(1)",
+                "quote": "Each controller shall maintain a record of processing activities",
+            }
+        ],
+        "confidence_score": 0.8,
+    }
+)
+
+
+def _json_retry_outcomes(caplog):
+    return [r.outcome for r in caplog.records if r.getMessage() == "llm_json_retry"]
+
+
 # ─── TestClassifyError ───────────────────────────────────────────
 
 
@@ -591,6 +612,42 @@ class TestCallLLM:
         # One failure recorded; below threshold of 5 → still available.
         assert llm_circuit._failure_count == 1
 
+    def test_a_reply_in_prose_is_asked_once_more_as_json(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = [MagicMock(content=PROSE), MagicMock(content=JSON_REPLY)]
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = call_llm("system prompt", "user message")
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.invoke.call_count == 2
+        retry = fake_llm.invoke.call_args_list[1][0][0]
+        # The same exchange, the reply in prose, then the request for the JSON object.
+        assert [m.content for m in retry[:3]] == ["system prompt", "user message", PROSE]
+        assert "JSON object" in retry[3].content
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    def test_two_replies_in_prose_keep_the_first(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = [MagicMock(content=PROSE), MagicMock(content="Still prose.")]
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = call_llm("sys", "user")
+        # As before the second attempt: the answer in prose with its inline citations.
+        assert result == parse_json_response(PROSE)
+        assert result["citations"] == [
+            {"framework": "GDPR", "reference": "Art. 30(1)", "quote_snippet": ""}
+        ]
+        assert fake_llm.invoke.call_count == 2  # never a third
+        assert _json_retry_outcomes(caplog) == ["prose"]
+
 
 # ─── TestAcallLLM (async path) ───────────────────────────────────
 
@@ -671,6 +728,58 @@ class TestAcallLLM:
         assert fake_llm.ainvoke.await_count == 2
         # A successful run clears the failure count.
         assert llm_circuit._failure_count == 0
+
+    async def test_a_reply_in_prose_is_asked_once_more_as_json(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), MagicMock(content=JSON_REPLY)]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("system prompt", "user message")
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.ainvoke.await_count == 2
+        retry = fake_llm.ainvoke.await_args_list[1][0][0]
+        assert [m.content for m in retry[:3]] == ["system prompt", "user message", PROSE]
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    async def test_two_replies_in_prose_keep_the_first(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), MagicMock(content="Still prose.")]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == parse_json_response(PROSE)
+        assert fake_llm.ainvoke.await_count == 2
+        assert _json_retry_outcomes(caplog) == ["prose"]
+
+    async def test_a_failed_second_attempt_keeps_the_first_reply(self, caplog):
+        # No backoff retries for the second attempt, and the circuit is left alone.
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), RuntimeError("overloaded 503")]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == parse_json_response(PROSE)
+        assert fake_llm.ainvoke.await_count == 2
+        assert llm_circuit._failure_count == 0
+        assert _json_retry_outcomes(caplog) == ["error"]
 
     async def test_temperature_propagates_to_get_llm(self):
         settings = _make_settings(provider="gemini", api_key="k")

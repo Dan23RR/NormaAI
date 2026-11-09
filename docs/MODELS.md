@@ -44,7 +44,10 @@ The retrieval-only measure covers the 90 questions that expect an article (the o
 test abstention) and makes no LLM call, so it is the first gate for any retrieval change:
 dense model, sparse vectors, reranker. Measured since: multilingual-e5-large, retrieval
 only (§2.1) and end to end (§2.2), and a cross-encoder reranker (§4.1). The matching of
-parent articles was made strict on 2026-10-27 (§2.2); 84 / 101 does not change.
+parent articles was made strict on 2026-10-27 (§2.2); 84 / 101 does not change. On
+2026-11-03: the terms of the sparse vectors and the lookup of the articles a question
+names, retrieval only (§3.1, §3.2) and end to end (§2.3); the retrieval-only measure also
+counts the expected paragraph since then.
 
 ## 2. Dense embedding
 
@@ -54,7 +57,7 @@ space: a new model needs a collection re-embedded with it (§6).
 | Model | Status | Dims | Licence (to re-check) | Source | Checked | Measured |
 |---|---|---|---|---|---|---|
 | `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` | **in use** (default) | 768 | Apache-2.0 | [model card](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2), FastEmbed 0.4.2 | 2026-10-26 code, FastEmbed | baseline, §1 |
-| `intfloat/multilingual-e5-large` | candidate, measured (§2.1) | 1024 | MIT | [model card](https://huggingface.co/intfloat/multilingual-e5-large), FastEmbed 0.4.2 | 2026-10-26 FastEmbed | 83 / 90 retrieval only; 86 / 90 with the reranker (§2.1) |
+| `intfloat/multilingual-e5-large` | candidate, measured (§2.1) | 1024 | MIT; fine-tuning data include MS MARCO (§4.2) | [model card](https://huggingface.co/intfloat/multilingual-e5-large), FastEmbed 0.4.2 | 2026-11-03 model card | 83 / 90 retrieval only; 86 / 90 with the reranker (§2.1); 89 / 90 with the sparse terms and named articles of 2026-11-03, no reranker (§3.1) |
 | `BAAI/bge-m3` | candidate | — | MIT | [model card](https://huggingface.co/BAAI/bge-m3); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
 | `Qwen/Qwen3-Embedding-0.6B`, `Qwen/Qwen3-Embedding-4B` | candidate | — | Apache-2.0 | [0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B), [4B](https://huggingface.co/Qwen/Qwen3-Embedding-4B); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
 | `nvidia/NV-Embed-v2` | **excluded** (§7) | — | CC-BY-NC-4.0 | [model card](https://huggingface.co/nvidia/NV-Embed-v2) | 2026-10-26 notes | — |
@@ -172,15 +175,144 @@ matching fixed on this date (below).
 - The gate of month 1 asks for at least 90 / 101: e5 with the fixed parser is one
   question short.
 
+### 2.3 Measured: golden v2 end to end, 2026-11-03 and 2026-11-09
+
+Golden v2 through the API with Claude Haiku 5.5, as in §2.2, with `eu_regulations_e5` as
+indexed on 2026-10-27 and the retrieval of §3.1 and §3.2 (sparse terms, named articles),
+no reranker. Each run used a new organisation and an emptied Redis, on containers of its
+own (Postgres, Redis, a copy of the local Qdrant volume).
+
+| Run | Questions passed | Recall | Answer checks | Verified citations | Mean time |
+|---|---|---|---|---|---|
+| e5, 2026-10-27 (§2.2) | 89 / 101 | 0.88 | 80.2 % | 99.4 % | 14.8 s |
+| e5, named articles without the opening rule (§3.2), 2026-11-03 | 95 / 101 | 0.94 | 83.2 % | 98.6 % | 19.5 s |
+| same code, second run, 2026-11-03 | 96 / 101 | 0.95 | 83.2 % | 99.48 % | 18.9 s |
+| **e5, final: opening rule and a second attempt for replies in prose, 2026-11-09** | **96 / 101** | 0.95 | 80.2 % | **99.79 %** | 16.0 s |
+
+- **The gate of month 1 is met** by the final run: at least 90 / 101 questions passed (96)
+  with at least 99.5 % of citations verified (99.79 %, 406 of 407), and on the retrieval
+  side 89 / 90 without a reranker and Art. 50 9th for the chatbot question (§3.1).
+- **Against 2026-10-27** the final run gains nine questions (aiact-113-003, gdpr-035-003,
+  nis2-021-003, csrd-19a-001, csrd-19a-002, csrd-29a-001, tax-003-002, tax-008-001,
+  cra-071-002) and loses two (aiact-113-005, aiact-003-004). Against the second run of
+  2026-11-03 it gains csrd-19a-001 and csrd-29a-001, the two the opening rule targets,
+  and loses aiact-003-004 and csddd-037-001.
+- **Second attempt for replies in prose** (`src/agents/llm.py`): a reply with no JSON
+  object in it is sent back once, with a request for only the JSON object. In the final
+  run it fired twice, and both second replies were JSON (`llm_json_retry outcome=json` in
+  the API log, about 10 s each); no answer stayed in prose.
+- **Still failing** in the final run: dora-028-001 (retrieval, §3.1); aiact-003-004
+  abstains because definition 63 of Art. 3 sits in a part of the article that does not
+  come (it passed in one run of three); three answers cite the amending act or its
+  recitals instead of the amended article: aiact-113-005 (Regulation 2026/1744 instead of
+  Art. 113(3)(c)), csddd-037-001 and inj-005 (Directive 2026/470 instead of Art. 37(1) and
+  Art. 19a(1)).
+- **Cost**: $0.27 per run.
+- **Stable gains.** Both runs gain the same eight questions against 2026-10-27, the ones
+  the retrieval-only measure predicts (§3.1): aiact-113-003, gdpr-035-003, nis2-021-003,
+  csrd-19a-002, csddd-037-001, tax-003-002, tax-008-001, cra-071-002. The losses change
+  from run to run: aiact-003-004 and csddd-037-002 in the first (both passed in the
+  second), aiact-113-005 in the second.
+- **Verified citations** are the mean, over the 96 answers with citations, of the share
+  verified word for word, so one answer weighs a point. In the first run one answer came
+  in prose and its citations, written as "[GDPR, Art. 30(1)]" without the quoted text,
+  could not be verified (gdpr-030-001, 0 of 5; the answer passed): without it the run
+  scores 99.65 %. The second run had no answer in prose; two quotes were cut or joined
+  (nis2-003-001, csddd-037-001).
+- **Still failing in both runs of 2026-11-03**: dora-028-001 (retrieval, §3.1);
+  csrd-19a-001, csrd-29a-001 and inj-005, which cite the recitals of Directive 2026/470
+  instead of Art. 19a(1) or 29a(1). Those runs predate the opening rule of §3.2, which
+  brings paragraph 1 of both articles to the agents: the final run passes the first two.
+- **Mean time** of the two runs of 2026-11-03 is not comparable with §2.2: the laptop ran
+  the test suite during the first, and the second ran on the API process of the first. The
+  final run had the laptop to itself.
+
 ## 3. Sparse vectors
 
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
 |---|---|---|---|---|---|
-| Hashed term frequencies (MD5 into 30,000 buckets, `log(1 + tf)`) with Qdrant `Modifier.IDF`, BM25-style | **in use** | own code | `_text_to_sparse_vector` in `src/nlp/embedding/indexer.py` | 2026-10-26 code | baseline, §1 |
+| Hashed term frequencies (MD5 into 30,000 buckets, `log(1 + tf)`) of the words of the text, runs of letters and digits since 2026-11-03, with Qdrant `Modifier.IDF`, BM25-style | **in use** | own code | `_text_to_sparse_vector` in `src/nlp/embedding/indexer.py` | 2026-11-03 code | §1, §3.1 |
 
 No learned sparse model is in use or lined up; bge-m3 (§2) is the obvious one to try.
 The re-embed script copies the sparse vectors unchanged, so changing them needs a
-reseed (`python -m src.pipeline --action seed --recreate`).
+reseed (`python -m src.pipeline --action seed --recreate`). The terms of 2026-11-03 do
+not need one: the questions get them at once, and passages indexed with the old split
+are found as well (§3.1). A reseed or a re-index makes the passages consistent.
+
+### 3.1 Measured: sparse terms and named articles, retrieval only, 2026-11-03
+
+Until 2026-11-03 the sparse vectors split the text on spaces only, so punctuation stayed
+on the words: a question's "artificiale?", "dell'autenticazione", "«garanzie" or
+"(capo" matched no passage. Now the terms are runs of letters and digits
+(`sparse_terms`). The second change looks up the articles a question names (§3.2).
+
+Same measure as §1 and §2.1: the 90 golden v2 questions that expect an article, expected
+article among the chunks the agents read, no reranker; since 2026-11-03 `retrieval_eval`
+also counts the expected paragraph ("Art. 29a(1)" needs a chunk holding paragraph 1).
+Collections `eu_regulations_e5` and `eu_regulations` of 2026-10-27, with their sparse
+vectors as indexed (split on spaces) unless a row says otherwise.
+
+| Configuration | e5: articles | e5: paragraphs | Art. 50, chatbot question | mpnet: articles |
+|---|---|---|---|---|
+| Before (split on spaces) | 83 / 90 | 80 / 90 | 8th | 80 / 90 |
+| New terms | 87 / 90 | 84 / 90 | 9th | 84 / 90 |
+| New terms, passages re-indexed with them | 87 / 90 | — | 8th | — |
+| **New terms and named articles (the code since 2026-11-03)** | **89 / 90** | **87 / 90** | **9th** | 85 / 90 |
+| same, passages re-indexed | 89 / 90 | 87 / 90 | 8th | — |
+
+"Art. 50, chatbot question" is the position of AI Act Art. 50 for the first chatbot
+question of `retrieval_eval` ("Il chatbot sul sito della nostra azienda deve dichiarare
+di essere un'intelligenza artificiale? Da quando?"); mpnet does not retrieve it in any row.
+
+- **The gain comes from the questions.** With the passages as indexed, the new terms give
+  the same 87 as with re-indexed passages: no reseed is needed to deploy them.
+- **e5's dense search alone scores 86 / 90** (Art. 50 2nd): the old BM25, whose question
+  terms rarely matched, pulled the hybrid search down to 83.
+- **Gained** with e5, against before: aiact-113-003, nis2-021-003, tax-003-002 and
+  cra-071-002 (new terms); csrd-19a-001 and tax-008-001 (named articles, both name the
+  act's number). At paragraph level also gdpr-035-003 (Art. 35(7), new terms) and
+  csrd-29a-001 (the article's opening, §3.2); csrd-19a-002 lost its paragraph with the
+  new terms (Art. 19a still comes, with later paragraphs). **Still missed**:
+  dora-028-001, the article (its best chunk is 7th in the dense search and 65th in
+  BM25); csrd-19a-002 and inj-005, the paragraph.
+- **Variants tried and not kept**, all with re-indexed passages, e5, articles and Art. 50
+  position: accents removed 87 (8th); Snowball stems (the passage's language for the
+  passages, Italian and English for the question) 86 (3rd); stopwords removed 86 (5th);
+  BM25 length normalisation (k1 1.2, b 0.75) 85 (9th); stems and normalisation 86 (11th);
+  stopwords, stems and normalisation, close to Qdrant's own BM25, 85 (2nd).
+- **Fusion, tried and not changed** (new terms, re-indexed passages, no named articles
+  unless said): search depth 2, 3, 4 and 6 times the results 86, 87, 87, 88, with Art. 50
+  5th, 8th, 15th and missing; RRF constant 20 and 100 both 87; dense weight 1.25 to 2
+  gives 88, sparse weight 1.5 gives 87 with Art. 50 missing. With the named articles a
+  dense weight of 1.5 gives e5 90 / 90 but drops mpnet from 85 to 70. The search keeps
+  k = 60, depth 3 times the results and equal weights, as before: no parameter was chosen
+  on these 90 questions.
+
+### 3.2 Named articles
+
+52 of the 101 golden v2 questions name an article ("ai sensi dell'art. 8 del
+regolamento (UE) 2020/852", "Article 3(4) of Directive 2013/34/EU", "art. 35, paragrafo
+7, del GDPR"). `src/nlp/embedding/article_refs.py` reads the references (number, Latin
+suffix or letter, paragraph, act number turned into a CELEX); `hybrid_search` looks each
+one up within the search filter (framework, tenant, superseded chunks) and fuses its
+chunks as a third ranking, weighted as much as the two searches together.
+
+- **Which references**: one that gives its act's number, or any when the search is
+  restricted to frameworks (the agents pass the framework the question names: "art. 35
+  del GDPR"). A bare "art. 5" in a search over every act is not looked up, nor is an act
+  named only by its common name ("the Accounting Directive" in csrd-19a-002, a question
+  whose words detect no framework).
+- **Which chunks**: two per reference, ranked by the dense search within the article.
+  The chunks holding a named paragraph come first; without a paragraph the article's
+  opening (paragraph 1, else its first part), which states the article's rule, then the
+  best other chunk. With the two best by score instead, e5 scores 85 / 90 at paragraph
+  level (csrd-19a-001 and csrd-29a-001 get later paragraphs of the article).
+- **Unknown articles** (the refusal questions on "art. 999 del GDPR", "Article 150 of the
+  NIS2 Directive") find nothing and change nothing.
+- **Cost**: one more filtered dense query to Qdrant per named article (at most three per
+  question); the question is embedded once. On the development laptop the hybrid search
+  of the 48 golden questions that name an article (and expect one) takes a median of 66 ms
+  instead of 41 ms, besides the 126 ms of the e5 embedding (§2.1).
 
 ## 4. Reranker
 
@@ -188,7 +320,8 @@ reseed (`python -m src.pipeline --action seed --recreate`).
 |---|---|---|---|---|---|
 | none: the fused hybrid results go to the LLM as they are | **in use** | — | `hybrid_search` in `src/nlp/embedding/indexer.py` | 2026-10-26 code | baseline, §1 |
 | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` | candidate, measured; code ready, off (§4.3); licence question open (§4.2) | Apache-2.0 on the model card; trained on a translation of MS MARCO (§4.2) | [model card](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1), ONNX exports (fp32, int8) in the same repository; not in FastEmbed 0.4.2 | 2026-10-27 model card | 88 / 90 retrieval only with mpnet, fused with the hybrid rank (§4.1); 86-87 / 90 with e5 (§2.1) |
-| `BAAI/bge-reranker-v2-m3` | candidate; too slow to measure on the laptop CPU (§4.1) | Apache-2.0 | [model card](https://huggingface.co/BAAI/bge-reranker-v2-m3); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
+| `BAAI/bge-reranker-v2-m3` | candidate; too slow to measure on the laptop CPU (§4.1); not needed for the gate of month 1 (§3.1) | Apache-2.0 on the model card; built on bge-m3, whose fine-tuning data include MS MARCO and mMARCO-ZH (§4.2) | [model card](https://huggingface.co/BAAI/bge-reranker-v2-m3), 568M parameters, [M3-Embedding paper](https://arxiv.org/abs/2402.03216) §3.1; not in FastEmbed 0.4.2 | 2026-11-03 model card, paper | — |
+| `Alibaba-NLP/gte-multilingual-reranker-base` | candidate, not measured; not needed for the gate of month 1 (§3.1) | Apache-2.0 on the model card; fine-tuning data include MS MARCO (§4.2) | [model card](https://huggingface.co/Alibaba-NLP/gte-multilingual-reranker-base), 306M parameters, 612 MB of weights, custom architecture (`trust_remote_code`), no ONNX export in the repository, [mGTE paper](https://arxiv.org/abs/2407.19669) appendix B.2; not in FastEmbed 0.4.2 | 2026-11-03 model card, paper | — |
 | `Qwen/Qwen3-Reranker-0.6B` | candidate | Apache-2.0 | [model card](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B); not in FastEmbed 0.4.2 | 2026-10-26 notes | — |
 | `jinaai/jina-reranker-v2-base-multilingual` | **excluded** (§7) | CC-BY-NC-4.0 | [model card](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual), FastEmbed 0.4.2 | 2026-10-26 notes, FastEmbed | — |
 
@@ -243,6 +376,14 @@ is a machine translation of MS MARCO, whose terms say the MS MARCO datasets are 
 for non-commercial research purposes only". Most open rerankers are trained on MS MARCO,
 and whether those terms reach the users of a trained model is not settled. Check before
 commercial use.
+
+Checked on 2026-11-03: the question is not specific to this reranker. The two permissive
+candidates of §4 were fine-tuned on MS MARCO too (bge-reranker-v2-m3 through bge-m3, with
+mMARCO-ZH; gte-multilingual-reranker-base in the mGTE fine-tuning data), and so was the
+dense model: the model card of multilingual-e5-large lists MS MARCO, 500k pairs, among its
+fine-tuning data. A rule that excludes models trained on MS MARCO excludes e5 as well.
+Since 2026-11-03 the retrieval passes the retrieval gate of month 1 without any reranker
+(§3.1).
 
 ### 4.3 Switching it on
 
@@ -331,3 +472,5 @@ model, set by the variable in brackets.
 | 2026-10-26 | Registry created; the indexer adds the e5 prefixes; re-embed script and retrieval-only evaluation in the repository |
 | 2026-10-27 | Retrieval-only baseline read with the "bis" fix (80 / 90); multilingual MiniLM cross-encoder measured (§4.1), licence question (§4.2); multilingual-e5-large measured alone and with the reranker, search depth of the reranker's candidates (`RERANKER_SEARCH_DEPTH`), memory and re-embedding time (§2.1); the Docker image bakes the configured dense model, workers and container memory are settings (§6) |
 | 2026-10-27 | Golden v2 end to end: mpnet 81, e5 85, e5 with the response parser fixed 89 (§2.2); parent articles match only at a separator |
+| 2026-11-03 | Sparse terms split on punctuation and lookup of the articles a question names, retrieval only: e5 83 → 89 / 90, mpnet 80 → 85 (§3.1, §3.2); the retrieval-only measure counts the expected paragraph; golden v2 end to end 95 and 96 / 101 with e5 (§2.3); licences and training data of two permissive rerankers, MS MARCO in e5's fine-tuning data too (§4, §4.2) |
+| 2026-11-09 | Golden v2 end to end with the final retrieval and a second attempt for replies in prose: 96 / 101, citations verified 99.79 %; the gate of month 1 is met (§2.3) |

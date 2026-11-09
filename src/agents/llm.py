@@ -14,7 +14,7 @@ import logging
 import re
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from tenacity import (
     before_sleep_log,
     retry,
@@ -232,6 +232,52 @@ def _missing_key_response(settings) -> dict:
     }
 
 
+# ─── A second attempt when the reply is not JSON ─────────────────
+# A reply with no JSON object in it reaches the last step of parse_json_response:
+# the answer in prose, with the citations written in its text. Those carry no
+# quoted passage, so the verifier can check none of them (golden v2 of 2026-11-03:
+# one answer in 101, 0 of 5 citations verified). Such a reply is asked for once
+# more as the JSON object; when the second reply is not JSON either, or the call
+# fails, the first one is kept as before.
+_JSON_RETRY_PROMPT = (
+    "Your reply was not the JSON object the instructions ask for. Reply again with "
+    "only that JSON object: the same answer and the same citations, each with the "
+    "passage it quotes."
+)
+
+
+def _needs_json_retry(result: dict[str, Any]) -> bool:
+    """Whether parse_json_response found no JSON object (its fallback to the text)."""
+    return isinstance(result, dict) and "parse_warning" in result
+
+
+def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> list[BaseMessage]:
+    return [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message),
+        AIMessage(content=reply),
+        HumanMessage(content=_JSON_RETRY_PROMPT),
+    ]
+
+
+def _after_json_retry(
+    first: dict[str, Any], reply: str | None, error: Exception | None = None
+) -> dict[str, Any]:
+    """The second reply when it is JSON, else the first; logs the outcome."""
+    second = parse_json_response(reply) if reply is not None else None
+    if second is None:
+        outcome = "error"
+    elif _needs_json_retry(second):
+        outcome = "prose"
+    else:
+        outcome = "json"
+    extra = {"outcome": outcome}
+    if error is not None:
+        extra["error"] = str(error)
+    logger.warning("llm_json_retry", extra=extra)
+    return second if second is not None and outcome == "json" else first
+
+
 # ─── Synchronous LLM Call (preserved for tests & scripts) ────────
 
 
@@ -261,7 +307,17 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         ]
         response = llm.invoke(messages)
         llm_circuit.record_success()
-        return parse_json_response(message_text(response))
+        content = message_text(response)
+        result = parse_json_response(content)
+        if _needs_json_retry(result):
+            try:
+                second_reply = llm.invoke(
+                    _json_retry_messages(system_prompt, user_message, content)
+                )
+            except Exception as retry_error:
+                return _after_json_retry(result, None, retry_error)
+            return _after_json_retry(result, message_text(second_reply))
+        return result
 
     except Exception as e:
         llm_circuit.record_failure()
@@ -333,7 +389,18 @@ async def acall_llm(
                 system_prompt, user_message, temperature=temperature
             )
         llm_circuit.record_success()
-        return parse_json_response(content)
+        result = parse_json_response(content)
+        if _needs_json_retry(result):
+            # One call, no backoff retries: at most one more request per answer.
+            try:
+                async with get_llm_semaphore():
+                    second_reply = await get_llm(temperature=temperature).ainvoke(
+                        _json_retry_messages(system_prompt, user_message, content)
+                    )
+            except Exception as retry_error:
+                return _after_json_retry(result, None, retry_error)
+            return _after_json_retry(result, message_text(second_reply))
+        return result
 
     except NonRetryableLLMError as e:
         llm_circuit.record_failure()

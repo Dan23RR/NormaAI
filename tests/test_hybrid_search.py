@@ -20,6 +20,7 @@ from unittest.mock import MagicMock
 from src.nlp.embedding.indexer import (
     HybridIndexer,
     _text_to_sparse_vector,
+    sparse_terms,
 )
 
 # ------------------------------------------------------------------ #
@@ -58,6 +59,35 @@ class TestSparseVectorGeneration:
         )
         for idx in v.indices:
             assert 0 <= idx < vocab_size
+
+    def test_terms_are_runs_of_letters_and_digits(self):
+        # Punctuation, apostrophes (straight and typographic) and guillemets split terms.
+        text = (
+            "Dell'autenticazione a più fattori? Art. 19 bis, (UE) 2013/34/UE «garanzie» l’impresa"
+        )
+        assert sparse_terms(text) == [
+            "dell",
+            "autenticazione",
+            "a",
+            "più",
+            "fattori",
+            "art",
+            "19",
+            "bis",
+            "ue",
+            "2013",
+            "34",
+            "ue",
+            "garanzie",
+            "l",
+            "impresa",
+        ]
+
+    def test_punctuation_does_not_change_the_vector(self):
+        # A question's "artificiale?" matches the passages' "artificiale".
+        assert _text_to_sparse_vector("un'intelligenza artificiale?") == _text_to_sparse_vector(
+            "un intelligenza artificiale"
+        )
 
     def test_term_frequency_affects_values(self):
         """Repeated terms should have higher values in the sparse vector."""

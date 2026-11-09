@@ -37,7 +37,7 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
-    # No container healthcheck: the qdrant image ships without curl/wget/sh, so a
+    # No container healthcheck: the qdrant image ships without curl/wget, so a
     # CMD healthcheck fails with "executable not found" and marks the service
     # unhealthy forever, blocking dependents (this bit the prod deploy). Qdrant
     # readiness is handled app-side (app_state.qdrant_available, fail-closed) and

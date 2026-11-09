@@ -24,6 +24,7 @@ import hashlib
 import logging
 import math
 import os
+import re
 import threading
 import uuid
 from collections import Counter
@@ -149,12 +150,26 @@ def make_point_id(
     )
 
 
+# Terms of the sparse vectors: runs of letters and digits. Splitting on spaces
+# kept punctuation on the words, so a question's "artificiale?",
+# "dell'autenticazione" or "(capo" matched no passage; with these terms the
+# retrieval-only measure of e5 went from 83 to 87 of 90 (docs/MODELS.md, section 3.1).
+_SPARSE_TERM_RE = re.compile(r"\w+")
+
+
+def sparse_terms(text: str) -> list[str]:
+    """The lower-cased terms of ``text`` that the sparse vectors count."""
+    return _SPARSE_TERM_RE.findall(text.lower())
+
+
 def _text_to_sparse_vector(text: str, vocab_size: int = 30000) -> SparseVector:
     """
     Convert text to a hashed term-frequency sparse vector.
 
-    Uses term hashing to avoid maintaining a global vocabulary.
-    Each term is hashed to a fixed index in [0, vocab_size).
+    The terms are runs of letters and digits (sparse_terms): punctuation and
+    apostrophes separate them ("dell'autenticazione" counts "dell" and
+    "autenticazione"). Uses term hashing to avoid maintaining a global
+    vocabulary. Each term is hashed to a fixed index in [0, vocab_size).
     Value = log(1 + tf). The IDF side of BM25 is NOT computed here: the
     collection's sparse vector config carries ``Modifier.IDF``, so Qdrant
     weights every query term by its corpus-wide inverse document frequency at
@@ -162,8 +177,12 @@ def _text_to_sparse_vector(text: str, vocab_size: int = 30000) -> SparseVector:
 
     Hash collisions are handled by summing values at the same index,
     ensuring all indices are unique (required by Qdrant).
+
+    Points indexed before 2026-11-03 split the text on spaces only; a question
+    still finds them through every term not glued to punctuation (measured:
+    the same 87 of 90), and a reseed rebuilds them with these terms.
     """
-    words = text.lower().split()
+    words = sparse_terms(text)
     if not words:
         return SparseVector(indices=[], values=[])
 
@@ -1007,9 +1026,11 @@ class HybridIndexer:
             else:
                 conditions.append(lang_conditions[0])
 
-        # Temporal: exclude superseded chunks by default. is_empty (not is_null)
-        # because in-force chunks leave superseded_by unset and Qdrant drops null
-        # payload keys - is_null would match nothing and filter out the corpus.
+        # Temporal: exclude superseded chunks by default. is_empty, not is_null:
+        # in-force chunks store superseded_by as null, which Qdrant keeps in the
+        # payload (checked on Qdrant 1.20), but a point written without the key
+        # has none at all. is_empty matches both a null and a missing key,
+        # is_null only the null.
         if not include_superseded:
             conditions.append(IsEmptyCondition(is_empty=PayloadField(key="superseded_by")))
 

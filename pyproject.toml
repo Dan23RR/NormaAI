@@ -14,7 +14,7 @@ python = ">=3.11,<3.13"
 
 # Web framework
 fastapi = "^0.141.1"
-uvicorn = {extras = ["standard"], version = "^0.52.4"}
+uvicorn = {extras = ["standard"], version = "^0.54.0"}
 
 # LLM & Agents
 langchain = "^0.3.12"
@@ -36,11 +36,11 @@ SPARQLWrapper = "^2.0.0"
 docling = "^2.31.0"
 
 # Utils
-pydantic = {extras = ["email"], version = "^2.13.4"}
+pydantic = {extras = ["email"], version = "^2.14.3"}
 pydantic-settings = "^2.15.0"
 python-dotenv = "^1.2.3"
 structlog = "^24.4.0"
-tenacity = "^9.0.0"
+tenacity = "^9.2.1"
 
 # Background jobs (used in future Celery tasks)
 redis = "^5.2.0"
@@ -51,12 +51,12 @@ passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 
 # Database ORM
 # 2.0 series only: 2.1 is a new minor line, to move to on its own.
-sqlalchemy = {extras = ["asyncio"], version = "~2.0.52"}
-asyncpg = "^0.31.0"
+sqlalchemy = {extras = ["asyncio"], version = "~2.0.57"}
+asyncpg = "^0.32.0"
 alembic = "^1.19.1"
 
 # File upload support
-python-multipart = "^0.0.32"
+python-multipart = "^0.0.33"
 
 # Rate limiting
 slowapi = "^0.1.10"
@@ -65,7 +65,7 @@ slowapi = "^0.1.10"
 fpdf2 = "^2.8.8"
 
 # Transactional email (Resend - Codex/lead delivery)
-resend = "^2.39.0"
+resend = "^2.52.0"
 
 # Observability
 arize-phoenix = {version = "^8.0.0", optional = true}
@@ -74,7 +74,7 @@ opentelemetry-sdk = {version = "^1.28.0", optional = true}
 opentelemetry-instrumentation-fastapi = {version = "^0.49b0", optional = true}
 opentelemetry-exporter-otlp-proto-grpc = {version = "^1.28.0", optional = true}
 prometheus-client = {version = "^0.26.0", optional = true}
-sentry-sdk = {extras = ["fastapi"], version = "^2.68.0", optional = true}
+sentry-sdk = {extras = ["fastapi"], version = "^2.74.0", optional = true}
 
 [tool.poetry.extras]
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi", "opentelemetry-exporter-otlp-proto-grpc", "prometheus-client", "sentry-sdk"]
@@ -86,7 +86,7 @@ openrouter = ["langchain-openai"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pytest-asyncio = "^1.4.0"
-ruff = "^0.16.4"
+ruff = "^0.17.4"
 mypy = "^2.1.0"
 httpx = "^0.28.0"
 pytest-cov = "^6.0.0"

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { LogoMark, Wordmark } from '@/components/Logo'
+import { Imprint } from '@/components/site/Imprint'
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; key: string; external?: boolean }> }> = [
   {
@@ -84,9 +85,13 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-rule">
-        <div className="mx-auto flex max-w-site flex-col gap-2 px-6 py-5 text-caption text-ink-3 md:flex-row md:items-center md:justify-between">
-          <p>{t('credits', { year: String(new Date().getFullYear()) })}</p>
-          <p>{t('aiNotice')}</p>
+        <div className="mx-auto grid max-w-site gap-4 px-6 py-5 text-caption text-ink-2 md:grid-cols-2 md:gap-10">
+          {/* Who runs the site: identity, contact and, when configured, the VAT number. */}
+          <div className="space-y-1">
+            <Imprint className="space-y-1" />
+            <p>{t('credits', { year: String(new Date().getFullYear()) })}</p>
+          </div>
+          <p className="md:text-right">{t('aiNotice')}</p>
         </div>
       </div>
     </footer>

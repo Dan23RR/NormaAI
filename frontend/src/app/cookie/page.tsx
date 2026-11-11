@@ -1,42 +1,14 @@
 import type { Metadata } from 'next'
 import { getFormatter, getTranslations } from 'next-intl/server'
 import { LEGAL_TAGS, LegalLayout, LegalSection } from '@/components/LegalLayout'
-import { LOCALE_COOKIE } from '@/i18n/config'
 import { LONG_DATE } from '@/i18n/format'
 import { LEGAL_UPDATED_ON } from '@/lib/legal-dates'
+import { COOKIES, LOCAL_STORAGE, SESSION_STORAGE, type StorageRow } from './storage-keys'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.cookie')
   return { title: t('title'), description: t('intro') }
 }
-
-/** Storage keys verified against frontend/src (grep localStorage / sessionStorage / document.cookie); the words live in `legal.cookie.rows`. */
-type StorageRow = { id: string; key: string }
-
-const COOKIES: StorageRow[] = [{ id: 'localeCookie', key: LOCALE_COOKIE }]
-
-const LOCAL_STORAGE: StorageRow[] = [
-  { id: 'accessToken', key: 'normaai_access_token' },
-  { id: 'refreshToken', key: 'normaai_refresh_token' },
-  { id: 'demoMode', key: 'normaai_demo_mode' },
-  { id: 'locale', key: 'normaai_locale' },
-  { id: 'theme', key: 'normaai.theme' },
-  { id: 'cookieBanner', key: 'normaai.cookie-banner.dismissed' },
-  { id: 'sidebar', key: 'normaai_sidebar_collapsed' },
-  { id: 'alertPrefs', key: 'normaai_alert_prefs' },
-  { id: 'qaLanguage', key: 'normaai_qa_language' },
-]
-
-const SESSION_STORAGE: StorageRow[] = [
-  { id: 'companyProfile', key: 'normaai_company_profile' },
-  { id: 'qaMessages', key: 'normaai_qa_messages' },
-  { id: 'gapResult', key: 'normaai_gap_result' },
-  { id: 'gapScores', key: 'normaai_gap_scores' },
-  { id: 'workflowItems', key: 'normaai-workflow-items' },
-  { id: 'demoReports', key: 'normaai_demo_reports' },
-  { id: 'demoClients', key: 'normaai_demo_clients' },
-  { id: 'demoClientsDeleted', key: 'normaai_demo_clients_deleted' },
-]
 
 export default async function CookiePage() {
   const t = await getTranslations('legal.cookie')

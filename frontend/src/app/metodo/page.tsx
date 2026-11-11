@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
-import { getTranslations } from 'next-intl/server'
+import { getFormatter, getTranslations } from 'next-intl/server'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { ButtonLink } from '@/components/ui/Button'
 import { LEGAL_TAGS, itemKeys } from '@/components/LegalLayout'
+import { LONG_DATE } from '@/i18n/format'
+import { BACKEND_CONFIGURED, SERVICE_STATUS_ON } from '@/lib/service-status'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.metodo')
@@ -39,14 +41,19 @@ async function InCode({ paths }: { paths: string[] }) {
 // Acts in the acquisition list (CORE_FRAMEWORKS in src/crawler/eurlex/client.py):
 // the words live in `legal.metodo.corpus.frameworks`.
 
-/** The repository files behind each pipeline step, in the order of `legal.metodo.pipeline.steps`. */
+/**
+ * The repository files behind each pipeline step, in the order of
+ * `legal.metodo.pipeline.steps`: retrieval, drafting, source grounding,
+ * literal verification of citations (the two checks that always run), then
+ * multiple sampling and Chain-of-Verification (both off by default).
+ */
 const PIPELINE_PATHS: string[][] = [
-  ['src/nlp/embedding/indexer.py', 'src/config.py'],
+  ['src/nlp/embedding/indexer.py', 'src/nlp/embedding/reranker.py', 'src/config.py'],
   ['src/agents/nodes.py', 'prompts/qa_bot.txt', 'src/agents/sanitization.py'],
+  ['src/agents/nodes.py'],
+  ['src/agents/citation_verifier.py', 'src/config.py'],
   ['src/agents/snc_node.py', 'src/agents/snc_layer.py', 'src/config.py'],
-  ['src/agents/nodes.py', 'src/agents/snc_node.py'],
   ['src/config.py', 'src/agents/graph.py', 'src/agents/cove/orchestrator.py'],
-  [],
 ]
 
 /** The repository files behind each documented choice, in the order of `legal.metodo.choices.items`. */
@@ -60,6 +67,8 @@ const CHOICE_PATHS: string[][] = [
 
 export default async function MetodoPage() {
   const t = await getTranslations('legal.metodo')
+  const tl = await getTranslations('legal')
+  const format = await getFormatter()
   const rich = (key: string) => t.rich(key, { ...LEGAL_TAGS, code: (chunks) => <code className="font-mono text-small">{chunks}</code> })
 
   return (
@@ -89,14 +98,7 @@ export default async function MetodoPage() {
               </ul>
               <p>{rich('corpus.p3')}</p>
             </div>
-            <InCode
-              paths={[
-                'src/crawler/eurlex/client.py',
-                'src/crawler/normattiva/client.py',
-                'src/config.py',
-                'src/nlp/embedding/indexer.py',
-              ]}
-            />
+            <InCode paths={['src/crawler/eurlex/client.py', 'src/config.py', 'src/nlp/embedding/indexer.py']} />
           </div>
         </section>
 
@@ -139,6 +141,13 @@ export default async function MetodoPage() {
             <h2 className="text-h2">{t('data.title')}</h2>
             <div className="mt-5 max-w-prose space-y-4 text-read text-ink-2">
               <p>{t('data.p1')}</p>
+              {/* Same dated status line as the security and sign-in pages,
+                  shown only while this build has no backend. */}
+              {!BACKEND_CONFIGURED && (
+                <p className="rounded-md border border-warn/40 bg-warn/5 px-4 py-3 text-ink">
+                  {tl('status', { date: format.dateTime(SERVICE_STATUS_ON, LONG_DATE) })}
+                </p>
+              )}
               <p>
                 {t.rich('data.p2', {
                   securityPage: (chunks) => (

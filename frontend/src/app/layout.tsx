@@ -52,7 +52,13 @@ const KEYWORDS = [
   'consulenza ESG',
 ]
 
-/** Title, description and Open Graph in the language of the request. */
+/**
+ * Title, description and Open Graph in the language of the request.
+ *
+ * `./` is resolved by Next against the pathname of the page being rendered,
+ * so every public page declares itself as canonical (https://normaai.org/metodo,
+ * not the home page) without repeating this block page by page.
+ */
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
   const t = await getTranslations('site.meta')
@@ -64,11 +70,14 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: t('description'),
     keywords: KEYWORDS,
+    alternates: { canonical: './' },
     openGraph: {
+      siteName: 'NormaAI',
       title: t('title'),
       description: t('ogDescription'),
-      url: SITE_URL,
-      images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+      url: './',
+      // frontend/scripts/og-image/render.py regenerates the image from its template.
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: t('ogImageAlt') }],
       type: 'website',
       locale: languageOf(locale) === 'en' ? 'en_GB' : 'it_IT',
     },
@@ -93,6 +102,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages()
   const t = await getTranslations('site.meta')
 
+  // Only what is true and published: no price is published, so there is no
+  // Offer; the logo is the brand mark (src/app/icon.svg), not the share image.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -101,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         '@id': `${SITE_URL}/#org`,
         name: 'NormaAI',
         url: SITE_URL,
-        logo: `${SITE_URL}/og-image.png`,
+        logo: `${SITE_URL}/icon.svg`,
         email: 'info@normaai.org',
         description: t('orgDescription'),
       },
@@ -112,12 +123,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         operatingSystem: 'Web',
         url: SITE_URL,
         description: t('appDescription'),
-        offers: {
-          '@type': 'Offer',
-          price: '0',
-          priceCurrency: 'EUR',
-          description: t('offer'),
-        },
         provider: { '@id': `${SITE_URL}/#org` },
       },
     ],
@@ -134,6 +139,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <AuthProvider>
             <ToastProvider>
               {children}
+              {/* After the page, in the flow: the notice takes its own space
+                  at the end of the document and never sits on page content. */}
               <CookieBanner />
             </ToastProvider>
           </AuthProvider>

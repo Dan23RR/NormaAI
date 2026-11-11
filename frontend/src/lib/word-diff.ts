@@ -32,9 +32,18 @@ export interface WordRun {
 /** Above this many differing words the two texts are shown as a full replacement. */
 export const MAX_EDITS = 2000
 
-/** The words of a text. Line breaks count as spaces: the wording is what is compared. */
+// A number written with spaces between the thousands, as the Official Journal does
+// ("1 000", "450 000 000", with what is attached to its end), or anything else up to
+// the next space.
+const WORD = /\d{1,3}(?:[ \u00a0\u202f]\d{3})+(?!\d)\S*|\S+/g
+
+/**
+ * The words of a text. Line breaks count as spaces: the wording is what is
+ * compared. A number with spaces between its thousands is one word, so that
+ * "1 000" becoming "5 000" reads as one number replaced by another.
+ */
 export function splitWords(text: string): string[] {
-  return text.split(/\s+/).filter(Boolean)
+  return text.match(WORD) ?? []
 }
 
 /**

@@ -83,6 +83,51 @@ describe('diffWords', () => {
   })
 })
 
+describe('splitWords', () => {
+  it('keeps a number with spaces between its thousands in one word', () => {
+    expect(splitWords('più di 1 000 dipendenti e un fatturato superiore a 450 000 000 EUR')).toEqual([
+      'più',
+      'di',
+      '1 000',
+      'dipendenti',
+      'e',
+      'un',
+      'fatturato',
+      'superiore',
+      'a',
+      '450 000 000',
+      'EUR',
+    ])
+    // What is attached to the number stays with it; a non-breaking space separates thousands too.
+    expect(splitWords('fino a 10 000 000 EUR, o al 2 %')).toEqual(['fino', 'a', '10 000 000', 'EUR,', 'o', 'al', '2', '%'])
+    expect(splitWords('oltre 5\u00a0000;')).toEqual(['oltre', '5\u00a0000;'])
+  })
+
+  it('does not glue numbers that are not one number', () => {
+    expect(splitWords('entro il 26 luglio 2027')).toEqual(['entro', 'il', '26', 'luglio', '2027'])
+    expect(splitWords('gli articoli 8 e 11, da 25 a 39')).toEqual(['gli', 'articoli', '8', 'e', '11,', 'da', '25', 'a', '39'])
+    expect(splitWords('il 1 2026 e il 12 2026')).toEqual(['il', '1', '2026', 'e', 'il', '12', '2026'])
+    expect(splitWords('  \n ')).toEqual([])
+  })
+
+  it('makes a changed threshold read as one number replaced by another', () => {
+    expect(
+      diffWords(
+        'più di 1 000 dipendenti e un fatturato netto superiore a 450 000 000 EUR',
+        'più di 5 000 dipendenti e un fatturato netto superiore a 1 500 000 000 EUR',
+      ).map((s) => [s.kind, s.text]),
+    ).toEqual([
+      ['equal', 'più di'],
+      ['removed', '1 000'],
+      ['added', '5 000'],
+      ['equal', 'dipendenti e un fatturato netto superiore a'],
+      ['removed', '450 000 000'],
+      ['added', '1 500 000 000'],
+      ['equal', 'EUR'],
+    ])
+  })
+})
+
 describe('diffRuns', () => {
   it('indexes both texts, end excluded', () => {
     const a = splitWords('entro 48 ore')

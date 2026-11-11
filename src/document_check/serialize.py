@@ -122,6 +122,16 @@ def act_source(act: Act) -> str:
     return "eurlex" if act.eu else "normattiva"
 
 
+def act_id(act: Act) -> str:
+    """What names the act at its source: the CELEX, or the URN:NIR of an Italian act.
+
+    An Italian act the check does not read (a ministerial decree) has no URN
+    and keeps NormaAI's own key ("IT:dm:...").
+    """
+    identifier = getattr(act, "identifier", None)
+    return str(identifier or act.key)
+
+
 def summarize(findings: list[dict[str, Any]]) -> tuple[str, dict[str, int]]:
     """``(status, counts)``: the worst group present and how many findings each group has."""
     counts = {name: 0 for name in GROUPS}
@@ -159,7 +169,10 @@ def _entry_of(finding: Finding, entries: list[dict[str, Any]]) -> dict[str, Any]
         and finding.reference.raw in (entry.get("riferimenti") or [])
     ]
     for entry in same_provision:
-        if entry.get("atto") == finding.act.key or entry.get("nome") == finding.act_name:
+        if entry.get("atto") in (finding.act.key, act_id(finding.act)):
+            return entry
+    for entry in same_provision:
+        if entry.get("nome") == finding.act_name:
             return entry
     return same_provision[0] if len(same_provision) == 1 else None
 
@@ -187,7 +200,12 @@ def _finding_json(finding: Finding, number: int, entry: dict[str, Any] | None) -
         "context": clip_context(ref.context, ref.raw),
         "act": {
             "source": act_source(act) if act else None,
-            "id": act.key if act else None,
+            # An Italian act: the URN Normattiva answered for, as its dependency has it.
+            "id": (
+                str(entry["atto"])
+                if entry and act and act_source(act) == "normattiva"
+                else (act_id(act) if act else None)
+            ),
             "name": finding.act_name,
             "label": act.label if act else finding.act_name,
         },
@@ -452,6 +470,15 @@ class _StoredAct(Act):
     @property
     def eu(self) -> bool:
         return self.stored_source != "normattiva"
+
+    @property
+    def source(self) -> str:
+        return "normattiva" if self.stored_source == "normattiva" else "eurlex"
+
+    @property
+    def urn(self) -> str | None:
+        # A stored Italian act is kept by its URN (``act_id``).
+        return self.key if self.key.startswith("urn:nir:") else super().urn
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,7 @@ import {
   DEMO_ALERTS, DEMO_ALERT_SUMMARY, DEMO_CLIENTS,
   getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay, DEMO_CORPUS_AS_OF,
 } from './mock-data'
+import { demoDocumentsRoute } from './mock-documents'
 
 // Public origin of the backend, e.g. https://api.normaai.org. Read only from
 // NEXT_PUBLIC_API_BASE_URL (renamed from NEXT_PUBLIC_API_URL in v2, so a value
@@ -42,6 +43,10 @@ class ApiClient {
   private async handleDemoGet<T>(path: string): Promise<T> {
     await mockDelay(300)
 
+    // Controlla: the checks, one check, the email preference (src/lib/mock-documents.ts).
+    const documents = demoDocumentsRoute('GET', path)
+    if (documents.handled) return documents.value as T
+
     if (path === '/api/v1/auth/me') return DEMO_USER as T
     if (path === '/api/v1/stats') return DEMO_STATS as T
     if (path === '/api/v1/processors') return DEMO_PROCESSORS as T
@@ -71,6 +76,14 @@ class ApiClient {
 
   private async handleDemoPost<T>(path: string, body: unknown, method?: string): Promise<T> {
     const data = body as Record<string, unknown>
+
+    // Controlla: a pasted text "checked" (the demo answers with its example and
+    // the page says so), a re-check, a deletion, the email preference.
+    const documents = demoDocumentsRoute(method ?? 'POST', path, body)
+    if (documents.handled) {
+      await mockDelay(path.endsWith('/check') ? 1800 : 600)
+      return documents.value as T
+    }
 
     if (path === '/api/v1/qa') {
       await mockDelay(2000)
@@ -319,6 +332,13 @@ class ApiClient {
     })
   }
 
+  patch<T>(path: string, body: unknown) {
+    return this.fetch<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  }
+
   del<T>(path: string) {
     return this.fetch<T>(path, { method: 'DELETE' })
   }
@@ -329,6 +349,13 @@ class ApiClient {
    */
   async upload<T>(path: string, formData: FormData): Promise<T> {
     if (isDemoMode()) {
+      // A document given to Controlla never leaves the browser in the demo: the
+      // answer is the example check, and the page says so before and after.
+      const documents = demoDocumentsRoute('POST', path)
+      if (documents.handled) {
+        await mockDelay(1800)
+        return documents.value as T
+      }
       throw new ApiError('uploadDemo')
     }
 
@@ -371,6 +398,12 @@ class ApiClient {
    */
   async fetchBlob(path: string, options: RequestInit = {}): Promise<Response> {
     if (isDemoMode()) {
+      // The report of a demo check is built from the example data, as a page.
+      const documents = demoDocumentsRoute(options.method ?? 'GET', path)
+      if (documents.handled && typeof documents.value === 'string') {
+        await mockDelay(300)
+        return new Response(documents.value, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+      }
       throw new ApiError('reportDemo')
     }
 

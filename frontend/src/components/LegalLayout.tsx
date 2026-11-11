@@ -29,7 +29,7 @@ export function LegalLayout({
           {intro && <p className="mt-4 text-read text-ink-2">{intro}</p>}
           {lastUpdated && <p className="mt-4 text-small text-ink-3">{t('lastUpdated', { date: lastUpdated })}</p>}
         </header>
-        <article className="space-y-8 text-read text-ink-2 [&_a]:text-union [&_a]:hover:underline [&_li]:mt-1.5 [&_ol]:list-decimal [&_ol]:pl-6 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:pl-6">
+        <article className="space-y-8 text-read text-ink-2 [&_a]:text-union [&_a]:underline [&_a]:hover:no-underline [&_li]:mt-1.5 [&_ol]:list-decimal [&_ol]:pl-6 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:pl-6">
           {children}
         </article>
       </main>

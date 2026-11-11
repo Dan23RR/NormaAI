@@ -76,7 +76,9 @@ def main() -> int:
               return [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family.replace(/["']/g, ''));
             }"""
         )
-        page.screenshot(path=str(args.output), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT})
+        page.screenshot(
+            path=str(args.output), clip={"x": 0, "y": 0, "width": WIDTH, "height": HEIGHT}
+        )
         browser.close()
 
     missing = [family for family in FAMILIES if family not in loaded]

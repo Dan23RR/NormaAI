@@ -15,7 +15,7 @@ export function Imprint({ className }: { className?: string }) {
       <span className="block">
         {t.rich('contact', {
           mail: (chunks) => (
-            <a href="mailto:info@normaai.org" className="text-union hover:underline">
+            <a href="mailto:info@normaai.org" className="text-union underline hover:no-underline">
               {chunks}
             </a>
           ),

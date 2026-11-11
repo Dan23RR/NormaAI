@@ -62,6 +62,9 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
   :focus-visible{ outline:2px solid var(--union); outline-offset:2px; border-radius:2px; }
   a{ color:var(--union); text-decoration:none; text-underline-offset:4px; }
   a:hover{ text-decoration:underline; }
+  /* A link inside running text is underlined: colour alone does not tell it apart. */
+  p a, li a, figcaption a{ text-decoration:underline; }
+  p a:hover, li a:hover, figcaption a:hover{ text-decoration:none; }
   h1,h2,h3{ font-family:var(--font-serif); font-weight:500; color:var(--ink); margin:0; text-wrap:balance; }
   p{ margin:0; text-wrap:pretty; }
   strong{ font-weight:600; color:var(--ink); }

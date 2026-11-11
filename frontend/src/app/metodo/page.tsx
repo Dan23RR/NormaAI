@@ -27,7 +27,7 @@ async function InCode({ paths }: { paths: string[] }) {
             href={`${REPO}/blob/main/${path}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-union hover:underline"
+            className="text-union underline hover:no-underline"
           >
             <code className="font-mono">{path}</code>
           </a>
@@ -151,7 +151,7 @@ export default async function MetodoPage() {
               <p>
                 {t.rich('data.p2', {
                   securityPage: (chunks) => (
-                    <a href="/security" className="text-union hover:underline">
+                    <a href="/security" className="text-union underline hover:no-underline">
                       {chunks}
                     </a>
                   ),

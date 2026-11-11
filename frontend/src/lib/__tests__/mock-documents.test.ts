@@ -84,7 +84,8 @@ describe('DEMO_DOCUMENTS', () => {
     const finding = withStatus(byId('demo-doc-gdpr'), 'alterata')
     expect(finding.group).toBe('correggere')
     expect(finding.act?.id).toBe('32016R0679')
-    expect(finding.provision).toEqual({ key: 'art:33', label: 'art. 33, par. 1' })
+    expect(finding.provision).toEqual({ key: 'art:33', label: 'art. 33, par. 1', paragraphs: ['1'] })
+    expect(finding.altered_quote).toBe(finding.quotes[0])
     expect(finding.quotes[0]).toContain('entro 48 ore')
     expect(finding.official_quote).toBe(
       'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
@@ -112,15 +113,27 @@ describe('DEMO_DOCUMENTS', () => {
     const doc = byId('demo-doc-csddd')
     expect(doc.needs_review).toBe(true)
     expect(doc.watch).toBe(true)
-    // Nothing was wrong on the day of the check: the change came later.
-    expect(doc.status).toBe('a_posto')
     const changed = doc.dependencies.filter((d) => d.state === 'changed')
     expect(changed.map((d) => d.article)).toEqual(['Art. 2', 'Art. 10', 'Art. 37'])
     for (const dependency of changed) {
+      // Checked on the text of the day, found changed in the newer one.
       expect(dependency.version).toBe('02024L1760-20250417')
+      expect(dependency.current_version).toBe('02024L1760-20260318')
       expect(dependency.changed_at! > doc.checked_at).toBe(true)
     }
     expect(doc.dependencies.find((d) => d.article === 'Art. 14')?.state).toBe('current')
+    // Nothing was wrong on the day of the check; after the re-check the references
+    // to the changed articles are to correct, with the article then and now.
+    expect(doc.status).toBe('correggere')
+    const moved = doc.findings.filter((f) => f.group === 'correggere')
+    expect(moved.map((f) => f.provision?.key)).toEqual(['art:2', 'art:10', 'art:37'])
+    for (const finding of moved) {
+      expect(finding.status).toEqual({ code: 'cambiato', label: 'Cambiato dopo il controllo' })
+      expect(finding.version?.id).toBe('02024L1760-20260318')
+      expect(finding.before?.version_id).toBe('02024L1760-20250417')
+      expect(finding.after_text).toBeTruthy()
+    }
+    expect(doc.findings.find((f) => f.provision?.key === 'art:14')?.group).toBe('a_posto')
   })
 
   it('has a check without surveillance and without a client, on an English document', () => {

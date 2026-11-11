@@ -75,6 +75,7 @@ export function CheckFacts({ check, client }: { check: DocumentCheck; client: Cl
       </h2>
       <dl className="mt-3 space-y-2.5">
         <Fact term={t('checked')}>{check.checked_at ? formatDate(check.checked_at) : t('noDate')}</Fact>
+        {check.rechecked_at && <Fact term={t('rechecked')}>{formatDate(check.rechecked_at)}</Fact>}
         <Fact term={t('documentDate')}>{check.document_date ? formatDate(check.document_date) : t('noDate')}</Fact>
         <Fact term={t('client')}>
           {client.state === 'found' ? (
@@ -129,6 +130,9 @@ export function DependenciesList({ check }: { check: DocumentCheck }) {
                   <StateMark state={dependency.state} />
                   {isStale(dependency) && dependency.changed_at && (
                     <span className="text-ink-2">{t('detectedOn', { date: formatDate(dependency.changed_at) })}</span>
+                  )}
+                  {dependency.state === 'changed' && dependency.current_version && (
+                    <span className="text-ink-2">{t('now', { version: versionLabel(dependency.current_as_of ?? null, ctx) })}</span>
                   )}
                   <OfficialLink dependency={dependency} />
                 </p>

@@ -493,7 +493,7 @@
       "date": "Date of the document",
       "dateHelp": "Optional: with the date, NormaAI also tells you which cited provisions changed after the document was written.",
       "watch": "Watch this document",
-      "watchHelp": "The provisions it cites are checked again every week against the text in force. If one changes, the document moves to those to review.",
+      "watchHelp": "The provisions it cites are checked again every week against the text in force. If one changes, the document moves to those to review and an alert appears in Monitoring.",
       "submit": "Check the document",
       "submitting": "Checking",
       "progress": "Reading the document, finding the references and comparing them with the official texts: it can take up to a minute.",
@@ -588,7 +588,7 @@
     },
     "review": {
       "title": "To review",
-      "body": "After the check of {date}, {count, plural, =1 {one cited provision has changed} other {# cited provisions have changed}}. The outcomes on {count, plural, =1 {that provision} other {those provisions}} hold for the text of that day.",
+      "body": "After the check of {date}, {count, plural, =1 {one cited provision has changed} other {# cited provisions have changed}}. Below, {count, plural, =1 {the reference to that provision shows} other {the references to those provisions show}} what changed.",
       "bodyUnknown": "After the check of {date} a cited provision changed. Re-check the cited provisions to see which one.",
       "whatToDo": "Open the text in force, update the document and upload it again: the new check compares the quotes with today's text.",
       "newCheck": "Check the updated version"
@@ -624,7 +624,9 @@
       "atto_mancante": "Act not stated",
       "valido": "Valid reference",
       "verificata": "Verified quote",
-      "non_coperto": "Not covered by NormaAI"
+      "non_coperto": "Not covered by NormaAI",
+      "cambiato_dopo_controllo": "Changed after the check",
+      "non_esiste_piu": "No longer in the text in force"
     },
     "finding": {
       "noAct": "Act not stated",
@@ -635,19 +637,24 @@
       "quote": "Quote in the document",
       "quoted": "\"{text}\"",
       "outcome": "Outcome",
+      "outcomeThen": "Outcome at the time of the check",
       "differences": "Words that differ",
       "differenceBoth": "The document has <w>\"{quoted}\"</w>, the official text has <w>\"{official}\"</w>.",
       "differenceMissing": "The document lacks <w>\"{official}\"</w>, which the official text has.",
       "differenceExtra": "The document has <w>\"{quoted}\"</w>, which the official text does not have.",
       "official": "The official text says",
+      "officialThen": "At the check the official text said ({version})",
       "change": "What changed",
       "changeFromTo": "From the {before} to the {after}.",
       "former": "As it was in the {version}",
       "openOfficial": "Text in force on {origin}",
       "openSource": "Open on {origin}",
       "openGeneric": "Open the official text",
-      "stale": "After this check the provision changed. The outcome below holds for the {version}.",
-      "staleRemoved": "After this check the provision is no longer in the text in force. The outcome below holds for the {version}."
+      "stale": "After the check this provision changed.",
+      "staleNow": "After the check this provision changed: today the {version} applies.",
+      "staleRemoved": "After the check this provision left the text in force.",
+      "staleThen": "The outcome and the quote below are those of the check, on the {version}.",
+      "changedSince": "Provision changed after the check"
     },
     "version": {
       "original": "original text",
@@ -664,6 +671,7 @@
     "facts": {
       "title": "Document",
       "checked": "Checked on",
+      "rechecked": "Last re-check of the provisions",
       "documentDate": "Date of the document",
       "noDate": "Not given",
       "client": "Client",
@@ -687,6 +695,7 @@
       "none": "No provision recorded: the check found no reference to texts NormaAI can follow.",
       "checkedOn": "Checked on the {version}",
       "detectedOn": "found on {date}",
+      "now": "today: {version}",
       "state": {
         "current": "Unchanged",
         "changed": "Changed",
@@ -712,12 +721,15 @@
       "fileSuffix": "check"
     },
     "errors": {
-      "tooLarge": "The document is over the 10 MB limit. Make it smaller or paste only the text.",
+      "tooLarge": "The document is too large: a file can be 10 MB at most. Make it smaller, split it into parts or paste only the text you need.",
       "unsupported": "The server does not read this format. Upload a .docx, .pdf with selectable text, .html, .txt or .md file, or paste the text.",
-      "unreadable": "The server could not read the document. It happens with PDFs made only of images and with damaged files: paste the text or upload a version with selectable text.",
-      "rateLimited": "You made too many requests in a short time. Wait a few minutes and try again.",
+      "unreadable": "The server could not check the document as it is. If it is a PDF made only of images, password protected or damaged, paste the text or upload a version with selectable text.",
+      "rateLimited": "Too many requests in a short time, or a check is already running. Wait a moment and try again.",
       "timeout": "The check went over the maximum time before finishing. Try again in a few minutes; if the document is very long, check one part at a time.",
+      "full": "You have reached the maximum number of saved checks. Delete the ones you no longer need and try again.",
+      "forbidden": "Your account cannot do this.",
       "notFound": "This check no longer exists: go back to the list of checked documents.",
+      "missingApi": "This server does not have the document check yet. Try again later or write to info@normaai.org.",
       "rejected": "The server did not accept the request. Check what you entered and try again.",
       "server": "The server had a problem. Try again in a few minutes; if it continues, write to info@normaai.org.",
       "network": "The server is not responding. Try again in a minute; if the problem persists, write to info@normaai.org.",

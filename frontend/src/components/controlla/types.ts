@@ -4,6 +4,10 @@
  * A check is what stays of a document after it was read: the references it
  * makes to the law, what happened when each was compared with the official
  * text, and the provisions it depends on. The file itself is not stored.
+ *
+ * The fields marked "beyond the contract" are returned by the backend
+ * (src/document_check/serialize.py) on top of the agreed shape: the page uses
+ * them when they are there and works without them.
  */
 
 /** What to do with a finding, worst first. */
@@ -40,6 +44,8 @@ export interface FindingProvision {
   key: string
   /** "art. 33, par. 1" */
   label: string
+  /** Beyond the contract: the numbered paragraphs the reference names. */
+  paragraphs?: string[]
 }
 
 export interface FindingVersion {
@@ -61,6 +67,17 @@ export interface Difference {
 export interface FormerText {
   version_label: string
   text: string
+  /** Beyond the contract: the version the text comes from, when the server names it. */
+  version_id?: string | null
+  /** Beyond the contract: ISO date of that version; null for the act as adopted. */
+  as_of?: string | null
+}
+
+/** Beyond the contract: the entry of `dependencies` a finding relies on. */
+export interface DependencyLink {
+  source: string
+  act: string
+  key: string
 }
 
 export interface Finding {
@@ -73,9 +90,13 @@ export interface Finding {
   raw: string
   /** A short stretch of the document around the reference. */
   context: string
+  /** Null when the document does not say which act the reference belongs to. */
   act: FindingAct | null
   provision: FindingProvision | null
-  /** The version in force that the reference was checked against. */
+  /**
+   * The version in force that the reference was compared with: the one of the
+   * day of the check, or the newer one once a re-check found the provision changed.
+   */
   version: FindingVersion | null
   /** The official text on EUR-Lex or Normattiva. */
   url: string | null
@@ -83,13 +104,16 @@ export interface Finding {
   messages: string[]
   /** The words the document puts in quotation marks next to the reference. */
   quotes: string[]
-  /** The official wording a quote matched, or almost matched. */
+  /** The official wording a quote matched, or almost matched, on the day of the check. */
   official_quote: string | null
   differences: Difference[]
-  /** The provision in an earlier version, when the quote or the document rests on it. */
+  /** The provision in an earlier version: the one a quote or the document rests on. */
   before: FormerText | null
   /** The provision in force, shown next to `before`. */
   after_text: string | null
+  /** Beyond the contract: the quote of the document that differs from `official_quote`. */
+  altered_quote?: string | null
+  dependency?: DependencyLink | null
 }
 
 export const DEPENDENCY_STATES = ['current', 'changed', 'removed', 'unavailable'] as const
@@ -109,8 +133,18 @@ export interface Dependency {
   as_of: string | null
   fingerprint: string
   state: DependencyState
-  /** When a re-check found the provision changed or removed. */
+  /** When a re-check first found the provision changed or removed. */
   changed_at: string | null
+  /** Beyond the contract: when the provision was last compared with the text in force. */
+  checked_at?: string | null
+  /** Beyond the contract: the version in force that a re-check found, and its date. */
+  current_version?: string | null
+  current_as_of?: string | null
+  /** Beyond the contract: what the last re-check says of the provision, in a sentence. */
+  message?: string | null
+  /** Beyond the contract: the language of the official text, and how the document cites the provision. */
+  lang?: string | null
+  cited_as?: string[]
 }
 
 export type CheckCounts = Record<FindingGroup, number>
@@ -129,11 +163,13 @@ export interface CheckSummary {
   lang: string
   /** Whether the provisions it cites are re-checked on a schedule. */
   watch: boolean
-  /** The worst group among the findings. */
+  /** The worst group among the findings, as they stand after the last re-check. */
   status: FindingGroup
-  /** True when a re-check found that a cited provision changed. */
+  /** True while a cited provision is no longer the one of the day of the check. */
   needs_review: boolean
   counts: CheckCounts
+  /** Beyond the contract: when its provisions were last re-checked. */
+  rechecked_at?: string | null
 }
 
 export interface DocumentCheck extends CheckSummary {
@@ -156,8 +192,15 @@ export function findingsOf(check: Pick<DocumentCheck, 'findings'>, group: Findin
   return check.findings.filter((f) => f.group === group)
 }
 
-/** The dependency a finding rests on, when the check recorded one. */
+/**
+ * The dependency a finding rests on: the one the server links it to, or the
+ * one with the same act and provision when the finding carries no link.
+ */
 export function dependencyOf(check: Pick<DocumentCheck, 'dependencies'>, finding: Finding): Dependency | undefined {
+  const link = finding.dependency
+  if (link) {
+    return check.dependencies.find((d) => d.source === link.source && d.act === link.act && d.key === link.key)
+  }
   if (!finding.act || !finding.provision) return undefined
   return check.dependencies.find((d) => d.act === finding.act?.id && d.key === finding.provision?.key)
 }

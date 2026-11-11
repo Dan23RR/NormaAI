@@ -3,13 +3,15 @@
 import { useMemo, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, ChevronDown, ExternalLink } from 'lucide-react'
+import { Badge } from '@/components/ui/Badge'
 import { LawQuote } from '@/components/ui/LawQuote'
 import { useDateFormat } from '@/i18n/useDateFormat'
+import type { TextContext } from '@/i18n/types'
 import { useTextContext } from '@/i18n/useTextContext'
 import { changedSpan, diffRuns, looseKey, splitWords, type ChangedSpan } from '@/lib/word-diff'
 import { actTitle, localizeVersionLabel, originName, safeUrl, versionLabel } from './labels'
 import { OutcomeBadge } from './Outcome'
-import { isStale, type Dependency, type Difference, type Finding } from './types'
+import { isStale, type Dependency, type Difference, type Finding, type FormerText } from './types'
 import { WordDiff } from './WordDiff'
 
 /** What a finding needs to know about the check it belongs to. */
@@ -25,6 +27,9 @@ interface FindingProps extends FindingSetting {
   /** The provision the finding rests on, with what the last re-check found. */
   dependency?: Dependency
 }
+
+/** The outcomes that already say "this provision is not what it was". */
+const SAYS_CHANGED = ['cambiato', 'inesistente']
 
 /** "GDPR, art. 33, par. 1": the short name of the act and the provision, as a consultant says it. */
 export function findingTitle(finding: Finding, noAct: string): string {
@@ -48,6 +53,11 @@ function closestQuote(quotes: string[], official: string): string | undefined {
     }
   }
   return best
+}
+
+/** The name of the version an earlier text comes from, in the words of the interface. */
+function formerLabel(former: FormerText, ctx: TextContext): string {
+  return former.version_id ? versionLabel(former.as_of ?? null, ctx) : localizeVersionLabel(former.version_label, ctx)
 }
 
 function Label({ children }: { children: ReactNode }) {
@@ -86,27 +96,36 @@ function DifferenceLine({ difference }: { difference: Difference }) {
  * document, the outcome in sentences, the words that differ, the official
  * wording under the highlighter, the provision before and after a change,
  * and the way to the official text.
+ *
+ * Once a re-check found that the provision changed, what the check read is
+ * no longer the law in force: the page says so first, shows the wording of
+ * that day without the highlighter and without calling it verified, and
+ * then what changed.
  */
 export function FindingBody({ finding, dependency, checkedAt, lang }: FindingProps) {
   const t = useTranslations('controlla.finding')
   const ctx = useTextContext()
   const formatDate = useDateFormat()
-  const stale = isStale(dependency)
+  const stale = !!dependency && isStale(dependency)
   const official = finding.official_quote
   const url = safeUrl(finding.url)
   const origin = originName(url, finding.act?.source)
   const quoteLang = lang.toLowerCase()
+  const checkedVersion = dependency ? versionLabel(dependency.as_of, ctx) : ''
 
   // An altered quote: the highlighter goes on the official words the document changed.
   const span = useMemo<ChangedSpan | null>(() => {
     if (!official || finding.differences.length === 0) return null
-    const quote = closestQuote(finding.quotes, official)
+    const quote = finding.altered_quote || closestQuote(finding.quotes, official)
     return quote ? changedSpan(quote, official) : null
-  }, [official, finding.differences, finding.quotes])
+  }, [official, finding.differences, finding.altered_quote, finding.quotes])
 
+  // The sentence of the re-check is said by the note above: not twice.
+  const messages = stale && dependency?.message ? finding.messages.filter((message) => message !== dependency.message) : finding.messages
   // A quote found in another article keeps the act but not the article the document names.
   const elsewhere = finding.status.code === 'altro_articolo'
   const celex = finding.act?.source === 'eurlex' ? finding.act.id : undefined
+  const showLaw = !!official && !stale
 
   return (
     <div className="space-y-4">
@@ -114,7 +133,12 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
         <p className="flex items-start gap-2 rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-small text-ink">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
           <span>
-            {t(dependency.state === 'removed' ? 'staleRemoved' : 'stale', { version: versionLabel(dependency.as_of, ctx) })}
+            {dependency.state === 'removed'
+              ? t('staleRemoved')
+              : dependency.current_version
+                ? t('staleNow', { version: versionLabel(dependency.current_as_of ?? null, ctx) })
+                : t('stale')}{' '}
+            {t('staleThen', { version: checkedVersion })}
           </span>
         </p>
       )}
@@ -140,11 +164,11 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
         )}
       </div>
 
-      {finding.messages.length > 0 && (
+      {messages.length > 0 && (
         <div>
-          <Label>{t('outcome')}</Label>
+          <Label>{stale ? t('outcomeThen') : t('outcome')}</Label>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-body text-ink">
-            {finding.messages.map((message, index) => (
+            {messages.map((message, index) => (
               <li key={index}>{message}</li>
             ))}
           </ul>
@@ -162,7 +186,7 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
         </div>
       )}
 
-      {official && (
+      {showLaw && official && (
         <div>
           <Label>{t('official')}</Label>
           <LawQuote
@@ -175,12 +199,20 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
             celex={celex}
             url={url}
             origin={origin}
-            // The passage shown is the official text as read on the day of the check;
-            // once a re-check found the provision changed, it is to be verified again.
-            status={stale ? 'unverified' : 'verified'}
-            verifiedAt={stale ? undefined : formatDate(checkedAt)}
+            // The passage is the official text as read on the day of the check.
+            status="verified"
+            verifiedAt={checkedAt ? formatDate(checkedAt) : undefined}
             lang={quoteLang}
           />
+        </div>
+      )}
+
+      {official && stale && (
+        <div>
+          <Label>{t('officialThen', { version: checkedVersion })}</Label>
+          <blockquote className="mt-2 break-words border-l-2 border-rule-2 pl-3 font-serif text-read leading-relaxed text-ink" lang={quoteLang}>
+            {official}
+          </blockquote>
         </div>
       )}
 
@@ -189,7 +221,7 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
           <Label>{t('change')}</Label>
           <p className="mt-1 text-small text-ink-2">
             {t('changeFromTo', {
-              before: localizeVersionLabel(finding.before.version_label, ctx),
+              before: formerLabel(finding.before, ctx),
               after: finding.version ? versionLabel(finding.version.as_of, ctx) : localizeVersionLabel(null, ctx),
             })}
           </p>
@@ -199,7 +231,7 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
 
       {finding.before && !finding.after_text && (
         <div>
-          <Label>{t('former', { version: localizeVersionLabel(finding.before.version_label, ctx) })}</Label>
+          <Label>{t('former', { version: formerLabel(finding.before, ctx) })}</Label>
           <blockquote
             className="mt-2 max-h-64 overflow-y-auto whitespace-pre-line break-words border-l-2 border-rule-2 pl-3 font-serif text-read leading-relaxed text-ink"
             lang={quoteLang}
@@ -210,7 +242,7 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
         </div>
       )}
 
-      {!official && url && (
+      {!showLaw && url && (
         <p>
           <a
             href={url}
@@ -224,6 +256,23 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
         </p>
       )}
     </div>
+  )
+}
+
+/** The outcome, and next to it the warning that the provision changed when the outcome itself does not say so. */
+function Badges({ finding, dependency }: Pick<FindingProps, 'finding' | 'dependency'>) {
+  const t = useTranslations('controlla.finding')
+  const changedSince = isStale(dependency) && !SAYS_CHANGED.includes(finding.status.code)
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <OutcomeBadge group={finding.group} status={finding.status} />
+      {changedSince && (
+        <Badge tone="warn" className="whitespace-normal">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {t('changedSince')}
+        </Badge>
+      )}
+    </span>
   )
 }
 
@@ -245,7 +294,7 @@ export function FindingCard(props: FindingProps) {
         <h3 id={headingId} className="min-w-0 break-words text-h4">
           {findingTitle(finding, t('noAct'))}
         </h3>
-        <OutcomeBadge group={finding.group} status={finding.status} />
+        <Badges finding={finding} dependency={props.dependency} />
       </div>
       <Compared finding={finding} />
       <div className="mt-3">
@@ -267,7 +316,7 @@ export function FindingRow(props: FindingProps) {
           <span className="block break-words font-medium text-ink">{findingTitle(finding, t('noAct'))}</span>
           {finding.line > 0 && <span className="block text-small text-ink-2">{t('line', { line: finding.line })}</span>}
         </span>
-        <OutcomeBadge group={finding.group} status={finding.status} />
+        <Badges finding={finding} dependency={props.dependency} />
       </summary>
       <div className="mt-3 pb-2 pl-7">
         <FindingBody {...props} />

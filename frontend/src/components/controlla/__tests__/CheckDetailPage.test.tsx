@@ -139,7 +139,7 @@ describe('CheckDetailPage', () => {
     renderPage('demo-doc-csddd')
     const notice = await screen.findByRole('region', { name: 'Da rivedere' })
     expect(notice).toHaveTextContent(
-      'Dopo il controllo del 16 febbraio 2026 sono cambiate 3 norme citate. Gli esiti su quelle norme valgono per il testo di allora.',
+      'Dopo il controllo del 16 febbraio 2026 sono cambiate 3 norme citate. Qui sotto, i riferimenti a quelle norme mostrano che cosa è cambiato.',
     )
     const items = within(notice).getAllByRole('listitem')
     expect(items.map((item) => item.textContent)).toEqual([
@@ -157,17 +157,25 @@ describe('CheckDetailPage', () => {
     expect(within(margin).getAllByText('Cambiata')).toHaveLength(3)
     expect(within(margin).getAllByText('Invariata')).toHaveLength(1)
 
-    // The quote of article 2 was verified on the text of that day: opened, it says so.
-    const fine = screen.getByRole('region', { name: 'A posto (4)' })
-    await user.click(within(fine).getByText('CSDDD, art. 2, par. 1'))
-    const row = within(fine).getByText('CSDDD, art. 2, par. 1').closest('details') as HTMLElement
+    expect(within(margin).getAllByText('oggi vale il testo consolidato al 18 marzo 2026')).toHaveLength(3)
+
+    // The references to the changed articles are to correct, each with what changed;
+    // the quote of article 2, verified on the text of that day, is no longer called verified.
+    const toFix = screen.getByRole('region', { name: 'Da correggere (3)' })
+    const card = within(toFix).getByRole('article', { name: 'CSDDD, art. 2, par. 1' })
+    expect(within(card).getByText('Cambiato dopo il controllo')).toBeInTheDocument()
     expect(
-      within(row).getByText(
-        "Dopo questo controllo la norma è cambiata. L'esito qui sotto vale per il testo consolidato al 17 aprile 2025.",
+      within(card).getByText(
+        "Dopo il controllo questa norma è cambiata: oggi vale il testo consolidato al 18 marzo 2026. L'esito e la citazione qui sotto sono quelli del controllo, sul testo consolidato al 17 aprile 2025.",
       ),
     ).toBeInTheDocument()
-    expect(within(row).getByText('Da verificare')).toBeInTheDocument()
-    expect(within(row).queryByText('Verificata')).not.toBeInTheDocument()
+    expect(within(card).getByText('Che cosa è cambiato')).toBeInTheDocument()
+    expect(within(card).queryByText('Verificata')).not.toBeInTheDocument()
+    expect(within(toFix).getAllByRole('article')).toHaveLength(3)
+    // Article 14 did not change: its reference stays among those in order.
+    const fine = screen.getByRole('region', { name: 'A posto (1)' })
+    await user.click(within(fine).getByText('CSDDD, art. 14'))
+    expect(within(fine).queryByText(/Dopo il controllo questa norma/)).not.toBeInTheDocument()
   })
 
   it('tells when a check is not watched and has no client', async () => {

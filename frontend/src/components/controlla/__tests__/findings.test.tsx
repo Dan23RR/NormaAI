@@ -81,9 +81,11 @@ describe('an altered quote (alterata)', () => {
   })
 
   it('falls back to the whole official wording when the difference is not one stretch', () => {
+    const quote = 'senza ritardo e, ove possibile, entro 48 ore dal giorno in cui ne è venuto a conoscenza'
     const scattered: Finding = {
       ...altered,
-      quotes: ['senza ritardo e, ove possibile, entro 48 ore dal giorno in cui ne è venuto a conoscenza'],
+      quotes: [quote],
+      altered_quote: quote,
       differences: [
         { quoted: '', official: 'ingiustificato' },
         { quoted: '48', official: '72' },
@@ -256,30 +258,132 @@ describe('the other outcomes', () => {
 })
 
 describe('a finding whose provision changed after the check', () => {
-  const verified = finding(csddd, 'verificata')
-  const dependency = dependencyOf(csddd, verified) as Dependency
+  // The re-check found article 2 of the CSDDD changed: the server moved the finding
+  // under "correggere" with the article then and now, and kept what the check had read.
+  const changed = csddd.findings.find((f) => f.provision?.key === 'art:2') as Finding
+  const dependency = dependencyOf(csddd, changed) as Dependency
 
-  it('is matched to its dependency', () => {
-    expect(dependency).toMatchObject({ article: 'Art. 2', state: 'changed' })
+  it('is matched to its dependency through the link the server gives', () => {
+    expect(changed.dependency).toEqual({ source: 'eurlex', act: '32024L1760', key: 'art:2' })
+    expect(dependency).toMatchObject({ article: 'Art. 2', state: 'changed', current_as_of: '2026-03-18' })
+    // Without the link, the act and the provision still find it.
+    expect(dependencyOf(csddd, { ...changed, dependency: undefined })).toBe(dependency)
+    expect(dependencyOf(csddd, { ...changed, dependency: { source: 'eurlex', act: '32024L1760', key: 'art:99' } })).toBeUndefined()
   })
 
-  it('no longer shows the passage as verified, and says for which text the outcome holds', () => {
-    renderWithIntl(<FindingBody finding={verified} dependency={dependency} {...setting(csddd)} />)
+  it('says first that the provision changed, and which text the outcome was for', () => {
+    renderWithIntl(<FindingCard finding={changed} dependency={dependency} {...setting(csddd)} />)
+    const card = screen.getByRole('article', { name: 'CSDDD, art. 2, par. 1' })
+    // The words of the re-check, not those of a change after the document's date.
+    expect(within(card).getByText('Cambiato dopo il controllo')).toBeInTheDocument()
+    expect(within(card).queryByText('Cambiato dopo la data del documento')).not.toBeInTheDocument()
+    expect(within(card).queryByText('Norma cambiata dopo il controllo')).not.toBeInTheDocument()
+    expect(
+      within(card).getByText(
+        "Dopo il controllo questa norma è cambiata: oggi vale il testo consolidato al 18 marzo 2026. L'esito e la citazione qui sotto sono quelli del controllo, sul testo consolidato al 17 aprile 2025.",
+      ),
+    ).toBeInTheDocument()
+    expect(within(card).getByText('Confrontato con il testo consolidato al 18 marzo 2026')).toBeInTheDocument()
+
+    // What the check found on that day stays, under its own name; the sentence of the re-check is not repeated.
+    const outcome = within(card).getByText('Esito al momento del controllo').parentElement as HTMLElement
+    expect(within(outcome).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Art. 2, par. 1 esiste nel testo consolidato al 17/04/2025.',
+      'La citazione è nel testo vigente, parola per parola.',
+    ])
+  })
+
+  it('no longer shows the wording of that day as the law in force', () => {
+    const { container } = renderWithIntl(<FindingCard finding={changed} dependency={dependency} {...setting(csddd)} />)
+    expect(screen.queryByText('Verificata')).not.toBeInTheDocument()
+    expect(screen.queryByText('Il testo ufficiale dice')).not.toBeInTheDocument()
+    const then = screen.getByText('Al controllo il testo ufficiale diceva (testo consolidato al 17 aprile 2025)').parentElement as HTMLElement
+    expect(then).toHaveTextContent('in media, più di 1 000 dipendenti e un fatturato netto a livello mondiale superiore a 450 000 000 EUR')
+    // No highlighter anywhere: nothing shown here is a passage of the law in force quoted by the document.
+    expect(container.querySelector('mark')).toBeNull()
+  })
+
+  it('shows what changed between the text of the check and the text in force', () => {
+    const { container } = renderWithIntl(<FindingCard finding={changed} dependency={dependency} {...setting(csddd)} />)
+    expect(screen.getByText('Dal testo consolidato al 17 aprile 2025 al testo consolidato al 18 marzo 2026.')).toBeInTheDocument()
+    const removed = Array.from(container.querySelectorAll('p[lang="it"] del')).map((el) => el.textContent)
+    const added = Array.from(container.querySelectorAll('p[lang="it"] ins')).map((el) => el.textContent)
+    // The thresholds, each as one number replaced by another.
+    expect(removed).toContain('tolto: 1 000')
+    expect(added).toContain('aggiunto: 5 000')
+    expect(removed).toContain('tolto: 450 000 000')
+    expect(added).toContain('aggiunto: 1 500 000 000')
+    expect(screen.getByRole('link', { name: /Testo vigente su EUR-Lex/ })).toHaveAttribute(
+      'href',
+      'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024L1760-20260318',
+    )
+  })
+
+  it('says it in English', () => {
+    renderWithIntl(<FindingCard finding={changed} dependency={dependency} {...setting(csddd)} />, { language: 'en' })
+    expect(screen.getByText('Changed after the check')).toBeInTheDocument()
     expect(
       screen.getByText(
-        "Dopo questo controllo la norma è cambiata. L'esito qui sotto vale per il testo consolidato al 17 aprile 2025.",
+        'After the check this provision changed: today the consolidated text of 18 March 2026 applies. The outcome and the quote below are those of the check, on the consolidated text of 17 April 2025.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('From the consolidated text of 17 April 2025 to the consolidated text of 18 March 2026.')).toBeInTheDocument()
+  })
+
+  // What follows does not depend on the server rewriting the finding: only the
+  // state of the provision says it changed (the shape of the agreed contract).
+  const verified = finding(gdpr, 'verificata')
+  const stale = (state: 'changed' | 'removed'): Dependency => ({
+    ...(dependencyOf(gdpr, verified) as Dependency),
+    state,
+    changed_at: '2026-11-11T05:00:00Z',
+    current_version: null,
+    current_as_of: null,
+    message: null,
+  })
+
+  it('warns on a finding the server left as it was', async () => {
+    const user = userEvent.setup()
+    const { container } = renderWithIntl(<FindingRow finding={verified} dependency={stale('changed')} {...setting(gdpr)} />)
+    // The line that stays closed carries the warning next to the outcome of the day.
+    expect(screen.getByText('Citazione verificata')).toBeInTheDocument()
+    expect(screen.getByText('Norma cambiata dopo il controllo')).toBeInTheDocument()
+    await user.click(screen.getByText('GDPR, art. 34, par. 1'))
+    expect(
+      screen.getByText(
+        "Dopo il controllo questa norma è cambiata. L'esito e la citazione qui sotto sono quelli del controllo, sul testo consolidato al 4 maggio 2016.",
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText('Verificata')).not.toBeInTheDocument()
-    expect(screen.getByText('Da verificare')).toBeInTheDocument()
+    expect(container.querySelector('mark')).toBeNull()
+    expect(screen.getByText('Al controllo il testo ufficiale diceva (testo consolidato al 4 maggio 2016)')).toBeInTheDocument()
+  })
+
+  it('says when the provision is no longer in the text in force', () => {
+    renderWithIntl(<FindingBody finding={verified} dependency={stale('removed')} {...setting(gdpr)} />)
+    expect(
+      screen.getByText(
+        "Dopo il controllo questa norma è uscita dal testo vigente. L'esito e la citazione qui sotto sono quelli del controllo, sul testo consolidato al 4 maggio 2016.",
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps an altered quote readable, without calling the old wording verified', () => {
+    const altered = finding(gdpr, 'alterata')
+    const { container } = renderWithIntl(<FindingCard finding={altered} dependency={stale('changed')} {...setting(gdpr)} />)
+    expect(screen.getByText('Citazione diversa dal testo ufficiale')).toBeInTheDocument()
+    expect(screen.getByText('Norma cambiata dopo il controllo')).toBeInTheDocument()
+    expect(screen.getByText('Parole diverse').parentElement).toHaveTextContent('Nel documento «48», nel testo ufficiale «72».')
+    expect(container.querySelector('mark')).toBeNull()
+    expect(screen.queryByText('Verificata')).not.toBeInTheDocument()
   })
 
   it('stays verified when the provision did not change', () => {
     const unchanged = csddd.findings.find((f) => f.provision?.key === 'art:14') as Finding
     expect(dependencyOf(csddd, unchanged)?.state).toBe('current')
-    const stillFine: Finding = { ...verified, provision: unchanged.provision }
-    renderWithIntl(<FindingBody finding={stillFine} dependency={dependencyOf(csddd, unchanged)} {...setting(csddd)} />)
+    renderWithIntl(<FindingBody finding={verified} dependency={dependencyOf(gdpr, verified)} {...setting(gdpr)} />)
     expect(screen.getByText('Verificata')).toBeInTheDocument()
-    expect(screen.queryByText(/Dopo questo controllo/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Dopo il controllo questa norma/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Norma cambiata dopo il controllo')).not.toBeInTheDocument()
   })
 })

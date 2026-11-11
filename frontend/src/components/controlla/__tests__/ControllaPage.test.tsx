@@ -82,7 +82,7 @@ describe('ControllaPage', () => {
 
     // The form: surveillance is on unless the person turns it off.
     const form = screen.getByRole('form', { name: 'Nuovo controllo' })
-    expect(within(form).getByLabelText('Scegli un file')).toHaveAttribute('accept', '.docx,.pdf,.html,.txt,.md')
+    expect(within(form).getByLabelText('Scegli un file')).toHaveAttribute('accept', '.docx,.pdf,.html,.txt,.md,.htm')
     expect(within(form).getByText('File .docx, .pdf con testo selezionabile, .html, .txt o .md, fino a 10 MB.')).toBeInTheDocument()
     expect(within(form).getByRole('checkbox', { name: /Sorveglia questo documento/ })).toBeChecked()
     expect(within(form).getByRole('button', { name: 'Controlla il documento' })).toBeInTheDocument()
@@ -318,13 +318,13 @@ describe('ControllaPage', () => {
   })
 
   it.each([
-    [413, 'Il documento supera il limite di 10 MB. Riducilo oppure incolla solo il testo.'],
+    [413, 'Il documento è troppo grande: un file può pesare al massimo 10 MB. Riducilo, dividilo in parti oppure incolla solo il testo che ti serve.'],
     [415, 'Il server non legge questo formato. Carica un file .docx, .pdf con testo selezionabile, .html, .txt o .md, oppure incolla il testo.'],
     [
       422,
-      'Il server non è riuscito a leggere il documento. Succede con i PDF fatti di sole immagini e con i file danneggiati: incolla il testo oppure carica una versione con testo selezionabile.',
+      "Il server non ha potuto controllare il documento così com'è. Se è un PDF fatto di sole immagini, protetto da password o danneggiato, incolla il testo oppure carica una versione con testo selezionabile.",
     ],
-    [429, 'Hai fatto troppe richieste in poco tempo. Aspetta qualche minuto e riprova.'],
+    [429, "Troppe richieste in poco tempo, oppure c'è già un controllo in corso. Aspetta un momento e riprova."],
     [
       504,
       'Il controllo ha superato il tempo massimo prima di finire. Riprova tra qualche minuto; se il documento è molto lungo, controllane una parte alla volta.',

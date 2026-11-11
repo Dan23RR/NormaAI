@@ -135,7 +135,7 @@ export function CheckForm({
         mode === 'file' && file ? await checkFile(file, options) : await checkText(text, name.trim() || t('pastedName'), options)
       onChecked(check)
     } catch (err) {
-      setFailure(describeFailure(err))
+      setFailure(describeFailure(err, 'check'))
     } finally {
       setBusy(false)
     }

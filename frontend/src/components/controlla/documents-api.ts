@@ -32,8 +32,11 @@ import {
  */
 const BASE = '/api/v1/documents'
 
-/** The formats and the size the check reads (a PDF needs a text layer). */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.pdf', '.html', '.txt', '.md'] as const
+/**
+ * The formats and the size the check reads (a PDF needs a text layer). The
+ * page names the first five; ".htm" is the same thing as ".html" to the server.
+ */
+export const ACCEPTED_EXTENSIONS = ['.docx', '.pdf', '.html', '.txt', '.md', '.htm'] as const
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 /** How many checks a page of the list asks for. */
@@ -75,10 +78,12 @@ function asDifferences(value: unknown): Difference[] {
 function asFinding(value: unknown, index: number): Finding | null {
   if (!isRecord(value)) return null
   const status = isRecord(value.status) ? value.status : {}
-  const act = isRecord(value.act) ? value.act : null
-  const provision = isRecord(value.provision) ? value.provision : null
-  const version = isRecord(value.version) ? value.version : null
+  // A reference without an act, or without a provision, comes as an object with a null id or key.
+  const act = isRecord(value.act) && text(value.act.id) ? value.act : null
+  const provision = isRecord(value.provision) && text(value.provision.key) ? value.provision : null
+  const version = isRecord(value.version) && text(value.version.id) ? value.version : null
   const before = isRecord(value.before) && text(value.before.text).trim() ? value.before : null
+  const link = isRecord(value.dependency) && text(value.dependency.act) && text(value.dependency.key) ? value.dependency : null
   return {
     id: text(value.id) || `f${index + 1}`,
     group: isGroup(value.group) ? value.group : 'controllare',
@@ -87,15 +92,22 @@ function asFinding(value: unknown, index: number): Finding | null {
     raw: text(value.raw),
     context: text(value.context),
     act: act && { source: text(act.source) || 'eurlex', id: text(act.id), name: text(act.name), label: text(act.label) },
-    provision: provision && { key: text(provision.key), label: text(provision.label) },
+    provision: provision && { key: text(provision.key), label: text(provision.label), paragraphs: strings(provision.paragraphs) },
     version: version && { id: text(version.id), as_of: textOrNull(version.as_of), label: text(version.label) },
     url: textOrNull(value.url),
     messages: strings(value.messages),
     quotes: strings(value.quotes),
     official_quote: textOrNull(value.official_quote),
     differences: asDifferences(value.differences),
-    before: before && { version_label: text(before.version_label), text: text(before.text) },
+    before: before && {
+      version_label: text(before.version_label),
+      text: text(before.text),
+      version_id: textOrNull(before.version_id),
+      as_of: textOrNull(before.as_of),
+    },
     after_text: textOrNull(value.after_text),
+    altered_quote: textOrNull(value.altered_quote),
+    dependency: link && { source: text(link.source) || 'eurlex', act: text(link.act), key: text(link.key) },
   }
 }
 
@@ -113,6 +125,12 @@ function asDependency(value: unknown): Dependency | null {
     fingerprint: text(value.fingerprint),
     state,
     changed_at: textOrNull(value.changed_at),
+    checked_at: textOrNull(value.checked_at),
+    current_version: textOrNull(value.current_version),
+    current_as_of: textOrNull(value.current_as_of),
+    message: textOrNull(value.message),
+    lang: textOrNull(value.lang),
+    cited_as: strings(value.cited_as),
   }
 }
 
@@ -121,9 +139,13 @@ function asCounts(value: unknown): CheckCounts {
   return { correggere: count(raw.correggere), controllare: count(raw.controllare), a_posto: count(raw.a_posto), non_coperto: count(raw.non_coperto) }
 }
 
-/** The worst group that has findings; a check without findings has nothing to correct. */
+/**
+ * The worst group that has findings, as the server computes `status`: law
+ * that is not covered gives the status only when nothing else was found.
+ */
 function worstGroup(counts: CheckCounts): FindingGroup {
-  return GROUPS.find((group) => group !== 'non_coperto' && counts[group] > 0) ?? 'a_posto'
+  const worst = GROUPS.find((group) => group !== 'non_coperto' && counts[group] > 0)
+  return worst ?? (counts.non_coperto > 0 ? 'non_coperto' : 'a_posto')
 }
 
 export function asSummary(value: unknown): CheckSummary | null {
@@ -142,6 +164,7 @@ export function asSummary(value: unknown): CheckSummary | null {
     status: isGroup(value.status) ? value.status : worstGroup(counts),
     needs_review: value.needs_review === true,
     counts,
+    rechecked_at: textOrNull(value.rechecked_at),
   }
 }
 

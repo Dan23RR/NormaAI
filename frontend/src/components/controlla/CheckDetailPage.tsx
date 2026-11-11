@@ -15,7 +15,7 @@ import { useDateFormat } from '@/i18n/useDateFormat'
 import { CheckFacts, DependenciesList, ReviewNotice, type ClientLink } from './CheckMargin'
 import { DeleteCheckDialog } from './DeleteCheckDialog'
 import { fetchCheck, recallCheck, recheck } from './documents-api'
-import { describeFailure, isNotFound, type Failure } from './errors'
+import { describeFailure, isMissingCheck, type Failure } from './errors'
 import { FailureMessage } from './FailureMessage'
 import { FindingCard, FindingRow } from './FindingItem'
 import { GroupSummary, groupAnchor } from './GroupSummary'
@@ -71,7 +71,7 @@ export function CheckDetailPage() {
     try {
       setState({ status: 'ready', check: await fetchCheck(id), example: false })
     } catch (err) {
-      setState(isNotFound(err) ? { status: 'missing' } : { status: 'error', failure: describeFailure(err) })
+      setState(isMissingCheck(err) ? { status: 'missing' } : { status: 'error', failure: describeFailure(err) })
     }
   }, [id])
 

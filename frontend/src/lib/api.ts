@@ -6,7 +6,6 @@ import {
   DEMO_ALERTS, DEMO_ALERT_SUMMARY, DEMO_CLIENTS,
   getMockQAResponse, getMockGapAnalysis, getMockMonitorResponse, mockDelay, DEMO_CORPUS_AS_OF,
 } from './mock-data'
-import { demoDocumentsRoute } from './mock-documents'
 
 // Public origin of the backend, e.g. https://api.normaai.org. Read only from
 // NEXT_PUBLIC_API_BASE_URL (renamed from NEXT_PUBLIC_API_URL in v2, so a value
@@ -26,6 +25,12 @@ function detailOf(body: unknown): string | undefined {
   return typeof detail === 'string' && detail.trim() ? detail : undefined
 }
 
+// The demo answers of Controlla carry whole provisions of law: they are
+// loaded only when the demo asks for a documents route, never for a signed-in
+// person and never for the other demo pages.
+const DOCUMENTS_API = '/api/v1/documents/'
+const demoDocuments = () => import('./mock-documents')
+
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
   console.error('NEXT_PUBLIC_API_BASE_URL must start with http:// or https://')
@@ -44,8 +49,10 @@ class ApiClient {
     await mockDelay(300)
 
     // Controlla: the checks, one check, the email preference (src/lib/mock-documents.ts).
-    const documents = demoDocumentsRoute('GET', path)
-    if (documents.handled) return documents.value as T
+    if (path.startsWith(DOCUMENTS_API)) {
+      const documents = (await demoDocuments()).demoDocumentsRoute('GET', path)
+      if (documents.handled) return documents.value as T
+    }
 
     if (path === '/api/v1/auth/me') return DEMO_USER as T
     if (path === '/api/v1/stats') return DEMO_STATS as T
@@ -79,10 +86,12 @@ class ApiClient {
 
     // Controlla: a pasted text "checked" (the demo answers with its example and
     // the page says so), a re-check, a deletion, the email preference.
-    const documents = demoDocumentsRoute(method ?? 'POST', path, body)
-    if (documents.handled) {
-      await mockDelay(path.endsWith('/check') ? 1800 : 600)
-      return documents.value as T
+    if (path.startsWith(DOCUMENTS_API)) {
+      const documents = (await demoDocuments()).demoDocumentsRoute(method ?? 'POST', path, body)
+      if (documents.handled) {
+        await mockDelay(path.endsWith('/check') ? 1800 : 600)
+        return documents.value as T
+      }
     }
 
     if (path === '/api/v1/qa') {
@@ -351,10 +360,12 @@ class ApiClient {
     if (isDemoMode()) {
       // A document given to Controlla never leaves the browser in the demo: the
       // answer is the example check, and the page says so before and after.
-      const documents = demoDocumentsRoute('POST', path)
-      if (documents.handled) {
-        await mockDelay(1800)
-        return documents.value as T
+      if (path.startsWith(DOCUMENTS_API)) {
+        const documents = (await demoDocuments()).demoDocumentsRoute('POST', path)
+        if (documents.handled) {
+          await mockDelay(1800)
+          return documents.value as T
+        }
       }
       throw new ApiError('uploadDemo')
     }
@@ -399,10 +410,12 @@ class ApiClient {
   async fetchBlob(path: string, options: RequestInit = {}): Promise<Response> {
     if (isDemoMode()) {
       // The report of a demo check is built from the example data, as a page.
-      const documents = demoDocumentsRoute(options.method ?? 'GET', path)
-      if (documents.handled && typeof documents.value === 'string') {
-        await mockDelay(300)
-        return new Response(documents.value, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+      if (path.startsWith(DOCUMENTS_API)) {
+        const documents = (await demoDocuments()).demoDocumentsRoute(options.method ?? 'GET', path)
+        if (documents.handled && typeof documents.value === 'string') {
+          await mockDelay(300)
+          return new Response(documents.value, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+        }
       }
       throw new ApiError('reportDemo')
     }

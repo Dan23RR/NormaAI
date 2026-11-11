@@ -26,8 +26,20 @@ export function groupLabel(group: FindingGroup, t: Translate): string {
   return t(`controlla.groups.${group}.label`)
 }
 
+/**
+ * After a re-check the server reuses two codes with a meaning of their own
+ * ("cambiato" then means changed after the check, not after the document's
+ * date) and tells them apart by the label: these are our words for them.
+ */
+const STATUS_BY_LABEL: Record<string, string> = {
+  'Cambiato dopo il controllo': 'cambiato_dopo_controllo',
+  'Non esiste più nel testo vigente': 'non_esiste_piu',
+}
+
 /** The words of an outcome: ours for the codes the check produces today, the server's for any other. */
 export function statusLabel(status: FindingStatus, t: Translate): string {
+  const special = STATUS_BY_LABEL[status.label]
+  if (special) return t(`controlla.status.${special}`)
   const key = `controlla.status.${status.code}`
   if (status.code && /^[a-z_]+$/.test(status.code) && t.has(key)) return t(key)
   return status.label || status.code

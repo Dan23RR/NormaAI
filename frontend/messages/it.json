@@ -493,7 +493,7 @@
       "date": "Data del documento",
       "dateHelp": "Facoltativa: con la data, NormaAI ti dice anche quali norme citate sono cambiate dopo che il documento è stato scritto.",
       "watch": "Sorveglia questo documento",
-      "watchHelp": "Le norme che cita vengono ricontrollate ogni settimana sul testo vigente. Se una cambia, il documento passa tra quelli da rivedere.",
+      "watchHelp": "Le norme che cita vengono ricontrollate ogni settimana sul testo vigente. Se una cambia, il documento passa tra quelli da rivedere e in Monitoraggio compare un avviso.",
       "submit": "Controlla il documento",
       "submitting": "Controllo in corso",
       "progress": "Lettura del documento, ricerca dei riferimenti e confronto con i testi ufficiali: può richiedere fino a un minuto.",
@@ -588,7 +588,7 @@
     },
     "review": {
       "title": "Da rivedere",
-      "body": "Dopo il controllo del {date} {count, plural, =1 {è cambiata una norma citata} other {sono cambiate # norme citate}}. Gli esiti su {count, plural, =1 {quella norma} other {quelle norme}} valgono per il testo di allora.",
+      "body": "Dopo il controllo del {date} {count, plural, =1 {è cambiata una norma citata} other {sono cambiate # norme citate}}. Qui sotto, {count, plural, =1 {il riferimento a quella norma mostra} other {i riferimenti a quelle norme mostrano}} che cosa è cambiato.",
       "bodyUnknown": "Dopo il controllo del {date} una norma citata è cambiata. Ricontrolla le norme citate per vedere quale.",
       "whatToDo": "Apri il testo vigente, aggiorna il documento e caricalo di nuovo: il nuovo controllo confronta le citazioni con il testo di oggi.",
       "newCheck": "Controlla la versione aggiornata"
@@ -624,7 +624,9 @@
       "atto_mancante": "Atto non indicato",
       "valido": "Riferimento valido",
       "verificata": "Citazione verificata",
-      "non_coperto": "Non coperto da NormaAI"
+      "non_coperto": "Non coperto da NormaAI",
+      "cambiato_dopo_controllo": "Cambiato dopo il controllo",
+      "non_esiste_piu": "Non esiste più nel testo vigente"
     },
     "finding": {
       "noAct": "Atto non indicato",
@@ -635,19 +637,24 @@
       "quote": "Citazione nel documento",
       "quoted": "«{text}»",
       "outcome": "Esito",
+      "outcomeThen": "Esito al momento del controllo",
       "differences": "Parole diverse",
       "differenceBoth": "Nel documento <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
       "differenceMissing": "Nel documento manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
       "differenceExtra": "Nel documento c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",
       "official": "Il testo ufficiale dice",
+      "officialThen": "Al controllo il testo ufficiale diceva ({version})",
       "change": "Che cosa è cambiato",
       "changeFromTo": "Dal {before} al {after}.",
       "former": "Com'era nel {version}",
       "openOfficial": "Testo vigente su {origin}",
       "openSource": "Apri su {origin}",
       "openGeneric": "Apri il testo ufficiale",
-      "stale": "Dopo questo controllo la norma è cambiata. L'esito qui sotto vale per il {version}.",
-      "staleRemoved": "Dopo questo controllo la norma non è più nel testo vigente. L'esito qui sotto vale per il {version}."
+      "stale": "Dopo il controllo questa norma è cambiata.",
+      "staleNow": "Dopo il controllo questa norma è cambiata: oggi vale il {version}.",
+      "staleRemoved": "Dopo il controllo questa norma è uscita dal testo vigente.",
+      "staleThen": "L'esito e la citazione qui sotto sono quelli del controllo, sul {version}.",
+      "changedSince": "Norma cambiata dopo il controllo"
     },
     "version": {
       "original": "testo originale",
@@ -664,6 +671,7 @@
     "facts": {
       "title": "Documento",
       "checked": "Controllato il",
+      "rechecked": "Ultimo ricontrollo delle norme",
       "documentDate": "Data del documento",
       "noDate": "Non indicata",
       "client": "Cliente",
@@ -687,6 +695,7 @@
       "none": "Nessuna norma registrata: il controllo non ha trovato riferimenti a testi che NormaAI può seguire.",
       "checkedOn": "Controllata sul {version}",
       "detectedOn": "rilevato il {date}",
+      "now": "oggi vale il {version}",
       "state": {
         "current": "Invariata",
         "changed": "Cambiata",
@@ -712,12 +721,15 @@
       "fileSuffix": "controllo"
     },
     "errors": {
-      "tooLarge": "Il documento supera il limite di 10 MB. Riducilo oppure incolla solo il testo.",
+      "tooLarge": "Il documento è troppo grande: un file può pesare al massimo 10 MB. Riducilo, dividilo in parti oppure incolla solo il testo che ti serve.",
       "unsupported": "Il server non legge questo formato. Carica un file .docx, .pdf con testo selezionabile, .html, .txt o .md, oppure incolla il testo.",
-      "unreadable": "Il server non è riuscito a leggere il documento. Succede con i PDF fatti di sole immagini e con i file danneggiati: incolla il testo oppure carica una versione con testo selezionabile.",
-      "rateLimited": "Hai fatto troppe richieste in poco tempo. Aspetta qualche minuto e riprova.",
+      "unreadable": "Il server non ha potuto controllare il documento così com'è. Se è un PDF fatto di sole immagini, protetto da password o danneggiato, incolla il testo oppure carica una versione con testo selezionabile.",
+      "rateLimited": "Troppe richieste in poco tempo, oppure c'è già un controllo in corso. Aspetta un momento e riprova.",
       "timeout": "Il controllo ha superato il tempo massimo prima di finire. Riprova tra qualche minuto; se il documento è molto lungo, controllane una parte alla volta.",
+      "full": "Hai raggiunto il numero massimo di controlli salvati. Elimina quelli che non servono più e riprova.",
+      "forbidden": "Il tuo account non può fare questa operazione.",
       "notFound": "Questo controllo non esiste più: torna all'elenco dei documenti controllati.",
+      "missingApi": "Il server in uso non ha ancora il controllo dei documenti. Riprova più tardi o scrivi a info@normaai.org.",
       "rejected": "Il server non ha accettato la richiesta. Controlla i dati inseriti e riprova.",
       "server": "Il server ha avuto un problema. Riprova tra qualche minuto; se continua, scrivi a info@normaai.org.",
       "network": "Il server non risponde. Riprova tra un minuto; se il problema continua, scrivi a info@normaai.org.",

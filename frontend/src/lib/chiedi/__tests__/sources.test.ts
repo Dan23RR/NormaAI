@@ -6,9 +6,11 @@ import {
   citationsToSources,
   isCelex,
   isUsefulUrl,
+  nearMatchOf,
   normalizeFramework,
   sseCitationToChiedi,
 } from '../sources'
+import { buildCopyText } from '../copy'
 import type { ChiediCitation } from '../types'
 import { textContextFor } from '@/test/i18n'
 
@@ -311,5 +313,104 @@ describe('actOfCelex', () => {
   it('uses the framework table first, the CELEX number otherwise', () => {
     expect(actOfCelex('32024R1689', en.t)).toBe('Regulation (EU) 2024/1689 (AI Act)')
     expect(actOfCelex('32026R1744', it_.t)).toBe('Regolamento (UE) 2026/1744')
+  })
+})
+
+describe('a quote that differs from the official text', () => {
+  // The verifier's near match (src/agents/citation_verifier.py): not verified, with the
+  // official wording it almost matched, where it is and the words that differ.
+  const altered: ChiediCitation = {
+    framework: 'GDPR',
+    reference: 'Art. 33, par. 1',
+    quote_snippet: 'senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza',
+    verified: false,
+    celex: '32016R0679',
+    near_quote: 'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
+    near_article: 'Art. 33',
+    differences: [{ quoted: '48', official: '72' }],
+  }
+
+  it('stays unverified and carries what the official text says instead', () => {
+    const s = citationToSource(altered, 1, 's', it_)
+    expect(s.status).toBe('unverified')
+    expect(s.act).toBe('Regolamento (UE) 2016/679 (GDPR)')
+    expect(s.article).toBe('Art. 33, par. 1')
+    expect(s.near).toEqual({
+      quoted: altered.quote_snippet,
+      official: altered.near_quote,
+      article: 'Art. 33',
+      differences: [{ quoted: '48', official: '72' }],
+    })
+  })
+
+  it('does not show the altered words as the passage of law', () => {
+    // `quote` is what the margin puts under the highlighter: never a wording known to be wrong.
+    expect(citationToSource(altered, 1, 's', it_).quote).toBeUndefined()
+  })
+
+  it('never gives a near match to a verified citation, nor to one without the official wording', () => {
+    expect(nearMatchOf({ ...altered, verified: true })).toBeUndefined()
+    expect(citationToSource({ ...altered, verified: true, official_quote: altered.near_quote }, 1, 's', it_).near).toBeUndefined()
+    expect(nearMatchOf({ ...altered, near_quote: null })).toBeUndefined()
+    expect(nearMatchOf({ ...altered, near_quote: '   ' })).toBeUndefined()
+    const plain = citationToSource({ ...altered, near_quote: undefined, differences: undefined }, 1, 's', it_)
+    expect(plain.near).toBeUndefined()
+    expect(plain.quote).toBe(altered.quote_snippet)
+  })
+
+  it('drops empty differences and keeps a word only one side has', () => {
+    const near = nearMatchOf({
+      ...altered,
+      near_article: null,
+      differences: [
+        { quoted: '', official: 'non' },
+        { quoted: ' ', official: '' },
+        { quoted: 'sempre', official: '' },
+      ],
+    })
+    expect(near?.article).toBeUndefined()
+    expect(near?.differences).toEqual([
+      { quoted: '', official: 'non' },
+      { quoted: 'sempre', official: '' },
+    ])
+  })
+
+  it('reads the near match of a stream event, only when the event is not verified', () => {
+    const event = {
+      type: 'citation' as const,
+      framework: 'GDPR',
+      celex: '32016R0679',
+      article: 'Art. 33',
+      title: 'GDPR',
+      quote: altered.quote_snippet,
+      verified: false,
+      near_quote: altered.near_quote as string,
+      near_article: 'Art. 33',
+      differences: [{ quoted: '48', official: '72' }],
+    }
+    const c = sseCitationToChiedi(event)
+    expect(c.verified).toBe(false)
+    expect(c.quote_snippet).toBe(altered.quote_snippet)
+    expect(c.near_quote).toBe(altered.near_quote)
+    expect(c.near_article).toBe('Art. 33')
+    expect(c.differences).toEqual([{ quoted: '48', official: '72' }])
+    expect(citationToSource(c, 1, 's', en).near?.official).toBe(altered.near_quote)
+
+    const verified = sseCitationToChiedi({ ...event, verified: true })
+    expect(verified.near_quote).toBeUndefined()
+    expect(verified.near_article).toBeUndefined()
+    expect(verified.differences).toBeUndefined()
+  })
+
+  it('copies the answer quote with the official wording next to it', () => {
+    const sources = citationsToSources([altered, { framework: 'GDPR', reference: 'Art. 34', quote_snippet: 'x', verified: true, official_quote: 'testo ufficiale' }], 'm', it_)
+    const text = buildCopyText({ answer: 'Entro 48 ore [1].', sources }, it_)
+    expect(text).toContain(
+      '1. Regolamento (UE) 2016/679 (GDPR), Art. 33, par. 1: «senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza» ' +
+        '(da verificare; diversa dal testo ufficiale, che dice «senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza»)',
+    )
+    expect(text).toContain('2. Regolamento (UE) 2016/679 (GDPR), Art. 34: «testo ufficiale» (verificata)')
+    const english = buildCopyText({ answer: 'x', sources: citationsToSources([altered], 'm', en) }, en)
+    expect(english).toContain('(unverified; differs from the official text, which says "senza ingiustificato ritardo')
   })
 })

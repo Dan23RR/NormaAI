@@ -889,7 +889,11 @@
           "incidents": {
             "title": "Notification of significant incidents to CSIRT Italia",
             "requirement": "Early notification within 24 hours of becoming aware of the significant incident, notification within 72 hours, final report within one month of the notification.",
-            "exception": "Deadlines: for the entities entered in the list in 2026 the obligation runs from {incidents2026} (ACN Determination No 127434/2026, Art. 1(2)); for those entered in 2025 the deadline is nine months from receiving the communication of entry (ACN Determination No 379907 of 19 December 2025, Art. 3(2))."
+            "exception": "Deadlines: for the entities entered in the list in 2026 the obligation runs from {incidents2026} (ACN Determination No 127434/2026, Art. 1(2)) and the CSIRT contact person must be designated by 31 December of the year of entry (ACN Determination No 314287/2026, Art. 7(1)); for those entered in 2025 the deadline is nine months from receiving the communication of entry (ACN Determination No 379907 of 19 December 2025, Art. 3(2))."
+          },
+          "activities": {
+            "title": "List of activities and services",
+            "requirement": "From 1 May to 30 June of each year, starting from the first communication of entry in the list, the entities communicate and update on the platform the list of their activities and services, with the relevance category of each."
           }
         }
       },
@@ -1031,6 +1035,11 @@
         "who": "Whoever places or makes available on the Union market, or exports, the products of Annex I linked to cattle, cocoa, coffee, oil palm, rubber, soya and wood",
         "what": "Articles 3 to 13, 16 to 24 and Articles 26, 31 and 32 apply from this date (Art. 38(2)). For operators that are micro or small undertakings the date is 30 June 2027 (Art. 38(3))."
       },
+      "nis2-csirt-contact-2026": {
+        "title": "NIS: CSIRT contact person for the entities entered in the list in 2026",
+        "who": "Entities entered in the list of NIS entities during 2026",
+        "what": "By 31 December of the year of entry the point of contact designates the CSIRT contact person (ACN Determination No 314287/2026, Art. 7(1)). For these entities the obligation to notify incidents runs from 1 January 2027."
+      },
       "csrd-first-year": {
         "title": "CSRD: first financial year for the companies of the new scope",
         "who": "Undertakings with a net turnover above 450 million euro and more than 1,000 employees on average that were not already reporting",
@@ -1070,6 +1079,11 @@
         "title": "Deforestation Regulation: application for micro and small enterprises",
         "who": "Operators that are natural persons, micro-undertakings or small undertakings, established as such by 31 December 2024",
         "what": "The obligations apply from this date (Art. 38(3)), except for the products of the annex to Regulation (EU) No 995/2010."
+      },
+      "nis2-activities-list": {
+        "title": "NIS: end of the window for the list of activities and services",
+        "who": "Essential and important entities that received the communication of entry in the list",
+        "what": "From 1 May to 30 June of each year they communicate and update on the ACN platform the list of their activities and services, with the relevance category (Art. 30(1))."
       },
       "csddd-guidelines": {
         "title": "CSDDD: Commission guidelines",

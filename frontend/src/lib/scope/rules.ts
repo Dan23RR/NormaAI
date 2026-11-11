@@ -112,6 +112,7 @@ export const RULE_SOURCES = {
   nisMeasures: 'dlgs-138-2024-24-1',
   nisSupplyChain: 'dlgs-138-2024-24-2-d',
   nisIncidents: 'dlgs-138-2024-25-5',
+  nisActivities: 'dlgs-138-2024-30-1',
   nisPenalties: 'dlgs-138-2024-38-9',
   nisAnnexI: 'dlgs-138-2024-allegato-1',
   nisAnnexII: 'dlgs-138-2024-allegato-2',
@@ -122,6 +123,7 @@ export const RULE_SOURCES = {
   nisIncidents2026: 'acn-det-127434-2026-1-2',
   nisMeasures2025: 'acn-det-379907-2025-3-1',
   nisIncidents2025: 'acn-det-379907-2025-3-2',
+  nisCsirtContact: 'acn-det-314287-2026-7-1',
 
   machineryScope: 'mach-2-1',
   machineryModification: 'mach-3-16',
@@ -770,9 +772,10 @@ function nisDuties(ctx: TextContext, financial: boolean): Duty[] {
       key: 'incidents',
       who: 'nisEntity',
       source: 'nisIncidents',
-      also: ['nisIncidents2026', 'nisIncidents2025'],
+      also: ['nisIncidents2026', 'nisIncidents2025', 'nisCsirtContact'],
       values: dates,
     },
+    { key: 'activities', who: 'nisEntity', source: 'nisActivities' },
   ]
 }
 

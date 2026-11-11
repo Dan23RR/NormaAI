@@ -35,7 +35,8 @@ const MONTHS = [
 /**
  * True when what the script read for a source carries the date: the full date
  * in the official wording, the month and year where the ordinal of the first
- * day was left out of the excerpt, a day and month that recur "every year",
+ * day was left out of the excerpt, a day and month that recur "every year"
+ * or fall in "the year in which" an entity was listed,
  * or the date Normattiva gives as the start of the article's validity.
  */
 function carriesDate(id: string, iso: string): boolean {
@@ -46,7 +47,10 @@ function carriesDate(id: string, iso: string): boolean {
   const name = MONTHS[month - 1]
   if (new RegExp(`(^|\\D)${day}[°º]? ${name} ${year}`).test(quote)) return true
   if (day === 1 && quote.includes(`[...] ${name} ${year}`)) return true
-  if (new RegExp(`(^|\\D)${day}[°º]? ${name}`).test(quote) && quote.includes('ogni anno')) return true
+  const dayAndMonth = new RegExp(`(^|\\D)${day}[°º]? ${name}( |$)`)
+  if (dayAndMonth.test(quote) && quote.includes('ogni anno')) return true
+  // A deadline set on a day of the year an entity was entered in a list: the entry says which year.
+  if (new RegExp(`(^|\\D)${day} ${name} dell.anno in cui`).test(quote)) return true
   return record.in_force_from === iso
 }
 

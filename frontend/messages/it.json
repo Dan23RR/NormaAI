@@ -889,7 +889,11 @@
           "incidents": {
             "title": "Notifica degli incidenti significativi al CSIRT Italia",
             "requirement": "Pre-notifica entro 24 ore da quando si viene a conoscenza dell'incidente significativo, notifica entro 72 ore, relazione finale entro un mese dalla notifica.",
-            "exception": "Termini: per i soggetti inseriti nell'elenco nel 2026 l'obbligo decorre dal {incidents2026} (determinazione ACN n. 127434/2026, art. 1, comma 2); per quelli inseriti nel 2025 il termine è di nove mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 2)."
+            "exception": "Termini: per i soggetti inseriti nell'elenco nel 2026 l'obbligo decorre dal {incidents2026} (determinazione ACN n. 127434/2026, art. 1, comma 2) e il referente CSIRT va designato entro il 31 dicembre dell'anno di inserimento (determinazione ACN n. 314287/2026, art. 7, comma 1); per quelli inseriti nel 2025 il termine è di nove mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 2)."
+          },
+          "activities": {
+            "title": "Elenco delle attività e dei servizi",
+            "requirement": "Dal 1 maggio al 30 giugno di ogni anno, a partire dalla prima comunicazione di inserimento nell'elenco, i soggetti comunicano e aggiornano sulla piattaforma l'elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza di ciascuno."
           }
         }
       },
@@ -1031,6 +1035,11 @@
         "who": "Chi immette o mette a disposizione sul mercato dell'Unione, o esporta, i prodotti dell'allegato I legati a bovini, cacao, caffè, palma da olio, gomma, soia e legno",
         "what": "Gli articoli da 3 a 13, da 16 a 24 e gli articoli 26, 31 e 32 si applicano da questa data (art. 38, par. 2). Per gli operatori che sono microimprese o piccole imprese la data è il 30 giugno 2027 (art. 38, par. 3)."
       },
+      "nis2-csirt-contact-2026": {
+        "title": "NIS: referente CSIRT per i soggetti inseriti nell'elenco nel 2026",
+        "who": "Soggetti inseriti nell'elenco dei soggetti NIS nel corso del 2026",
+        "what": "Entro il 31 dicembre dell'anno di inserimento il punto di contatto designa il referente CSIRT (determinazione ACN n. 314287/2026, art. 7, comma 1). Per questi soggetti l'obbligo di notifica degli incidenti decorre dal 1 gennaio 2027."
+      },
       "csrd-first-year": {
         "title": "CSRD: primo esercizio per le imprese del nuovo perimetro",
         "who": "Imprese con ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media, che non rendicontavano già",
@@ -1070,6 +1079,11 @@
         "title": "Regolamento deforestazione: applicazione per microimprese e piccole imprese",
         "who": "Operatori che sono persone fisiche, microimprese o piccole imprese, costituiti come tali al 31 dicembre 2024",
         "what": "Gli obblighi si applicano da questa data (art. 38, par. 3), tranne che per i prodotti dell'allegato del regolamento (UE) n. 995/2010."
+      },
+      "nis2-activities-list": {
+        "title": "NIS: chiusura della finestra per l'elenco delle attività e dei servizi",
+        "who": "Soggetti essenziali e importanti che hanno ricevuto la comunicazione di inserimento nell'elenco",
+        "what": "Dal 1 maggio al 30 giugno di ogni anno comunicano e aggiornano sulla piattaforma di ACN l'elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza (art. 30, comma 1)."
       },
       "csddd-guidelines": {
         "title": "CSDDD: orientamenti della Commissione",

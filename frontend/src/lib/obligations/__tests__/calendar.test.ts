@@ -57,6 +57,7 @@ describe('obligations', () => {
     expect(byId['aiact-legacy-marking']).toBe('2026-12-02')
     expect(byId['aiact-new-prohibitions']).toBe('2026-12-02')
     expect(byId['eudr-application']).toBe('2026-12-30')
+    expect(byId['nis2-csirt-contact-2026']).toBe('2026-12-31')
     expect(byId['csrd-first-year']).toBe('2027-01-01')
     expect(byId['nis2-incidents-2026']).toBe('2027-01-01')
     expect(byId['machinery-application']).toBe('2027-01-20')
@@ -65,6 +66,7 @@ describe('obligations', () => {
     expect(byId['nis2-annual-update']).toBe('2027-05-31')
     expect(byId['pay-gap-first-data']).toBe('2027-06-07')
     expect(byId['eudr-small-operators']).toBe('2027-06-30')
+    expect(byId['nis2-activities-list']).toBe('2027-06-30')
     expect(byId['csddd-guidelines']).toBe('2027-07-26')
     expect(byId['nis2-measures-2026']).toBe('2027-07-31')
     expect(byId['aiact-high-risk-annex-iii']).toBe('2027-12-02')
@@ -101,6 +103,7 @@ describe('upcoming', () => {
       'aiact-legacy-marking',
       'aiact-new-prohibitions',
       'eudr-application',
+      'nis2-csirt-contact-2026',
       'csrd-first-year',
       'nis2-incidents-2026',
       'machinery-application',
@@ -109,6 +112,7 @@ describe('upcoming', () => {
       'nis2-annual-update',
       'pay-gap-first-data',
       'eudr-small-operators',
+      'nis2-activities-list',
       'csddd-guidelines',
       'nis2-measures-2026',
       'aiact-gpai-legacy',
@@ -147,7 +151,12 @@ describe('groupByMonth', () => {
   it('groups the next twelve months by month in order', () => {
     const groups = groupByMonth(upcoming(TODAY, 365, LIST))
     expect(groups.map((g) => g.key)).toEqual(['2026-12', '2027-01', '2027-02', '2027-03', '2027-05', '2027-06', '2027-07', '2027-08'])
-    expect(groups[0].items.map((o) => o.id)).toEqual(['aiact-legacy-marking', 'aiact-new-prohibitions', 'eudr-application'])
+    expect(groups[0].items.map((o) => o.id)).toEqual([
+      'aiact-legacy-marking',
+      'aiact-new-prohibitions',
+      'eudr-application',
+      'nis2-csirt-contact-2026',
+    ])
     expect(formatMonthHeading(groups[0].firstDay, 'it-IT')).toBe('Dicembre 2026')
     expect(formatMonthHeading(groups[0].firstDay, 'en-GB')).toBe('December 2026')
   })

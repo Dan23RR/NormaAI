@@ -77,6 +77,11 @@
       "it": "ACN, determinazione n. 379907 del 19 dicembre 2025",
       "en": "ACN (Italian cybersecurity agency), Determination No 379907 of 19 December 2025",
       "origin": "ACN"
+    },
+    "acn:determinazione:2026;314287": {
+      "it": "ACN, determinazione n. 314287/2026",
+      "en": "ACN (Italian cybersecurity agency), Determination No 314287/2026",
+      "origin": "ACN"
     }
   },
   "sources": [
@@ -1251,6 +1256,19 @@
       "excerpt": "senza ingiustificato ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, una pre-notifica [...] senza ingiustificato ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente [...] una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)"
     },
     {
+      "id": "dlgs-138-2024-30-1",
+      "kind": "normattiva",
+      "act": "urn:nir:stato:decreto.legislativo:2024-09-04;138",
+      "article": "Art. 30",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 30, comma 1",
+        "en": "Art. 30(1)"
+      },
+      "excerpt": "dal 1° maggio al 30 giugno di ogni anno a partire dalla ricezione della prima comunicazione di cui all'articolo 7, comma 3, lettera a), i soggetti essenziali e i soggetti importanti comunicano e aggiornano, tramite la piattaforma digitale di cui all'articolo 7, comma 1, un elenco delle proprie attività e dei propri servizi, comprensivo di tutti gli elementi necessari alla loro caratterizzazione e della relativa attribuzione di una categoria di rilevanza."
+    },
+    {
       "id": "dlgs-138-2024-38-9",
       "kind": "normattiva",
       "act": "urn:nir:stato:decreto.legislativo:2024-09-04;138",
@@ -1388,6 +1406,20 @@
         "en": "Art. 3(2)"
       },
       "excerpt": "Il termine per l'adempimento dell'obbligo di notifica degli incidenti significativi di base descritti negli allegati 3 e 4 è fissato in nove mesi dalla ricezione"
+    },
+    {
+      "id": "acn-det-314287-2026-7-1",
+      "kind": "document",
+      "act": "acn:determinazione:2026;314287",
+      "url": "https://www.acn.gov.it/portale/documents/d/guest/detacn_piattaforma_314287-2026_signeddg",
+      "article": "Art. 7",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 7, comma 1",
+        "en": "Art. 7(1)"
+      },
+      "excerpt": "Il referente CSIRT è una persona fisica designata dal punto di contatto [...] entro il 31 dicembre dell'anno in cui il soggetto NIS è stato inserito, ai sensi dell'articolo 7, comma 3, lettera a), del decreto NIS"
     },
     {
       "id": "dlgs-179-2026-41-1",

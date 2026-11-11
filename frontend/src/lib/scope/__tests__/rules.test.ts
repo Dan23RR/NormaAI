@@ -410,7 +410,7 @@ describe('NIS result (D.Lgs. 138/2024)', () => {
     expect(r.reasons[1]).toContain('10 milioni di euro')
     expect(r.notes.join(' ')).toContain('soggetto importante')
     expect(r.notes.join(' ')).toContain('7 milioni di euro')
-    expect(duties(r)).toEqual(['register', 'governance', 'measures', 'incidents'])
+    expect(duties(r)).toEqual(['register', 'governance', 'measures', 'incidents', 'activities'])
     const byKey = Object.fromEntries((r.obligations ?? []).map((o) => [o.key, o]))
     expect(byKey.register.article).toBe('art. 7, comma 1')
     expect(byKey.register.requirement).toContain('Dal 1 gennaio al 28 febbraio')
@@ -420,6 +420,9 @@ describe('NIS result (D.Lgs. 138/2024)', () => {
     expect(byKey.incidents.requirement).toContain('72 ore')
     expect(byKey.incidents.exception).toContain('1 gennaio 2027')
     expect(byKey.incidents.exception).toContain('nove mesi')
+    expect(byKey.incidents.exception).toContain('referente CSIRT')
+    expect(byKey.activities.article).toBe('art. 30, comma 1')
+    expect(byKey.activities.requirement).toContain('Dal 1 maggio al 30 giugno')
     expect(ids(r)).toEqual(
       expect.arrayContaining([
         'dlgs-138-2024-allegato-2',
@@ -434,6 +437,8 @@ describe('NIS result (D.Lgs. 138/2024)', () => {
         'acn-det-127434-2026-1-2',
         'acn-det-379907-2025-3-1',
         'acn-det-379907-2025-3-2',
+        'acn-det-314287-2026-7-1',
+        'dlgs-138-2024-30-1',
         'dlgs-138-2024-38-9',
       ]),
     )
@@ -503,7 +508,7 @@ describe('NIS result (D.Lgs. 138/2024)', () => {
     const r = result(company({ employees: 12, turnoverEur: 2 * M, nis: { ...NO_NIS, linked: true } }), 'NIS2')
     expect(r.status).toBe('in_scope')
     expect(r.reasons[0]).toContain('art. 3, comma 10')
-    expect(duties(r)).toEqual(['register', 'governance', 'measures', 'incidents'])
+    expect(duties(r)).toEqual(['register', 'governance', 'measures', 'incidents', 'activities'])
   })
   it('banche e mercati finanziari: dipende, con la sola registrazione e il rinvio a DORA', () => {
     for (const sector of ['banche', 'mercati'] as const) {

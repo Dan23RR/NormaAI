@@ -1263,6 +1263,20 @@
       "fingerprint": "sha256:7d7022bb8be00c21c80c2c242b062569f665689dd78e2ddeea868a57c1a2c029"
     },
     {
+      "id": "dlgs-138-2024-30-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "vigente al 2026-11-11",
+      "version_label": "testo vigente al 2026-11-11 (Normattiva)",
+      "consolidated_as_of": null,
+      "in_force_from": "2024-10-16",
+      "official_quote": "dal 1° maggio al 30 giugno di ogni anno a partire dalla ricezione della prima comunicazione di cui all'articolo 7, comma 3, lettera a), i soggetti essenziali e i soggetti importanti comunicano e aggiornano, tramite la piattaforma digitale di cui all'articolo 7, comma 1, un elenco delle proprie attività e dei propri servizi, comprensivo di tutti gli elementi necessari alla loro caratterizzazione e della relativa attribuzione di una categoria di rilevanza",
+      "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138~art30",
+      "detail": null,
+      "fingerprint": "sha256:33c6f6bffa33ee2aa7be23d5b53a05516c2d05c91636042748fe743505624a06"
+    },
+    {
       "id": "dlgs-138-2024-38-9",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -1401,6 +1415,20 @@
       "url": "https://www.acn.gov.it/portale/documents/d/guest/detacn_obblighi_2511-v3_signed",
       "detail": null,
       "fingerprint": "sha256:e384b4791f8ad3679ef844a006146eb6c2d5523537a7ad5338ad7283cec7b3f5"
+    },
+    {
+      "id": "acn-det-314287-2026-7-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "sha256:8099bebc7b38417d8ac8146ad99571b8a35beb9992758ffe9595d3e6abda2d23",
+      "version_label": "documento pubblicato dall'autorità",
+      "consolidated_as_of": null,
+      "in_force_from": null,
+      "official_quote": "Il referente CSIRT è una persona fisica designata dal punto di contatto [...] entro il 31 dicembre dell’anno in cui\nil soggetto NIS è stato inserito, ai sensi dell’articolo 7, comma 3, lettera a), del decreto NIS",
+      "url": "https://www.acn.gov.it/portale/documents/d/guest/detacn_piattaforma_314287-2026_signeddg",
+      "detail": null,
+      "fingerprint": "sha256:976511221d43fbfad7b0f6d2d3ffbc29affa428b2b30f7abc4065016597a1a2d"
     },
     {
       "id": "dlgs-179-2026-41-1",

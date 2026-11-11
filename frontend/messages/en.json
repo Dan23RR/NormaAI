@@ -461,10 +461,10 @@
   },
   "ambito": {
     "title": "Scope",
-    "description": "Which obligations apply to a company, and from when, with the provision that says so.",
-    "meta": "Rules and dates verified on {date}. A first indicative filter, not legal advice.",
+    "description": "Which obligations apply to a company, and from when, with the passage of law that says so.",
+    "meta": "Every source says whether and when the passage was found in the official text (last check: {date}). A first indicative filter, not legal advice.",
     "loading": "Loading the Scope page",
-    "formError": "Enter employees and net turnover, or answer the AI questions, then press Check the scope again.",
+    "formError": "Enter employees and net turnover, or answer at least one section (AI at work, NIS, machinery, AI Act), then press Check the scope again.",
     "copy": {
       "ok": "Copied",
       "failed": "Copy failed",
@@ -473,7 +473,7 @@
     },
     "empty": {
       "title": "Fill in the profile and press Check the scope",
-      "description": "The result shows, for the CSRD, the CSDDD and the AI Act (Art. 50), whether the obligation applies, from when and on which provision it rests."
+      "description": "The result says, for AI in the employment relationship, NIS, the Machinery Regulation, the AI Act (Art. 50), the CSRD and the CSDDD, whether the obligation applies, from when and on which passage of law it rests."
     },
     "form": {
       "loadClient": "Load from a client",
@@ -490,16 +490,19 @@
       "turnover": "Annual net turnover",
       "turnoverHelp": "In euro, for example 450,000,000.",
       "turnoverPlaceholder": "E.g. 300,000,000",
+      "balanceSheet": "Balance sheet total",
+      "balanceSheetHelp": "Optional, in euro: below 50 employees it decides, with turnover, the size class for NIS.",
+      "balanceSheetPlaceholder": "E.g. 12,000,000",
       "examples": "Try an example:",
       "example": "{employees} employees, {millions} million",
       "listed": "Listed on an EU regulated market",
-      "listedHelp": "Listed SMEs are out of the new scope, but remain border cases.",
-      "wave1": "Already subject to sustainability reporting (Wave 1 / NFRD, financial year 2024)",
-      "wave1Help": "For Wave 1 reporters Omnibus I provides a transitional exemption for the 2025 and 2026 financial years.",
+      "listedHelp": "Under the thresholds in force what counts is size, not listing: below the thresholds a listed company is to be checked case by case.",
+      "wave1": "Already reports on sustainability since financial year 2024",
+      "wave1Help": "Large public-interest entities with more than 500 employees (Directive (EU) 2022/2464, Art. 5(2)).",
       "nonEu": "Based outside the European Union",
       "nonEuHelp": "For third-country companies what counts is the turnover generated in the Union.",
       "euTurnover": "Net turnover generated in the Union",
-      "euTurnoverHelp": "Codex threshold for third-country companies: 450 million euro.",
+      "euTurnoverHelp": "Thresholds for third-country companies: 450 million euro for the CSRD, 1.5 billion euro for the CSDDD.",
       "euTurnoverPlaceholder": "E.g. 500,000,000",
       "groupRole": "Role in the group",
       "groupRoles": {
@@ -512,38 +515,130 @@
       "sectorHelp": "Optional: it does not change the result, it stays in the profile.",
       "sectorPlaceholder": "For example manufacturing, financial services",
       "ai": {
-        "legend": "Artificial intelligence (AI Act, Art. 50)",
-        "intro": "Tick what applies to the company, whether you offer the system yourselves (provider) or use one from a third party (deployer): the result tells the two cases apart.",
+        "legend": "Artificial intelligence: transparency (AI Act, Art. 50)",
+        "intro": "Tick what applies to the company, whether it offers the system (provider) or uses one from a third party (deployer): the result tells the two cases apart.",
         "chat": {
           "label": "An AI system interacts directly with people",
           "description": "Chatbots, virtual assistants, voicebots aimed at customers, users or employees."
         },
         "gen": {
-          "label": "You generate synthetic content: text, images, audio or video",
-          "description": "Generative AI tools offered to your users or built into your products."
+          "label": "A system generates synthetic content: text, images, audio or video",
+          "description": "Generative AI tools offered to users or built into the company’s products."
         },
         "emo": {
-          "label": "You use emotion recognition or biometric categorisation",
-          "description": "For example on customers, users or staff (analysis of tone, face, behaviour)."
+          "label": "Emotion recognition or biometric categorisation is in use",
+          "description": "For example on customers or users (analysis of tone, face, behaviour)."
         },
         "deep": {
-          "label": "You publish deepfakes or AI-generated texts to inform the public",
+          "label": "The company publishes deepfakes or AI-generated texts to inform the public",
           "description": "Generated or manipulated images, audio or video, or AI-generated texts on matters of public interest."
         },
-        "none": "None of the four situations applies to us",
+        "none": "None of the four situations concerns the company",
         "noneHelp": "Without an answer, the AI Act stays unassessed."
+      },
+      "work": {
+        "legend": "AI in the employment relationship (Italian Legislative Decree 179/2026, Law 132/2025, AI Act)",
+        "intro": "Tick what applies to the company as an employer or as a professional firm.",
+        "dec": {
+          "label": "An AI system contributes to decisions about staff",
+          "description": "Hiring, changes to or termination of the relationship, disciplinary measures, performance evaluation."
+        },
+        "org": {
+          "label": "An AI system affects the organisation of work or safety",
+          "description": "Organisation, production pace, how work is carried out, decisions relevant to safety."
+        },
+        "uso": {
+          "label": "Staff use AI tools in their work",
+          "description": "For example generative assistants for text, analysis, code or images."
+        },
+        "prof": {
+          "label": "It is a professional firm that uses AI in its work for clients",
+          "description": "Intellectual professions: the law requires informing the recipient of the service."
+        },
+        "emo": {
+          "label": "A system infers the emotions of workers",
+          "description": "Analysis of face, voice or behaviour in the workplace."
+        },
+        "none": "None of these situations concerns the company",
+        "noneHelp": "Without an answer, this section stays unassessed."
+      },
+      "nis": {
+        "legend": "Cybersecurity: Italian NIS decree (Legislative Decree 138/2024)",
+        "intro": "Choose the sector the company operates in among those of the annexes to the decree. The thresholds use the employees, turnover and balance sheet total entered above.",
+        "sector": "Sector of the annex",
+        "sectorHelp": "Annexes I and II: sectors; Annex III: public administrations; Annex IV: further types of entity.",
+        "choose": "Not answered",
+        "groupAnnexI": "Annex I: sectors of high criticality",
+        "groupAnnexII": "Annex II: other critical sectors",
+        "groupOther": "Other cases",
+        "anySize": "It is a provider the decree covers whatever its size",
+        "anySizeHelp": "Public electronic communications networks or publicly available electronic communications services, trust services, top-level domain name registries, DNS services, domain name registration (Art. 3(5)).",
+        "linked": "It is an enterprise linked to a NIS entity and runs its systems, security or ICT services",
+        "linkedHelp": "For example the group company that runs the network and information systems or the cybersecurity of an essential or important entity (Art. 3(10))."
+      },
+      "machinery": {
+        "legend": "Machinery: Regulation (EU) 2023/1230",
+        "intro": "Tick the company’s roles with regard to machinery, related products (for example safety components and lifting accessories) and partly completed machinery.",
+        "fab": {
+          "label": "Manufacturer",
+          "description": "It manufactures these products, or has them designed or manufactured and markets them under its own name or trademark, or manufactures them and puts them into service for its own use."
+        },
+        "imp": {
+          "label": "Importer",
+          "description": "It places on the Union market products from a third country."
+        },
+        "dis": {
+          "label": "Distributor",
+          "description": "It makes the products available on the market without being their manufacturer or importer."
+        },
+        "mod": {
+          "label": "It modifies machinery already placed on the market or put into service",
+          "description": "Physical or digital changes not foreseen by the manufacturer that affect safety."
+        },
+        "none": "None of these roles concerns the company",
+        "noneHelp": "Without an answer, this section stays unassessed."
+      },
+      "csrd": {
+        "legend": "CSRD and CSDDD: special cases",
+        "intro": "The thresholds are read on the employees and turnover entered above; here are the cases that change the reading."
       },
       "submit": "Check the scope",
       "reset": "Clear the form",
       "numberError": "Enter a number, for example 1,200."
+    },
+    "nis": {
+      "sectors": {
+        "energia": "Energy",
+        "trasporti": "Transport",
+        "banche": "Banking",
+        "mercati": "Financial market infrastructures",
+        "sanita": "Health",
+        "acqua": "Drinking water",
+        "reflue": "Waste water",
+        "digitale": "Digital infrastructure",
+        "tic": "ICT service management (business-to-business)",
+        "spazio": "Space",
+        "postali": "Postal and courier services",
+        "rifiuti": "Waste management",
+        "chimica": "Manufacture, production and distribution of chemicals",
+        "alimenti": "Production, processing and distribution of food",
+        "fabbricazione": "Manufacturing (medical devices, electronics, electrical equipment, machinery, motor vehicles, other transport equipment)",
+        "servizi-digitali": "Digital providers",
+        "ricerca": "Research",
+        "pa": "Public administration (Annex III)",
+        "altri": "Further types (Annex IV): local public transport, education institutions carrying out research, activities of cultural interest, in-house, publicly owned or publicly controlled companies",
+        "nessuno": "None of these sectors"
+      }
     },
     "results": {
       "title": "Result",
       "copyResult": "Copy the result",
       "copyLink": "Copy the link",
       "notes": "Keep in mind",
+      "duties": "What the law requires",
       "legalBasis": "Legal basis",
-      "verifiedNote": "Rules and dates verified on {date} against the sources listed. A first indicative filter, not legal advice.",
+      "legalBasisSummary": "{count, plural, one {# source} other {# sources}}, {verified, plural, =0 {none verified} one {# verified} other {# verified}} against the official text",
+      "filterNote": "A first indicative filter, not legal advice. Each source says whether and when the passage was found in the official text.",
       "status": {
         "in_scope": "Applies",
         "out_of_scope": "Does not apply",
@@ -553,21 +648,47 @@
       "frameworks": {
         "CSRD": "CSRD, sustainability reporting",
         "CSDDD": "CSDDD, due diligence",
-        "AI_ACT": "AI Act, transparency (Art. 50)"
+        "AI_ACT": "AI Act, transparency (Art. 50)",
+        "AI_WORK": "AI in the employment relationship",
+        "NIS2": "NIS, cybersecurity (Italian Legislative Decree 138/2024)",
+        "MACHINERY": "Machinery Regulation (EU) 2023/1230"
+      },
+      "badges": {
+        "CSRD": "CSRD",
+        "CSDDD": "CSDDD",
+        "AI_ACT": "AI Act",
+        "AI_WORK": "AI at work",
+        "NIS2": "NIS2",
+        "MACHINERY": "Machinery"
       },
       "who": {
         "provider": "Provider obligation",
-        "deployer": "Deployer obligation"
+        "deployer": "Deployer obligation",
+        "employer": "Employer obligation",
+        "professional": "Professional’s obligation",
+        "nisEntity": "NIS entity obligation",
+        "governingBodies": "Management and governing bodies",
+        "manufacturer": "Manufacturer obligation",
+        "importer": "Importer obligation",
+        "distributor": "Distributor obligation",
+        "modifier": "Whoever modifies the machinery"
       }
+    },
+    "verification": {
+      "verified": "Verified on {date}",
+      "verifiedConsolidated": "Verified on {date} against the text consolidated on {textDate}",
+      "notVerified": "Source indicated, not yet verified"
     },
     "summary": {
       "employees": "{count} employees",
       "turnover": "net turnover {amount}",
+      "balanceSheet": "balance sheet total {amount}",
       "nonEu": "based outside the EU",
       "euTurnover": "net turnover in the EU {amount}",
       "listed": "listed on an EU regulated market",
       "notListed": "not listed",
-      "wave1": "already reporting (Wave 1)",
+      "wave1": "already reporting on sustainability",
+      "nisSector": "NIS sector: {sector}",
       "groupRoles": {
         "standalone": "standalone company",
         "parent": "parent company with consolidated accounts",
@@ -575,200 +696,277 @@
       }
     },
     "text": {
-      "header": "NormaAI scope check, rules and dates verified on {date}",
+      "header": "NormaAI scope check, sources checked against the official text on {date}",
+      "headerUnchecked": "NormaAI scope check, sources indicated but not yet verified against the official text",
       "profile": "Profile: {summary}",
       "disclaimer": "A first indicative filter, not legal advice.",
       "notes": "Notes:",
-      "passage": "Text: “{text}” ({act}, {article})",
+      "passage": "Text: \"{text}\"",
       "sources": "Sources:"
     },
     "rules": {
+      "shared": {
+        "obligation": "{who}: {title} ({article})."
+      },
       "csrd": {
-        "fromLabel": "Thresholds in force from {date} (Omnibus I)",
+        "fromLabel": "New scope: financial years starting from {date} (Directive (EU) 2022/2464, Art. 5(2))",
         "nonEuMissing": "Enter the net turnover generated in the Union to assess the CSRD as a third-country company.",
         "nonEuOverHeadline": "The reporting regime for third-country companies may apply.",
-        "nonEuOverReason1": "Net turnover in the Union: {amount}, above the {threshold} threshold the Codex gives for non-EU companies.",
-        "nonEuOverReason2": "The Codex (ch. 1.2) also ties the obligation to a subsidiary or branch in the Union above 200 million euro: the check needs the group’s consolidated accounts and the turnover per Member State (ch. 2.4, case 2).",
+        "nonEuOverReason1": "Net turnover in the Union: {amount}, above the {threshold} threshold that Directive 2013/34/EU sets for third-country companies, for each of the last two consecutive financial years (Art. 40a(1)).",
+        "nonEuOverReason2": "The obligation falls on the subsidiary established in the Union that generated a net turnover above {threshold} in the preceding financial year (Art. 40a(1)): the check needs the group accounts and the turnover of the companies in the Union.",
         "nonEuUnderHeadline": "Below the EU turnover threshold for third-country companies.",
-        "nonEuUnderReason1": "Net turnover in the Union: {amount}, below the {threshold} threshold (Codex, ch. 2.1).",
-        "nonEuUnderReason2": "An Italian company controlled by the group may still be in scope as an EU subsidiary: in that case assess the subsidiary with the EU thresholds.",
+        "nonEuUnderReason1": "Net turnover in the Union: {amount}, not above the {threshold} threshold (Directive 2013/34/EU, Art. 40a(1)).",
+        "nonEuUnderReason2": "An Italian company controlled by the group may still be in scope on its own account: in that case assess the subsidiary against the thresholds of Art. 19a.",
         "missing": "Enter the average number of employees and the annual net turnover to assess the CSRD.",
         "axisEmployees": "Employees: {count} ({over, select, yes {above} other {not above}} {threshold}).",
         "axisTurnover": "Net turnover: {amount} ({over, select, yes {above} other {not above}} {threshold}).",
         "inHeadline": "The company is almost certainly within the scope of CSRD reporting.",
-        "inReason": "You exceed both cumulative post-Omnibus thresholds: more than 1,000 employees and over 450 million euro of net turnover. Unless a specific exemption applies, you fall under the obligation to report on sustainability according to the ESRS.",
-        "inNote1": "Check the exemptions: Wave 1 reporters (transitional exemption FY2025-2026) and group perimeters with holdings can change the picture.",
-        "inNote2": "Double materiality and ESRS Set 1 (cut by about 61% of the datapoints) remain the core of the work: the reduction does not make the assessment simpler.",
+        "inReason": "You exceed both cumulative thresholds: net turnover above 450 million euro and more than 1,000 employees on average (Directive 2013/34/EU, Art. 19a(1)). The management report must include the sustainability information.",
+        "inNote1": "In Italy, Legislative Decree 125/2024 applies from the financial years starting from {date} to the large undertakings that were not already reporting (Art. 17(1)(b)).",
         "borderHeadline": "Outside the CSRD obligation today, but on the edge of the threshold.",
         "borderEmployees": "You exceed the employee threshold but not the turnover one: since the rule is cumulative, you are outside the obligation today, but a rise in turnover or a change of perimeter is enough to bring you in.",
         "borderTurnover": "You exceed the turnover threshold but not the employee one: since the rule is cumulative, you are outside the obligation today, but net hiring or a consolidation can bring you in.",
-        "borderListed": "As a listed company below the new size thresholds you are in principle excluded, but the position of a listed company has to be confirmed case by case (regulated-market obligations, group perimeter).",
+        "borderListed": "You are a listed company below the thresholds: Art. 19a looks at size, not at listing, but the position of a listed company has to be confirmed case by case (regulated-market obligations, group perimeter).",
         "borderMargin": "You are outside the obligation today, but close to a threshold: small changes in headcount, turnover or consolidation perimeter make you swing in and out from one financial year to the next.",
-        "borderCheck": "This is the case where a precise check (and a choice between obligation, voluntary adoption and VSME) is worth the most.",
-        "borderNote1": "Moving perimeter: scope is measured at year end, but ESG data must be collected over the whole year. With M&A or restructuring under way the analysis becomes multi-scenario.",
-        "borderNote2": "Supply-chain pressure: even outside the obligation, customers in CSRD or CSDDD scope will ask you for disclosure (VSME) as a supplier.",
+        "borderCheck": "This is the case where a precise check on the accounts is worth the most.",
+        "borderNote1": "The thresholds are measured at the balance sheet date: with acquisitions or restructuring under way, redo the count at year end.",
+        "noteProtected": "If you are in the value chain of a company that has to report and you do not exceed {threshold} employees, you are a \"protected undertaking\": you may refuse to give information beyond what the voluntary reporting standards specify (Directive 2013/34/EU, Art. 19a(3)).",
+        "noteItalyExemption": "In Italy, for the financial years starting between 1 January 2026 and 31 December 2027, Legislative Decree 125/2024 does not apply to undertakings with a net turnover not above 450 million euro or with no more than 1,000 employees on average (Art. 17(3-bis)).",
         "outHeadline": "Probably outside the scope of mandatory CSRD reporting.",
-        "outReason": "You do not exceed the cumulative post-Omnibus thresholds (1,000 employees and 450 million euro of net turnover). The direct obligation is not triggered, but outside the CSRD does not mean outside everything.",
-        "outNote1": "Supply-chain pressure (VSME): if you supply a group in scope, you will receive sustainability disclosure requests along the chain.",
-        "outNote2": "Indirect Taxonomy: if you have bank financing, the bank (for its own GAR) may ask you for Taxonomy-eligibility data.",
-        "outNote3": "Supply-chain CSDDD: the large groups bound to due diligence pass requirements on to their suppliers, well below their own direct thresholds.",
-        "noteWave1": "You indicated reporting already under way (Wave 1, FY2024): Omnibus I provides a transitional exemption for the 2025 and 2026 financial years, after which the new thresholds apply again to the relevant year.",
-        "noteParent": "Parent company: the figures are read on the consolidated accounts; for groups the basis is Art. 29a of Directive 2013/34/EU.",
+        "outReason": "You do not exceed the cumulative thresholds of Art. 19a of Directive 2013/34/EU (net turnover above 450 million euro and more than 1,000 employees): the direct obligation is not triggered.",
+        "noteWave1": "You indicated reporting already under way: if you do not exceed the thresholds, for the financial years starting between 1 January 2026 and 31 December 2027 the exclusion of Art. 17(3-bis) of Legislative Decree 125/2024 applies; Directive (EU) 2022/2464 leaves Member States the option to exempt financial years 2025 and 2026 (Art. 5(2)).",
+        "noteParent": "Parent company: the thresholds are read on a consolidated basis (Directive 2013/34/EU, Art. 29a(1)).",
         "noteSubsidiary": "Subsidiary: scope may depend on the consolidation perimeter and on the parent company’s reporting. A precise check at group level is needed."
       },
       "csddd": {
-        "nonEu": "For third-country companies the available sources do not state the CSDDD thresholds: not assessed.",
+        "nonEuMissing": "Enter the net turnover generated in the Union to assess the CSDDD as a third-country company.",
+        "nonEuInHeadline": "As a third-country company you exceed the threshold of the due diligence duty (CSDDD).",
+        "nonEuInReason": "Net turnover in the Union: {amount}, above the {threshold} threshold (Directive (EU) 2024/1760, Art. 2(2)(a)).",
+        "nonEuOutReason": "Net turnover in the Union: {amount}, not above the {threshold} threshold (Directive (EU) 2024/1760, Art. 2(2)(a)).",
         "missing": "Enter employees and net turnover to assess the CSDDD.",
-        "calendar": "Transposition in the Member States by {transposition}, first application from {firstCompliance} (Directive (EU) 2026/470).",
+        "calendar": "Transposition in the Member States by {transposition}, application from {firstCompliance} (Directive (EU) 2024/1760, Art. 37(1)).",
         "inHeadline": "You also exceed the direct thresholds of the due diligence duty (CSDDD).",
-        "inFromLabel": "First application from {date}",
-        "inReason": "You exceed both cumulative post-Omnibus thresholds: more than 5,000 employees and over 1.5 billion euro of net turnover.",
-        "inNote1": "Omnibus I removed the climate transition plan obligation and the harmonised civil liability regime, and replaced the full value-chain mapping with a general scoping exercise (Codex, ch. 1.4).",
-        "inNote2": "Penalties: capped at 3% of worldwide net turnover (Codex, ch. 1.4).",
+        "inFromLabel": "Application from {date}",
+        "inReason": "You exceed both cumulative thresholds: more than 5,000 employees on average and a net worldwide turnover above 1.5 billion euro (Art. 2(1)(a)).",
+        "inNote1": "The conditions must be met for two consecutive financial years (Art. 2(5)).",
+        "inNote2": "Pecuniary penalties: Member States set the maximum limit at 3% of the net worldwide turnover (Art. 27(4)).",
+        "inNote3": "The Commission adopts the guidelines on how to conduct due diligence by {date} (Art. 19(3)).",
         "outHeadline": "Outside the direct thresholds of the due diligence duty (CSDDD).",
         "outReasonOne": "You exceed only one of the two cumulative thresholds: the direct obligation is not triggered today.",
-        "outReasonNone": "You do not exceed the cumulative post-Omnibus thresholds (5,000 employees and 1.5 billion euro): the direct obligation is not triggered.",
-        "outNote": "Supply-chain CSDDD: the large groups that are bound pass requirements on to their suppliers, well below their own direct thresholds. Disclosure requests along the chain arrive before the legal deadline."
+        "outReasonNone": "You do not exceed the cumulative thresholds (more than 5,000 employees and a net worldwide turnover above 1.5 billion euro): the direct obligation is not triggered.",
+        "outNote": "As a supplier of a group in scope you may receive requests for information: if you have fewer than {threshold} employees the company may ask only when it cannot reasonably obtain the information by other means (Art. 8(2a)(a))."
       },
       "aiAct": {
         "notAnswered": "Answer the four AI questions to assess the transparency obligations of Art. 50.",
         "noneHeadline": "From your answers, the transparency obligations of Art. 50 do not concern you directly.",
         "noneReason": "None of the four situations of Art. 50 applies. Outside Art. 50 does not mean outside the AI Act.",
-        "noneNote1": "AI literacy (Art. 4): anyone who provides or uses AI systems takes measures to support the AI literacy of the staff who use them, without having to guarantee a specific level. This is the text as replaced by Regulation (EU) 2026/1744 from 27 July 2026; the version applicable from {date} required a sufficient level.",
-        "noneNote2": "Prohibited practices (Art. 5): in force from {date} (for example harmful manipulation, social scoring, emotion recognition at work).",
-        "noneNote3": "General-purpose AI models: if you provide GPAI models, the Chapter V obligations apply from {date}, with enforcement powers from 2026.",
-        "noneNote4": "High risk: postponed, not cancelled. The rules apply from {annexIII} for stand-alone systems (Annex III) and from {annexI} for AI built into regulated products (Annex I); preparation takes months.",
-        "inHeadline": "From {date} Art. 50 covers the situations you indicated.",
-        "inFromLabel": "Applies from {date} (Art. 113)",
-        "inObligation": "{who}: {title} ({article}).",
+        "noneNote1": "AI literacy (Art. 4, applicable from {date}): anyone who provides or uses AI systems takes measures to support the AI literacy of their staff, without having to guarantee a specific level.",
+        "noneNote2": "Prohibited practices (Art. 5): applicable from {date}, for example inferring people’s emotions in the workplace; from {added} the prohibitions of points (ba) and (bb) of paragraph 1 are added.",
+        "noneNote3": "General-purpose AI models: for those who provide them the obligations of Chapter V apply from {date}.",
+        "noneNote4": "High-risk systems: the rules apply from {annexIII} for the systems of Annex III and from {annexI} for those of Annex I (Art. 113).",
+        "inHeadline": "Art. 50, applicable from {date}, covers the situations you indicated.",
+        "inFromLabel": "Applicable from {date} (Art. 113)",
         "inReason1": "Mind who the addressee is: some obligations fall on whoever provides the system, others on whoever uses it. If your role is only that of deployer, the provider obligations fall on your provider, and vice versa.",
-        "inReason2": "The information must be given clearly and recognisably, at the latest at the first interaction or exposure (Art. 50(5)).",
-        "inNote1": "Penalties: up to 15 million euro or 3% of worldwide annual turnover, whichever is higher; for SMEs and start-ups the lower of the two (Art. 99(4) and 99(6)).",
-        "inNote2": "In Italy, Law 132/2025 designates ACN (supervision and penalties) and AgID as national authorities for the AI Act.",
-        "inNote3": "What does not start on 2 August 2026: the rules on high-risk systems (Annex III), postponed to {date} by the digital Omnibus package."
+        "inReason2": "The information must be given in a clear and distinguishable manner, at the latest at the time of the first interaction or exposure (Art. 50(5)).",
+        "inNote1": "Penalties: up to 15 million euro or, for an undertaking, up to 3% of total worldwide annual turnover, whichever is higher; for SMEs, start-ups included, the lower of the two applies (Art. 99(4) and (6)).",
+        "inNote2": "In Italy, Law 132/2025 designates AgID and ACN as National Authorities for artificial intelligence (Art. 20(1)).",
+        "inNote3": "The rules on the high-risk systems of Annex III apply from {date} (Art. 113)."
       },
       "obligations": {
         "chat": {
           "title": "Chatbots and assistants: the person must know they are talking to an AI",
           "requirement": "AI systems meant to interact directly with people must be designed and developed so that the person is informed they are interacting with an AI, unless this is obvious to a reasonably informed and attentive person.",
-          "exception": "Exception: systems authorised by law for law enforcement purposes, under certain conditions. If you buy the chatbot from a third party, the design obligation is the provider’s, but checking that it complies is in your interest.",
-          "article": "Art. 50(1)"
+          "exception": "Exception: systems authorised by law to detect, prevent, investigate or prosecute criminal offences. If you buy the chatbot from a third party, the design obligation is the provider’s, but checking that it complies is in your interest."
         },
         "gen": {
           "title": "Generated content: machine-readable marking",
-          "requirement": "Providers of systems that generate synthetic content (audio, images, video or text) must ensure the outputs are marked in a machine-readable format and detectable as artificially generated or manipulated; the technical solutions must be effective, interoperable, robust and reliable as far as technically feasible.",
-          "exception": "Exceptions: standard editing assistance functions or functions that do not substantially alter the input data, and uses authorised by law. Transitional: for generative systems already on the market before 2 August 2026 the marking applies from 2 December 2026; for new systems, 2 August 2026 applies. An EU Code of Practice on the transparency of AI content (10 June 2026, voluntary) supports implementation.",
-          "article": "Art. 50(2)"
+          "requirement": "Providers of systems that generate synthetic content (audio, images, video or text) must ensure the outputs are marked in a machine-readable format and detectable as artificially generated or manipulated.",
+          "exception": "Exceptions: standard editing assistance functions or functions that do not substantially alter the input data. For systems placed on the market before {applies} the deadline to comply is {legacy} (Art. 111(4))."
         },
         "emo": {
           "title": "Emotion recognition and biometric categorisation: inform the people exposed",
-          "requirement": "Whoever uses an emotion recognition or biometric categorisation system must inform the natural persons exposed to it about how the system operates, and process personal data in line with the GDPR.",
-          "exception": "Mind the prohibitions already in force (Art. 5, from 2 February 2025): for example emotion recognition in the workplace and in education institutions is prohibited, except for medical or safety reasons.",
-          "article": "Art. 50(3)"
+          "requirement": "Whoever uses an emotion recognition or biometric categorisation system informs the natural persons exposed to it about how the system operates.",
+          "exception": "Mind the prohibitions applicable from {prohibitions}: inferring emotions in the workplace and in education institutions is prohibited, except for medical or safety reasons (Art. 5(1)(f))."
         },
         "deep": {
           "title": "Deepfakes and published AI texts: disclose their origin",
           "requirement": "Whoever uses a system that generates or manipulates image, audio or video content constituting a deepfake must disclose that the content has been artificially generated or manipulated. The same applies to AI-generated texts published to inform the public on matters of public interest.",
-          "exception": "Exceptions: for evidently artistic, creative or satirical works the disclosure is given in an appropriate way that does not hamper the work; for texts, the obligation does not apply where there is human review or editorial control and a natural or legal person holds editorial responsibility.",
-          "article": "Art. 50(4)"
+          "exception": "Exceptions: for evidently artistic, creative or satirical works it is enough to disclose the existence of the generated content without hampering the work; for texts, the obligation does not apply where there is human review or editorial control and a natural or legal person holds editorial responsibility."
         }
-      }
-    },
-    "sources": {
-      "omnibusI": {
-        "act": "Directive (EU) 2026/470 (Omnibus I)",
-        "article": "Art. 19a and Art. 29a of Directive 2013/34/EU, as amended; in force from 18 March 2026"
       },
-      "csrd": {
-        "act": "Directive (EU) 2022/2464 (CSRD)",
-        "article": "Art. 19a of Directive 2013/34/EU (Art. 29a for groups)"
+      "work": {
+        "notAnswered": "Answer the questions on AI in the employment relationship to assess this section.",
+        "noneHeadline": "From your answers, the rules on AI in the employment relationship do not concern you today.",
+        "noneReason": "None of the situations listed concerns the company.",
+        "noneNote": "If you introduce AI tools that affect decisions, the organisation of work or safety, run the check again: Legislative Decree 179/2026 (Articles 41 and 42) and Art. 4 of the AI Act apply.",
+        "inHeadline": "The rules on AI in the employment relationship cover the situations you indicated.",
+        "inHeadlineProhibited": "One of the situations you indicated is a practice prohibited by the AI Act; the others carry obligations.",
+        "inFromLabel": "Legislative Decree 179/2026, Articles 41 and 42, in force from {date}",
+        "reasons": {
+          "dec": "An AI system contributes to decisions on the employment relationship: Art. 41 of Legislative Decree 179/2026 applies.",
+          "org": "An AI system affects organisation, pace, how work is carried out or safety: Art. 42 of Legislative Decree 179/2026 applies.",
+          "uso": "Staff use AI tools: Art. 4 of the AI Act and Art. 42(3) of Legislative Decree 179/2026 apply.",
+          "prof": "Intellectual profession using AI: Art. 13 of Law 132/2025 applies.",
+          "emo": "Inferring the emotions of workers is among the practices prohibited by Art. 5 of the AI Act."
+        },
+        "inNote1": "Art. 41 does not treat the search for and selection of applications as final decisions on the establishment of the relationship; AI systems for recruitment or selection are in any case listed in Annex III, point 4, of the AI Act.",
+        "inNote2": "Law 132/2025 refers to the same information duties: the employer informs the worker of the use of AI in the cases and in the manner of Art. 1-bis of Legislative Decree 152/1997 (Art. 11(2)).",
+        "duties": {
+          "emotions": {
+            "title": "Inferring the emotions of workers: a prohibited practice",
+            "requirement": "The use of AI systems to infer the emotions of a person in the workplace is prohibited, except where the system is intended to be used for medical or safety reasons.",
+            "exception": "Prohibition applicable from {date} (Art. 113, third paragraph, point (a))."
+          },
+          "decisions": {
+            "title": "Decisions on the employment relationship: never automatic only",
+            "requirement": "Final decisions on the establishment, modification or termination of the relationship, including disciplinary measures and performance evaluations, may not be taken solely on the basis of automated processing: the final decision is reserved to a natural person with effective and autonomous power.",
+            "exception": "The worker’s consent is not an exception. Dismissals and decisions in breach are null and void (Art. 41(4)). The search for and selection of applications are not final decisions on the establishment of the relationship."
+          },
+          "information": {
+            "title": "Information before starting and reasons on request",
+            "requirement": "Before the processing starts the employer fulfils the information duties of Art. 1-bis of Legislative Decree 152/1997. The worker may obtain, on request and through a natural person, intelligible reasons for the decision that concerns them.",
+            "exception": "Art. 1-bis covers fully automated decision-making or monitoring systems; the information must also be given to the trade union representatives (Art. 1-bis(1) and (6))."
+          },
+          "highRisk": {
+            "title": "High-risk systems in the workplace: inform workers and their representatives",
+            "requirement": "AI systems for recruitment or selection and those for decisions on the terms, promotion or termination of the relationship are listed in Annex III, point 4, of the AI Act. Before putting them into service or using them in the workplace, the employer informs the workers’ representatives and the workers concerned.",
+            "exception": "Obligation of the deployers of high-risk systems: it applies from {date} (Art. 113)."
+          },
+          "riskAssessment": {
+            "title": "Risk assessment: AI goes into the document",
+            "requirement": "The use of AI systems that affect the organisation of work, production pace, how work is carried out or decision-making relevant to safety is assessed within the risk assessment of Art. 28 of Legislative Decree 81/2008."
+          },
+          "training": {
+            "title": "Information and training of workers on the risks of AI",
+            "requirement": "Employers ensure adequate information and training of workers on the specific risks connected with the use of AI systems and on the prevention and protection measures adopted."
+          },
+          "literacy": {
+            "title": "AI literacy of staff",
+            "requirement": "Whoever uses AI systems takes measures to support the AI literacy of their staff.",
+            "exception": "The obligation does not require guaranteeing a specific level of literacy. Applicable from {date} (Art. 113)."
+          },
+          "clients": {
+            "title": "Intellectual professions: inform the client",
+            "requirement": "The information on the AI systems used by the professional is communicated to the recipient of the service in clear, simple and exhaustive language.",
+            "exception": "AI is allowed only for instrumental and support activities, with the intellectual work that is the object of the service prevailing (Art. 13(1))."
+          }
+        }
       },
-      "dlgs125": {
-        "act": "Italian Legislative Decree No 125 of 6 September 2024",
-        "article": "Italian transposition of the CSRD, pre-Omnibus text (Official Gazette No 212 of 10 September 2024)"
+      "nis": {
+        "notAnswered": "Choose the sector (or \"None of these sectors\") to assess the NIS decree.",
+        "inHeadline": "The company falls within the scope of the NIS decree.",
+        "financialHeadline": "Banking or financial market sector: for Chapters IV and V of the NIS decree, DORA applies.",
+        "noSectorHeadline": "From your answers, the company is outside the scope of the NIS decree.",
+        "smallHeadline": "NIS sector, but within the ceilings for small enterprises: outside the scope.",
+        "sizeDependsHeadline": "NIS sector: scope depends on the size class.",
+        "annexIVHeadline": "Type of entity of Annex IV: the decree applies only if ACN identifies the entity.",
+        "reasonAnnexI": "Sector of Annex I (high criticality): {sector}.",
+        "reasonAnnexII": "Sector of Annex II (other critical sectors): {sector}.",
+        "reasonNotSmall": "You exceed the ceilings for small enterprises (fewer than {employees} persons and a turnover or balance sheet total not above {amount}): the decree applies (Art. 3(2)).",
+        "reasonSmall": "You are within the ceilings for small enterprises (fewer than {employees} persons and a turnover or balance sheet total not above {amount}): the decree does not apply by size (Art. 3(2)).",
+        "reasonLinked": "Enterprise linked to an essential or important entity with a role in its systems, its security or its ICT services: the decree applies whatever the size (Art. 3(10)).",
+        "reasonAnySize": "Provider the decree covers whatever its size (Art. 3(5)).",
+        "reasonPublic": "Public administration of the categories of Annex III: the decree applies whatever the size (Art. 3(6)).",
+        "annexIVReason": "For the types of Annex IV the decree applies, whatever the size, to the entities identified by the national competent NIS authority (Art. 3(8)).",
+        "annexIVNote": "ACN notifies the entity of its identification for the purpose of registering on the platform (Art. 3(13)).",
+        "noSectorReason": "The decree covers the sectors of Annexes I and II, the public administrations of Annex III and the types of Annex IV: none was indicated.",
+        "missingEmployees": "Enter the number of employees to assess the size class for NIS.",
+        "missingFinancials": "With fewer than {employees} employees, net turnover or balance sheet total is needed: with one of the two not above {amount} the company is small and outside the scope.",
+        "missingBalance": "Fewer than {employees} employees and turnover above {amount}: the company exceeds the ceilings only if the balance sheet total is also above {amount}. Enter the balance sheet total.",
+        "missingTurnover": "Fewer than {employees} employees and balance sheet total above {amount}: the company exceeds the ceilings only if turnover is also above {amount}. Enter the net turnover.",
+        "category": {
+          "essential": "Likely category: essential entity, as a sector of Annex I above the ceilings for medium-sized enterprises (Art. 6(1)(a)). The category is communicated by ACN with the entry in the list.",
+          "important": "Likely category: important entity (Art. 6(3)). The category is communicated by ACN with the entry in the list.",
+          "depends": "Essential if the company exceeds the ceilings for medium-sized enterprises (250 persons, or turnover above 50 million euro and balance sheet total above 43 million), otherwise important (Art. 6): enter the balance sheet total to tell the two apart.",
+          "byAuthority": "The category (essential or important) is communicated by ACN with the entry in the list (Art. 7(3))."
+        },
+        "noteFinancial": "For banks and financial market infrastructures (sectors 3 and 4 of Annex I) Art. 17 and Chapters IV and V of the decree do not apply: the rules of Regulation (EU) 2022/2554, DORA, apply (Art. 3(14)).",
+        "notePenalties": "Penalties: up to 10 million euro or 2% of worldwide annual turnover for essential entities, up to 7 million euro or 1.4% for important entities (Art. 38(9)).",
+        "noteGroup": "Groups: for the size class the figures of linked enterprises are added to those of the company (Recommendation 2003/361/EC, Annex, Art. 6(2)), unless this is not proportionate (Legislative Decree 138/2024, Art. 3(4)).",
+        "outNoteDesignated": "ACN may still identify an entity of these sectors whatever its size (Art. 3(9)).",
+        "outNoteSupplyChain": "NIS entities must look after supply chain security, including the relationships with their direct suppliers (Art. 24(2)(d)): as a supplier you may receive security requirements.",
+        "duties": {
+          "register": {
+            "title": "Registration on the ACN platform",
+            "requirement": "From 1 January to 28 February of each year the entities covered by the decree register, or update their registration, on the digital platform of the national competent NIS authority.",
+            "exception": "ACN communicates the entry in the list of essential or important entities (Art. 7(3)); from 15 April to 31 May of each year those who received the communication provide or update the further information (Art. 7(4))."
+          },
+          "governance": {
+            "title": "Management and governing bodies: approve and oversee",
+            "requirement": "They approve how the cybersecurity risk-management measures are implemented, oversee the implementation of the obligations and are responsible for infringements."
+          },
+          "measures": {
+            "title": "Cybersecurity risk-management measures",
+            "requirement": "Adopt appropriate and proportionate technical, operational and organisational measures; supply chain security is among the minimum elements (Art. 24(2)(d)).",
+            "exception": "Deadlines: for the entities entered in the list in 2026 the baseline security measures are due by {measures2026} (ACN Determination No 127434/2026, Art. 1(1)); for those entered in 2025 the deadline is eighteen months from receiving the communication of entry (ACN Determination No 379907 of 19 December 2025, Art. 3(1))."
+          },
+          "incidents": {
+            "title": "Notification of significant incidents to CSIRT Italia",
+            "requirement": "Early notification within 24 hours of becoming aware of the significant incident, notification within 72 hours, final report within one month of the notification.",
+            "exception": "Deadlines: for the entities entered in the list in 2026 the obligation runs from {incidents2026} (ACN Determination No 127434/2026, Art. 1(2)) and the CSIRT contact person must be designated by 31 December of the year of entry (ACN Determination No 314287/2026, Art. 7(1)); for those entered in 2025 the deadline is nine months from receiving the communication of entry (ACN Determination No 379907 of 19 December 2025, Art. 3(2))."
+          },
+          "activities": {
+            "title": "List of activities and services",
+            "requirement": "From 1 May to 30 June of each year, starting from the first communication of entry in the list, the entities communicate and update on the platform the list of their activities and services, with the relevance category of each."
+          }
+        }
       },
-      "csddd": {
-        "act": "Directive (EU) 2024/1760 (CSDDD), as amended by Directive (EU) 2026/470",
-        "article": "transposition by 26 July 2028, first application from 26 July 2029"
-      },
-      "aiAct50_1": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 50(1)"
-      },
-      "aiAct50_2": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 50(2)"
-      },
-      "aiAct50_3": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 50(3)"
-      },
-      "aiAct50_4": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 50(4)"
-      },
-      "aiAct50_5": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 50(5)"
-      },
-      "aiAct113": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 113, application from 2 August 2026"
-      },
-      "aiAct99": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 99(4) and 99(6) (penalties)"
-      },
-      "aiAct4": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 4, AI literacy"
-      },
-      "aiAct5": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Art. 5, prohibited practices"
-      },
-      "aiActGpai": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "Chapter V, general-purpose AI models"
-      },
-      "aiActHighRisk": {
-        "act": "Regulation (EU) 2024/1689 (AI Act)",
-        "article": "high-risk systems, Annex III and Annex I"
-      },
-      "legge132": {
-        "act": "Italian Law 132/2025",
-        "article": "national authorities for the AI Act: ACN and AgID"
-      },
-      "cra": {
-        "act": "Regulation (EU) 2024/2847 (CRA)",
-        "article": "Art. 14, reporting of actively exploited vulnerabilities and severe incidents"
-      },
-      "craImplementing": {
-        "act": "Implementing Regulation (EU) 2025/2392",
-        "article": "categories of important and critical products"
-      },
-      "nis2": {
-        "act": "Directive (EU) 2022/2555 (NIS2)",
-        "article": "applicable from 18 October 2024; Italian Legislative Decree 138/2024"
-      },
-      "dora": {
-        "act": "Regulation (EU) 2022/2554 (DORA)",
-        "article": "applicable from 17 January 2025"
-      },
-      "esrs": {
-        "act": "Delegated Regulation (EU) 2023/2772 (ESRS Set 1)",
-        "article": "sustainability reporting standards"
-      },
-      "codex": {
-        "act": "Codex Post-Omnibus 2025-2029 (NormaAI, v1.0, 28 April 2026, in Italian)",
-        "article": "practical guide, not legal advice"
+      "machinery": {
+        "notAnswered": "Indicate the company’s roles with regard to machinery (or \"None of these roles\") to assess the Machinery Regulation.",
+        "noneHeadline": "From your answers, the Machinery Regulation places no direct obligations on the company.",
+        "noneReason": "The company is not a manufacturer, importer or distributor of machinery, related products or partly completed machinery, and does not modify them.",
+        "noneNote": "Whoever carries out a substantial modification of machinery already in service is considered a manufacturer (Art. 18): if that happens, run the check again.",
+        "inHeadline": "The Machinery Regulation applies from {date} to the roles you indicated.",
+        "inFromLabel": "Applies from {date} (Art. 54)",
+        "reasons": {
+          "fab": "Manufacturer: it manufactures the products, or has them manufactured and markets them under its own name or trademark, or puts them into service for its own use (Art. 3, point (18)).",
+          "imp": "Importer: it places on the Union market a product from a third country (Art. 3, point (20)).",
+          "dis": "Distributor: it makes the product available on the market without being its manufacturer or importer (Art. 3, point (21)).",
+          "mod": "Modification of machinery already placed on the market or put into service: if substantial, it brings the obligations of the manufacturer (Art. 18)."
+        },
+        "inNote1": "The Regulation covers machinery, interchangeable equipment, safety components, lifting accessories, chains, ropes and webbing, removable mechanical transmission devices and partly completed machinery (Art. 2(1)).",
+        "inNote2": "Products placed on the market in conformity with Directive 2006/42/EC before {date} may continue to be made available on the market (Art. 52(1)).",
+        "duties": {
+          "conformity": {
+            "title": "Essential requirements, technical documentation, conformity assessment, CE marking",
+            "requirement": "Design and manufacture in accordance with the essential health and safety requirements of Annex III; draw up the technical documentation (Annex IV, Part A), carry out the conformity assessment procedure of Art. 25, draw up the EU declaration of conformity and affix the CE marking (Art. 10(1) and (2)).",
+            "exception": "The technical documentation and the EU declaration of conformity stay at the disposal of the authorities for at least 10 years (Art. 10(3)). The instructions for use accompany the machinery and may be provided in digital format (Art. 10(7))."
+          },
+          "partlyCompleted": {
+            "title": "Partly completed machinery: technical documentation and declaration of incorporation",
+            "requirement": "For partly completed machinery the manufacturer draws up the technical documentation of Annex IV, Part B, and the EU declaration of incorporation."
+          },
+          "importer": {
+            "title": "Import only compliant products and check the manufacturer’s work",
+            "requirement": "Place on the market only compliant machinery or related products; before placing them, ensure that the manufacturer has carried out the conformity assessment procedure (Art. 13(1) and (2)).",
+            "exception": "A copy of the EU declaration of conformity stays at the disposal of the authorities for at least 10 years (Art. 13(8))."
+          },
+          "distributor": {
+            "title": "Before selling: CE marking, declaration of conformity, instructions",
+            "requirement": "Before making the product available on the market, verify that it bears the CE marking and is accompanied by the EU declaration of conformity and by the instructions for use.",
+            "exception": "Distributors act with due care in relation to the requirements of the Regulation (Art. 15(1))."
+          },
+          "ownBrand": {
+            "title": "Under your own name or trademark you become the manufacturer",
+            "requirement": "An importer or distributor that places a product on the market under its own name or trademark, or modifies a product already placed on the market in a way that may affect compliance, is considered a manufacturer and takes on the manufacturer’s obligations."
+          },
+          "modification": {
+            "title": "Substantial modification: whoever makes it takes on the manufacturer’s obligations",
+            "requirement": "Whoever carries out a substantial modification of machinery or of a related product is considered a manufacturer and is subject to the related obligations.",
+            "exception": "A modification is substantial when, by physical or digital means and not foreseen by the manufacturer, it creates a new hazard or increases an existing risk and requires new guards or protective devices with a change to the safety control system, or additional measures for stability or mechanical strength (Art. 3, point (16))."
+          }
+        }
       }
     }
   },
   "monitoraggio": {
     "title": "Monitoring",
-    "description": "The deadlines of the next twelve months, the alerts for your clients and the analysis of a regulatory change.",
-    "meta": "Hand-curated calendar; every entry shows its verification date (last check: {date}). Automatic monitoring of EUR-Lex news is not active yet.",
+    "description": "The deadlines of the next twelve months, the alerts on the documents you keep under watch and the analysis of a regulatory change.",
+    "meta": {
+      "manual": "Hand-curated calendar: every entry shows its source and the date the passage was found in the official text. The server reports no automatic check of consolidated versions.",
+      "neverRan": "Hand-curated calendar: every entry shows its source and the date the passage was found in the official text. The automatic check of consolidated versions has not run yet.",
+      "checked": "Hand-curated calendar. Automatic check of consolidated versions last run on {date}: {count, plural, =0 {no indexed act has a newer consolidated version} one {# indexed act has a newer consolidated version} other {# indexed acts have a newer consolidated version}}."
+    },
     "loading": "Loading the Monitoring page",
     "tabsLabel": "Monitoring sections",
     "tabs": {
@@ -778,117 +976,168 @@
     },
     "deadlines": {
       "upcoming": "Next twelve months",
-      "range": "From {from} to {to}. Dates the sources give only by month or quarter keep that precision.",
+      "range": "From {from} to {to}. Every entry shows the passage that sets the date and when it was found in the official text.",
       "emptyTitle": "No deadlines in the next twelve months",
       "emptyDescription": "The calendar has no entries in this period.",
       "past": "Already in application",
       "pastLead": "Dates already passed: the obligation continues, the entry stays for reference.",
-      "expected": "Expected date, not confirmed",
       "who": "Who it applies to: ",
       "what": "What to do: ",
-      "verifiedOn": "Verified on {date}",
-      "readIn": "Read in: {note}"
+      "related": "See also: ",
+      "hidden": "{count, plural, one {# entry is not shown: its source is not yet verified against the official text.} other {# entries are not shown: their sources are not yet verified against the official text.}}"
+    },
+    "frameworks": {
+      "CSRD": "CSRD",
+      "CSDDD": "CSDDD",
+      "AI_ACT": "AI Act",
+      "AI_WORK": "AI at work",
+      "NIS2": "NIS2",
+      "DORA": "DORA",
+      "CRA": "CRA",
+      "MACHINERY": "Machinery",
+      "EUDR": "Deforestation",
+      "PAY": "Pay transparency"
     },
     "calendar": {
       "nis2-application": {
-        "title": "NIS2 in application",
-        "who": "Essential and important entities (in Italy: Legislative Decree 138/2024)",
-        "what": "Security measures and incident notification."
+        "title": "NIS2 Directive: application of the national measures",
+        "who": "Public or private entities of the sectors of Annexes I and II to the Directive, from medium-sized enterprises upwards (in Italy: Legislative Decree 138/2024)",
+        "what": "Member States apply the transposition measures from this date (Art. 41(1))."
       },
       "dora-application": {
         "title": "DORA in application",
-        "who": "Financial sector and third-party ICT providers",
-        "what": "Digital operational resilience and ICT risk management."
+        "who": "Financial entities (credit institutions, payment institutions, investment firms, insurance undertakings and the others of Art. 2(1)) and ICT third-party service providers",
+        "what": "The regulation on digital operational resilience applies from this date (Art. 64)."
       },
       "aiact-art4-art5": {
         "title": "AI Act: AI literacy (Art. 4) and prohibited practices (Art. 5)",
-        "who": "Anyone who provides or uses AI systems",
-        "what": "Measures to support the AI literacy of the staff using AI, with no specific level to guarantee (Art. 4 as replaced by Regulation (EU) 2026/1744 from 27 July 2026); prohibitions already in force, for example harmful manipulation, social scoring, emotion recognition in the workplace."
+        "who": "Providers and deployers of AI systems",
+        "what": "Measures to support the AI literacy of staff, with no specific level to guarantee (Art. 4); prohibitions of Art. 5, for example inferring emotions in the workplace. Chapters I and II apply from this date (Art. 113)."
       },
       "aiact-gpai": {
         "title": "AI Act: obligations for general-purpose AI models (Chapter V)",
-        "who": "Providers of GPAI models",
-        "what": "Chapter V obligations; enforcement powers from 2026."
-      },
-      "omnibus-published": {
-        "title": "Omnibus I published in the Official Journal of the EU",
-        "who": "Companies in CSRD and CSDDD scope",
-        "what": "Directive (EU) 2026/470: new CSRD thresholds (1,000 employees and 450 million euro, cumulative) and new CSDDD timeline."
-      },
-      "omnibus-in-force": {
-        "title": "Omnibus I in force: new CSRD thresholds",
-        "who": "Companies above 1,000 employees and 450 million euro of net turnover",
-        "what": "Check the scope with the cumulative thresholds; listed SMEs leave the perimeter; transitional exemption FY2025-2026 for Wave 1 reporters."
-      },
-      "aiact-code-of-practice": {
-        "title": "EU Code of Practice on the transparency of AI content",
-        "who": "Providers of generative systems (voluntary)",
-        "what": "Reference for implementing the content marking of Art. 50(2)."
+        "who": "Providers of general-purpose AI models",
+        "what": "Chapter V applies from this date (Art. 113); among the obligations, the technical documentation of the model (Art. 53(1))."
       },
       "aiact-art50": {
         "title": "AI Act: transparency obligations of Art. 50",
-        "who": "Providers and deployers of chatbots, generative systems, emotion recognition, deepfakes",
-        "what": "Inform people interacting with an AI, mark synthetic content, disclose deepfakes (Art. 50(1) to (4)); application under Art. 113."
+        "who": "Providers and deployers of systems that interact with people, generate synthetic content or deepfakes",
+        "what": "Inform people interacting with an AI, mark synthetic content, disclose deepfakes (Art. 50(1), (2) and (4)). The Regulation applies from this date (Art. 113)."
       },
       "cra-reporting": {
-        "title": "CRA: reporting of exploited vulnerabilities and severe incidents",
-        "who": "Manufacturers of products with digital elements, including those already on the market",
-        "what": "Early warning within 24 hours and notification within 72 hours through the ENISA platform (Art. 14)."
+        "title": "CRA: reporting of actively exploited vulnerabilities",
+        "who": "Manufacturers of products with digital elements",
+        "what": "Early warning within 24 hours and notification within 72 hours to the coordinating CSIRT and to ENISA (Art. 14(1) and (2)). Art. 14 applies from this date (Art. 71(2))."
+      },
+      "ai-work-decree": {
+        "title": "AI in the employment relationship: Italian Legislative Decree 179/2026 in force",
+        "who": "Employers that use AI systems in decisions on the employment relationship or in the organisation of work",
+        "what": "Final decisions never automated only and reserved to a natural person, information before starting (Art. 41); AI in the risk assessment (Art. 42). The date is the one the articles are in force from according to Normattiva."
       },
       "aiact-legacy-marking": {
         "title": "AI Act: content marking for generative systems already on the market",
-        "who": "Providers of generative systems placed on the market before 2 August 2026",
-        "what": "Outputs marked in a machine-readable format (Art. 50(2)); transitional rule of the digital Omnibus package."
+        "who": "Providers of AI systems that generate synthetic content, placed on the market before 2 August 2026",
+        "what": "By this date they take the measures to comply with Art. 50(2): outputs marked in a machine-readable format and detectable as artificially generated or manipulated (Art. 111(4))."
       },
-      "csrd-prepare-fy2027": {
-        "title": "CSRD: preparing financial year 2027 for groups still in scope",
-        "who": "Groups above 1,000 employees and 450 million euro",
-        "what": "Set up ESG data collection and double materiality for FY2027."
+      "aiact-new-prohibitions": {
+        "title": "AI Act: the new prohibitions of Art. 5(1), points (ba) and (bb), apply",
+        "who": "Whoever places on the market, puts into service or uses AI systems",
+        "what": "Prohibited, under the conditions of paragraphs 1a and 1b, are AI systems that generate or manipulate realistic images, video and audio of the intimate parts of an identifiable person, or that show the person in sexually explicit acts, without their consent, and those that generate or manipulate the material of Art. 2, points (c) and (e), of Directive 2011/93/EU (Art. 113)."
       },
-      "csrd-first-post-omnibus": {
-        "title": "CSRD: first post-Omnibus report on the new perimeter",
-        "who": "Companies in scope under the new thresholds",
-        "what": "Sustainability statement under the revised ESRS Set 1. The Codex gives financial year 2026 in the timeline and 2027 in the table: to be confirmed on the consolidated text."
+      "eudr-application": {
+        "title": "Deforestation Regulation: application of the obligations",
+        "who": "Whoever places or makes available on the Union market, or exports, the products of Annex I linked to cattle, cocoa, coffee, oil palm, rubber, soya and wood",
+        "what": "Articles 3 to 13, 16 to 24 and Articles 26, 31 and 32 apply from this date (Art. 38(2)). For operators that are micro or small undertakings the date is 30 June 2027 (Art. 38(3))."
       },
-      "csrd-csddd-review-clause": {
-        "title": "CSRD and CSDDD review clause: possible extension of the scope",
-        "who": "European Commission; companies just outside the thresholds",
-        "what": "Start of the review provided for by Omnibus I; a widening of the perimeter is possible."
+      "nis2-csirt-contact-2026": {
+        "title": "NIS: CSIRT contact person for the entities entered in the list in 2026",
+        "who": "Entities entered in the list of NIS entities during 2026",
+        "what": "By 31 December of the year of entry the point of contact designates the CSIRT contact person (ACN Determination No 314287/2026, Art. 7(1)). For these entities the obligation to notify incidents runs from 1 January 2027."
+      },
+      "csrd-first-year": {
+        "title": "CSRD: first financial year for the companies of the new scope",
+        "who": "Undertakings with a net turnover above 450 million euro and more than 1,000 employees on average that were not already reporting",
+        "what": "Sustainability reporting applies to the financial years starting from this date (Directive (EU) 2022/2464, Art. 5(2)). In Italy: Legislative Decree 125/2024, Art. 17(1)(b), with the exclusion of paragraph 3-bis for those that stay below the thresholds."
+      },
+      "nis2-incidents-2026": {
+        "title": "NIS: incident notification for the entities entered in the list in 2026",
+        "who": "Entities entered in the list of NIS entities during 2026",
+        "what": "From this date the obligation to notify significant incidents runs (ACN Determination No 127434/2026, Art. 1(2)): early notification within 24 hours and notification within 72 hours to CSIRT Italia (Legislative Decree 138/2024, Art. 25(5))."
+      },
+      "machinery-application": {
+        "title": "Machinery Regulation: application",
+        "who": "Manufacturers, importers and distributors of machinery, related products and partly completed machinery",
+        "what": "Regulation (EU) 2023/1230 applies from this date (Art. 54). Products placed on the market earlier in conformity with Directive 2006/42/EC may continue to be made available (Art. 52(1))."
+      },
+      "nis2-registration": {
+        "title": "NIS: end of the yearly registration window",
+        "who": "Entities within the scope of Legislative Decree 138/2024",
+        "what": "From 1 January to 28 February of each year the entities register, or update their registration, on the ACN platform (Art. 7(1))."
+      },
+      "omnibus-transposition": {
+        "title": "Omnibus I: transposition deadline for the new CSRD rules",
+        "who": "Member States; it concerns undertakings above 450 million euro of net turnover and 1,000 employees",
+        "what": "By this date Member States bring into force the provisions needed to comply with Articles 1, 2 and 3 of Directive (EU) 2026/470 (Art. 5(1))."
+      },
+      "nis2-annual-update": {
+        "title": "NIS: end of the yearly update of the information",
+        "who": "Entities that received from ACN the communication of entry or of permanence in the list",
+        "what": "From 15 April to 31 May of each year they provide or update the further information on the ACN platform (Art. 7(4))."
+      },
+      "pay-gap-first-data": {
+        "title": "Pay transparency: first data on the gender pay gap",
+        "who": "Employers with at least 150 employees",
+        "what": "The data on the gender pay gap are collected by this date, then every year from 250 employees and every three years between 150 and 249 (Legislative Decree 96/2026, Art. 9(9)), and communicated to the monitoring body (Art. 9(5))."
+      },
+      "eudr-small-operators": {
+        "title": "Deforestation Regulation: application for micro and small enterprises",
+        "who": "Operators that are natural persons, micro-undertakings or small undertakings, established as such by 31 December 2024",
+        "what": "The obligations apply from this date (Art. 38(3)), except for the products of the annex to Regulation (EU) No 995/2010."
+      },
+      "nis2-activities-list": {
+        "title": "NIS: end of the window for the list of activities and services",
+        "who": "Essential and important entities that received the communication of entry in the list",
+        "what": "From 1 May to 30 June of each year they communicate and update on the ACN platform the list of their activities and services, with the relevance category (Art. 30(1))."
       },
       "csddd-guidelines": {
-        "title": "Commission guidelines on the CSDDD",
-        "who": "Companies in CSDDD scope and their suppliers",
-        "what": "Expected for July 2027; no date fixed by an act."
+        "title": "CSDDD: Commission guidelines",
+        "who": "Companies in CSDDD scope and their business partners",
+        "what": "By this date the Commission adopts the guidelines of Art. 19(2), points (a), (d) and (e), among them those on how to conduct due diligence (Art. 19(3))."
+      },
+      "nis2-measures-2026": {
+        "title": "NIS: baseline security measures for the entities entered in the list in 2026",
+        "who": "Entities entered in the list of NIS entities during 2026",
+        "what": "The deadline to adopt the security measures expires (ACN Determination No 127434/2026, Art. 1(1)), implementing the duty of risk-management measures of Legislative Decree 138/2024 (Art. 24)."
+      },
+      "aiact-gpai-legacy": {
+        "title": "AI Act: general-purpose AI models already on the market",
+        "who": "Providers of general-purpose AI models placed on the market before 2 August 2025",
+        "what": "By this date they take the necessary steps to comply with the obligations of the Regulation (Art. 111(3))."
       },
       "aiact-high-risk-annex-iii": {
-        "title": "AI Act: stand-alone high-risk systems (Annex III)",
-        "who": "Providers and deployers of high-risk systems",
-        "what": "Conformity assessment and quality management system; date postponed by the digital Omnibus package (EU Council go-ahead, 29 June 2026). The April 2026 Codex still gave 2 August 2027."
+        "title": "AI Act: high-risk systems of Annex III",
+        "who": "Providers and deployers of high-risk AI systems of Annex III",
+        "what": "Sections 1, 2 and 3 of Chapter III apply from this date to the systems of Annex III (Art. 113). Among the deployers’ obligations: informing workers and their representatives before using a high-risk system in the workplace (Art. 26(7))."
       },
       "cra-full-application": {
-        "title": "CRA: full application",
-        "who": "Manufacturers, importers and distributors of products with digital elements",
-        "what": "Essential cybersecurity requirements and conformity assessment; product categories in Implementing Regulation (EU) 2025/2392."
-      },
-      "csrd-wave1-fy2027": {
-        "title": "CSRD: first FY2027 report for Wave 1 reporters",
-        "who": "Companies reporting since FY2024, after the transitional exemption",
-        "what": "Report on financial year 2027 under the post-Omnibus thresholds."
+        "title": "CRA: application of the Regulation",
+        "who": "Whoever makes available on the market products with digital elements that can connect to a device or network",
+        "what": "Regulation (EU) 2024/2847 applies from this date (Art. 71(2))."
       },
       "csddd-transposition": {
         "title": "CSDDD: transposition deadline in the Member States",
-        "who": "Member States; companies in scope prepare the due diligence duty",
-        "what": "National transposition of the directive as amended by Omnibus I."
+        "who": "Member States",
+        "what": "By this date Member States adopt and publish the transposition measures (Art. 37(1))."
       },
       "aiact-high-risk-annex-i": {
-        "title": "AI Act: high risk for AI built into regulated products (Annex I)",
-        "who": "Manufacturers of regulated products with AI components",
-        "what": "Application of the high-risk rules to Annex I products."
+        "title": "AI Act: high-risk systems of Annex I",
+        "who": "Providers and deployers of AI systems classified as high-risk under Art. 6(1) and Annex I",
+        "what": "Sections 1, 2 and 3 of Chapter III apply from this date to these systems (Art. 113)."
       },
       "csddd-first-compliance": {
-        "title": "CSDDD: first application",
-        "who": "Companies with more than 5,000 employees and over 1.5 billion euro of net turnover",
-        "what": "Due diligence on the chain of activities; penalties up to 3% of worldwide net turnover. The Codex says \"July 2029\"; the 26th comes from the prompt and from ADR-003."
+        "title": "CSDDD: application",
+        "who": "Companies with more than 5,000 employees and a net worldwide turnover above 1.5 billion euro",
+        "what": "Member States apply the transposition measures from this date (Art. 37(1))."
       }
     },
     "alerts": {
@@ -904,6 +1153,7 @@
       "deadline": "Deadline: ",
       "deadlineMissing": "not given",
       "deadlinePast": "Deadline passed",
+      "openCheck": "Open the check of the document",
       "markRead": "Mark as read",
       "dismiss": "Archive the alert",
       "filterSeverity": "Severity",
@@ -919,9 +1169,10 @@
       "emptyFilteredTitle": "No alerts match these filters",
       "emptyFilteredDescription": "Change the severity or status to see the other alerts.",
       "emptyTitle": "No alerts for your organisation",
-      "emptyDescription": "Alerts are created by the analyses and by client monitoring; when there are any, they will appear here.",
+      "emptyDescription": "An alert appears here when the weekly re-check finds that a provision cited in a document you keep under watch has changed or has been repealed.",
       "clearFilters": "Clear the filters",
-      "aiNotice": "Alerts are generated by an AI system (Regulation (EU) 2024/1689, Art. 50). Check the official text before binding decisions."
+      "origin": "Who creates the alerts: the weekly re-check of the documents you keep under watch. Every week the provisions cited in each document are compared with the official text in force; if one has changed or has been repealed, an alert appears here with a link to the check of the document.",
+      "aiNotice": "Alerts without a linked document may be generated by an AI system (Regulation (EU) 2024/1689, Art. 50). Check the official text before binding decisions."
     },
     "analyze": {
       "urgency": {

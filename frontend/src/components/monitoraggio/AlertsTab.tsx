@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useFormatter, useTranslations } from 'next-intl'
-import { Archive, Check } from 'lucide-react'
+import { Archive, Check, FileText } from 'lucide-react'
 import { Badge, FrameworkBadge, type BadgeTone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -31,15 +32,30 @@ export function severityLabel(severity: string, t: Translate): string {
   return (SEVERITIES as string[]).includes(severity) ? t(`monitoraggio.alerts.severity.${severity}`) : severity
 }
 
+/**
+ * An alert as GET /api/v1/alerts returns it. The alerts the weekly re-check
+ * of the watched documents writes carry `document_check_id`: the check of
+ * the document to review, opened at /app/controlla/{id}.
+ */
+export type AlertView = Alert & { document_check_id?: string | null }
+
+const CHECK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** The page of the document check an alert is about; undefined when the alert is not about a document. */
+export function checkHref(alert: AlertView): string | undefined {
+  const id = alert.document_check_id
+  return typeof id === 'string' && CHECK_ID.test(id) ? `/app/controlla/${id}` : undefined
+}
+
 export interface AlertSummaryView {
   total: number
   unread: number
 }
 
 /** The backend answers { alerts, total, limit, offset }; older code expected a bare array. Both are accepted. */
-export function normaliseAlerts(raw: unknown): Alert[] {
+export function normaliseAlerts(raw: unknown): AlertView[] {
   const list = Array.isArray(raw) ? raw : ((raw as { alerts?: unknown[] } | null)?.alerts ?? [])
-  return (list as unknown[]).filter((a): a is Alert => {
+  return (list as unknown[]).filter((a): a is AlertView => {
     if (!a || typeof a !== 'object') return false
     const x = a as Record<string, unknown>
     return typeof x.id === 'string' && typeof x.title === 'string' && typeof x.severity === 'string'
@@ -71,7 +87,7 @@ function AlertCard({
   onRead,
   onDismiss,
 }: {
-  alert: Alert
+  alert: AlertView
   today: Date
   busy: boolean
   onRead: () => void
@@ -85,6 +101,7 @@ function AlertCard({
   const deadlinePast = isIsoDate(alert.deadline) && parseIsoDate(alert.deadline.slice(0, 10)) < startOfDay(today)
   const created = new Date(alert.created_at)
   const createdLabel = Number.isNaN(created.getTime()) ? alert.created_at : format.dateTime(created, LONG_DATE)
+  const href = checkHref(alert)
   return (
     <article
       aria-labelledby={`alert-${alert.id}`}
@@ -113,6 +130,15 @@ function AlertCard({
           {isIsoDate(alert.deadline) ? formatDate(alert.deadline.slice(0, 10)) : alert.deadline || t('deadlineMissing')}
         </span>
         {deadlinePast && <Badge tone="bad">{t('deadlinePast')}</Badge>}
+        {href && (
+          <Link
+            href={href}
+            className="inline-flex items-center gap-1 rounded-sm text-small font-medium text-union hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-union"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            {t('openCheck')}
+          </Link>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           {!alert.is_read && (
             <Button
@@ -145,13 +171,14 @@ function AlertCard({
 /**
  * The organization's alerts from /api/v1/alerts with the summary from
  * /api/v1/alerts/summary. Mark as read and dismiss use the PATCH endpoints
- * of src/api/routers/alerts.py.
+ * of src/api/routers/alerts.py. The tab says where alerts come from: the
+ * weekly re-check of the watched documents, each such alert linked to its check.
  */
 export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChange?: (n: number) => void; today?: Date }) {
   const t = useTranslations('monitoraggio.alerts')
   const tRoot = useTranslations()
   const errorText = useErrorText()
-  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [alerts, setAlerts] = useState<AlertView[]>([])
   const [summary, setSummary] = useState<AlertSummaryView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -186,7 +213,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
     if (summary) onUnreadChange?.(summary.unread)
   }, [summary, onUnreadChange])
 
-  const markRead = async (alert: Alert) => {
+  const markRead = async (alert: AlertView) => {
     setBusy(alert.id)
     setError('')
     try {
@@ -200,7 +227,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
     }
   }
 
-  const dismiss = async (alert: Alert) => {
+  const dismiss = async (alert: AlertView) => {
     setBusy(alert.id)
     setError('')
     try {
@@ -230,9 +257,12 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
   )
 
   const filtered = severity !== '' || readState !== 'all'
+  // The note on AI concerns only alerts that do not come from the re-check of a document.
+  const withoutDocument = visible.some((a) => !checkHref(a))
 
   return (
     <div className="space-y-5">
+      <p className="max-w-prose text-small text-ink-2">{t('origin')}</p>
       <div className="flex flex-wrap items-end gap-4">
         <Field label={t('filterSeverity')} htmlFor="alerts-severity" className="w-full sm:w-52">
           <Select id="alerts-severity" value={severity} onChange={(e) => setSeverity(e.target.value as Severity | '')}>
@@ -300,7 +330,7 @@ export function AlertsTab({ onUnreadChange, today = new Date() }: { onUnreadChan
         </div>
       )}
 
-      <p className="text-caption text-ink-3">{t('aiNotice')}</p>
+      {withoutDocument && <p className="text-caption text-ink-3">{t('aiNotice')}</p>}
     </div>
   )
 }

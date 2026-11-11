@@ -22,22 +22,23 @@ Chiaro di default, scuro opzionale (classe `dark` su `html`). I token vivono in 
 | `surface-3` | `#ECEEF1` | stato hover di righe e voci |
 | `ink` | `#0C1B33` | testo principale: inchiostro blu-nero, non nero tinto |
 | `ink-2` | `#3D4B61` | testo secondario |
-| `ink-3` | `#6B7788` | testo terziario, didascalie (mai sotto 12 px) |
+| `ink-3` | `#5C6879` | testo terziario, didascalie (mai sotto 12 px); AA anche su `canvas` e `surface-3` |
 | `rule` | `#D8DCE3` | filetti e bordi |
 | `rule-2` | `#C3C9D3` | bordi dei campi, filetti marcati |
 | `union` | `#0A3A9C` | il blu dell'Unione: link, azioni primarie, focus |
 | `union-deep` | `#072B75` | hover delle azioni primarie |
 | `mark` | `#FFEA7A` | l'evidenziatore: **solo** per il passaggio di legge citato |
 | `mark-deep` | `#F5C400` | il giallo delle stelle: icona del marchio, accenti del marchio |
-| `ok` | `#137A4B` | citazione verificata, operazione riuscita |
-| `warn` | `#9A5B00` | attenzione, scadenza vicina, verifica consigliata |
+| `ok` | `#116F44` | citazione verificata, operazione riuscita |
+| `warn` | `#8F5400` | attenzione, scadenza vicina, verifica consigliata |
 | `bad` | `#A3262E` | errore, scadenza superata |
 
 Regole:
 - L'evidenziatore è la cosa memorabile e si spende in un posto solo: la citazione testuale della norma. Mai come sfondo decorativo, mai nei bottoni.
 - Il blu `union` è il colore delle azioni, non del marchio: il marchio è inchiostro più evidenziatore.
 - Niente gradienti, niente ombre su ogni card. L'ombra `shadow-doc` esiste per due cose: il documento in primo piano nella hero e i dialoghi.
-- I colori dei framework (`fw-*`) servono solo come etichetta di categoria, con testo scuro su tinta chiara, mai come riempimento pieno.
+- I colori dei framework (`fw-*`) servono solo come etichetta di categoria: il testo nella tinta su un fondo al 10% della stessa tinta, mai come riempimento pieno. Sono token come gli altri, con la variante scura.
+- Gli avvisi che non citano la legge (la demo, uno stato sospeso) usano i token `warn`, non l'evidenziatore.
 
 ## 3. Tipografia
 

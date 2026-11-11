@@ -7,6 +7,7 @@ import { Badge, Button, Skeleton, StatCard, TBody, TD, TH, THead, TR, Table, typ
 import { useErrorText } from '@/i18n/errors'
 import { INT } from '@/i18n/format'
 import { api } from '@/lib/api'
+import { isDemoMode } from '@/lib/auth'
 import { formatIsoDateTime } from '@/components/clienti/format'
 
 /**
@@ -47,14 +48,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
+/**
+ * What the server reports about itself. In the demo there is no server to
+ * ask: the section says so and shows no status, no model and no counters,
+ * because none of them would be a measurement (DESIGN.md, principle 3).
+ */
 export function SystemStatusSection() {
   const t = useTranslations('admin.system')
   const tu = useTranslations('ui')
   const format = useFormatter()
   const errorText = useErrorText()
+  const [demo] = useState(() => isDemoMode())
   const [state, setState] = useState<State>({ status: 'loading' })
 
   const load = useCallback(async () => {
+    if (demo) return
     setState((prev) => (prev.status === 'ready' ? prev : { status: 'loading' }))
     try {
       const stats = await api.get<StatsResponse>('/api/v1/stats')
@@ -62,7 +70,7 @@ export function SystemStatusSection() {
     } catch (err) {
       setState({ status: 'error', message: errorText(err, 'errors.loadFailed') })
     }
-  }, [errorText])
+  }, [demo, errorText])
 
   useEffect(() => {
     load()
@@ -72,6 +80,15 @@ export function SystemStatusSection() {
   const int = (value: number | undefined) => (typeof value === 'number' ? format.number(value, INT) : missing)
   const formatMs = (value: number | undefined) =>
     typeof value === 'number' ? t('ms', { value: format.number(Math.round(value), INT) }) : missing
+
+  if (demo) {
+    return (
+      <div className="rounded-lg border border-rule bg-surface-2 p-5">
+        <h3 className="text-h4">{t('demoTitle')}</h3>
+        <p className="mt-1 max-w-prose text-body text-ink-2">{t('demoBody')}</p>
+      </div>
+    )
+  }
 
   if (state.status === 'loading') {
     return (

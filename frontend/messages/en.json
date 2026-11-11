@@ -205,14 +205,14 @@
       }
     },
     "codex": {
-      "kicker": "Free PDF guide, 17 pages",
+      "kicker": "Free PDF guide, 19 pages, version 1.1 of November 2026",
       "title": "Codex Post-Omnibus 2025-2029",
-      "lead": "The practical guide for whoever manages CSRD, CSDDD and the Taxonomy after Omnibus I: who stays in scope, the timeline to 2029, what remains of the ESRS standards, the most common mistakes in first-time reports. In Italian.",
+      "lead": "The practical guide for whoever follows the CSRD, the CSDDD and the Taxonomy after the Omnibus I directive: who stays in scope and from when, what a reporting customer may ask its suppliers, the revised ESRS, the timeline to 2029. Every date and threshold points to the official text. In Italian.",
       "points": {
-        "1": "\"Am I in scope?\" flowchart for CSRD, CSDDD and the Taxonomy",
-        "2": "ESRS Set 1: what remains after the datapoint reduction",
-        "3": "The voluntary VSME standard: when it is worth adopting",
-        "4": "2026-2029 timeline with transpositions and first reports"
+        "1": "Three paths to check whether a client is in scope: CSRD, CSDDD, Taxonomy",
+        "2": "Revised ESRS: what changes with the delegated regulation of 3 July 2026",
+        "3": "Voluntary standards and the value-chain cap: what can be asked of an SME",
+        "4": "2026-2029 timeline, with the Italian transposition and Decree-Law 193/2026"
       }
     },
     "demo": {
@@ -1319,6 +1319,8 @@
       "description": "What the server reports about itself: version, model, vector store and requests served.",
       "loading": "Loading the system status",
       "loadFailedTitle": "The system status did not load",
+      "demoTitle": "Demo with sample data",
+      "demoBody": "In the demo there is no server to ask: version, model, vector store and requests served appear here only with a real account.",
       "status": {
         "healthy": "Operational",
         "degraded": "Degraded"
@@ -1935,7 +1937,7 @@
     "compliance": {
       "high": {
         "label": "Good level of compliance",
-        "sublabel": "The organisation shows a solid degree of fulfilment"
+        "sublabel": "Most of the requirements examined are covered"
       },
       "medium": {
         "label": "Partial compliance",

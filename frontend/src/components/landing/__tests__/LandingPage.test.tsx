@@ -215,6 +215,20 @@ describe('landing page', () => {
     expect(codex.getByRole('button', { name: 'Scarica il Codex' })).toBeInTheDocument()
   })
 
+  it.each(LANGUAGES)('finds every message it asks for (%s)', (language) => {
+    // A missing message is reported on the console and rendered as its own
+    // path, e.g. "landing.hero.title".
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const { container } = renderLanding(language)
+      const missing = errors.mock.calls.map((call) => String(call[0])).filter((text) => text.includes('MISSING_MESSAGE'))
+      expect(missing).toEqual([])
+      expect(container.textContent).not.toMatch(/landing\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+/)
+    } finally {
+      errors.mockRestore()
+    }
+  })
+
   it('reads the same in English', () => {
     renderLanding('en')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(

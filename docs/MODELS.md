@@ -462,6 +462,9 @@ How it is wired (`src/agents/llm.py`):
   `max_completion_tokens`, which that reference does not list, so the limit goes through
   `extra_body` (tests in `tests/test_llm_model_settings.py` read the request the client
   sends, with the HTTP layer answered in process).
+- At startup (`validate_settings_or_exit` in `src/config.py`), with `APP_ENV=production` the
+  API refuses to start without `MISTRAL_API_KEY` or with a `MISTRAL_BASE_URL` that is not
+  `https://`; any base URL other than the EU endpoint is logged as a warning.
 - Reasoning is left at the API default (`reasoning_effort` is not sent). With reasoning
   on, Mistral returns the content as a list with a `thinking` chunk before the text;
   `message_text` keeps the text.

@@ -13,6 +13,8 @@ _config_logger = logging.getLogger("normaai.config")
 
 # Values LLM_PROVIDER accepts; any other value stops the API at startup.
 LLM_PROVIDERS = ("gemini", "anthropic", "openrouter", "mistral")
+# Mistral's EU regional endpoint: inference in data centres in EU and EFTA countries.
+MISTRAL_EU_BASE_URL = "https://api.eu.mistral.ai/v1"
 
 
 class Settings(BaseSettings):
@@ -62,7 +64,7 @@ class Settings(BaseSettings):
     #   commits to no inference location.
     # Not measured on the golden set yet: docs/MODELS.md, section 5.
     mistral_api_key: str = ""
-    mistral_base_url: str = "https://api.eu.mistral.ai/v1"
+    mistral_base_url: str = MISTRAL_EU_BASE_URL
     mistral_model_analysis: str = Field(
         default="mistral-small-2603",
         validation_alias=AliasChoices("mistral_model_analysis", "mistral_model"),
@@ -396,6 +398,33 @@ def get_settings() -> Settings:
     return Settings()
 
 
+def _check_mistral(settings: Settings, warnings: list[str]) -> None:
+    """LLM_PROVIDER=mistral: refuse a production start that cannot work as chosen.
+
+    Choosing Mistral is choosing where the questions are processed, so in
+    production a missing key or a base URL without TLS stops the API instead of
+    leaving it up with a provider that cannot answer, or that would receive the
+    key in clear. Outside production both are warnings.
+    """
+    base_url = settings.mistral_base_url.strip().rstrip("/")
+    problems = []
+    if not settings.mistral_api_key:
+        problems.append("MISTRAL_API_KEY is not set: intelligence endpoints will fail.")
+    if not base_url.startswith("https://"):
+        problems.append("MISTRAL_BASE_URL must be an https:// URL.")
+    if problems and settings.app_env == "production":
+        for problem in problems:
+            _config_logger.critical("LLM_PROVIDER=mistral in production: %s", problem)
+        sys.exit(1)
+    warnings.extend(f"{problem} Add it to your .env file." for problem in problems)
+    if base_url != MISTRAL_EU_BASE_URL:
+        warnings.append(
+            f"MISTRAL_BASE_URL is not the EU regional endpoint ({MISTRAL_EU_BASE_URL}): "
+            "Mistral commits to an inference location only on a regional endpoint "
+            "(docs/MODELS.md, section 5.1)."
+        )
+
+
 def validate_settings_or_exit() -> Settings:
     """Validate critical settings at startup, exit if misconfigured."""
     settings = get_settings()
@@ -427,12 +456,8 @@ def validate_settings_or_exit() -> Settings:
             "Intelligence endpoints will fail. "
             "Add it to your .env file."
         )
-    elif settings.llm_provider == "mistral" and not settings.mistral_api_key:
-        warnings.append(
-            "MISTRAL_API_KEY is not set. "
-            "Intelligence endpoints will fail. "
-            "Add it to your .env file."
-        )
+    elif settings.llm_provider == "mistral":
+        _check_mistral(settings, warnings)
 
     if settings.app_secret_key.startswith("change-me") or len(settings.app_secret_key) < 32:
         if settings.app_env == "production":

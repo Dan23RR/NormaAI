@@ -146,7 +146,8 @@ class TestProviderValidation:
 
     @pytest.mark.parametrize("provider", LLM_PROVIDERS)
     def test_every_listed_provider_starts(self, monkeypatch, provider):
-        assert self._validate(monkeypatch, llm_provider=provider).llm_provider == provider
+        keys = {"mistral_api_key": "k"} if provider == "mistral" else {}
+        assert self._validate(monkeypatch, llm_provider=provider, **keys).llm_provider == provider
 
     def test_an_unknown_provider_stops_the_api(self, monkeypatch, caplog):
         with (
@@ -157,16 +158,48 @@ class TestProviderValidation:
         # The message lists the accepted values, the new one included.
         assert "gemini, anthropic, openrouter, mistral" in caplog.text
 
-    def test_a_missing_mistral_key_is_reported_like_the_other_providers(self, monkeypatch, caplog):
-        # Same rule as Gemini, Anthropic and OpenRouter: a warning at startup and
-        # /readyz answering "llm: down", not a refusal to start (the document check
-        # needs no model).
-        with caplog.at_level(logging.WARNING, logger="normaai.config"):
-            settings = self._validate(monkeypatch, llm_provider="mistral")
+    def test_a_missing_mistral_key_stops_production(self, monkeypatch, caplog):
+        # Fail fast: choosing Mistral is choosing where questions are processed,
+        # and an API up without its key would only answer "llm: down".
+        with (
+            caplog.at_level(logging.CRITICAL, logger="normaai.config"),
+            pytest.raises(SystemExit),
+        ):
+            self._validate(monkeypatch, llm_provider="mistral")
         assert "MISTRAL_API_KEY is not set" in caplog.text
-        assert settings.active_api_key == ""
+
+    def test_a_mistral_url_without_tls_stops_production(self, monkeypatch, caplog):
+        with (
+            caplog.at_level(logging.CRITICAL, logger="normaai.config"),
+            pytest.raises(SystemExit),
+        ):
+            self._validate(
+                monkeypatch,
+                llm_provider="mistral",
+                mistral_api_key="k",
+                mistral_base_url="http://api.eu.mistral.ai/v1",
+            )
+        assert "MISTRAL_BASE_URL must be an https:// URL" in caplog.text
+
+    def test_a_missing_mistral_key_is_only_a_warning_in_development(self, monkeypatch, caplog):
+        settings = _isolated_settings(monkeypatch, llm_provider="mistral", app_env="development")
+        monkeypatch.setattr("src.config.get_settings", lambda: settings)
+        with caplog.at_level(logging.WARNING, logger="normaai.config"):
+            validate_settings_or_exit()
+        assert "MISTRAL_API_KEY is not set" in caplog.text
+
+    def test_the_global_endpoint_is_flagged(self, monkeypatch, caplog):
+        # Allowed, but Mistral commits to no inference location there.
+        with caplog.at_level(logging.WARNING, logger="normaai.config"):
+            self._validate(
+                monkeypatch,
+                llm_provider="mistral",
+                mistral_api_key="k",
+                mistral_base_url="https://api.mistral.ai/v1",
+            )
+        assert "not the EU regional endpoint" in caplog.text
 
     def test_no_warning_when_the_mistral_key_is_set(self, monkeypatch, caplog):
         with caplog.at_level(logging.WARNING, logger="normaai.config"):
             self._validate(monkeypatch, llm_provider="mistral", mistral_api_key="k")
-        assert "MISTRAL_API_KEY" not in caplog.text
+        assert "MISTRAL" not in caplog.text

@@ -1,7 +1,7 @@
 """Regenerate the Codex PDF from its print source.
 
-Usage (from the repository root or from frontend/, needs network access for
-the web fonts):
+Usage (from the repository root or from frontend/; needs network access,
+because the web fonts are loaded for the render, not by the published page):
 
   python frontend/scripts/build_codex_pdf.py
 
@@ -39,7 +39,13 @@ OUTPUT = PUBLIC / "codex-post-omnibus-2025-2029.pdf"
 # the default background of the page, so it is set to the same tone: otherwise
 # every page gets a white frame.
 PAPER = {"r": 250, "g": 249, "b": 245, "a": 1}
-FONTS = ("Inter", "Geist Mono")
+# The web fonts of the guide and the weights it uses. They are loaded here, for
+# the render only: the published codex.html makes no request to a third party.
+FONTS_CSS = (
+    "https://fonts.googleapis.com/css2"
+    "?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap"
+)
+FONTS = {"Inter": (400, 500, 600, 700, 800), "Geist Mono": (400,)}
 PRIVATE_MAILBOX = re.compile(r"@(gmail|googlemail|hotmail|outlook|yahoo|libero|icloud)\.", re.I)
 # A page with fewer characters than this is a page break gone wrong.
 MIN_CHARS_PER_PAGE = 600
@@ -70,6 +76,31 @@ def chapter_titles(source: str) -> dict[str, str]:
     return titles
 
 
+LOAD_FAMILY = """async ([family, weights]) => {
+  const faces = await Promise.all(weights.map((w) => document.fonts.load(w + " 12px '" + family + "'")))
+  return faces.every((found) => found.length > 0)
+}"""
+
+
+def load_fonts(page) -> list[str]:  # noqa: ANN001 - a Playwright page
+    """Load the web fonts into the page; returns the families that could not be loaded.
+
+    `document.fonts.check` answers true for a family nobody declared, so each
+    weight is loaded explicitly and counted.
+    """
+    try:
+        page.add_style_tag(url=FONTS_CSS)
+    except Exception:  # noqa: BLE001 - offline: every family is missing
+        return list(FONTS)
+    missing = [
+        family
+        for family, weights in FONTS.items()
+        if not page.evaluate(LOAD_FAMILY, [family, list(weights)])
+    ]
+    page.evaluate("document.fonts.ready.then(() => true)")
+    return missing
+
+
 def render(source: Path, target: Path, require_fonts: bool) -> None:
     from playwright.sync_api import sync_playwright
 
@@ -88,10 +119,7 @@ def render(source: Path, target: Path, require_fonts: bool) -> None:
             page = browser.new_page()
             page.goto(source.as_uri(), wait_until="networkidle")
             page.emulate_media(media="print")
-            page.evaluate("document.fonts.ready")
-            missing = [
-                f for f in FONTS if not page.evaluate("f => document.fonts.check(`12px '${f}'`)", f)
-            ]
+            missing = load_fonts(page)
             if missing:
                 message = f"web fonts not loaded: {', '.join(missing)} (no network?)"
                 if require_fonts:

@@ -7,15 +7,14 @@
 <!--
   Print source of frontend/public/codex-post-omnibus-2025-2029.pdf.
   Regenerate the PDF with: python frontend/scripts/build_codex_pdf.py
-  The script also writes the page numbers of the index (the .page-num spans).
+  The script also writes the page numbers of the index (the .page-num spans)
+  and loads the web fonts (Inter, Geist Mono) for the render: this page asks
+  no third party for anything, so opened in a browser it uses system fonts.
 
   v1.1, November 2026. Every date, threshold and article was read on the
   official text (EUR-Lex / CELLAR, Normattiva, Gazzetta Ufficiale) on
   2026-11-11. A statement that could not be checked there was removed.
 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* Design tokens of the guide (warm paper, one accent). */
   :root{

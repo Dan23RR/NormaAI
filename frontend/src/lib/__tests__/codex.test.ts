@@ -70,6 +70,14 @@ describe('Codex', () => {
     expect(html).not.toMatch(/8\/10|80% delle aziende|postponed|\u22125\d%|\u22126\d%/)
   })
 
+  it('asks no third party for anything when it is opened in a browser', () => {
+    // The web fonts are loaded by the build script, for the render only.
+    expect(html).not.toMatch(/<link[^>]+href="https?:/i)
+    expect(html).not.toMatch(/<script/i)
+    expect(html).not.toMatch(/url\(\s*['"]?https?:/i)
+    expect(html).not.toMatch(/<img[^>]+src="https?:/i)
+  })
+
   it('follows the cheap rules of the design system', () => {
     expect(html).not.toMatch(/gradient/)
     expect(html).not.toMatch(/text-transform:\s*uppercase/)

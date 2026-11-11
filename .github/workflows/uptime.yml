@@ -1,0 +1,85 @@
+name: Uptime
+
+# External check of the public site and, once the repository variable
+# API_BASE_URL is set, of the API. It runs on GitHub's runners, so it keeps
+# watching when the production server is gone: in September 2026 the server
+# was cancelled and nothing outside it noticed for about seven weeks.
+#
+# What it checks (scripts/uptime_check.py, tests in tests/test_uptime_check.py):
+#   site  /, /scope-csrd.html and /scope-aiact.html answer 200 and contain the
+#         expected text; the certificate has at least 14 days left
+#   api   /readyz says ready with a corpus that is not empty; the CORS
+#         preflight of the login route from the site's origin is allowed; the
+#         certificate has at least 14 days left; with API_EXPECTED_IP, the host
+#         resolves to that address and to no other
+#
+# When a check fails (after three attempts) the job fails, and the workflow
+# opens the issue "Uptime: <host>", or rewrites it if it is already open. The
+# first run that passes closes it. GitHub emails a failed scheduled run to the
+# user who last changed the cron line below, if that user's notification
+# settings for Actions allow it; the issue also mentions the repository owner.
+#
+# Repository variables (Settings, Secrets and variables, Actions, Variables).
+# No secret is needed.
+#   API_BASE_URL     https://<api host>, no path. Unset: the API is not checked
+#   API_EXPECTED_IP  optional: the address the API host must resolve to
+#                    (several: comma-separated). The runner lists a step's
+#                    variables in the public log, this one included: it is the
+#                    address public DNS already gives
+#   SITE_URL         optional, default https://normaai.org
+#   SITE_MARKER      optional, default NormaAI
+#
+# Limits to know:
+#   - GitHub disables the schedule of a public repository after 60 days
+#     without repository activity (it sends an email first): re-enable it in
+#     the Actions tab, or push a commit.
+#   - Scheduled runs can start late, and can be dropped, when GitHub is busy:
+#     30 minutes is the aim, not a promise.
+#   - The schedule runs the workflow as it is on the default branch.
+
+on:
+  schedule:
+    # Every 30 minutes, off the hour, when fewer scheduled runs start.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+# Least privilege: read the script, write the issue.
+permissions:
+  contents: read
+  issues: write
+
+# One run at a time: two runs must not edit the same issue together.
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+env:
+  SITE_URL: ${{ vars.SITE_URL || 'https://normaai.org' }}
+
+jobs:
+  site:
+    name: Site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the public site
+        env:
+          SITE_MARKER: ${{ vars.SITE_MARKER || 'NormaAI' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/uptime_check.py site --issue
+
+  api:
+    name: API
+    # Only once the API has an address to check.
+    if: vars.API_BASE_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the API
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          API_EXPECTED_IP: ${{ vars.API_EXPECTED_IP }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/uptime_check.py api --issue

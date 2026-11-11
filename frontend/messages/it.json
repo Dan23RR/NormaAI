@@ -67,132 +67,160 @@
   },
   "landing": {
     "hero": {
-      "title": "Ogni risposta sul diritto UE, con il passaggio di legge che la sostiene.",
-      "lead": "NormaAI risponde su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia citando l’atto e l’articolo, con il testo ufficiale di EUR-Lex e Normattiva a un clic. Quando il testo non basta, lo dice.",
-      "requestDemo": "Richiedi una demo",
-      "checkScope": "Verifica se sei in ambito CSRD",
-      "note": "Accesso su invito durante i pilot. Codice aperto. Data del corpus dichiarata in ogni risposta."
+      "title": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.",
+      "support": "Norme UE e italiane, parola per parola. Con l'avviso quando una norma citata cambia.",
+      "lead": "NormaAI legge un parere, un'informativa o una policy, trova gli articoli citati, li confronta con il testo ufficiale e ti dice quali riferimenti correggere, quali controllare e quali sono a posto.",
+      "status": "<b>Stato all'11 novembre 2026.</b> Aperti a tutti: la demo con dati di esempio, le due verifiche gratuite di ambito (CSRD e articolo 50 dell'AI Act) e la guida Codex. Non ancora aperti: il controllo dei tuoi documenti, i testi italiani di Normattiva e gli avvisi sulle modifiche, che sono in costruzione; gli account, e con loro le risposte sul corpus reale, sospesi finché il nuovo server non è attivo."
+    },
+    "cta": {
+      "tryDemo": "Prova la demo",
+      "pilot": "Scrivi per un pilot",
+      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie."
     },
     "example": {
-      "caption": "Esempio di risposta",
-      "sourceCaption": "Fonte: testo ufficiale su EUR-Lex",
-      "questionLabel": "Domanda",
-      "question": "Un assistente virtuale che risponde ai clienti sul nostro sito deve dichiarare che è un’intelligenza artificiale?",
-      "answerLabel": "Risposta",
-      "answer": "Sì. L’articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un sistema di IA destinato a interagire con le persone a progettarlo in modo che le persone sappiano di parlare con un’IA, salvo che sia evidente dal contesto <ref1>[1]</ref1>. L’obbligo si applica dal {date} <ref2>[2]</ref2>.",
-      "article1": "art. 50, par. 1",
-      "article2": "art. 113",
-      "appliesFrom": "applicazione dal {date}"
+      "label": "Esempio di controllo di un documento",
+      "caption": "Esempio: una nota inventata",
+      "checkedOn": "Data del controllo: {date}",
+      "inDocument": "Nel documento",
+      "toFinding": "Vai all'esito {n}",
+      "outcome": "Esito del controllo: {fix} da correggere, {ok} a posto",
+      "altered": "Citazione diversa dal testo ufficiale",
+      "difference": "La citazione è diversa dal testo vigente: nel documento «{quoted}», nel testo ufficiale «{official}».",
+      "article1": "art. 33, par. 1",
+      "inForce": "testo vigente, consolidato al {date}",
+      "verified": "Citazione verificata",
+      "verifiedNote": "{act}, {article}: la citazione è nel testo vigente, parola per parola.",
+      "article5": "art. 33, par. 5"
     },
-    "how": {
-      "title": "Tre strumenti, una regola: niente senza fonte.",
-      "ask": {
-        "title": "Chiedi",
-        "body": "Domande in italiano o inglese. La risposta cita atto, articolo e passaggio, mostra per ogni citazione se il passaggio è stato ritrovato nel testo ufficiale e porta al testo con un clic. Se il corpus non copre la domanda, NormaAI si astiene e lo dice.",
-        "points": {
-          "1": "Profilo aziendale opzionale per risposte sul vostro caso",
-          "2": "Astensione dichiarata invece di una risposta inventata",
-          "3": "Data del corpus in ogni risposta"
+    "check": {
+      "title": "Controlla un documento: l'articolo, la citazione, la data.",
+      "lead": "NormaAI cerca nel documento i rimandi a un articolo, a un considerando o a un allegato, con l'atto a cui appartengono, e li confronta con il testo ufficiale in tre modi.",
+      "items": {
+        "1": {
+          "title": "L'articolo esiste",
+          "body": "L'articolo e ogni paragrafo citato devono esserci nel testo vigente, cioè nell'ultima versione consolidata. Se l'articolo c'era in una versione precedente, il rapporto dice che è stato abrogato o rinumerato."
+        },
+        "2": {
+          "title": "La citazione è parola per parola",
+          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera sbagliata in una parola lunga. Se le parole sono in un altro articolo, o solo in una versione precedente, il rapporto lo dice."
+        },
+        "3": {
+          "title": "La norma non è cambiata dopo la data del documento",
+          "body": "Se indichi la data del documento, NormaAI confronta la disposizione in vigore quel giorno con quella di oggi. Se è cambiata, vedi il testo di allora e quello di adesso, con le differenze."
         }
       },
-      "scope": {
-        "title": "Ambito",
-        "body": "Dimensione, settore, Paese: quali obblighi si applicano all’azienda e da quando, con la norma che lo stabilisce. Oggi disponibile come verifica gratuita per la CSRD e per l’articolo 50 dell’AI Act.",
-        "csrd": "Verifica CSRD dopo l’Omnibus I",
-        "aiAct": "Verifica AI Act, articolo 50"
+      "result": {
+        "title": "Cosa ricevi",
+        "body": "Un rapporto che divide i riferimenti per cosa c'è da fare: da correggere, da controllare, a posto. Per ognuno trovi la riga del documento, l'esito, il testo ufficiale e il link al testo su EUR-Lex o su Normattiva."
       },
-      "monitor": {
-        "title": "Monitoraggio",
-        "badge": "In sviluppo",
-        "body": "Il calendario degli obblighi dei vostri clienti e le novità normative, ciascuna con la data in cui è stata verificata. Disponibile ai partecipanti ai pilot man mano che viene completato."
+      "limits": {
+        "title": "Cosa non fa",
+        "body": "Non dice se il riferimento è quello giusto per il tuo caso, né se una citazione esatta lascia fuori un'eccezione: controlla che il testo sia quello, la valutazione resta tua. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. Non è un parere legale."
       }
     },
+    "watch": {
+      "title": "L'avviso quando una norma citata cambia.",
+      "body": "Dopo il controllo NormaAI tiene l'elenco delle disposizioni su cui il documento si regge: atto, articolo, versione e impronta del testo. A ogni nuova versione del testo ufficiale le confronta di nuovo e ti dice quali documenti rivedere, perché una norma citata è cambiata o non c'è più.",
+      "clients": "Se segui molti clienti, una modifica diventa un elenco: i documenti da riaprire, con il testo di prima e quello di adesso.",
+      "example": {
+        "label": "Esempio di una norma citata che è cambiata",
+        "caption": "Un caso vero: l'articolo 4 dell'AI Act",
+        "checkedOn": "Data del controllo: {date}",
+        "outdated": "Citazione superata",
+        "message": "L'articolo è cambiato dopo la data del documento ({documentDate}): il documento cita il testo originale, oggi vale il testo consolidato al {date}.",
+        "inDocument": "Nel documento, dal testo originale",
+        "inForce": "Nel testo vigente",
+        "article": "art. 4, par. 1",
+        "consolidated": "testo consolidato al {date}",
+        "replacedBy": "L'articolo 4 è stato sostituito dal regolamento (UE) 2026/1744."
+      }
+    },
+    "ask": {
+      "title": "Chiedi: risposte con il passaggio di legge che le sostiene.",
+      "body": "Domande in italiano o in inglese sui {acts} atti dell'Unione del corpus. La risposta cita l'atto e l'articolo, mostra il passaggio e segna una citazione come verificata solo se le sue parole sono state ritrovate nel testo ufficiale. Quando i testi non bastano, NormaAI si astiene e lo dice.",
+      "points": {
+        "1": "Profilo dell'azienda opzionale, per risposte sul caso concreto",
+        "2": "Data del corpus dichiarata in ogni risposta"
+      },
+      "method": "Il metodo nel dettaglio",
+      "example": {
+        "label": "Esempio di risposta con i passaggi di legge",
+        "caption": "Esempio di risposta",
+        "checkedOn": "Data della verifica: {date}",
+        "questionLabel": "Domanda",
+        "question": "Un assistente virtuale che risponde ai clienti sul nostro sito deve dichiarare che è un'intelligenza artificiale?",
+        "answerLabel": "Risposta",
+        "answer": "Sì. L'articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un sistema di IA destinato a interagire con le persone a progettarlo in modo che le persone sappiano di parlare con un'IA, salvo che sia evidente dal contesto <ref1>[1]</ref1>. L'obbligo si applica dal {date} <ref2>[2]</ref2>.",
+        "article1": "art. 50, par. 1",
+        "article2": "art. 113"
+      }
+    },
+    "scope": {
+      "title": "Ambito e scadenze.",
+      "body": "Quali obblighi riguardano un'azienda e da quando, con la norma che lo stabilisce. Due verifiche sono gratuite e aperte a tutti; nella demo trovi anche la verifica di ambito per azienda e il calendario delle scadenze.",
+      "csrd": "Verifica CSRD dopo l'Omnibus I",
+      "aiAct": "Verifica AI Act, articolo 50"
+    },
     "sources": {
-      "title": "I testi da cui partono le risposte.",
-      "lead": "Gli atti vengono da EUR-Lex, la banca dati ufficiale del diritto dell’Unione, e da Normattiva per il recepimento italiano. Il corpus ha una data, mostrata in ogni risposta; le versioni consolidate e italiane degli atti sono in corso di inserimento.",
-      "colScope": "Ambito",
-      "colActs": "Atti",
-      "colCovers": "Cosa copre",
+      "title": "Su quali testi lavora.",
+      "lead": "Due elenchi diversi, tenuti distinti: i testi da cui NormaAI risponde alle domande e i testi che legge quando controlla un documento.",
+      "qa": {
+        "title": "Per le risposte: {acts} atti dell'Unione",
+        "body": "Il corpus di Chiedi contiene questi atti, in italiano e in inglese, presi da EUR-Lex (CELLAR) nel testo consolidato quando esiste. Il diritto nazionale italiano non è nel corpus delle risposte. Ogni atto dell'elenco porta al suo testo su EUR-Lex.",
+        "colArea": "Ambito",
+        "colActs": "Atti nel corpus"
+      },
       "kinds": {
         "delegated": "Regolamento delegato (UE) {year}/{number}",
         "implementing": "Regolamento di esecuzione (UE) {year}/{number}"
       },
-      "rows": {
-        "CSRD": {
-          "act": "Direttiva (UE) 2022/2464, modificata dalla Direttiva (UE) 2026/470 (Omnibus I); D.Lgs. 125/2024",
-          "covers": "Rendicontazione di sostenibilità: soglie, calendario, principi ESRS"
+      "acts": {
+        "32022L2464": "rendicontazione societaria di sostenibilità",
+        "32013L0034": "bilanci d'esercizio e bilanci consolidati",
+        "32023R2772": "principi di rendicontazione di sostenibilità (ESRS)",
+        "32025L0794": "date di applicazione degli obblighi",
+        "32026L0470": "Omnibus I: modifiche a rendicontazione e dovere di diligenza",
+        "32024L1760": "dovere di diligenza delle imprese ai fini della sostenibilità",
+        "32024R1689": "regolamento sull'intelligenza artificiale",
+        "32026R1744": "Omnibus digitale sull'IA",
+        "32022R2554": "resilienza operativa digitale per il settore finanziario",
+        "32024R1773": "politica sui servizi TIC prestati da fornitori terzi",
+        "32024R1774": "gestione dei rischi informatici",
+        "32024R2956": "modelli per il registro delle informazioni",
+        "32022L2555": "direttiva NIS 2: cibersicurezza nell'Unione",
+        "32020R0852": "quadro che favorisce gli investimenti sostenibili",
+        "32023R2486": "criteri di vaglio tecnico per acque, economia circolare, inquinamento e biodiversità",
+        "32016R0679": "regolamento generale sulla protezione dei dati",
+        "32024R2847": "regolamento sulla ciberresilienza",
+        "32025R2392": "categorie di prodotti importanti e critici"
+      },
+      "check": {
+        "title": "Per il controllo dei documenti: l'atto che citi",
+        "eu": {
+          "title": "Diritto dell'Unione",
+          "body": "Qualsiasi regolamento, direttiva o decisione citati con il loro numero, anche fuori dall'elenco qui sopra. NormaAI legge da EUR-Lex (CELLAR) l'ultima versione consolidata disponibile come testo, e le versioni precedenti per dirti che cosa è cambiato. Se CELLAR non dà il testo di una versione, il rapporto lo dice e segna il riferimento come da controllare."
         },
-        "CSDDD": {
-          "act": "Direttiva (UE) 2024/1760, modificata dalla Direttiva (UE) 2026/470",
-          "covers": "Dovere di diligenza: recepimento entro il 26 luglio 2028, prima applicazione nel 2029"
-        },
-        "AI_ACT": {
-          "act": "Regolamento (UE) 2024/1689",
-          "covers": "Obblighi per fornitori e deployer, trasparenza (art. 50), sistemi ad alto rischio"
-        },
-        "NIS2": {
-          "act": "Direttiva (UE) 2022/2555; D.Lgs. 138/2024",
-          "covers": "Soggetti essenziali e importanti, misure di sicurezza, notifica degli incidenti"
-        },
-        "DORA": {
-          "act": "Regolamento (UE) 2022/2554",
-          "covers": "Resilienza operativa digitale del settore finanziario, rischio ICT e fornitori terzi"
-        },
-        "GDPR": {
-          "act": "Regolamento (UE) 2016/679",
-          "covers": "Protezione dei dati personali, basi giuridiche, diritti degli interessati"
-        },
-        "TAXONOMY": {
-          "act": "Regolamento (UE) 2020/852",
-          "covers": "Attività economiche ecosostenibili e obblighi di informativa"
-        },
-        "CRA": {
-          "act": "Regolamento (UE) 2024/2847",
-          "covers": "Cybersicurezza dei prodotti con elementi digitali"
-        },
-        "ESRS": {
-          "act": "Regolamento delegato (UE) 2023/2772",
-          "covers": "Principi di rendicontazione di sostenibilità (Set 1)"
+        "it": {
+          "title": "Diritto italiano",
+          "body": "Decreti legislativi e leggi, letti da Normattiva. Ogni riferimento porta alla pagina dell'atto su Normattiva."
         }
-      }
-    },
-    "method": {
-      "title": "Perché puoi fidarti di una citazione.",
-      "lead": "Un modello linguistico, da solo, inventa riferimenti plausibili. NormaAI lo costringe a lavorare sul testo di legge e a mostrare il lavoro.",
-      "link": "Il metodo nel dettaglio",
-      "steps": {
-        "1": {
-          "title": "Recupero dal testo ufficiale",
-          "body": "La domanda cerca i passaggi pertinenti negli atti indicizzati, per significato e per parole esatte, con la data del corpus dichiarata."
-        },
-        "2": {
-          "title": "Risposta ancorata ai passaggi",
-          "body": "Il modello risponde solo a partire dai passaggi recuperati e cita per atto e articolo; il testo citato resta visibile accanto alla risposta."
-        },
-        "3": {
-          "title": "Verifica di ogni citazione",
-          "body": "Ogni citazione mostra se il passaggio è stato ritrovato nel testo ufficiale. Se non lo è, viene segnata come da verificare, non nascosta."
-        },
-        "4": {
-          "title": "Astensione quando serve",
-          "body": "Se i passaggi recuperati non bastano, NormaAI dice che non può rispondere e suggerisce dove guardare, invece di completare con un’invenzione."
-        }
-      }
+      },
+      "authentic": "I testi consolidati di EUR-Lex sono uno strumento di documentazione: fanno fede le versioni pubblicate nella Gazzetta ufficiale dell'Unione europea. Ogni esito porta al testo, così puoi controllarlo tu."
     },
     "who": {
-      "title": "Per chi deve rispondere con l’articolo, non con un’opinione.",
+      "title": "Per chi lavora con documenti che citano la legge.",
       "items": {
         "1": {
-          "who": "Compliance officer",
-          "text": "Una persona, sette ambiti normativi. Quando la direzione chiede \"siamo a posto?\", la risposta deve avere l’articolo accanto."
+          "who": "Consulenti che seguono molte aziende",
+          "text": "Consulenti privacy e DPO, commercialisti, consulenti del lavoro, avvocati. Per ogni cliente hai già informative, nomine, pareri, policy e circolari: NormaAI ne controlla i riferimenti e ti avvisa quando una norma citata cambia. La valutazione e la firma restano tue."
         },
         "2": {
-          "who": "Consulenti e studi",
-          "text": "Offrite compliance UE ai clienti senza un partner senior per ogni materia: la base normativa verificata la mette NormaAI, la valutazione e la firma restano vostre."
+          "who": "PMI e titolari d'azienda",
+          "text": "Controlla i documenti che ti hanno consegnato un consulente o un fornitore, e chiedi se un obbligo ti riguarda, da quando e in base a quale articolo."
         },
         "3": {
-          "who": "PMI e direzione finanziaria",
-          "text": "Capire se un obbligo vi riguarda, da quando e cosa comporta, prima di decidere dove spendere."
+          "who": "Compliance officer e uffici legali",
+          "text": "Una persona, {areas} ambiti normativi. Quando la direzione chiede \"siamo a posto?\", la risposta ha l'articolo accanto."
         }
       }
     },
@@ -208,11 +236,8 @@
       }
     },
     "demo": {
-      "title": "Porta una domanda vera. Trenta minuti, senza impegno.",
-      "lead": "Mostriamo NormaAI sul vostro caso. Se la risposta non è migliore della ricerca che fate oggi, finisce lì. Se lo è, parliamo di un pilot.",
-      "mail": "Scrivi a info@normaai.org",
-      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie.",
-      "login": "Hai già un account? Accedi"
+      "title": "Prova la demo, oppure porta un documento vero.",
+      "lead": "La demo si apre subito, con dati di esempio. Per un pilot scrivici: in 30 minuti guardiamo NormaAI su un tuo documento, anche senza i nomi. Se non ti è più utile di come lavori oggi, finisce lì."
     },
     "demoEntry": {
       "metaTitle": "Demo con dati di esempio",

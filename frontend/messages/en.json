@@ -67,132 +67,160 @@
   },
   "landing": {
     "hero": {
-      "title": "Every answer on EU law, with the passage of law behind it.",
-      "lead": "NormaAI answers questions on CSRD, CSDDD, the AI Act, NIS2, DORA, GDPR and the Taxonomy citing the act and the article, with the official text on EUR-Lex and Normattiva one click away. When the text is not enough, it says so.",
-      "requestDemo": "Request a demo",
-      "checkScope": "Check whether CSRD applies to you",
-      "note": "Access by invitation during the pilots. Open source. Corpus date stated in every answer."
+      "title": "Check the legal references in your documents against the text in force.",
+      "support": "EU and Italian law, word for word. With a warning when a provision you cite changes.",
+      "lead": "NormaAI reads an opinion, a privacy notice or a policy, finds the articles it cites, compares them with the official text and tells you which references to correct, which to check and which are fine.",
+      "status": "<b>Status on 11 November 2026.</b> Open to everyone: the demo with sample data, the two free scope checks (CSRD and Article 50 of the AI Act) and the Codex guide. Not open yet: the check of your own documents, the Italian texts from Normattiva and the change alerts, which are being built; accounts, and with them answers on the real corpus, suspended until the new server is up."
+    },
+    "cta": {
+      "tryDemo": "Try the demo",
+      "pilot": "Write to us for a pilot",
+      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Hello%2C%0A%0AI%20would%20like%20to%20see%20NormaAI%20on%20a%20real%20case.%0A%0AOrganisation%3A%0ARole%3A%0AAvailability%3A%0A%0AThank%20you."
     },
     "example": {
-      "caption": "Example answer",
-      "sourceCaption": "Source: official text on EUR-Lex",
-      "questionLabel": "Question",
-      "question": "Does a virtual assistant answering customers on our website have to say that it is an artificial intelligence?",
-      "answerLabel": "Answer",
-      "answer": "Yes. Article 50(1) of Regulation (EU) 2024/1689 requires whoever provides an AI system meant to interact with people to design it so that people know they are talking to an AI, unless that is obvious from the context <ref1>[1]</ref1>. The obligation applies from {date} <ref2>[2]</ref2>.",
-      "article1": "Art. 50(1)",
-      "article2": "Art. 113",
-      "appliesFrom": "applies from {date}"
+      "label": "Example of a document check",
+      "caption": "Example: an invented note",
+      "checkedOn": "Date of the check: {date}",
+      "inDocument": "In the document",
+      "toFinding": "Go to outcome {n}",
+      "outcome": "Outcome of the check: {fix} to correct, {ok} fine",
+      "altered": "Quote differs from the official text",
+      "difference": "The quote differs from the text in force: in the document \"{quoted}\", in the official text \"{official}\".",
+      "article1": "Art. 33(1)",
+      "inForce": "text in force, consolidated on {date}",
+      "verified": "Quote verified",
+      "verifiedNote": "{act}, {article}: the quote is in the text in force, word for word.",
+      "article5": "Art. 33(5)"
     },
-    "how": {
-      "title": "Three tools, one rule: nothing without a source.",
-      "ask": {
-        "title": "Ask",
-        "body": "Questions in Italian or English. The answer cites the act, the article and the passage, shows for each citation whether the passage was found in the official text, and takes you to that text in one click. If the corpus does not cover the question, NormaAI abstains and says so.",
-        "points": {
-          "1": "Optional company profile for answers about your own case",
-          "2": "A declared abstention instead of an invented answer",
-          "3": "Corpus date in every answer"
+    "check": {
+      "title": "Check a document: the article, the quote, the date.",
+      "lead": "NormaAI looks in the document for the references to an article, a recital or an annex, with the act they belong to, and compares them with the official text in three ways.",
+      "items": {
+        "1": {
+          "title": "The article exists",
+          "body": "The article and every paragraph cited must be in the text in force, that is the latest consolidated version. If the article was in an earlier version, the report says it was repealed or renumbered."
+        },
+        "2": {
+          "title": "The quote is word for word",
+          "body": "The words in quotation marks are looked for in the article cited. Every number and every short word, such as \"not\" or \"or\", must match: \"48 hours\" where the law says \"72 hours\" is a quote to correct. Only punctuation, accents, a word split at a line break and one wrong letter in a long word are tolerated. If the words are in another article, or only in an earlier version, the report says so."
+        },
+        "3": {
+          "title": "The provision has not changed since the date of the document",
+          "body": "If you give the date of the document, NormaAI compares the provision in force on that day with today's. If it has changed, you see the text then and the text now, with the differences."
         }
       },
-      "scope": {
-        "title": "Scope",
-        "body": "Size, sector, country: which obligations apply to the company and from when, with the provision that says so. Available today as a free check for the CSRD and for Article 50 of the AI Act.",
-        "csrd": "CSRD check after Omnibus I",
-        "aiAct": "AI Act check, Article 50"
+      "result": {
+        "title": "What you get",
+        "body": "A report that sorts the references by what there is to do: to correct, to check, fine. For each one you find the line of the document, the outcome, the official text and the link to the text on EUR-Lex or Normattiva."
       },
-      "monitor": {
-        "title": "Monitoring",
-        "badge": "In development",
-        "body": "The calendar of your clients’ obligations and the regulatory news, each with the date it was verified. Available to pilot participants as it is completed."
+      "limits": {
+        "title": "What it does not do",
+        "body": "It does not say whether the reference is the right one for your case, or whether an exact quote leaves out an exception: it checks that the text is that text, the assessment stays yours. References are found automatically and one written in an unusual way can be missed. It is not legal advice."
       }
     },
+    "watch": {
+      "title": "A warning when a provision you cite changes.",
+      "body": "After the check NormaAI keeps the list of the provisions the document rests on: act, article, version and a fingerprint of the text. At every new version of the official text it compares them again and tells you which documents to review, because a provision they cite has changed or is no longer there.",
+      "clients": "If you follow many clients, one amendment becomes one list: the documents to reopen, with the text before and the text now.",
+      "example": {
+        "label": "Example of a cited provision that changed",
+        "caption": "A real case: Article 4 of the AI Act",
+        "checkedOn": "Date of the check: {date}",
+        "outdated": "Outdated quote",
+        "message": "The article changed after the date of the document ({documentDate}): the document quotes the act as adopted, today the text consolidated on {date} applies.",
+        "inDocument": "In the document, from the act as adopted",
+        "inForce": "In the text in force",
+        "article": "Art. 4(1)",
+        "consolidated": "text consolidated on {date}",
+        "replacedBy": "Article 4 was replaced by Regulation (EU) 2026/1744."
+      }
+    },
+    "ask": {
+      "title": "Ask: answers with the passage of law behind them.",
+      "body": "Questions in Italian or English on the {acts} EU acts of the corpus. The answer cites the act and the article, shows the passage and marks a citation as verified only if its words were found in the official text. When the texts are not enough, NormaAI abstains and says so.",
+      "points": {
+        "1": "Optional company profile, for answers about the actual case",
+        "2": "Corpus date stated in every answer"
+      },
+      "method": "The method in detail",
+      "example": {
+        "label": "Example of an answer with its passages of law",
+        "caption": "Example answer",
+        "checkedOn": "Date of the verification: {date}",
+        "questionLabel": "Question",
+        "question": "Does a virtual assistant answering customers on our website have to say that it is an artificial intelligence?",
+        "answerLabel": "Answer",
+        "answer": "Yes. Article 50(1) of Regulation (EU) 2024/1689 requires whoever provides an AI system meant to interact with people to design it so that people know they are talking to an AI, unless that is obvious from the context <ref1>[1]</ref1>. The obligation applies from {date} <ref2>[2]</ref2>.",
+        "article1": "Art. 50(1)",
+        "article2": "Art. 113"
+      }
+    },
+    "scope": {
+      "title": "Scope and deadlines.",
+      "body": "Which obligations apply to a company and from when, with the provision that says so. Two checks are free and open to everyone; in the demo you also find the scope check per company and the calendar of deadlines.",
+      "csrd": "CSRD check after Omnibus I",
+      "aiAct": "AI Act check, Article 50"
+    },
     "sources": {
-      "title": "The texts the answers start from.",
-      "lead": "The acts come from EUR-Lex, the official database of EU law, and from Normattiva for the Italian transposition. The corpus has a date, shown in every answer; the consolidated and Italian versions of the acts are being added.",
-      "colScope": "Area",
-      "colActs": "Acts",
-      "colCovers": "What it covers",
+      "title": "Which texts it works on.",
+      "lead": "Two different lists, kept apart: the texts NormaAI answers questions from, and the texts it reads when it checks a document.",
+      "qa": {
+        "title": "For answers: {acts} EU acts",
+        "body": "The corpus behind Ask holds these acts, in Italian and English, taken from EUR-Lex (CELLAR) in the consolidated text when there is one. Italian national law is not in the corpus of the answers. Every act in the list links to its text on EUR-Lex.",
+        "colArea": "Area",
+        "colActs": "Acts in the corpus"
+      },
       "kinds": {
         "delegated": "Delegated Regulation (EU) {year}/{number}",
         "implementing": "Implementing Regulation (EU) {year}/{number}"
       },
-      "rows": {
-        "CSRD": {
-          "act": "Directive (EU) 2022/2464, as amended by Directive (EU) 2026/470 (Omnibus I); Italian Legislative Decree 125/2024",
-          "covers": "Sustainability reporting: thresholds, timeline, ESRS standards"
+      "acts": {
+        "32022L2464": "corporate sustainability reporting",
+        "32013L0034": "annual and consolidated financial statements",
+        "32023R2772": "sustainability reporting standards (ESRS)",
+        "32025L0794": "dates of application of the requirements",
+        "32026L0470": "Omnibus I: amendments to reporting and due diligence",
+        "32024L1760": "corporate sustainability due diligence",
+        "32024R1689": "Artificial Intelligence Act",
+        "32026R1744": "Digital Omnibus on AI",
+        "32022R2554": "digital operational resilience for the financial sector",
+        "32024R1773": "policy on ICT services provided by third-party providers",
+        "32024R1774": "ICT risk management",
+        "32024R2956": "templates for the register of information",
+        "32022L2555": "NIS 2 Directive: cybersecurity across the Union",
+        "32020R0852": "framework to facilitate sustainable investment",
+        "32023R2486": "technical screening criteria for water, circular economy, pollution and biodiversity",
+        "32016R0679": "General Data Protection Regulation",
+        "32024R2847": "Cyber Resilience Act",
+        "32025R2392": "categories of important and critical products"
+      },
+      "check": {
+        "title": "For the document check: the act you cite",
+        "eu": {
+          "title": "EU law",
+          "body": "Any regulation, directive or decision cited with its number, also outside the list above. NormaAI reads from EUR-Lex (CELLAR) the latest consolidated version available as text, and the earlier versions to tell you what changed. If CELLAR does not give the text of a version, the report says so and marks the reference as to check."
         },
-        "CSDDD": {
-          "act": "Directive (EU) 2024/1760, as amended by Directive (EU) 2026/470",
-          "covers": "Due diligence: transposition by 26 July 2028, first application in 2029"
-        },
-        "AI_ACT": {
-          "act": "Regulation (EU) 2024/1689",
-          "covers": "Obligations for providers and deployers, transparency (Art. 50), high-risk systems"
-        },
-        "NIS2": {
-          "act": "Directive (EU) 2022/2555; Italian Legislative Decree 138/2024",
-          "covers": "Essential and important entities, security measures, incident notification"
-        },
-        "DORA": {
-          "act": "Regulation (EU) 2022/2554",
-          "covers": "Digital operational resilience of the financial sector, ICT risk and third-party providers"
-        },
-        "GDPR": {
-          "act": "Regulation (EU) 2016/679",
-          "covers": "Personal data protection, legal bases, data subject rights"
-        },
-        "TAXONOMY": {
-          "act": "Regulation (EU) 2020/852",
-          "covers": "Environmentally sustainable economic activities and disclosure obligations"
-        },
-        "CRA": {
-          "act": "Regulation (EU) 2024/2847",
-          "covers": "Cybersecurity of products with digital elements"
-        },
-        "ESRS": {
-          "act": "Delegated Regulation (EU) 2023/2772",
-          "covers": "Sustainability reporting standards (Set 1)"
+        "it": {
+          "title": "Italian law",
+          "body": "Legislative decrees and laws, read from Normattiva. Every reference links to the page of the act on Normattiva."
         }
-      }
-    },
-    "method": {
-      "title": "Why you can trust a citation.",
-      "lead": "A language model on its own invents plausible references. NormaAI makes it work on the text of the law and show its work.",
-      "link": "The method in detail",
-      "steps": {
-        "1": {
-          "title": "Retrieval from the official text",
-          "body": "The question searches the indexed acts for the relevant passages, by meaning and by exact words, with the corpus date stated."
-        },
-        "2": {
-          "title": "An answer anchored to the passages",
-          "body": "The model answers only from the retrieved passages and cites by act and article; the cited text stays visible next to the answer."
-        },
-        "3": {
-          "title": "Every citation checked",
-          "body": "Every citation shows whether the passage was found in the official text. If it was not, it is marked as unverified, not hidden."
-        },
-        "4": {
-          "title": "Abstention when needed",
-          "body": "If the retrieved passages are not enough, NormaAI says it cannot answer and suggests where to look, instead of filling the gap with an invention."
-        }
-      }
+      },
+      "authentic": "The consolidated texts on EUR-Lex are a documentation tool: the authentic versions are those published in the Official Journal of the European Union. Every outcome links to the text, so you can check it yourself."
     },
     "who": {
-      "title": "For whoever has to answer with the article, not an opinion.",
+      "title": "For people who work with documents that cite the law.",
       "items": {
         "1": {
-          "who": "Compliance officers",
-          "text": "One person, seven regulatory areas. When management asks \"are we covered?\", the answer must have the article next to it."
+          "who": "Consultants who follow many companies",
+          "text": "Privacy consultants and DPOs, accountants, labour consultants, lawyers. For every client you already have privacy notices, appointments, opinions, policies and circulars: NormaAI checks their references and warns you when a provision they cite changes. The assessment and the signature stay yours."
         },
         "2": {
-          "who": "Consultants and firms",
-          "text": "Offer EU compliance to clients without a senior partner for every subject: NormaAI provides the verified legal basis, the assessment and the signature stay yours."
+          "who": "SMEs and business owners",
+          "text": "Check the documents a consultant or a supplier handed you, and ask whether an obligation concerns you, from when and under which article."
         },
         "3": {
-          "who": "SMEs and finance teams",
-          "text": "Understand whether an obligation concerns you, from when and what it entails, before deciding where to spend."
+          "who": "Compliance officers and legal teams",
+          "text": "One person, {areas} regulatory areas. When management asks \"are we covered?\", the answer has the article next to it."
         }
       }
     },
@@ -208,11 +236,8 @@
       }
     },
     "demo": {
-      "title": "Bring a real question. Thirty minutes, no strings attached.",
-      "lead": "We show NormaAI on your own case. If the answer is no better than the research you do today, it ends there. If it is, we talk about a pilot.",
-      "mail": "Write to info@normaai.org",
-      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Hello%2C%0A%0AI%20would%20like%20to%20see%20NormaAI%20on%20a%20real%20case.%0A%0AOrganisation%3A%0ARole%3A%0AAvailability%3A%0A%0AThank%20you.",
-      "login": "Already have an account? Sign in"
+      "title": "Try the demo, or bring a real document.",
+      "lead": "The demo opens straight away, with sample data. For a pilot, write to us: in 30 minutes we look at NormaAI on one of your documents, with the names removed if you prefer. If it is no more useful than the way you work today, it ends there."
     },
     "demoEntry": {
       "metaTitle": "Demo with sample data",

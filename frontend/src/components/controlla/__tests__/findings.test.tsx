@@ -227,6 +227,55 @@ describe('the other outcomes', () => {
     )
   })
 
+  it('quote not found (non_trovata): the words of the document, never under the highlighter', () => {
+    const notFound: Finding = {
+      ...finding(gdpr, 'alterata'),
+      status: { code: 'non_trovata', label: 'Citazione non trovata' },
+      messages: ['La citazione non è nel testo vigente.'],
+      official_quote: null,
+      altered_quote: null,
+      differences: [],
+    }
+    const { container } = renderWithIntl(<FindingCard finding={notFound} {...setting(gdpr)} />)
+    expect(screen.getByText('Citazione non trovata')).toBeInTheDocument()
+    expect(screen.getByText('La citazione non è nel testo vigente.')).toBeInTheDocument()
+    expect(screen.getByText(/entro 48 ore dal momento/)).toBeInTheDocument()
+    expect(container.querySelector('mark')).toBeNull()
+    expect(screen.queryByText('Verificata')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Testo vigente su EUR-Lex/ })).toBeInTheDocument()
+  })
+
+  it('provision changed after the date of the document (cambiato): the article then and now', () => {
+    const changed: Finding = { ...finding(ai, 'superata'), status: { code: 'cambiato', label: 'Cambiato dopo la data del documento' }, quotes: [] }
+    const { container } = renderWithIntl(<FindingCard finding={changed} {...setting(ai)} />)
+    expect(screen.getByText('Cambiato dopo la data del documento')).toBeInTheDocument()
+    expect(screen.getByText('Dal testo originale al testo consolidato al 27 luglio 2026.')).toBeInTheDocument()
+    expect(container.querySelectorAll('p[lang="it"] del').length).toBeGreaterThan(0)
+    expect(container.querySelectorAll('p[lang="it"] ins').length).toBeGreaterThan(0)
+    // The outcome speaks of the document's date, not of a re-check.
+    expect(screen.queryByText('Norma cambiata dopo il controllo')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['non_disponibile', 'Testo ufficiale non raggiungibile', 'Official text not reachable'],
+    ['versione_non_letta', 'Versione più recente non leggibile', 'Latest version not readable'],
+  ])('a text that could not be read (%s) says so, in both languages, and leads to the official text', (code, it_label, en_label) => {
+    const unread: Finding = {
+      ...finding(gdpr, 'valido'),
+      group: 'controllare',
+      status: { code, label: it_label },
+      messages: ['Il testo ufficiale non è stato letto: riprova più tardi.'],
+    }
+    const { container, unmount } = renderWithIntl(<FindingCard finding={unread} {...setting(gdpr)} />)
+    expect(screen.getByText(it_label)).toBeInTheDocument()
+    expect(screen.getByText('Il testo ufficiale non è stato letto: riprova più tardi.')).toBeInTheDocument()
+    expect(container.querySelector('mark')).toBeNull()
+    expect(screen.getByRole('link', { name: /EUR-Lex/ })).toBeInTheDocument()
+    unmount()
+    renderWithIntl(<FindingCard finding={unread} {...setting(gdpr)} />, { language: 'en' })
+    expect(screen.getByText(en_label)).toBeInTheDocument()
+  })
+
   it('an outcome the interface does not know keeps the words of the server', () => {
     const unknown: Finding = { ...finding(gdpr, 'valido'), status: { code: 'rinumerato', label: 'Articolo rinumerato' } }
     renderWithIntl(<FindingCard finding={unknown} {...setting(gdpr)} />)

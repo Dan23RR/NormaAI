@@ -29,7 +29,9 @@ request does (``src/db/engine.py``).
 
 The two ``alerts`` policies of migration 007 let an alert through only by way
 of its client. They are replaced by the same policies with one more way in:
-the alert's document check, when it belongs to the organisation. The
+the alert's document check, when it belongs to the organisation. An alert
+must point at one of the two, and each one it points at must belong to the
+organisation. The
 downgrade puts the 007 definitions back and deletes the alerts without a
 client, which no policy would show any more.
 
@@ -158,7 +160,15 @@ _CLIENT_IN_ORG = f"client_id IN (SELECT id FROM clients WHERE org_id::text = {_O
 _CHECK_IN_ORG = (
     f"document_check_id IN (SELECT id FROM document_checks WHERE org_id::text = {_ORG_GUC})"
 )
-_ALERT_IN_ORG = f"{_CLIENT_IN_ORG} OR {_CHECK_IN_ORG}"
+# An alert is the organisation's through its client or its document check, and
+# whatever it points at must be the organisation's: a client of the
+# organisation with a check of another one is refused, like a check of another
+# organisation without a client.
+_ALERT_IN_ORG = (
+    "(client_id IS NOT NULL OR document_check_id IS NOT NULL)"
+    f" AND (client_id IS NULL OR {_CLIENT_IN_ORG})"
+    f" AND (document_check_id IS NULL OR {_CHECK_IN_ORG})"
+)
 
 # Tenant tables of this revision: the policies of ``clients``.
 RLS_TABLES: tuple[str, ...] = ("document_checks", "document_dependencies")

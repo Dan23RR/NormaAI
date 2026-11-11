@@ -217,12 +217,20 @@ describe('landing page', () => {
     }
   })
 
-  it('keeps the Codex form in place', () => {
+  it('keeps the Codex block and its form in place', () => {
     renderLanding()
+    // The words of this block belong to another stream: read them from the messages.
+    const messages = MESSAGES.it as unknown as {
+      landing: { codex: { title: string } }
+      site: { codexForm: { email: string; org: string; role: string; submit: string } }
+    }
+    const form = messages.site.codexForm
     const codex = within(document.getElementById('codex') as HTMLElement)
-    expect(codex.getByRole('heading', { name: 'Codex Post-Omnibus 2025-2029' })).toBeInTheDocument()
-    expect(codex.getByLabelText(/Email di lavoro/)).toBeInTheDocument()
-    expect(codex.getByRole('button', { name: 'Scarica il Codex' })).toBeInTheDocument()
+    expect(codex.getByRole('heading', { level: 2, name: messages.landing.codex.title })).toBeInTheDocument()
+    expect(codex.getByRole('textbox', { name: new RegExp(form.email) })).toHaveAttribute('type', 'email')
+    expect(codex.getByRole('textbox', { name: form.org })).toBeInTheDocument()
+    expect(codex.getByRole('combobox', { name: form.role })).toBeInTheDocument()
+    expect(codex.getByRole('button', { name: form.submit })).toHaveAttribute('type', 'submit')
   })
 
   it.each(LANGUAGES)('finds every message it asks for (%s)', (language) => {

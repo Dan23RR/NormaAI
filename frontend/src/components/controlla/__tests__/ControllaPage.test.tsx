@@ -106,9 +106,9 @@ describe('ControllaPage', () => {
       '/app/controlla/demo-doc-gdpr',
     )
     expect(within(gdpr).getByText('Da correggere')).toBeInTheDocument()
-    expect(within(gdpr).getByText('2 da correggere, 1 da controllare, 4 a posto, 1 non coperto')).toBeInTheDocument()
+    expect(within(gdpr).getByText('2 da correggere, 1 da controllare, 5 a posto')).toBeInTheDocument()
     expect(within(gdpr).getByRole('link', { name: 'Beta Software S.r.l.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
-    expect(within(gdpr).getAllByText('2026-11-10').length).toBeGreaterThan(0)
+    expect(within(gdpr).getAllByText('2026-11-11').length).toBeGreaterThan(0)
     expect(within(gdpr).getByText('Attiva')).toBeInTheDocument()
 
     // A check to review says so before anything else.
@@ -432,7 +432,7 @@ describe('ControllaPage', () => {
     const table = await screen.findByRole('table')
     const gdpr = within(table).getByRole('link', { name: 'Procedura violazioni dati personali.docx' }).closest('tr') as HTMLElement
     expect(within(gdpr).getByText('To correct')).toBeInTheDocument()
-    expect(within(gdpr).getByText('2 to correct, 1 to check, 4 fine, 1 not covered')).toBeInTheDocument()
+    expect(within(gdpr).getByText('2 to correct, 1 to check, 5 fine')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /To review/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Check the document' })).toBeInTheDocument()
   })

@@ -62,7 +62,7 @@ describe('an altered quote (alterata)', () => {
     expect(within(figure).getByText('CELEX 32016R0679')).toBeInTheDocument()
     expect(within(figure).getByText('Verificata').parentElement).toHaveAttribute(
       'title',
-      'Verificata nel testo ufficiale il 10 novembre 2026',
+      'Verificata nel testo ufficiale il 11 novembre 2026',
     )
     expect(within(figure).getByRole('link', { name: /EUR-Lex/ })).toHaveAttribute(
       'href',
@@ -207,10 +207,26 @@ describe('the other outcomes', () => {
 
   it('valid reference and uncovered law (valido, non_coperto) are one line that opens', async () => {
     const user = userEvent.setup()
-    const uncovered = finding(gdpr, 'non_coperto')
+    // What the check gives today for a regional law, which it does not read.
+    const uncovered: Finding = {
+      ...finding(gdpr, 'valido'),
+      id: 'f9',
+      group: 'non_coperto',
+      status: { code: 'non_coperto', label: 'Atto che il controllo non legge' },
+      line: 32,
+      raw: 'art. 5 della legge regionale 12/2005',
+      context: "Per gli archivi vale anche l'art. 5 della legge regionale 12/2005.",
+      act: { source: 'normattiva', id: 'IT:lr:2005:12', name: 'Legge regionale 12/2005', label: 'Legge regionale 12/2005' },
+      provision: { key: 'art:5', label: 'art. 5', paragraphs: [] },
+      version: null,
+      url: null,
+      messages: ['Le leggi regionali non sono tra gli atti che il controllo legge su Normattiva: da controllare a mano.'],
+      dependency: null,
+    }
+    const italian = gdpr.findings.find((f) => f.act?.source === 'normattiva') as Finding
     renderWithIntl(
       <>
-        <FindingRow finding={finding(gdpr, 'valido')} {...setting(gdpr)} />
+        <FindingRow finding={italian} {...setting(gdpr)} />
         <FindingRow finding={uncovered} {...setting(gdpr)} />
       </>,
     )
@@ -221,10 +237,13 @@ describe('the other outcomes', () => {
     await user.click(screen.getByText('D.Lgs. 196/2003 (Codice privacy), art. 154'))
     expect(row.open).toBe(true)
     expect(within(row).getByText('riga 29')).toBeInTheDocument()
-    expect(within(row).getByRole('link', { name: /Apri su Normattiva/ })).toHaveAttribute(
+    expect(within(row).getByRole('link', { name: /Normattiva/ })).toHaveAttribute(
       'href',
-      'https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2003;196',
+      'https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2003;196~art154!vig=2026-11-11',
     )
+    const other = screen.getByText('Legge regionale 12/2005, art. 5').closest('details') as HTMLDetailsElement
+    await user.click(screen.getByText('Legge regionale 12/2005, art. 5'))
+    expect(within(other).getByText(/Le leggi regionali non sono tra gli atti/)).toBeInTheDocument()
   })
 
   it('quote not found (non_trovata): the words of the document, never under the highlighter', () => {

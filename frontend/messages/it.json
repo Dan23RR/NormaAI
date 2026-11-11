@@ -82,7 +82,7 @@
       "title": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.",
       "support": "Norme UE e italiane, parola per parola. Con l'avviso quando una norma citata cambia.",
       "lead": "NormaAI legge un parere, un'informativa o una policy, trova gli articoli citati, li confronta con il testo ufficiale e ti dice quali riferimenti correggere, quali controllare e quali sono a posto.",
-      "status": "<b>Stato all'11 novembre 2026.</b> Aperti a tutti: la demo con dati di esempio, le due verifiche gratuite di ambito (CSRD e articolo 50 dell'AI Act) e la guida Codex. Non ancora aperti: il controllo dei tuoi documenti, i testi italiani di Normattiva e gli avvisi sulle modifiche, che sono in costruzione; gli account, e con loro le risposte sul corpus reale, sospesi finché il nuovo server non è attivo."
+      "status": "<b>Stato all'11 novembre 2026.</b> Aperti a tutti: la demo con dati di esempio, le due verifiche gratuite di ambito (CSRD e articolo 50 dell'AI Act) e la guida Codex. Il controllo dei riferimenti di legge UE e italiani (su EUR-Lex e Normattiva) e gli avvisi quando una norma citata cambia sono scritti e si vedono nella demo; sui tuoi documenti si potranno usare quando il nuovo server sarà attivo. Fino ad allora gli account, e con loro le risposte sul corpus reale, sono sospesi."
     },
     "cta": {
       "tryDemo": "Prova la demo",
@@ -214,7 +214,7 @@
         },
         "it": {
           "title": "Diritto italiano",
-          "body": "Decreti legislativi e leggi, letti da Normattiva. È la parte in costruzione: finché non è pronta, il report trova i riferimenti italiani e li segna come da controllare su Normattiva."
+          "body": "Decreti legislativi e leggi, letti articolo per articolo da Normattiva nel testo vigente. Le leggi regionali non sono lette: il report le segna come da controllare a mano."
         }
       },
       "authentic": "I testi consolidati di EUR-Lex sono uno strumento di documentazione: fanno fede le versioni pubblicate nella Gazzetta ufficiale dell'Unione europea. Ogni esito porta al testo, così puoi controllarlo tu."

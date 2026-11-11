@@ -12,8 +12,9 @@
  * really gives:
  *
  * - a procedure that quotes article 33(1) GDPR with "48 ore" where the
- *   regulation says "72 ore", cites a paragraph that does not exist and puts
- *   a quote under the wrong article;
+ *   regulation says "72 ore", cites a paragraph that does not exist, puts
+ *   a quote under the wrong article and cites an article of the Italian
+ *   privacy code, found in the text in force on Normattiva;
  * - an AI policy of 15 March 2026 that quotes article 4 of the AI Act as it
  *   was before Regulation (EU) 2026/1744 replaced it (consolidated text of
  *   27 July 2026), with the article then and now;
@@ -43,12 +44,12 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
     filename: 'Procedura violazioni dati personali.docx',
     document_sha256: 'e32da5ea5e4f56907b36a32aed8eff3c87c56171cd2d55dc148d2063a9e6521a',
     document_date: '2026-01-12',
-    checked_at: '2026-11-10T09:42:00Z',
+    checked_at: '2026-11-11T09:42:00Z',
     lang: 'IT',
     watch: true,
     status: 'correggere',
     needs_review: false,
-    counts: { correggere: 2, controllare: 1, a_posto: 4, non_coperto: 1 },
+    counts: { correggere: 2, controllare: 1, a_posto: 5, non_coperto: 0 },
     findings: [
       {
         id: 'f1',
@@ -242,8 +243,8 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
       },
       {
         id: 'f8',
-        group: 'non_coperto',
-        status: { code: 'non_coperto', label: 'Diritto italiano, non ancora coperto' },
+        group: 'a_posto',
+        status: { code: 'valido', label: 'Riferimento valido' },
         line: 29,
         raw: 'art. 154 del d.lgs. 196/2003',
         context: "Restano fermi i compiti del Garante previsti dall'art. 154 del d.lgs. 196/2003.",
@@ -254,10 +255,11 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
           label: 'D.Lgs. 196/2003 (Codice privacy)',
         },
         provision: { key: 'art:154', label: 'art. 154', paragraphs: [] },
-        version: null,
-        url: 'https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2003;196',
+        version: { id: '2026-11-11', as_of: '2026-11-11', label: 'testo vigente al 11/11/2026' },
+        url: 'https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2003;196~art154!vig=2026-11-11',
         messages: [
-          'NormaAI non ha ancora i testi italiani: da controllare su Normattiva.',
+          'Art. 154 esiste nel testo vigente al 11/11/2026 su Normattiva.',
+          'Atto letto su Normattiva: DECRETO LEGISLATIVO 30 giugno 2003, n. 196.',
         ],
         quotes: [],
         official_quote: null,
@@ -265,7 +267,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         differences: [],
         before: null,
         after_text: null,
-        dependency: null,
+        dependency: { source: 'normattiva', act: 'urn:nir:stato:decreto.legislativo:2003;196', key: 'art:154' },
       },
     ],
     dependencies: [
@@ -287,7 +289,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
           'art. 33, par. 5, del GDPR',
           'art. 33, par. 6, del GDPR',
         ],
-        checked_at: '2026-11-10T09:42:00Z',
+        checked_at: '2026-11-11T09:42:00Z',
         message: null,
         current_version: null,
         current_as_of: null,
@@ -305,7 +307,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         changed_at: null,
         lang: 'IT',
         cited_as: ['art. 34, par. 1, del GDPR'],
-        checked_at: '2026-11-10T09:42:00Z',
+        checked_at: '2026-11-11T09:42:00Z',
         message: null,
         current_version: null,
         current_as_of: null,
@@ -323,7 +325,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         changed_at: null,
         lang: 'IT',
         cited_as: ['art. 28, par. 3, del GDPR'],
-        checked_at: '2026-11-10T09:42:00Z',
+        checked_at: '2026-11-11T09:42:00Z',
         message: null,
         current_version: null,
         current_as_of: null,
@@ -341,7 +343,25 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         changed_at: null,
         lang: 'IT',
         cited_as: ['art. 83, par. 4, del GDPR'],
-        checked_at: '2026-11-10T09:42:00Z',
+        checked_at: '2026-11-11T09:42:00Z',
+        message: null,
+        current_version: null,
+        current_as_of: null,
+      },
+      {
+        source: 'normattiva',
+        act: 'urn:nir:stato:decreto.legislativo:2003;196',
+        name: 'D.Lgs. 196/2003 (Codice privacy)',
+        article: 'Art. 154',
+        key: 'art:154',
+        version: '2026-11-11',
+        as_of: '2026-11-11',
+        fingerprint: 'sha256:a6f75f89445d26dd37f322efe5a5c4c993ef6314f425b87f03b52ecf97cdd76e',
+        state: 'current',
+        changed_at: null,
+        lang: 'IT',
+        cited_as: ['art. 154 del d.lgs. 196/2003'],
+        checked_at: '2026-11-11T09:42:00Z',
         message: null,
         current_version: null,
         current_as_of: null,

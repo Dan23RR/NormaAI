@@ -81,17 +81,18 @@ describe('CheckDetailPage', () => {
   it('shows the four groups with their counts and the findings of each, worst first', async () => {
     renderPage()
     expect(await screen.findByRole('heading', { level: 1, name: 'Procedura violazioni dati personali.docx' })).toBeInTheDocument()
-    expect(screen.getByText('Controllato il 10 novembre 2026. Data del documento: 12 gennaio 2026.')).toBeInTheDocument()
+    expect(screen.getByText('Controllato il 11 novembre 2026. Data del documento: 12 gennaio 2026.')).toBeInTheDocument()
     expect(mocks.get).toHaveBeenCalledWith('/api/v1/documents/checks/demo-doc-gdpr')
 
     // The summary: four groups, each with its count; a group with findings leads to its section.
     const summary = screen.getByRole('navigation', { name: 'Esito per gruppo' })
     const tiles = within(summary).getAllByRole('listitem')
-    expect(tiles.map((tile) => tile.textContent)).toEqual(['2Da correggere', '1Da controllare', '4A posto', '1Non coperto'])
+    expect(tiles.map((tile) => tile.textContent)).toEqual(['2Da correggere', '1Da controllare', '5A posto', '0Non coperto'])
     expect(within(summary).getByRole('link', { name: /Da correggere/ })).toHaveAttribute('href', '#gruppo-correggere')
 
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    expect(headings.slice(0, 4)).toEqual(['Da correggere (2)', 'Da controllare (1)', 'A posto (4)', 'Non coperto (1)'])
+    expect(headings.slice(0, 3)).toEqual(['Da correggere (2)', 'Da controllare (1)', 'A posto (5)'])
+    expect(headings).not.toContain('Non coperto (0)')
 
     // What asks for attention is shown in full.
     const toCorrect = screen.getByRole('region', { name: 'Da correggere (2)' })
@@ -102,12 +103,12 @@ describe('CheckDetailPage', () => {
     expect(within(toCheck).getByRole('article', { name: 'GDPR, art. 28, par. 3' })).toBeInTheDocument()
 
     // What is fine is one line per reference, open on request.
-    const fine = screen.getByRole('region', { name: 'A posto (4)' })
+    const fine = screen.getByRole('region', { name: 'A posto (5)' })
     expect(within(fine).queryByRole('article')).not.toBeInTheDocument()
-    expect(fine.querySelectorAll('details')).toHaveLength(4)
+    expect(fine.querySelectorAll('details')).toHaveLength(5)
     expect(within(fine).getAllByText('Citazione verificata')).toHaveLength(2)
-    const uncovered = screen.getByRole('region', { name: 'Non coperto (1)' })
-    expect(within(uncovered).getByText('D.Lgs. 196/2003 (Codice privacy), art. 154')).toBeInTheDocument()
+    // Italian law is read on Normattiva: the article of the privacy code is found in the text in force.
+    expect(within(fine).getByText('D.Lgs. 196/2003 (Codice privacy), art. 154')).toBeInTheDocument()
 
     expect(screen.getByText(/I testi consolidati di EUR-Lex sono documentazione: fa fede solo la Gazzetta ufficiale/)).toBeInTheDocument()
   })
@@ -115,7 +116,7 @@ describe('CheckDetailPage', () => {
   it('keeps the facts of the document and the provisions it depends on in the margin', async () => {
     renderPage()
     const margin = await screen.findByRole('complementary', { name: 'Documento' })
-    expect(within(margin).getByText('10 novembre 2026')).toBeInTheDocument()
+    expect(within(margin).getByText('11 novembre 2026')).toBeInTheDocument()
     expect(within(margin).getByText('12 gennaio 2026')).toBeInTheDocument()
     expect(await within(margin).findByRole('link', { name: 'Beta Software S.r.l.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
     expect(within(margin).getByText('Italiano')).toBeInTheDocument()
@@ -123,11 +124,12 @@ describe('CheckDetailPage', () => {
     expect(within(margin).getByText(doc('demo-doc-gdpr').document_sha256)).toBeInTheDocument()
     expect(within(margin).getByText(/Il documento non è conservato/)).toBeInTheDocument()
 
-    expect(within(margin).getByRole('heading', { name: 'Norme da cui dipende (4)' })).toBeInTheDocument()
+    expect(within(margin).getByRole('heading', { name: 'Norme da cui dipende (5)' })).toBeInTheDocument()
     expect(within(margin).getByText('Vengono ricontrollate ogni settimana sul testo vigente.')).toBeInTheDocument()
     expect(within(margin).getByText('GDPR, Art. 33')).toBeInTheDocument()
     expect(within(margin).getAllByText('Controllata sul testo consolidato al 4 maggio 2016')).toHaveLength(4)
-    expect(within(margin).getAllByText('Invariata')).toHaveLength(4)
+    expect(within(margin).getAllByText('Invariata')).toHaveLength(5)
+    expect(within(margin).getByText('D.Lgs. 196/2003 (Codice privacy), Art. 154')).toBeInTheDocument()
     expect(within(margin).getAllByRole('link', { name: /EUR-Lex/ })[0]).toHaveAttribute(
       'href',
       'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32016R0679',
@@ -224,7 +226,7 @@ describe('CheckDetailPage', () => {
     mocks.post.mockResolvedValueOnce(doc('demo-doc-gdpr')).mockRejectedValueOnce(failed(504))
     renderPage()
     await user.click(await screen.findByRole('button', { name: 'Ricontrolla le norme citate' }))
-    expect(await screen.findByText('Nessuna delle 4 norme citate è cambiata.')).toBeInTheDocument()
+    expect(await screen.findByText('Nessuna delle 5 norme citate è cambiata.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Ricontrolla le norme citate' }))
     const alert = await screen.findByRole('alert')
@@ -359,7 +361,7 @@ describe('CheckDetailPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Ricontrolla le norme citate' }))
     expect(
       await screen.findByText(
-        'Nessuna delle 4 norme citate è cambiata. Demo con dati di esempio: nessun testo ufficiale è stato riletto.',
+        'Nessuna delle 5 norme citate è cambiata. Demo con dati di esempio: nessun testo ufficiale è stato riletto.',
       ),
     ).toBeInTheDocument()
   })

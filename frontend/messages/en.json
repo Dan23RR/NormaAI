@@ -82,7 +82,7 @@
       "title": "Check the legal references in your documents against the text in force.",
       "support": "EU and Italian law, word for word. With a warning when a provision you cite changes.",
       "lead": "NormaAI reads an opinion, a privacy notice or a policy, finds the articles it cites, compares them with the official text and tells you which references to correct, which to check and which are fine.",
-      "status": "<b>Status on 11 November 2026.</b> Open to everyone: the demo with sample data, the two free scope checks (CSRD and Article 50 of the AI Act) and the Codex guide. Not open yet: the check of your own documents, the Italian texts from Normattiva and the change alerts, which are being built; accounts, and with them answers on the real corpus, suspended until the new server is up."
+      "status": "<b>Status on 11 November 2026.</b> Open to everyone: the demo with sample data, the two free scope checks (CSRD and Article 50 of the AI Act) and the Codex guide. The check of EU and Italian legal references (on EUR-Lex and Normattiva) and the alerts when a cited provision changes are written and can be seen in the demo; you will be able to use them on your own documents once the new server is up. Until then accounts, and with them answers on the real corpus, are suspended."
     },
     "cta": {
       "tryDemo": "Try the demo",
@@ -214,7 +214,7 @@
         },
         "it": {
           "title": "Italian law",
-          "body": "Legislative decrees and laws, read from Normattiva. This is the part being built: until it is ready, the report finds the Italian references and marks them as to check on Normattiva."
+          "body": "Legislative decrees and laws, read article by article from Normattiva in the text in force. Regional laws are not read: the report marks them to be checked by hand."
         }
       },
       "authentic": "The consolidated texts on EUR-Lex are a documentation tool: the authentic versions are those published in the Official Journal of the European Union. Every outcome links to the text, so you can check it yourself."

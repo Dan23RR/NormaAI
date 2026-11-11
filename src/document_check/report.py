@@ -1,9 +1,11 @@
 """The report a consultant reads: one HTML page in Italian, and a plain-text summary.
 
-Findings are grouped by what to do (correct, check, fine, Italian law to check
-on Normattiva) and keep the document's order inside each group. An outdated
-quote or a provision changed after the document's date shows the provision then
-and now, word by word.
+Findings are grouped by what to do (correct, check, fine, acts the check does
+not read) and keep the document's order inside each group, EU and Italian law
+together. An outdated quote or a provision changed after the document's date
+shows the provision then and now, word by word; every card links to the text in
+force on EUR-Lex or on Normattiva. The footer says that neither source is the
+official text and credits Normattiva (CC BY 4.0).
 """
 
 from __future__ import annotations
@@ -22,13 +24,13 @@ GROUP_TITLES = {
     "correggere": "Da correggere",
     "controllare": "Da controllare",
     "a_posto": "A posto",
-    "non_coperto": "Diritto italiano da controllare su Normattiva",
+    "non_coperto": "Atti che il controllo non legge",
 }
 _SUMMARY_LABELS = {
     "correggere": "da correggere",
     "controllare": "da controllare",
     "a_posto": "a posto",
-    "non_coperto": "di diritto italiano",
+    "non_coperto": "non letti",
 }
 
 _CSS = """
@@ -82,6 +84,21 @@ _FOOTER = (
     "documentazione: fanno fede solo i testi pubblicati nella Gazzetta ufficiale dell'Unione "
     "europea. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. "
     "Non è un parere legale."
+)
+# What Normattiva says of its own texts (dati.normattiva.it, "Avviso legale") and
+# the licence of its open data since 1 January 2026 ("Dati disponibili").
+_FOOTER_ITALIAN = (
+    "Le norme italiane sono lette su Normattiva, articolo per articolo. I testi di Normattiva non "
+    "hanno carattere di ufficialità: l'unico testo ufficiale è quello pubblicato nella Gazzetta "
+    "Ufficiale, che prevale in caso di discordanza. Una sentenza della Corte costituzionale può "
+    "non cambiare il testo su Normattiva ed essere riportata solo nelle note sotto l'articolo: il "
+    "controllo segnala gli articoli che ne hanno una, non la applica al testo."
+)
+_NORMATTIVA_CREDIT = (
+    '<p>Testi italiani: <a href="https://www.normattiva.it/">Normattiva</a>, dati aperti di '
+    '<a href="https://dati.normattiva.it/">dati.normattiva.it</a>, licenza '
+    '<a href="https://creativecommons.org/licenses/by/4.0/deed.it">Creative Commons CC BY 4.0</a>; '
+    "riportati senza le note e i segni redazionali.</p>"
 )
 
 
@@ -165,6 +182,13 @@ def _card(finding: Finding) -> str:
                 finding.before, finding.article.text, finding.before_version, finding.version
             )
         )
+    elif finding.before:
+        # A repealed article: there is no text in force to compare with, only the last one.
+        label = finding.before_version.label if finding.before_version else "testo precedente"
+        parts.append(
+            f'<div class="diff"><p><strong>Ultimo testo: {escape(label)}</strong></p>'
+            f"<p>{escape(finding.before)}</p></div>"
+        )
     if finding.url:
         where = "su Normattiva" if finding.act and not finding.act.eu else "su EUR-Lex"
         parts.append(f'<p><a href="{escape(finding.url)}">Testo vigente {where}</a></p>')
@@ -172,12 +196,18 @@ def _card(finding: Finding) -> str:
     return "".join(parts)
 
 
+def _linked_title(finding: Finding) -> str:
+    """The provision, linked to the text that was read when there is one."""
+    title = escape(_title(finding))
+    return f'<a href="{escape(finding.url)}">{title}</a>' if finding.url else title
+
+
 def _fine_table(findings: list[Finding]) -> str:
     rows = "".join(
         "<tr>"
         f"<td>{f.reference.line}</td>"
         f"<td>{escape(f.reference.raw)}</td>"
-        f"<td>{escape(_title(f))}</td>"
+        f"<td>{_linked_title(f)}</td>"
         f"<td>{escape(f.status.label)}</td>"
         "</tr>"
         for f in findings
@@ -188,29 +218,41 @@ def _fine_table(findings: list[Finding]) -> str:
     )
 
 
-def _italian_table(findings: list[Finding]) -> str:
+def _not_read_table(findings: list[Finding]) -> str:
     rows = "".join(
         "<tr>"
         f"<td>{f.reference.line}</td>"
         f"<td>{escape(f.reference.raw)}</td>"
-        f"<td>{escape(_title(f))}</td>"
-        + (f'<td><a href="{escape(f.url)}">Normattiva</a></td>' if f.url else "<td></td>")
-        + "</tr>"
+        f"<td>{_linked_title(f)}</td>"
+        f"<td>{escape(' '.join(f.messages))}</td>"
+        "</tr>"
         for f in findings
     )
     return (
-        "<table><thead><tr><th>Riga</th><th>Nel documento</th><th>Norma</th><th>Testo</th>"
+        "<table><thead><tr><th>Riga</th><th>Nel documento</th><th>Norma</th><th>Perché</th>"
         f"</tr></thead><tbody>{rows}</tbody></table>"
     )
 
 
 def _page(title: str, body: str) -> str:
+    footer = f"<p>{escape(_FOOTER)}</p><p>{escape(_FOOTER_ITALIAN)}</p>{_NORMATTIVA_CREDIT}"
     return (
         '<!doctype html><html lang="it"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>{escape(title)}</title><style>{_CSS}</style></head>"
-        f"<body><main>{body}<footer><p>{escape(_FOOTER)}</p></footer></main></body></html>"
+        f"<body><main>{body}<footer>{footer}</footer></main></body></html>"
     )
+
+
+def _sources(check: DocumentCheck) -> str:
+    """The texts a check was made on: "sui testi consolidati di EUR-Lex e ..."."""
+    italian = any(f.act and not f.act.eu and f.version for f in check.findings)
+    eu = any(f.act and f.act.eu for f in check.findings) or not italian
+    names = [
+        *(["sui testi consolidati di EUR-Lex"] if eu else []),
+        *(["sui testi vigenti di Normattiva"] if italian else []),
+    ]
+    return " e ".join(names)
 
 
 def render_html(check: DocumentCheck, lock_name: str | None = None) -> str:
@@ -224,8 +266,8 @@ def render_html(check: DocumentCheck, lock_name: str | None = None) -> str:
     body = [
         '<header><p class="kicker">NormaAI, controllo del documento</p>',
         f"<h1>{escape(check.document or 'Documento')}</h1>",
-        f'<p class="meta">Controllato il {_italian_date(check.checked_on)} sui testi consolidati '
-        f"di EUR-Lex. Data del documento: {_italian_date(check.document_date)}.</p></header>",
+        f'<p class="meta">Controllato il {_italian_date(check.checked_on)} {_sources(check)}. '
+        f"Data del documento: {_italian_date(check.document_date)}.</p></header>",
         f'<section class="summary" aria-label="Riepilogo">{tiles}</section>',
     ]
     if not check.findings:
@@ -241,8 +283,9 @@ def render_html(check: DocumentCheck, lock_name: str | None = None) -> str:
     if groups["non_coperto"]:
         body.append(
             f"<section><h2>{GROUP_TITLES['non_coperto']}</h2>"
-            "<p>NormaAI non ha ancora i testi italiani: questi riferimenti vanno controllati a mano."
-            f"</p>{_italian_table(groups['non_coperto'])}</section>"
+            "<p>Il controllo legge le norme UE e, su Normattiva, leggi, decreti legislativi, "
+            "decreti-legge, d.P.R., codici e Costituzione: questi riferimenti vanno controllati a "
+            f"mano.</p>{_not_read_table(groups['non_coperto'])}</section>"
         )
     if lock_name:
         watched = len({(f.act.key, f.article.key) for f in check.findings if f.act and f.article})
@@ -307,9 +350,10 @@ def render_recheck_html(lock: dict[str, object], changes: list[Change], today: s
                 f"<p>{diff_html(change.before, change.after)}</p></div>"
             )
         if change.version:
+            where = "su Normattiva" if entry.get("fonte") == "normattiva" else "su EUR-Lex"
             parts.append(
                 f'<p><a href="{escape(change.version.url(str(entry.get("lingua") or "IT")))}">'
-                "Testo vigente su EUR-Lex</a></p>"
+                f"Testo vigente {where}</a></p>"
             )
         parts.append("</article>")
         body.append("".join(parts))

@@ -597,7 +597,7 @@ def test_command_line(tmp_path, capsys):
     spec.loader.exec_module(module)
     document = tmp_path / "informativa.txt"
     document.write_text(DOCUMENT, encoding="utf-8")
-    with patch.object(module, "CellarTextSource", return_value=FakeSource()):
+    with patch.object(module, "default_source", return_value=FakeSource()):
         assert module.main([str(document), "--cache", str(tmp_path / "cache")]) == 0
         report = tmp_path / "informativa.controllo.html"
         lock = tmp_path / "informativa.norma-lock.json"

@@ -153,6 +153,12 @@ def _card(finding: Finding) -> str:
     parts.append("<ul>" + "".join(f"<li>{escape(m)}</li>" for m in finding.messages) + "</ul>")
     if finding.official_quote:
         parts.append(f'<p class="official">Testo ufficiale: «{escape(finding.official_quote)}»</p>')
+    if finding.altered_quote and finding.official_quote:
+        parts.append(
+            '<div class="diff">'
+            "<p><strong>Differenze tra la citazione nel documento e il testo ufficiale</strong></p>"
+            f"<p>{diff_html(finding.altered_quote, finding.official_quote)}</p></div>"
+        )
     if finding.before and finding.article:
         parts.append(
             _diff_block(

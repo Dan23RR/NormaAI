@@ -11,6 +11,7 @@ import importlib.util
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -18,6 +19,7 @@ import pytest
 from src.agents.citation_verifier import parse_article
 from src.crawler.eurlex.client import EurLexClient
 from src.document_check.check import (
+    ALTERED,
     CHANGED,
     ELSEWHERE,
     MISSING,
@@ -26,6 +28,7 @@ from src.document_check.check import (
     NOT_FOUND,
     OUTDATED,
     UNAVAILABLE,
+    UNREAD,
     VALID,
     VERIFIED,
     build_lock,
@@ -334,6 +337,67 @@ class TestCheck:
         assert any("testo originale, in vigore fino al 26/07/2026" in m for m in f.messages)
         assert any("cambiato dopo la data del documento" in m for m in f.messages)
 
+    def test_altered_quote_reports_the_words_that_differ(self):
+        text = (
+            "L'art. 13 del GDPR dispone: «il responsabile del trattamento fornisce "
+            "all'interessato, nel momento in cui i dati personali sono ottenuti, le seguenti "
+            "informazioni»."
+        )
+        check = check_text(text, FakeSource(), document="d.txt")
+        f = check.findings[0]
+        assert f.status is ALTERED and f.status.group == "correggere"
+        assert f.differences == [{"quoted": "responsabile", "official": "titolare"}]
+        assert (
+            f.official_quote is not None
+            and "il titolare del trattamento fornisce" in f.official_quote
+        )
+        assert any(
+            "nel documento «responsabile», nel testo ufficiale «titolare»" in m for m in f.messages
+        )
+        html = render_html(check)
+        assert "Differenze tra la citazione nel documento e il testo ufficiale" in html
+        assert "<del>responsabile</del>" in html and "<ins>titolare</ins>" in html
+
+    def test_a_quote_word_for_word_in_an_earlier_version_is_outdated_not_altered(self):
+        text = (
+            "L'art. 4 dell'AI Act chiede che i deployer «adottano misure per garantire nella "
+            "misura del possibile un livello sufficiente di alfabetizzazione»."
+        )
+        assert check_text(text, FakeSource()).findings[0].status is OUTDATED
+
+    def test_unreadable_snapshot_of_the_act_is_read_as_the_original(self):
+        source = FakeSource()
+        source._versions["32024R1689"] = [
+            Version("32024R1689", None),
+            Version("02024R1689-20240712", "2024-07-12", initial=True),
+        ]
+        source.unreadable = {"02024R1689-20240712"}
+        f = check_text("Vedi l'art. 50 dell'AI Act.", source).findings[0]
+        assert f.status is VALID
+        assert f.version is not None and f.version.celex == "32024R1689"
+        assert any("è l'atto come pubblicato" in m for m in f.messages)
+
+    def test_unreadable_later_version_must_be_checked_by_hand(self):
+        source = FakeSource()
+        source.unreadable = {"02024R1689-20260727"}
+        f = check_text("Vedi l'art. 50 dell'AI Act.", source).findings[0]
+        assert f.status is UNREAD and f.status.group == "controllare"
+        assert f.version is not None and f.version.celex == "02024R1689-20240712"
+        assert any("va ripetuto su EUR-Lex" in m for m in f.messages)
+
+    def test_no_readable_version_at_all(self):
+        source = FakeSource()
+        source.unreadable = {"32024R1689", "02024R1689-20240712", "02024R1689-20260727"}
+        f = check_text("Vedi l'art. 50 dell'AI Act.", source).findings[0]
+        assert f.status is UNAVAILABLE
+
+    def test_a_stale_list_of_versions_is_declared(self):
+        source = FakeSource()
+        source.stale = {"32024R1689": "2026-11-01"}
+        f = check_text("Vedi l'art. 50 dell'AI Act.", source).findings[0]
+        assert f.status is VALID
+        assert any("usato quello del 01/11/2026" in m for m in f.messages)
+
     def test_change_outside_the_cited_paragraph_is_only_noted(self):
         source = FakeSource()
         changed_art50 = ART50.replace("7. Testo del paragrafo sette.", "7. Testo nuovo.")
@@ -388,6 +452,25 @@ class TestLockAndRecheck:
         fresh = FakeSource()
         assert [c.code for c in recheck(lock, fresh)] == ["invariato"]
         assert fresh.asked == []
+
+    def test_recheck_cannot_vouch_for_a_new_version_it_cannot_read(self):
+        lock = build_lock(check_text("Vedi l'art. 50 dell'AI Act.", FakeSource(ai_versions=2)))
+        later = FakeSource()
+        later.unreadable = {"02024R1689-20260727"}
+        [change] = recheck(lock, later)
+        assert change.code == "non_disponibile"
+        assert "EUR-Lex" in change.message
+
+    def test_recheck_ignores_an_unreadable_snapshot_of_the_act(self):
+        source = FakeSource()
+        source._versions["32024R1689"] = [
+            Version("32024R1689", None),
+            Version("02024R1689-20240712", "2024-07-12", initial=True),
+        ]
+        source.unreadable = {"02024R1689-20240712"}
+        lock = build_lock(check_text("Vedi l'art. 50 dell'AI Act.", source))
+        assert lock["dipendenze"][0]["versione"] == "32024R1689"
+        assert [c.code for c in recheck(lock, source)] == ["invariato"]
 
 
 # ─── Report ──────────────────────────────────────────────────────────
@@ -452,7 +535,15 @@ class TestOfficialTexts:
                 "02024R1689-20240712",
                 "02024R1689-20260727",
             ]
-        assert '"02024R1689-"' in ex.call_args[0][0]
+        # One indexed lookup through the relation with the basic act, no scan.
+        assert ex.call_count == 1
+        assert "act_consolidated_based_on_resource_legal" in ex.call_args[0][0]
+        assert '"32024R1689"^^xsd:string' in ex.call_args[0][0]
+        # Nothing through the relation: the scan of the identifiers confirms it.
+        empty = {"results": {"bindings": []}}
+        with patch.object(client, "_execute_sparql", side_effect=[empty, rows]) as ex:
+            assert len(client.list_consolidated_celex("32024R1689")) == 2
+        assert ex.call_count == 2 and '"02024R1689-"' in ex.call_args[0][0]
         with (
             patch.object(client, "_execute_sparql", side_effect=RuntimeError("offline")),
             pytest.raises(RuntimeError),
@@ -568,6 +659,30 @@ class TestCellarTextSource:
             pytest.raises(TextUnavailableError),
         ):
             CellarTextSource(tmp_path, client).versions("32024R1689")
+
+    def test_yesterdays_list_is_used_when_cellar_cannot_be_asked(self, tmp_path):
+        client = FakeClient()
+        CellarTextSource(tmp_path, client).versions("32024R1689")
+        cache = tmp_path / "32024R1689.versions.json"
+        old = json.loads(cache.read_text(encoding="utf-8"))
+        old["asked_at"] = "2026-11-01T08:00:00+00:00"
+        cache.write_text(json.dumps(old), encoding="utf-8")
+        source = CellarTextSource(tmp_path, client)
+        with patch.object(client, "list_consolidated_celex", side_effect=RuntimeError("offline")):
+            versions = source.versions("32024R1689")
+        assert [v.celex for v in versions] == ["32024R1689", "02024R1689-20260727"]
+        assert source.stale == {"32024R1689": "2026-11-01"}
+        source.versions("32024R1689")  # CELLAR answers again
+        assert source.stale == {}
+
+    def test_a_consolidated_text_dated_like_the_act_is_its_snapshot(self, tmp_path):
+        client = FakeClient()
+        client.fetch_regulation_metadata = lambda celex: SimpleNamespace(date_document="2026-07-08")
+        snapshot = CellarTextSource(tmp_path / "a", client).versions("32024R1689")[-1]
+        assert snapshot.initial is True
+        client.fetch_regulation_metadata = lambda celex: SimpleNamespace(date_document="2024-06-13")
+        later = CellarTextSource(tmp_path / "b", client).versions("32024R1689")[-1]
+        assert later.initial is False
 
     def test_articles_are_parsed_and_cached_on_disk(self, tmp_path):
         client = FakeClient()

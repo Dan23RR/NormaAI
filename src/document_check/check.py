@@ -11,9 +11,16 @@ For every reference ``extract`` finds:
    (src/agents/citation_verifier.py: same normalisation, same thresholds): in
    the cited provision, then elsewhere in the act, then in the earlier
    versions, newest first. A quote found only in an earlier version is
-   outdated, and the report shows the provision then and now.
+   outdated, and the report shows the provision then and now. A quote that is
+   in no version but differs from the text in force only by a few words (a
+   number, a "non") is altered: the report shows the words that differ.
 4. When the document's date is known, the provision in force on that date is
    compared with today's: a change means the document rests on the old text.
+5. CELLAR does not give every consolidated version as text. The check reads
+   the newest version it can. When the unread versions are only the snapshot
+   of the act as published, that is the same wording and a note says so; when
+   a later consolidated text could not be read, the provision is to be checked
+   by hand.
 
 The worst outcome gives a provision its status. Every provision found in force
 becomes a dependency in the lock file (version, text, SHA-256 of the normalised
@@ -35,6 +42,7 @@ from src.agents.citation_verifier import (
     VerificationResult,
     normalize,
     parse_article,
+    same_article,
     verify_citation,
 )
 from src.document_check.extract import (
@@ -66,16 +74,30 @@ class Status:
 OUTDATED = Status("superata", "Citazione superata", "correggere")
 CHANGED = Status("cambiato", "Cambiato dopo la data del documento", "correggere")
 MISSING = Status("inesistente", "Non esiste nel testo vigente", "correggere")
+ALTERED = Status("alterata", "Citazione diversa dal testo ufficiale", "correggere")
 NOT_FOUND = Status("non_trovata", "Citazione non trovata", "correggere")
 ELSEWHERE = Status("altro_articolo", "Citazione in un altro articolo", "controllare")
 UNAVAILABLE = Status("non_disponibile", "Testo ufficiale non raggiungibile", "controllare")
+UNREAD = Status("versione_non_letta", "Versione più recente non leggibile", "controllare")
 NO_ACT = Status("atto_mancante", "Atto non indicato", "controllare")
 VALID = Status("valido", "Riferimento valido", "a_posto")
 VERIFIED = Status("verificata", "Citazione verificata", "a_posto")
 NOT_COVERED = Status("non_coperto", "Diritto italiano, non ancora coperto", "non_coperto")
 
 # Worst first: a provision keeps the worst outcome of its checks.
-_ORDER = (OUTDATED, CHANGED, MISSING, NOT_FOUND, ELSEWHERE, UNAVAILABLE, NO_ACT, VALID, VERIFIED)
+_ORDER = (
+    OUTDATED,
+    CHANGED,
+    MISSING,
+    ALTERED,
+    NOT_FOUND,
+    ELSEWHERE,
+    UNAVAILABLE,
+    UNREAD,
+    NO_ACT,
+    VALID,
+    VERIFIED,
+)
 GROUPS = ("correggere", "controllare", "a_posto", "non_coperto")
 
 
@@ -104,6 +126,9 @@ class Finding:
     before: str | None = None  # the provision in an earlier version (outdated, changed)
     before_version: Version | None = None
     shows_quotes: bool = False  # the first finding of a reference shows its quotes
+    # An altered quote: the document's words and how they differ from ``official_quote``.
+    altered_quote: str | None = None
+    differences: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def act_name(self) -> str:
@@ -358,6 +383,9 @@ def _check_quotes(
                 f"La citazione è nel testo vigente, ma in {where}, non nella disposizione citata."
             )
             continue
+        # Close to the text in force but with different words: kept for the
+        # end, an earlier version may have the quote word for word.
+        near = result if result.differences else None
         # The quote stopped matching at the oldest newer version that lacks it.
         newer_without = current
         for version in reversed(versions[:-1]):
@@ -384,11 +412,77 @@ def _check_quotes(
             )
             break
         else:
+            if near is not None:
+                _mark_altered(first, quote, near, provision)
+                continue
             first.status = _worse(first.status, NOT_FOUND)
             first.messages.append(
                 "La citazione non è nel testo vigente né nelle versioni precedenti: può essere "
                 "una parafrasi o un errore."
             )
+
+
+def _describe_differences(differences: list[dict[str, str]]) -> str:
+    parts: list[str] = []
+    for difference in differences:
+        quoted, official = difference.get("quoted", ""), difference.get("official", "")
+        if quoted and official:
+            parts.append(f"nel documento «{quoted}», nel testo ufficiale «{official}»")
+        elif official:
+            parts.append(f"nel documento manca «{official}»")
+        elif quoted:
+            parts.append(f"nel testo ufficiale non c'è «{quoted}»")
+    return "; ".join(parts)
+
+
+def _mark_altered(
+    finding: Finding, quote: str, near: VerificationResult, provision: Provision
+) -> None:
+    """A quote that differs from the text in force by a few words that matter."""
+    finding.status = _worse(finding.status, ALTERED)
+    finding.altered_quote = quote
+    finding.official_quote = near.near_quote
+    finding.differences = list(near.differences or [])
+    elsewhere = near.near_article and not same_article(
+        parse_article(near.near_article), provision.key
+    )
+    where = f" (trovato in {near.near_article})" if elsewhere else ""
+    finding.messages.append(
+        f"La citazione è diversa dal testo vigente{where}: "
+        f"{_describe_differences(finding.differences)}."
+    )
+
+
+def _newest_readable(
+    versions: list[Version], source: TextSource, lang: str
+) -> tuple[int, list[ArticleText]] | None:
+    """Index and articles of the newest version whose text the source gives."""
+    for index in range(len(versions) - 1, -1, -1):
+        try:
+            return index, source.articles(versions[index], lang)
+        except TextUnavailableError:
+            continue
+    return None
+
+
+def _note_unread(findings: list[Finding], read: Version, unread: list[Version]) -> None:
+    """Say which newer versions could not be read, and whether that matters."""
+    newest = unread[-1]
+    if read.as_of is None and all(v.initial for v in unread):
+        note = (
+            f"CELLAR non dà come testo il {newest.label}, che è l'atto come pubblicato: "
+            f"il controllo è fatto sul {read.label}, che ha le stesse parole."
+        )
+        for finding in findings:
+            finding.messages.append(note)
+        return
+    note = (
+        f"Esiste il {newest.label}, che CELLAR non dà come testo in questa lingua: il "
+        f"controllo è fatto sul {read.label} e va ripetuto su EUR-Lex."
+    )
+    for finding in findings:
+        finding.status = _worse(finding.status, UNREAD)
+        finding.messages.append(note)
 
 
 def _check_reference(
@@ -421,22 +515,41 @@ def _check_reference(
         ]
         findings[0].shows_quotes = True
         return findings
-    try:
-        versions = source.versions(act.key)
-        in_force = source.articles(versions[-1], lang)
-    except TextUnavailableError as e:
-        findings = [
-            Finding(ref, provision, act, UNAVAILABLE, [f"{e}."], lang=lang)
+
+    def unavailable(reason: str) -> list[Finding]:
+        out = [
+            Finding(ref, provision, act, UNAVAILABLE, [f"{reason}."], lang=lang)
             for provision in ref.provisions
         ]
-        findings[0].shows_quotes = True
-        return findings
+        out[0].shows_quotes = True
+        return out
+
+    try:
+        versions = source.versions(act.key)
+    except TextUnavailableError as e:
+        return unavailable(str(e))
+    readable = _newest_readable(versions, source, lang)
+    if readable is None:
+        return unavailable(f"CELLAR non ha nessun testo di {act.label} in {lang}")
+    index, in_force = readable
+    # Newer versions that could not be read are set aside: everything below
+    # treats the newest readable version as the text in force, and says so.
+    unread, versions = versions[index + 1 :], versions[: index + 1]
     findings = [
         _check_provision(ref, provision, act, versions, in_force, source, lang, document_date)
         for provision in ref.provisions
     ]
     findings[0].shows_quotes = True
     _check_quotes(ref, findings, act, versions, in_force, source, lang)
+    if unread:
+        _note_unread(findings, versions[-1], unread)
+    stale = getattr(source, "stale", {}).get(act.key)
+    if stale:
+        for finding in findings:
+            finding.messages.append(
+                "Oggi CELLAR non ha dato l'elenco delle versioni: usato quello del "
+                f"{_italian_date(stale)}."
+            )
     if ref.act_inferred:
         for finding in findings:
             finding.messages.append(f"Atto dedotto dal contesto: {act.label}.")
@@ -526,9 +639,26 @@ def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
                     Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
                 )
                 continue
-            article = find_article(source.articles(current, lang), entry["chiave"])
+            readable = _newest_readable(versions, source, lang)
+            if readable is None:
+                raise TextUnavailableError(f"CELLAR non ha nessun testo di {entry['atto']}")
+            index, articles = readable
+            current, unread = versions[index], versions[index + 1 :]
+            # A newer version that cannot be read is harmless only when it is
+            # the snapshot of the act as published, read here as the original.
+            if unread and not (current.as_of is None and all(v.initial for v in unread)):
+                raise TextUnavailableError(
+                    f"esiste il {unread[-1].label}, che CELLAR non dà come testo: "
+                    "da controllare su EUR-Lex"
+                )
+            if current.celex == entry["versione"]:
+                changes.append(
+                    Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
+                )
+                continue
+            article = find_article(articles, entry["chiave"])
         except TextUnavailableError as e:
-            changes.append(Change(entry, "non_disponibile", f"{e}."))
+            changes.append(Change(entry, "non_disponibile", f"{str(e)[:1].upper()}{str(e)[1:]}."))
             continue
         if article is None:
             changes.append(

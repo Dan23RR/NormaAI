@@ -211,12 +211,15 @@ def test_alert_policies_gain_the_document_way_in_and_lose_it_on_downgrade(m, m00
     assert set(m.ALERT_POLICIES) == set(old)
     for name, ddl in m.ALERT_POLICIES.items():
         before = old[name]
-        # Same policy, same client condition, plus "or the alert's check is ours".
+        # Same policy, same client condition, plus the alert's check; each
+        # reference the alert has must be the organisation's.
         client_condition = before[before.index("(") + 1 : -1]
-        assert client_condition in ddl
+        assert f"(client_id IS NULL OR {client_condition})" in ddl
         assert (
-            " OR document_check_id IN (SELECT id FROM document_checks WHERE org_id::text = " in ddl
+            " AND (document_check_id IS NULL OR document_check_id IN (SELECT id FROM "
+            "document_checks WHERE org_id::text = " in ddl
         )
+        assert "(client_id IS NOT NULL OR document_check_id IS NOT NULL)" in ddl
         assert "current_setting('app.current_org_id', true)" in ddl
         assert ddl in m.upgrade_statements()
         assert before in m.downgrade_statements()

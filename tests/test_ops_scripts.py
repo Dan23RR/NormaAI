@@ -137,7 +137,10 @@ stub_crontab() {
     [ -s "$STUB_STATE/crontab" ] || { echo "no crontab for root" >&2; return 1; }
     cat "$STUB_STATE/crontab"
   else
-    cat > "$STUB_STATE/crontab"
+    # Like the real crontab: the whole input first, then the new table. Writing
+    # as it reads would empty the table under a `crontab -l | ... | crontab -`
+    # pipeline still reading it.
+    cat > "$STUB_STATE/crontab.new" && mv "$STUB_STATE/crontab.new" "$STUB_STATE/crontab"
   fi
 }
 

@@ -4,6 +4,10 @@
   as consolidated on 12/07/2024 and on 27/07/2026 (art. 4 rewritten) and the
   GDPR. ``publish`` adds a new consolidated version, which is how a test makes a
   provision change after a check.
+- ``FakeItalian``: a stand-in for Normattiva, one wording per Italian outcome
+  (verified quote, change already published, ruling in the notes, act not
+  found, article read in part); with ``FakeSource`` behind
+  ``sources.OfficialSources`` it is the composite source of production.
 - ``Database``: the real tables on SQLite in memory, reached through the async
   session interface the application uses (``db_manager.session(org_id=...)``).
   SQLite has no row-level security: what these tests prove is the filtering the
@@ -15,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import re
 import uuid
+from dataclasses import replace
 from typing import Any
 
 from sqlalchemy import create_engine, event
@@ -34,6 +39,12 @@ from src.db.models import (
     Regulation,
     SystemState,
     User,
+)
+from src.document_check.normattiva import (
+    IN_FORCE,
+    ActNotFoundError,
+    ArticleNotFoundError,
+    ItalianArticle,
 )
 from src.document_check.official import ArticleText, TextUnavailableError, Version
 
@@ -145,6 +156,125 @@ class FakeSource:
     def articles(self, version: Version, lang: str) -> list[ArticleText]:
         self.asked_articles.append(version.celex)
         return self._articles[version.celex]
+
+
+# ─── Italian law ─────────────────────────────────────────────────────
+
+AI_LAW = "urn:nir:stato:legge:2025;132"
+PRIVACY = "urn:nir:stato:decreto.legislativo:2003;196"
+WORKERS = "urn:nir:stato:legge:1970;300"
+BUDGET = "urn:nir:stato:legge:2024;207"
+
+# Invented wordings: what matters is how each one is read, not the words.
+IT_ART13 = (
+    "Art. 13\nDisposizioni in materia di professioni intellettuali\n1. L'utilizzo di sistemi di "
+    "intelligenza artificiale nelle professioni intellettuali è consentito esclusivamente per "
+    "esercitare attività strumentali e di supporto all'attività professionale.\n2. Per assicurare "
+    "il rapporto fiduciario il professionista comunica al cliente le informazioni sui sistemi "
+    "utilizzati."
+)
+IT_ART13_AMENDED = IT_ART13.replace("esclusivamente", "prevalentemente")
+IT_ART2TER = (
+    "Art. 2-ter\nBase giuridica per il trattamento di dati personali\n1. La base giuridica è "
+    "costituita da una norma di legge o di regolamento."
+)
+IT_ART2TER_NEXT = IT_ART2TER.replace("di legge o di regolamento", "di legge")
+IT_ART4 = "Art. 4\nImpianti audiovisivi\n1. Gli impianti audiovisivi possono essere impiegati."
+IT_ART4_NOTES = (
+    "La Corte costituzionale, con sentenza 7 aprile - 19 maggio 2022, n. 125 (in G.U. 1a s.s. "
+    "25/05/2022, n. 21), ha dichiarato l'illegittimità costituzionale dell'art. 4."
+)
+IT_ART1 = "Art. 1\nRisultati differenziali\n1. Testo del comma uno.\n2. Testo del comma due."
+
+# One reference per Italian outcome, and one EU provision in force.
+ITALIAN_DOCUMENT = (
+    "Nota al cliente\n"
+    "Ai sensi dell'art. 13, comma 1, della legge 23 settembre 2025, n. 132, l'intelligenza "
+    "artificiale «è consentito esclusivamente per esercitare attività strumentali e di supporto "
+    "all'attività professionale».\n"
+    "La base giuridica è quella dell'art. 2-ter del Codice privacy.\n"
+    "Le telecamere seguono l'art. 4 della legge 300/1970.\n"
+    "Si veda anche l'art. 7 della legge 999/2025.\n"
+    "Vale l'art. 1, comma 120, della legge 207/2024.\n"
+    "Ai sensi dell'art. 13 del GDPR, il titolare «fornisce all'interessato, nel momento in cui i "
+    "dati personali sono ottenuti, le seguenti informazioni».\n"
+)
+
+
+class FakeItalian:
+    """Normattiva stand-in: wordings of articles by the days they are in force.
+
+    ``article(urn, key, on)`` gives the wording in force on ``on``; an act it
+    does not know raises ActNotFoundError, an article it does not know (or no
+    longer has) ArticleNotFoundError.
+    """
+
+    def __init__(self) -> None:
+        self.wordings: dict[tuple[str, str], list[ItalianArticle]] = {}
+        self.asked: list[tuple[str, str, str]] = []
+        self.add(AI_LAW, "art:13", "Art. 13", IT_ART13, "2025-10-10")
+        # A wording whose end is already set, and the one published to follow it.
+        self.add(PRIVACY, "art:2ter", "Art. 2-ter", IT_ART2TER, "2018-09-19", "2099-12-31")
+        self.add(PRIVACY, "art:2ter", "Art. 2-ter", IT_ART2TER_NEXT, "2100-01-01")
+        self.add(WORKERS, "art:4", "Art. 4", IT_ART4, "2015-09-24", notes=IT_ART4_NOTES)
+        # Normattiva gives only the first part of a long article.
+        self.add(BUDGET, "art:1", "Art. 1", IT_ART1, "2025-01-01", partial=True)
+
+    def add(
+        self,
+        urn: str,
+        key: str,
+        label: str,
+        text: str,
+        start: str,
+        end: str | None = None,
+        *,
+        notes: str = "",
+        partial: bool = False,
+    ) -> None:
+        commi = tuple(re.findall(r"(?m)^(\d{1,3})\.\s", text))
+        if partial:
+            commi = tuple(str(n) for n in range(1, 101))
+        self.wordings.setdefault((urn, key), []).append(
+            ItalianArticle(
+                urn=urn,
+                key=key,
+                label=label,
+                text=text,
+                commi=commi,
+                numbered=True,
+                state=IN_FORCE,
+                asked="",
+                start=start,
+                end=end,
+                act_title=f"Atto {urn}",
+                notes=notes,
+                partial=partial,
+            )
+        )
+
+    def replace_text(self, urn: str, key: str, text: str) -> None:
+        """The article in force has other words from now on."""
+        self.wordings[(urn, key)] = [replace(w, text=text) for w in self.wordings[(urn, key)]]
+
+    def remove(self, urn: str, key: str) -> None:
+        """The article is no longer on Normattiva."""
+        self.wordings[(urn, key)] = []
+
+    def article(self, act_urn: str, key: str, on: str) -> ItalianArticle:
+        self.asked.append((act_urn, key, on))
+        if act_urn not in {urn for urn, _ in self.wordings}:
+            raise ActNotFoundError("Atto non trovato")
+        for wording in self.wordings.get((act_urn, key), []):
+            if (wording.start or "") <= on and (wording.end is None or on <= wording.end):
+                return replace(wording, asked=on)
+        raise ArticleNotFoundError("Nessun articolo trovato")
+
+    def original(self, act_urn: str, key: str) -> ItalianArticle:
+        wordings = self.wordings.get((act_urn, key), [])
+        if not wordings:
+            raise ArticleNotFoundError("Nessun articolo trovato")
+        return replace(wordings[0], asked="", original=True)
 
 
 # ─── Database ────────────────────────────────────────────────────────

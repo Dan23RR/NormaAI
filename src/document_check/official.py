@@ -4,8 +4,9 @@
 The versions are the act as adopted (``32024R1689``) followed by its CELLAR
 consolidated texts, oldest first (``02024R1689-20260727``: the AI Act as
 consolidated on 27 July 2026). A text is downloaded once per version and
-language and kept in ``cache_dir``; the list of versions is asked again after a
-day, so a new consolidated text is seen the next day.
+language and kept in ``cache_dir``, with the articles parsed from it (see
+``PARSER_VERSION``); the list of versions is asked again after a day, so a new
+consolidated text is seen the next day.
 
 Articles are rebuilt from the chunks of src/nlp/chunking/legal_chunker.py, the
 same parsing the corpus uses, so a provision found here is labelled as the
@@ -15,8 +16,11 @@ Official Journal is authentic, and the report says so.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
 import re
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
@@ -30,6 +34,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from src.nlp.chunking.legal_chunker import LegalChunk
+
+# Version of what turns an XHTML text into articles (the chunker and
+# ``assemble_articles``). Raise it whenever either changes what it gives: the
+# parsed articles kept on disk by an older parser are then ignored.
+PARSER_VERSION = 1
 
 _PARAGRAPH_RE = re.compile(r"(?m)^[ \t]*(\d{1,3})\.[ \t]+\S")
 # EUR-Lex consolidation marks: "▼B" (basic act), "▼M1" (first amending act), "▼C1"
@@ -218,6 +227,10 @@ class CellarTextSource:
         if memo in self._unavailable:
             raise TextUnavailableError(self._unavailable[memo])
         if memo not in self._articles:
+            cached = self._parsed(version.celex, lang)
+            if cached is not None:
+                self._articles[memo] = cached
+                return cached
             try:
                 html = self._html(version.celex, lang)
             except TextUnavailableError as e:
@@ -231,7 +244,66 @@ class CellarTextSource:
                 eli_type=act.eli_type if act else None,
             )
             self._articles[memo] = assemble_articles(chunker.chunk_html(html))
+            self._keep_parsed(version.celex, lang, self._articles[memo])
         return self._articles[memo]
+
+    # ─── Parsed articles on disk ──────────────────────────────────────
+    # Parsing the XHTML of a large act takes seconds; the articles it gives are
+    # kept next to it. The file name carries PARSER_VERSION, and the file the
+    # size of the XHTML it was parsed from: a new parser or a new download
+    # makes the check parse again. A file that cannot be read is parsed again
+    # and written over.
+
+    def _parsed_path(self, celex: str, lang: str) -> Path:
+        return self.cache_dir / f"{celex}.{lang}.articles-v{PARSER_VERSION}.json"
+
+    def _parsed(self, celex: str, lang: str) -> list[ArticleText] | None:
+        path = self._parsed_path(celex, lang)
+        source = self.cache_dir / f"{celex}.{lang}.xhtml"
+        try:
+            if not path.exists() or not source.exists():
+                return None
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data.get("parser") != PARSER_VERSION:
+                return None
+            if data.get("xhtml_bytes") != source.stat().st_size:
+                return None
+            return [
+                ArticleText(
+                    str(item["key"]),
+                    str(item["label"]),
+                    str(item["text"]),
+                    tuple(str(p) for p in item["paragraphs"]),
+                )
+                for item in data["articles"]
+            ]
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return None
+
+    def _keep_parsed(self, celex: str, lang: str, articles: list[ArticleText]) -> None:
+        path = self._parsed_path(celex, lang)
+        source = self.cache_dir / f"{celex}.{lang}.xhtml"
+        partial = path.with_name(f"{path.name}.{os.getpid()}-{threading.get_ident()}.tmp")
+        try:
+            data = {
+                "parser": PARSER_VERSION,
+                "xhtml_bytes": source.stat().st_size,
+                "articles": [
+                    {
+                        "key": a.key,
+                        "label": a.label,
+                        "text": a.text,
+                        "paragraphs": list(a.paragraphs),
+                    }
+                    for a in articles
+                ],
+            }
+            partial.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            os.replace(partial, path)
+        except OSError:
+            # A cache that cannot be written only costs the next parse.
+            with contextlib.suppress(OSError):
+                partial.unlink(missing_ok=True)
 
     def _html(self, celex: str, lang: str) -> str:
         path = self.cache_dir / f"{celex}.{lang}.xhtml"

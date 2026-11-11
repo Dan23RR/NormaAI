@@ -631,8 +631,35 @@ class _LockedSource:
         with self._lock:
             return self._inner.articles(version, lang)
 
+    @property
+    def italian(self) -> Any:
+        """The Italian side of the source (``sources.OfficialSources``), under the same lock."""
+        inner = getattr(self._inner, "italian", None)
+        return None if inner is None else _LockedItalian(inner, self._lock)
+
     def __getattr__(self, name: str) -> Any:
         # Whatever else the engine reads from a source (``stale``).
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._inner, name)
+
+
+class _LockedItalian:
+    """``ItalianTextSource`` of a ``_LockedSource``: Normattiva's cache is shared too."""
+
+    def __init__(self, inner: Any, lock: Any) -> None:
+        self._inner = inner
+        self._lock = lock
+
+    def article(self, act_urn: str, key: str, on: str) -> Any:
+        with self._lock:
+            return self._inner.article(act_urn, key, on)
+
+    def original(self, act_urn: str, key: str) -> Any:
+        with self._lock:
+            return self._inner.original(act_urn, key)
+
+    def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self._inner, name)

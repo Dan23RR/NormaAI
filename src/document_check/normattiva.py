@@ -42,6 +42,7 @@ report says so.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
@@ -359,6 +360,8 @@ def _clean_line(line: str, pointers: frozenset[str] = frozenset()) -> str:
     line = re.sub(r"\s+", " ", line).strip()
     if _LONE_POINTERS_RE.match(line) or not any(ch.isalnum() for ch in line):
         return ""
+    # "... entro il termine di trenta giorni. (14)": a pointer after the end of the sentence.
+    line = re.sub(r"(?<=[.;:])(?:\s*\(\d{1,4}\))+$", "", line)
     line = _drop_inline_editorial(line)
     line = re.sub(r"\s+([.,;:])", r"\1", line)
     line = re.sub(r"\(\s+", "(", line)
@@ -701,13 +704,17 @@ class NormattivaTextSource:
     OPEN_TTL = timedelta(days=1)
     CLOSED_TTL = timedelta(days=30)
     MISSING_TTL = timedelta(days=1)
+    # Articles kept in memory by one source (a long-lived process reads many).
+    MEMORY = 128
 
     def __init__(self, cache_dir: Path, client: NormattivaClient | None = None) -> None:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._client = client or NormattivaClient()
         self._files: dict[str, dict[str, Any]] = {}
-        self._no_act: dict[str, str] = {}
+        self._parsed: dict[str, ParsedArticle] = {}
+        # Acts Normattiva said it does not have: the message and when it said so.
+        self._no_act: dict[str, tuple[str, datetime]] = {}
 
     # The cache ----------------------------------------------------------
 
@@ -732,17 +739,31 @@ class NormattivaTextSource:
         data.setdefault("key", key)
         if not isinstance(data.get("answers"), list):
             data["answers"] = []
+        while len(self._files) >= self.MEMORY:
+            self._files.pop(next(iter(self._files)))
         self._files[path.name] = data
         return data
 
-    def _save(self, act_urn: str, key: str) -> None:
+    def _save(self, act_urn: str, key: str, data: dict[str, Any]) -> None:
+        """Write the article's file whole, then put it in place (no half-written file)."""
         path = self._path(act_urn, key)
+        temporary = path.with_name(path.name + ".tmp")
         try:
-            path.write_text(
-                json.dumps(self._files[path.name], ensure_ascii=False), encoding="utf-8"
-            )
+            temporary.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            temporary.replace(path)
         except OSError:
             pass  # a cache that cannot be written only costs a request next time
+
+    def _parse(self, html: str) -> ParsedArticle:
+        """The parsed article of an answer, parsed once per source."""
+        memo = hashlib.sha256(html.encode("utf-8")).hexdigest()
+        parsed = self._parsed.get(memo)
+        if parsed is None:
+            parsed = parse_article_html(html)
+            while len(self._parsed) >= self.MEMORY:
+                self._parsed.pop(next(iter(self._parsed)))
+            self._parsed[memo] = parsed
+        return parsed
 
     @staticmethod
     def _age(entry: dict[str, Any]) -> timedelta:
@@ -768,12 +789,13 @@ class NormattivaTextSource:
         return self._age(entry) < (self.CLOSED_TTL if closed else self.OPEN_TTL)
 
     def _remember_missing(self, act_urn: str, key: str, slot: str, error: LookupError) -> None:
-        self._load(act_urn, key)[slot] = {
+        data = self._load(act_urn, key)
+        data[slot] = {
             "fetched_at": _now(),
             "message": str(error),
             "act": isinstance(error, ActNotFoundError),
         }
-        self._save(act_urn, key)
+        self._save(act_urn, key, data)
 
     def _raise_if_missing(self, data: dict[str, Any], slot: str) -> None:
         marked = data.get(slot)
@@ -792,12 +814,13 @@ class NormattivaTextSource:
         does not have is looked for in its first two annexes before it is said
         not to exist.
         """
-        if act_urn in self._no_act:
-            raise ActNotFoundError(self._no_act[act_urn])
+        known = self._no_act.get(act_urn)
+        if known is not None and datetime.now(UTC) - known[1] < self.MISSING_TTL:
+            raise ActNotFoundError(known[0])
         try:
             return {**self._ask_in(act_urn, key, qualifier), "urn": act_urn}
         except ActNotFoundError as e:
-            self._no_act[act_urn] = str(e)
+            self._no_act[act_urn] = (str(e), datetime.now(UTC))
             raise
         except ArticleNotFoundError:
             if _ANNEX_RE.search(act_urn):
@@ -822,7 +845,7 @@ class NormattivaTextSource:
             except ArticleNotFoundError as e:
                 error = e
                 continue
-            label = parse_article_html(str(act.get("articoloHtml") or "")).label
+            label = self._parse(str(act.get("articoloHtml") or "")).label
             if same_article_number(key, label) or (not label and key == "art:1"):
                 return act
             if not label:
@@ -862,7 +885,7 @@ class NormattivaTextSource:
         ]
         data["answers"].append(entry)
         data.pop("missing", None)
-        self._save(act_urn, key)
+        self._save(act_urn, key, data)
         return self._build(act_urn, key, entry, on)
 
     def original(self, act_urn: str, key: str) -> ItalianArticle:
@@ -883,15 +906,14 @@ class NormattivaTextSource:
             raise
         entry = {"fetched_at": _now(), "atto": act}
         data["original"] = entry
-        self._save(act_urn, key)
+        self._save(act_urn, key, data)
         return self._build(act_urn, key, entry, "", original=True)
 
-    @staticmethod
     def _build(
-        act_urn: str, key: str, entry: dict[str, Any], asked: str, original: bool = False
+        self, act_urn: str, key: str, entry: dict[str, Any], asked: str, original: bool = False
     ) -> ItalianArticle:
         act = entry.get("atto") or {}
-        parsed = parse_article_html(str(act.get("articoloHtml") or ""))
+        parsed = self._parse(str(act.get("articoloHtml") or ""))
         label = parsed.label or "Art. " + key.partition(":")[2]
         act_date: str | None
         try:
@@ -923,5 +945,5 @@ class NormattivaTextSource:
             notes=parsed.notes,
             partial=parsed.partial,
             read_on=str(entry.get("fetched_at") or "")[:10],
-            comma_texts=parsed.comma_texts,
+            comma_texts=dict(parsed.comma_texts),
         )

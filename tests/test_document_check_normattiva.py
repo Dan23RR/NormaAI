@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import tempfile
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -68,7 +69,12 @@ from src.document_check.normattiva import (
 )
 from src.document_check.official import CellarTextSource, TextUnavailableError
 from src.document_check.report import render_html, render_recheck_html, summary_lines
-from src.document_check.sources import OfficialSources, default_source
+from src.document_check.sources import (
+    CACHE_ENV,
+    OfficialSources,
+    default_cache_dir,
+    default_source,
+)
 from tests.test_document_check import FakeSource
 
 FIXTURES = Path(__file__).parent / "fixtures" / "normattiva"
@@ -414,6 +420,16 @@ class TestParsing:
         assert parsed.notes.count("illegittimità costituzionale") >= 2
         assert "AGGIORNAMENTO" not in "\n".join(parsed.lines)
 
+    def test_a_note_pointer_after_the_end_of_a_sentence_is_dropped(self):
+        html = (
+            '<div class="bodyTesto"><h2 class="article-num-akn">Art. 7</h2>'
+            "<p>1. Il ricorso si propone entro trenta giorni. (14)</p>"
+            "<p>2. Restano ferme le disposizioni di cui al comma 1, lettera (a).</p></div>"
+        )
+        parsed = parse_article_html(html)
+        assert parsed.comma_texts["1"] == "1. Il ricorso si propone entro trenta giorni."
+        assert parsed.comma_texts["2"].endswith("lettera (a).")
+
     def test_a_number_inside_a_quoted_amendment_is_not_a_comma(self):
         html = (
             '<div class="bodyTesto"><h2 class="article-num-akn">Art. 44</h2>'
@@ -670,6 +686,26 @@ class TestSource:
             source.article("urn:nir:stato:legge:2024;9999", "art:2", TODAY)
         assert len(api.asked) == 4  # the second article of an act that is not there is not asked
 
+    def test_a_missing_act_is_asked_again_after_a_day(self, tmp_path, api):
+        source = NormattivaTextSource(tmp_path, api)
+        missing = "urn:nir:stato:legge:2024;9999"
+        with pytest.raises(ActNotFoundError):
+            source.article(missing, "art:1", TODAY)
+        message, when = source._no_act[missing]
+        source._no_act[missing] = (message, when - NormattivaTextSource.MISSING_TTL)
+        with pytest.raises(ActNotFoundError):
+            source.article(missing, "art:2", TODAY)
+        assert len(api.asked) == 2
+
+    def test_the_cache_file_is_written_whole_and_survives_the_memory_limit(self, tmp_path, api):
+        source = NormattivaTextSource(tmp_path, api)
+        source.MEMORY = 1  # type: ignore[misc]
+        first = source.article(PRIVACY, "art:2ter", TODAY)
+        source.article(AI_LAW, "art:13", TODAY)  # pushes the first article out of memory
+        assert not list(tmp_path.glob("*.tmp"))
+        again = source.article(PRIVACY, "art:2ter", TODAY)
+        assert again.text == first.text and len(api.asked) == 2
+
     def test_an_article_of_an_annex_is_found_and_keeps_its_urn(self, tmp_path, api):
         decree = "urn:nir:stato:regio.decreto:1942;262"
         article = NormattivaTextSource(tmp_path, api).article(decree, "art:1341", TODAY)
@@ -715,6 +751,22 @@ class TestSource:
         with pytest.raises(ArticleNotFoundError):
             source.original(PRIVACY, "art:2ter")
         assert api.asked.count(f"{PRIVACY}~art2ter@originale") == 1
+
+    def test_the_cache_folder(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(CACHE_ENV, str(tmp_path / "volume"))
+        assert default_cache_dir() == tmp_path / "volume"
+        monkeypatch.delenv(CACHE_ENV)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+        assert default_cache_dir() == tmp_path / "home" / ".cache" / "normaai" / "cellar"
+        assert default_cache_dir().is_dir()
+
+        def read_only(self: Path, *args: Any, **kwargs: Any) -> None:
+            raise PermissionError(30, "Read-only file system")
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "elsewhere")
+        monkeypatch.setattr(Path, "mkdir", read_only)
+        monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "tmp"))
+        assert default_cache_dir() == tmp_path / "tmp" / "normaai" / "cellar"
 
     def test_default_source_reads_both(self, tmp_path):
         source = default_source(tmp_path)
@@ -1130,7 +1182,7 @@ class TestItalianReport:
     def test_summary(self, source):
         check = check_text(NOTE, source, document="nota.txt", today=TODAY)
         lines = summary_lines(check)
-        assert lines[1] == "2 da correggere, 0 da controllare, 1 a posto, 1 non letti."
+        assert lines[1] == "2 da correggere, 0 da controllare, 1 a posto, 1 fuori copertura."
         assert any("D.Lgs. 196/2003 (Codice privacy), art. 13: Non esiste" in ln for ln in lines)
 
     def test_a_report_of_eu_law_only_still_names_eur_lex(self):

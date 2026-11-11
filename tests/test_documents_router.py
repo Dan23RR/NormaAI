@@ -829,7 +829,10 @@ class TestRecheck:
         assert body["status"] == "correggere"
         assert body["counts"] == {"correggere": 1, "controllare": 0, "a_posto": 1, "non_coperto": 0}
         changed = body["findings"][0]
-        assert changed["status"] == {"code": "cambiato", "label": "Cambiato dopo il controllo"}
+        assert changed["status"] == {
+            "code": "cambiato_dopo_controllo",
+            "label": "Cambiato dopo il controllo",
+        }
         assert changed["before"]["text"] == ART13 and changed["after_text"] == ART13_AMENDED
         assert changed["version"]["id"] == "02016R0679-20270101"
         gdpr, ai_act = body["dependencies"]
@@ -901,7 +904,7 @@ class TestRecheck:
         source.publish(GDPR, "2027-01-01", [article("Art. 12", "Articolo 12\nAltro.")])
         body = client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers).json()
         assert body["dependencies"][0]["state"] == "removed"
-        assert body["findings"][0]["status"]["code"] == "inesistente"
+        assert body["findings"][0]["status"]["code"] == "soppresso_dopo_controllo"
         assert body["needs_review"] is True
         (alert,) = db.rows(Alert)
         assert "GDPR, Art. 13 (non c'è più nel testo vigente)" in alert.description

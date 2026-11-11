@@ -432,7 +432,10 @@ class TestEffectiveFindings:
         effective = serialize.effective_findings(findings, dependencies)
         changed = _by_raw(effective, "art. 13 del GDPR")
         assert changed["group"] == "correggere"
-        assert changed["status"] == {"code": "cambiato", "label": "Cambiato dopo il controllo"}
+        assert changed["status"] == {
+            "code": "cambiato_dopo_controllo",
+            "label": "Cambiato dopo il controllo",
+        }
         assert changed["before"] == {
             "version_label": "testo consolidato al 04/05/2016",
             "version_id": "02016R0679-20160504",
@@ -459,7 +462,7 @@ class TestEffectiveFindings:
         self._recheck(dependencies, source)
         removed = _by_raw(serialize.effective_findings(findings, dependencies), "art. 13 del GDPR")
         assert removed["status"] == {
-            "code": "inesistente",
+            "code": "soppresso_dopo_controllo",
             "label": "Non esiste più nel testo vigente",
         }
         assert removed["group"] == "correggere"

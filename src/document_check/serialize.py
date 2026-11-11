@@ -53,8 +53,13 @@ STATE_BY_CODE = {
 _STATUS_ORDER = ("correggere", "controllare", "a_posto")
 
 NO_ACT_NAME = "Atto non indicato"
-CHANGED_AFTER_CHECK = {"code": "cambiato", "label": "Cambiato dopo il controllo"}
-REMOVED_AFTER_CHECK = {"code": "inesistente", "label": "Non esiste più nel testo vigente"}
+# Outcomes a re-check gives a finding. Their own codes: "cambiato" and
+# "inesistente" already mean a change before the check (check.CHANGED, check.MISSING).
+CHANGED_AFTER_CHECK = {"code": "cambiato_dopo_controllo", "label": "Cambiato dopo il controllo"}
+REMOVED_AFTER_CHECK = {
+    "code": "soppresso_dopo_controllo",
+    "label": "Non esiste più nel testo vigente",
+}
 
 
 # ─── Small helpers ───────────────────────────────────────────────────

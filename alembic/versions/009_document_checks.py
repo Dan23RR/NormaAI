@@ -111,6 +111,7 @@ TABLES: dict[str, tuple[Col, ...]] = {
         Col("id", UUID, nullable=False, primary_key=True),
         Col("check_id", UUID, nullable=False, references="document_checks", ondelete="CASCADE"),
         Col("org_id", UUID, nullable=False, references="organizations", ondelete="CASCADE"),
+        Col("position", "INTEGER", nullable=False, default="0"),
         Col("source", "VARCHAR(20)", nullable=False, default="'eurlex'"),
         Col("act", "VARCHAR(300)", nullable=False),
         Col("name", "VARCHAR(300)", nullable=False),

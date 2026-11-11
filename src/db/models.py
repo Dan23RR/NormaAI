@@ -478,6 +478,8 @@ class DocumentDependency(Base):
     org_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
+    # Order in which the document first cites the provision.
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="eurlex")
     act: Mapped[str] = mapped_column(String(300), nullable=False)  # CELEX, or URN:NIR
     name: Mapped[str] = mapped_column(String(300), nullable=False)

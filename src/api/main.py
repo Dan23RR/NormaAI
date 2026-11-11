@@ -55,6 +55,13 @@ tags_metadata = [
         "description": "PDF report generation: gap analysis and executive summaries.",
     },
     {"name": "Conversations", "description": "Multi-turn Q&A conversation management."},
+    {
+        "name": "Documents",
+        "description": (
+            "Check the legal references of a document against the official texts, "
+            "keep the outcome and re-check it when a cited provision changes."
+        ),
+    },
 ]
 
 DESCRIPTION = """
@@ -199,6 +206,7 @@ _safe_include("src.api.routers.alerts")
 _safe_include("src.api.routers.reports")
 _safe_include("src.api.routers.clients")
 _safe_include("src.api.routers.conversations")
+_safe_include("src.api.routers.documents")
 _safe_include("src.api.routers.leads")
 # GDPR (CRITICAL: data-subject-rights endpoints are compliance-mandated)
 _safe_include("src.api.routers.gdpr", critical=True)

@@ -8,25 +8,28 @@
   Print source of frontend/public/codex-post-omnibus-2025-2029.pdf.
   Regenerate the PDF with: python frontend/scripts/build_codex_pdf.py
   The script also writes the page numbers of the index (the .page-num spans)
-  and loads the web fonts (Inter, Geist Mono) for the render: this page asks
-  no third party for anything, so opened in a browser it uses system fonts.
+  and loads the web fonts (Literata, Public Sans, Geist Mono) for the render:
+  this page asks no third party for anything, so opened in a browser it uses
+  system fonts.
 
   v1.1, November 2026. Every date, threshold and article was read on the
   official text (EUR-Lex / CELLAR, Normattiva, Gazzetta Ufficiale) on
   2026-11-11. A statement that could not be checked there was removed.
 -->
 <style>
-  /* Design tokens of the guide (warm paper, one accent). */
+  /* Design tokens: the light theme of frontend/DESIGN.md (ink, union blue for
+     links, highlighter yellow only behind the quoted law). */
   :root{
-    --bg:#FAF9F5; --bg-2:#F0EEE6;
-    --surface:#ffffff; --surface-2:#F0EEE6; --surface-3:#E8E4D9;
-    --border:rgba(20,20,19,0.10); --border-2:rgba(20,20,19,0.16);
-    --ink:#141413; --ink-2:#5E5D59; --ink-3:#6B6A64;
-    --accent:#B0532F; --accent-soft:rgba(217,119,87,0.10);
-    --good:#22744E; --warn:#8A5D0B; --bad:#B0303F;
-    --fw-csrd:#22744E; --fw-csddd:#265E9C; --fw-ai_act:#6A47AD;
-    --fw-dora:#B0532F; --fw-nis2:#8A5D0B; --fw-taxonomy:#18705F; --fw-gdpr:#B0303F;
-    --fw-cra:#4F5B66;
+    --paper:#FFFFFF;
+    --surface-2:#F7F8F9; --surface-3:#ECEEF1;
+    --rule:#D8DCE3; --rule-2:#C3C9D3;
+    --ink:#0C1B33; --ink-2:#3D4B61; --ink-3:#6B7788;
+    --union:#0A3A9C;
+    --mark:#FFEA7A; --mark-deep:#F5C400;
+    --ok:#137A4B; --warn:#9A5B00; --bad:#A3262E;
+    --serif:'Literata',Georgia,'Times New Roman',serif;
+    --sans:'Public Sans',system-ui,'Segoe UI',Arial,sans-serif;
+    --mono:'Geist Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;
   }
 
   /* Print page setup */
@@ -36,17 +39,10 @@
   *{ box-sizing:border-box; }
   html,body{
     margin:0; padding:0;
-    background:var(--bg); color:var(--ink);
-    font-family:'Inter',system-ui,sans-serif;
-    font-size:9.5pt; line-height:1.4;
-    font-feature-settings:'cv11','ss01','ss03';
+    background:var(--paper); color:var(--ink);
+    font-family:var(--sans);
+    font-size:9.5pt; line-height:1.45;
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
-  }
-  body{
-    /* Flat, single-tone background: print margins are filled by the browser's
-       default background colour (set to the same #FAF9F5 by the build script). */
-    background:var(--bg);
-    min-height:100vh;
   }
 
   /* Each chapter section owns a fresh page. Forcing the break on the
@@ -64,57 +60,58 @@
     width:210mm; height:297mm; margin:0 auto;
     padding:28mm 22mm 22mm;
     display:flex; flex-direction:column; justify-content:space-between;
-    background:var(--bg);
+    background:var(--paper);
     page-break-after:always;
     break-after:page;
   }
   .cover .brand{ display:flex; align-items:center; gap:10px; }
+  /* The mark of the brand: an ink square with a yellow band and a white N. */
   .cover .brand .mark{
-    width:38px; height:38px; border-radius:9px;
-    background:var(--accent);
-    color:#fff; display:flex; align-items:center; justify-content:center;
-    font-weight:800; font-size:18pt;
+    width:38px; height:38px; border-radius:6px;
+    background:var(--ink); color:#fff; border-bottom:6px solid var(--mark-deep);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-weight:600; font-size:18pt;
   }
-  .cover .brand-name{ font-weight:700; font-size:14pt; letter-spacing:-0.01em; }
+  .cover .brand-name{ font-family:var(--serif); font-weight:600; font-size:15pt; }
+  .cover .brand-name .hl{ background:var(--mark); padding:0 1pt; }
   .cover h1{
-    font-size:42pt; font-weight:800; letter-spacing:-0.025em;
-    line-height:1.02; margin:0 0 12pt;
+    font-family:var(--serif); font-size:42pt; font-weight:500;
+    line-height:1.08; margin:0 0 14pt;
   }
   .cover .subtitle{
     font-size:13pt; font-weight:400; color:var(--ink-2); max-width:140mm;
-    margin:0 0 18pt; line-height:1.45;
+    margin:0 0 18pt; line-height:1.5;
   }
   .cover .meta{
-    border-top:1px solid var(--border-2);
-    padding-top:14pt; color:var(--ink-3);
+    border-top:1px solid var(--rule-2);
+    padding-top:14pt; color:var(--ink-2);
     font-size:9.5pt;
   }
   .cover .meta div{ margin:2pt 0; }
   .cover .badge{
-    display:inline-block; margin-bottom:10pt;
-    border:1px solid var(--accent); color:var(--accent);
-    font-size:9pt; padding:4pt 9pt; border-radius:999px;
-    font-weight:600;
+    display:inline-block; margin-bottom:12pt;
+    border:1px solid var(--rule-2); color:var(--ink);
+    font-size:9.5pt; padding:3pt 9pt; border-radius:4px;
+    font-weight:600; background:var(--surface-2);
   }
 
-  /* Headings */
+  /* Headings: Literata 500 */
   h1.chapter{
-    font-size:20pt; font-weight:800; letter-spacing:-0.02em;
-    margin:0 0 6pt; color:var(--ink);
+    font-family:var(--serif); font-size:22pt; font-weight:500; line-height:1.15;
+    margin:0 0 8pt; color:var(--ink);
     page-break-after:avoid; break-after:avoid;
   }
   h1.chapter .num{
-    font-size:10pt; font-weight:600;
-    color:var(--accent); display:block; margin-bottom:2pt;
+    font-family:var(--sans); font-size:10pt; font-weight:600;
+    color:var(--ink-2); display:block; margin-bottom:3pt;
   }
   h2{
-    font-size:13pt; font-weight:700; letter-spacing:-0.01em;
-    margin:14pt 0 5pt; color:var(--ink);
-    border-left:3px solid var(--accent); padding-left:9pt;
+    font-family:var(--serif); font-size:14pt; font-weight:500; line-height:1.2;
+    margin:16pt 0 5pt; color:var(--ink);
     page-break-after:avoid; break-after:avoid;
   }
   h3{
-    font-size:11.5pt; font-weight:600;
+    font-family:var(--serif); font-size:11.5pt; font-weight:500; line-height:1.3;
     margin:12pt 0 4pt; color:var(--ink);
     page-break-after:avoid; break-after:avoid;
   }
@@ -124,10 +121,10 @@
   li{ margin:3pt 0; color:var(--ink); }
   .ref{ color:var(--ink-2); }
 
-  /* Tables */
+  /* Tables: horizontal rules, no zebra, head in ink-2 */
   table{
     width:100%; border-collapse:collapse; margin:8pt 0;
-    font-size:9pt;
+    font-size:9pt; font-variant-numeric:tabular-nums;
     page-break-inside:avoid; break-inside:avoid;
   }
   /* Long tables must flow across pages: rows stay whole, the head repeats. */
@@ -137,69 +134,66 @@
   thead th{
     text-align:left; padding:5pt 7pt;
     background:var(--surface-2); color:var(--ink-2);
-    font-weight:600; font-size:9pt; border-bottom:1px solid var(--border-2);
+    font-weight:600; font-size:9pt; border-bottom:1px solid var(--rule-2);
   }
   tbody td{
-    padding:5pt 7pt; border-bottom:1px solid var(--border);
+    padding:5pt 7pt; border-bottom:1px solid var(--rule);
     color:var(--ink); vertical-align:top;
   }
   td.nowrap, th.nowrap{ white-space:nowrap; }
+  table.compact tbody td{ padding:4pt 7pt; }
 
-  /* Boxes */
+  /* Boxes: a note in the margin of the text */
   .box{
-    background:var(--surface); border-left:3px solid var(--accent);
-    padding:8pt 12pt; margin:9pt 0; border-radius:0 5px 5px 0;
+    background:var(--surface-2); border-left:3px solid var(--rule-2);
+    padding:8pt 12pt; margin:9pt 0; border-radius:0 4px 4px 0;
     color:var(--ink-2); font-size:9pt;
     page-break-inside:avoid; break-inside:avoid;
   }
-  .box.warn{ border-color:var(--warn); background:rgba(244,183,64,0.05); }
-  .box.bad{ border-color:var(--bad); background:rgba(239,79,99,0.05); }
-  .box.good{ border-color:var(--good); background:rgba(52,211,153,0.05); }
+  .box.warn{ border-color:var(--warn); }
+  .box.bad{ border-color:var(--bad); }
+  .box.good{ border-color:var(--ok); }
   .box .label{
-    display:block; font-size:9pt; font-weight:700;
-    color:var(--accent); margin-bottom:4pt;
+    display:block; font-size:9.5pt; font-weight:700;
+    color:var(--ink); margin-bottom:4pt;
   }
   .box.warn .label{ color:var(--warn); }
   .box.bad .label{ color:var(--bad); }
-  .box.good .label{ color:var(--good); }
+  .box.good .label{ color:var(--ok); }
   .box p{ margin:4pt 0; color:var(--ink-2); }
   .box strong{ color:var(--ink); }
   .box ol, .box ul{ color:var(--ink-2); }
   .box li{ color:var(--ink-2); }
 
-  /* A passage of law, quoted word for word. */
+  /* A passage of law, quoted word for word: Literata, highlighted. */
   blockquote.law{
-    margin:9pt 0; padding:8pt 12pt;
-    border-left:3px solid var(--ink); background:var(--surface);
-    font-size:10pt; line-height:1.5; color:var(--ink);
+    margin:10pt 0; padding:2pt 0 2pt 12pt;
+    border-left:3px solid var(--ink);
+    font-family:var(--serif); font-size:10.5pt; line-height:1.6; color:var(--ink);
     page-break-inside:avoid; break-inside:avoid;
+  }
+  blockquote.law .hl{
+    background:var(--mark); padding:1pt 0;
+    -webkit-box-decoration-break:clone; box-decoration-break:clone;
   }
   blockquote.law cite{
     display:block; margin-top:5pt; font-style:normal;
-    font-size:9pt; color:var(--ink-2);
+    font-family:var(--sans); font-size:9pt; color:var(--ink-2);
   }
 
-  /* Framework chips */
+  /* Framework labels: dark text on a light tint */
   .fw-tag{
     display:inline-block;
-    font-size:9pt; font-weight:600; padding:0 6pt;
-    border:1px solid var(--border-2); border-radius:4px;
-    background:rgba(20,20,19,0.03); margin-right:3pt;
+    font-size:9pt; font-weight:600; padding:0 5pt;
+    border:1px solid var(--rule-2); border-radius:4px;
+    background:var(--surface-3); color:var(--ink); margin-right:3pt;
   }
-  .fw-csrd{ color:var(--fw-csrd); border-color:rgba(34,116,78,0.4); }
-  .fw-csddd{ color:var(--fw-csddd); border-color:rgba(38,94,156,0.4); }
-  .fw-ai_act{ color:var(--fw-ai_act); border-color:rgba(106,71,173,0.4); }
-  .fw-dora{ color:var(--fw-dora); border-color:rgba(176,83,47,0.4); }
-  .fw-nis2{ color:var(--fw-nis2); border-color:rgba(138,93,11,0.4); }
-  .fw-taxonomy{ color:var(--fw-taxonomy); border-color:rgba(24,112,95,0.4); }
-  .fw-gdpr{ color:var(--fw-gdpr); border-color:rgba(176,48,63,0.4); }
-  .fw-cra{ color:var(--fw-cra); border-color:rgba(79,91,102,0.4); }
 
-  /* Decision paths */
+  /* Decision paths: monospace keeps the arrows aligned */
   pre{
-    font-family:'Geist Mono',ui-monospace,'Cascadia Mono',Consolas,monospace; font-size:9pt;
-    background:var(--surface-2); border:1px solid var(--border);
-    padding:10pt; border-radius:6px; margin:8pt 0;
+    font-family:var(--mono); font-size:9pt;
+    background:var(--surface-2); border:1px solid var(--rule);
+    padding:10pt; border-radius:4px; margin:8pt 0;
     color:var(--ink); white-space:pre; line-height:1.45;
     page-break-inside:avoid; break-inside:avoid;
   }
@@ -208,38 +202,40 @@
   .toc{ margin:24pt 0; }
   .toc-entry{
     display:flex; justify-content:space-between; align-items:baseline; gap:10pt;
-    padding:6pt 0; border-bottom:1px dashed var(--border);
+    padding:6pt 0; border-bottom:1px solid var(--rule);
     font-size:11pt;
   }
-  .toc-entry .title{ color:var(--ink); font-weight:500; flex:1; }
-  .toc-entry .num{ color:var(--accent); font-weight:600; font-size:10pt; min-width:24pt; }
-  .toc-entry .page-num{ color:var(--ink-3); font-size:10pt; font-variant-numeric:tabular-nums; }
+  .toc-entry .title{ font-family:var(--serif); color:var(--ink); font-weight:500; flex:1; }
+  .toc-entry .num{ color:var(--ink-3); font-weight:600; font-size:10pt; min-width:24pt; font-variant-numeric:tabular-nums; }
+  .toc-entry .page-num{ color:var(--ink-2); font-size:10pt; font-variant-numeric:tabular-nums; }
 
   /* Sources */
   .citations{ margin-top:8pt; font-size:9pt; color:var(--ink-2); }
-  .citations h2{ font-size:11pt; margin:10pt 0 4pt; }
+  .citations h2{ font-size:12pt; margin:12pt 0 4pt; }
   .citations p{ margin:4pt 0; }
   .citations li{ color:var(--ink-2); margin:1.5pt 0; }
-  .citations a{ color:var(--accent); white-space:nowrap; }
+  .citations a{ color:var(--union); white-space:nowrap; }
 
   /* Page header */
   .page-header{
     display:flex; align-items:center; gap:8pt;
-    border-bottom:1px solid var(--border); padding-bottom:6pt; margin-bottom:14pt;
-    font-size:9pt; color:var(--ink-3);
+    border-bottom:1px solid var(--rule); padding-bottom:6pt; margin-bottom:14pt;
+    font-size:9pt; color:var(--ink-2);
   }
   .page-header .mark{
-    width:18px; height:18px; border-radius:4px;
-    background:var(--accent);
-    color:#fff; display:flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:9pt;
+    width:18px; height:18px; border-radius:3px;
+    background:var(--ink); color:#fff; border-bottom:3px solid var(--mark-deep);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-weight:600; font-size:9pt;
   }
 
   /* Print refinements */
   @media print{
-    body{ background:var(--bg)!important; }
-    .page{ padding:0; }
-    a{ color:var(--accent); text-decoration:none; }
+    body{ background:var(--paper)!important; }
+    /* A top padding of zero makes Chromium paint the first line of a chapter
+       in the bottom margin of the previous page as well. */
+    .page{ padding:1px 0 0; }
+    a{ color:var(--union); text-decoration:none; }
     h2,h3{ page-break-after:avoid; }
     table{ page-break-inside:avoid; }
     table.flow{ page-break-inside:auto; }
@@ -253,7 +249,7 @@
 <section class="cover">
   <div class="brand">
     <div class="mark">N</div>
-    <div class="brand-name">NormaAI</div>
+    <div class="brand-name"><span class="hl">Norma</span>AI</div>
   </div>
   <div>
     <span class="badge">v1.1, novembre 2026</span>
@@ -279,10 +275,10 @@
     <div class="toc-entry" data-target="cap-2"><span class="num">2</span><span class="title">Sono in ambito? Tre percorsi di verifica</span><span class="page-num">p. 6</span></div>
     <div class="toc-entry" data-target="cap-3"><span class="num">3</span><span class="title">ESRS: i principi rivisti del 2026</span><span class="page-num">p. 8</span></div>
     <div class="toc-entry" data-target="cap-4"><span class="num">4</span><span class="title">I principi volontari e il limite per la catena del valore</span><span class="page-num">p. 10</span></div>
-    <div class="toc-entry" data-target="cap-5"><span class="num">5</span><span class="title">Calendario 2026-2029</span><span class="page-num">p. 12</span></div>
-    <div class="toc-entry" data-target="cap-6"><span class="num">6</span><span class="title">Dieci errori da evitare</span><span class="page-num">p. 15</span></div>
-    <div class="toc-entry" data-target="cap-7"><span class="num">7</span><span class="title">Glossario</span><span class="page-num">p. 17</span></div>
-    <div class="toc-entry" data-target="fonti"><span class="num"></span><span class="title">Fonti e note</span><span class="page-num">p. 18</span></div>
+    <div class="toc-entry" data-target="cap-5"><span class="num">5</span><span class="title">Calendario 2026-2029</span><span class="page-num">p. 13</span></div>
+    <div class="toc-entry" data-target="cap-6"><span class="num">6</span><span class="title">Dieci errori da evitare</span><span class="page-num">p. 16</span></div>
+    <div class="toc-entry" data-target="cap-7"><span class="num">7</span><span class="title">Glossario</span><span class="page-num">p. 18</span></div>
+    <div class="toc-entry" data-target="fonti"><span class="num"></span><span class="title">Fonti e note</span><span class="page-num">p. 19</span></div>
   </div>
   <div class="box">
     <span class="label">Cosa cambia in questa versione</span>
@@ -296,7 +292,7 @@
   <h1 class="chapter"><span class="num">Capitolo 1</span>Cosa è cambiato con l'Omnibus I</h1>
 
   <h2>1.1 Gli atti, in ordine di data</h2>
-  <p>Il 26 febbraio 2025 la Commissione ha proposto il «pacchetto omnibus di semplificazione». Ne sono usciti due atti legislativi e, a cascata, tre regolamenti delegati della Commissione. L'obiettivo dichiarato nei considerando è concentrare l'obbligo di rendicontazione sulle imprese più grandi e lasciare alle altre la rendicontazione volontaria.</p>
+  <p>Tra aprile 2025 e settembre 2026 sono stati pubblicati due atti legislativi e tre regolamenti delegati della Commissione che cambiano la rendicontazione di sostenibilità. Il considerando 2 del Regolamento delegato (UE) 2026/1563 ne riassume la direzione: la Direttiva (UE) 2026/470 ha ridotto il numero di imprese soggette agli obblighi e semplificato la rendicontazione dagli esercizi che iniziano dal 1° gennaio 2027.</p>
   <table>
     <thead><tr><th>Atto</th><th class="nowrap">In vigore dal</th><th>Cosa fa</th></tr></thead>
     <tbody>
@@ -323,7 +319,7 @@
       <tr><td>Gruppi</td><td>Imprese madri di un grande gruppo</td><td>Imprese madri di un gruppo che supera le due soglie su base consolidata <span class="ref">(art. 29 bis, par. 1)</span></td></tr>
       <tr><td>PMI quotate</td><td>In ambito</td><td><strong>Fuori ambito</strong>; soppressi anche i principi a loro dedicati <span class="ref">(art. 29 quater)</span></td></tr>
       <tr><td>Imprese di paesi terzi</td><td>Ricavi netti nell'Unione oltre 150 milioni di euro; impresa figlia grande o quotata, oppure succursale oltre 40 milioni di euro</td><td>Ricavi netti nell'Unione oltre <strong>450 milioni di euro</strong> in ciascuno degli ultimi due esercizi; impresa figlia o succursale oltre <strong>200 milioni di euro</strong> <span class="ref">(art. 40 bis)</span></td></tr>
-      <tr><td>Prima ondata (enti di interesse pubblico con più di 500 dipendenti)</td><td>Rendicontano dall'esercizio 2024</td><td>Continuano per gli esercizi 2024, 2025 e 2026; gli Stati membri <strong>possono esentare</strong>, per gli esercizi 2025 e 2026, chi non supera le nuove soglie <span class="ref">(art. 5, par. 2, dir. (UE) 2022/2464)</span></td></tr>
+      <tr><td>Prima ondata (enti di interesse pubblico con più di 500 dipendenti)</td><td>Rendicontano dall'esercizio 2024</td><td>Continuano per gli esercizi 2024, 2025 e 2026; gli Stati membri <strong>possono esentare</strong>, per gli esercizi 2025 e 2026, chi resta sotto anche una sola delle nuove soglie <span class="ref">(art. 5, par. 2, dir. (UE) 2022/2464)</span></td></tr>
       <tr><td>Holding di partecipazione finanziaria</td><td>Nessuna regola specifica</td><td>Possono scegliere di non rendicontare a livello consolidato, se le imprese figlie hanno modelli aziendali e attività indipendenti tra loro <span class="ref">(art. 29 bis, par. 7 bis)</span></td></tr>
       <tr><td>Primo esercizio con il nuovo ambito</td><td></td><td>Quello che <strong>inizia dal 1° gennaio 2027</strong> <span class="ref">(art. 5, par. 2, lett. b), dir. (UE) 2022/2464)</span></td></tr>
     </tbody>
@@ -336,7 +332,7 @@
 
   <h2>1.3 Il limite per la catena del valore</h2>
   <p>È la novità che tocca di più le PMI. Un'impresa che non supera i 1.000 dipendenti e si trova nella catena del valore di un'impresa obbligata è un'<strong>impresa protetta</strong>. La direttiva le riconosce un diritto preciso:</p>
-  <blockquote class="law">«Le imprese protette hanno il diritto di rifiutarsi di fornire informazioni in più rispetto a quelle specificate nei principi volontari in risposta a una richiesta presentata ai fini della rendicontazione di sostenibilità come previsto dalla presente direttiva.»
+  <blockquote class="law"><span class="hl">«Le imprese protette hanno il diritto di rifiutarsi di fornire informazioni in più rispetto a quelle specificate nei principi volontari in risposta a una richiesta presentata ai fini della rendicontazione di sostenibilità come previsto dalla presente direttiva.»</span>
     <cite>Direttiva 2013/34/UE, art. 19 bis, par. 3, testo consolidato al 18 marzo 2026</cite>
   </blockquote>
   <p>Ne seguono quattro regole, nello stesso paragrafo:</p>
@@ -521,7 +517,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
       <tr><td><strong>1. Partire dall'impresa</strong></td><td>Strategia, modello aziendale, settori, aree geografiche, catena del valore: dove la conclusione è evidente, non serve altro</td><td>ESRS 1, punto 27</td></tr>
       <tr><td><strong>2. Scorrere l'elenco dei temi</strong></td><td>Usare l'elenco di temi e sottotemi come promemoria, non come lista da spuntare</td><td>ESRS 1, appendice A (orientamenti non vincolanti)</td></tr>
       <tr><td><strong>3. Valutare le due rilevanze</strong></td><td>Per ogni tema, rilevanza dell'impatto e rilevanza finanziaria, separatamente</td><td>ESRS 1, capitoli 3.2.1 e 3.2.2</td></tr>
-      <tr><td><strong>4. Scrivere come si è deciso</strong></td><td>Procedure seguite e conclusioni: vanno indicate nella relazione e sono oggetto dell'attestazione</td><td>Dir. 2013/34/UE, art. 19 bis, par. 2, e art. 34, par. 1, lett. a bis)</td></tr>
+      <tr><td><strong>4. Scrivere come si è deciso</strong></td><td>Procedure seguite e conclusioni: vanno indicate nella relazione e sono oggetto dell'attestazione</td><td>Dir. 2013/34/UE, art. 19 bis, par. 2, e art. 34, par. 1, secondo comma, lett. a bis)</td></tr>
     </tbody>
   </table>
 </section>
@@ -611,17 +607,17 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
   <table class="flow">
     <thead><tr><th class="nowrap">Data</th><th>Cosa succede</th><th>Fonte</th></tr></thead>
     <tbody>
-      <tr><td class="nowrap">2 dicembre 2026</td><td>AI Act: chi fornisce sistemi che generano contenuti sintetici, già sul mercato prima del 2 agosto 2026, deve adeguarsi all'obbligo di marcatura. Entrano in applicazione i nuovi divieti dell'articolo 5, paragrafo 1, lettere b bis) e b ter)</td><td>Reg. (UE) 2024/1689, art. 111, par. 4, e art. 113</td></tr>
+      <tr><td class="nowrap">2 dicembre 2026</td><td>AI Act: chi fornisce sistemi che generano contenuti sintetici, già sul mercato prima del 2 agosto 2026, deve adeguarsi all'obbligo di marcatura. Entrano in applicazione i nuovi divieti dell'articolo 5, paragrafo 1, primo comma, lettere b bis) e b ter), e i paragrafi 1 bis e 1 ter dello stesso articolo</td><td>Reg. (UE) 2024/1689, art. 111, par. 4, e art. 113</td></tr>
       <tr><td class="nowrap">22 dicembre 2026</td><td>Italia: sessanta giorni dalla pubblicazione del D.L. 193/2026. Senza conversione in legge il decreto perde efficacia</td><td>Costituzione, art. 77</td></tr>
       <tr><td class="nowrap">1° gennaio 2027</td><td>Iniziano gli esercizi a cui si applicano il nuovo ambito della CSRD, gli ESRS rivisti e il limite per la catena del valore</td><td>Dir. (UE) 2022/2464, art. 5, par. 2; reg. delegati (UE) 2026/1563, art. 3, e 2026/1560, art. 4</td></tr>
       <tr><td>Dal 1° gennaio al 28 febbraio 2027</td><td>Italia, NIS2: registrazione o aggiornamento sulla piattaforma dell'Agenzia per la cybersicurezza nazionale</td><td>D.Lgs. 138/2024, art. 7, comma 1</td></tr>
       <tr><td class="nowrap">19 marzo 2027</td><td>Termine per recepire le modifiche dell'Omnibus I a revisione legale, rendicontazione e CSRD</td><td>Dir. (UE) 2026/470, art. 5, par. 1</td></tr>
-      <tr><td class="nowrap">1° luglio 2027</td><td>La Commissione adotta i principi per l'attestazione con un livello di sicurezza limitato</td><td>Dir. 2006/43/CE, art. 26 bis, par. 3</td></tr>
+      <tr><td class="nowrap">1° luglio 2027</td><td>Termine entro cui la Commissione adotta i principi per l'attestazione con un livello di sicurezza limitato</td><td>Dir. 2006/43/CE, art. 26 bis, par. 3, come sostituito dalla dir. (UE) 2026/470, art. 1</td></tr>
       <tr><td class="nowrap">26 luglio 2027</td><td>CSDDD: orientamenti della Commissione e clausole contrattuali tipo d'uso volontario</td><td>Dir. (UE) 2024/1760, art. 18 e art. 19, par. 3</td></tr>
       <tr><td class="nowrap">2 dicembre 2027</td><td>AI Act: obblighi per i sistemi ad alto rischio dell'allegato III</td><td>Reg. (UE) 2024/1689, art. 113, lett. c), punto i)</td></tr>
       <tr><td class="nowrap">11 dicembre 2027</td><td>CRA: piena applicazione</td><td>Reg. (UE) 2024/2847, art. 71, par. 2</td></tr>
       <tr><td class="nowrap">1° gennaio 2028</td><td>Iniziano gli esercizi a cui si applica la relazione di sostenibilità delle imprese di paesi terzi</td><td>Dir. (UE) 2022/2464, art. 5, par. 2</td></tr>
-      <tr><td class="nowrap">Nel 2028</td><td>Prime relazioni con il nuovo ambito, sull'esercizio 2027</td><td>Dir. (UE) 2022/2464, art. 5, par. 2, lett. b)</td></tr>
+      <tr><td class="nowrap">Nel 2028</td><td>Prime relazioni con il nuovo ambito, sull'esercizio 2027 per chi lo chiude al 31 dicembre</td><td>Dir. (UE) 2022/2464, art. 5, par. 2, lett. b)</td></tr>
       <tr><td class="nowrap">26 luglio 2028</td><td>CSDDD: termine per il recepimento negli Stati membri</td><td>Dir. (UE) 2024/1760, art. 37, par. 1</td></tr>
       <tr><td class="nowrap">2 agosto 2028</td><td>AI Act: obblighi per i sistemi ad alto rischio dell'allegato I</td><td>Reg. (UE) 2024/1689, art. 113, lett. c), punto ii)</td></tr>
       <tr><td class="nowrap">30 aprile 2029</td><td>Relazione della Commissione sull'attuazione della CSRD</td><td>Dir. (UE) 2022/2464, art. 6, par. 1</td></tr>
@@ -635,8 +631,8 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
     <thead><tr><th>Atto</th><th>Cosa prevede</th></tr></thead>
     <tbody>
       <tr><td>D.Lgs. 6 settembre 2024, n. 125 (GU n. 212 del 10 settembre 2024), in vigore dal 25 settembre 2024</td><td>Recepisce la CSRD nel testo originario</td></tr>
-      <tr><td>D.L. 30 giugno 2025, n. 95, art. 10, convertito dalla L. 8 agosto 2025, n. 118</td><td>Modifica il decreto: le grandi imprese diverse dalla prima ondata rendicontano dagli esercizi che iniziano dal 1° gennaio 2027, le PMI quotate dal 1° gennaio 2028 (art. 17, comma 1)</td></tr>
-      <tr><td>D.L. 23 ottobre 2026, n. 193, art. 10, in vigore dal 24 ottobre 2026</td><td>Aggiunge il comma 3-bis all'articolo 17: per gli esercizi che iniziano tra il 1° gennaio 2026 e il 31 dicembre 2027 il decreto non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro o con un numero medio di dipendenti non superiore a 1.000</td></tr>
+      <tr><td>D.L. 30 giugno 2025, n. 95, art. 10, comma 1-bis, inserito dalla legge di conversione 8 agosto 2025, n. 118</td><td>Modifica il decreto: le grandi imprese diverse dalla prima ondata rendicontano dagli esercizi che iniziano dal 1° gennaio 2027, le PMI quotate dal 1° gennaio 2028 (art. 17, comma 1)</td></tr>
+      <tr><td>D.L. 23 ottobre 2026, n. 193, art. 10, in vigore dal 24 ottobre 2026</td><td>Aggiunge il comma 3-bis all'articolo 17: per gli esercizi che iniziano tra il 1° gennaio 2026 e il 31 dicembre 2027 il decreto non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro o con un numero medio di dipendenti non superiore a 1.000. Resta fermo l'articolo 5 del decreto per le imprese di paesi terzi</td></tr>
     </tbody>
   </table>
   <div class="box warn">
@@ -651,7 +647,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
       <tr><td>PMI fino a 1.000 dipendenti, fornitrice di imprese obbligate</td><td>Rispondere ai questionari entro il limite per la catena del valore</td><td>Raccogliere i dati del modulo base</td><td>NIS2, se il settore è negli allegati e non è una piccola impresa</td></tr>
       <tr><td>Impresa oltre 1.000 dipendenti e 450 milioni di euro</td><td>Rendicontazione dell'esercizio 2027 con gli ESRS rivisti</td><td>Doppia rilevanza e Tassonomia</td><td>Questionari ai fornitori entro il limite</td></tr>
       <tr><td>Società oltre 5.000 dipendenti e 1,5 miliardi di euro</td><td>Rendicontazione di sostenibilità</td><td>Dovere di diligenza dal 26 luglio 2029</td><td>Recepimento nazionale entro il 26 luglio 2028</td></tr>
-      <tr><td>Impresa che fornisce o usa sistemi di IA</td><td>Trasparenza dell'articolo 50</td><td>Misure di alfabetizzazione dell'articolo 4</td><td>Alto rischio dal 2 dicembre 2027</td></tr>
+      <tr><td>Impresa che fornisce o usa sistemi di IA</td><td>Trasparenza dell'articolo 50</td><td>Misure di alfabetizzazione dell'articolo 4</td><td>Alto rischio dal 2 dicembre 2027 (allegato III)</td></tr>
       <tr><td>Fabbricante di prodotti con elementi digitali</td><td>Segnalazioni dell'articolo 14 del CRA</td><td>Requisiti dall'11 dicembre 2027</td><td></td></tr>
     </tbody>
   </table>
@@ -677,7 +673,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
   <p><strong>Rimedio:</strong> citare il testo vigente e indicare la data in cui lo si è letto.</p>
 
   <h2>4. Fare la valutazione della doppia rilevanza senza lasciarne traccia</h2>
-  <p>La direttiva chiede di indicare le procedure seguite per individuare le informazioni incluse nella relazione (art. 19 bis, par. 2), e l'attestazione riguarda anche quelle procedure (art. 34, par. 1, lett. a bis)).</p>
+  <p>La direttiva chiede di indicare le procedure seguite per individuare le informazioni incluse nella relazione (art. 19 bis, par. 2), e l'attestazione riguarda anche quelle procedure (art. 34, par. 1, secondo comma, lett. a bis)).</p>
   <p><strong>Rimedio:</strong> un documento che dica chi ha deciso, su quali dati e con quale esito, tema per tema.</p>
 
   <h2>5. Chiedere ai fornitori più di quanto la direttiva consente</h2>
@@ -701,7 +697,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
   <p><strong>Rimedio:</strong> decidere la versione all'inizio del lavoro e scriverla nella dichiarazione.</p>
 
   <h2>10. Dimenticare la Tassonomia</h2>
-  <p>Chi è soggetto alla rendicontazione di sostenibilità deve anche l'informativa dell'articolo 8 del Regolamento (UE) 2020/852, e l'attestazione ne verifica l'osservanza (art. 34, par. 1, lett. a bis), dir. 2013/34/UE).</p>
+  <p>Chi è soggetto alla rendicontazione di sostenibilità deve anche l'informativa dell'articolo 8 del Regolamento (UE) 2020/852, e l'attestazione ne verifica l'osservanza (art. 34, par. 1, secondo comma, lett. a bis), dir. 2013/34/UE).</p>
   <p><strong>Rimedio:</strong> impostare insieme, dall'inizio, i dati contabili per le quote di fatturato, di spese in conto capitale e di spese operative.</p>
 
   <div class="box">
@@ -715,7 +711,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
   <div class="page-header"><div class="mark">N</div><span>Capitolo 7, Glossario</span></div>
   <h1 class="chapter"><span class="num">Capitolo 7</span>Glossario</h1>
 
-  <table class="flow">
+  <table class="flow compact">
     <thead><tr><th>Termine</th><th>Significato</th><th>Riferimento</th></tr></thead>
     <tbody>
       <tr><td><strong>CELEX</strong></td><td>Numero che identifica un atto su EUR-Lex, per esempio 32026L0470</td><td>EUR-Lex</td></tr>
@@ -730,7 +726,7 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
       <tr><td><strong>Impresa protetta</strong></td><td>Impresa con non più di 1.000 dipendenti nella catena del valore di un'impresa obbligata alla rendicontazione</td><td>Dir. 2013/34/UE, art. 19 bis, par. 3</td></tr>
       <tr><td><strong>Limite per la catena del valore</strong></td><td>Massimo delle informazioni che un'impresa obbligata può chiedere a un'impresa protetta</td><td>Reg. delegato (UE) 2026/1560, art. 1 e allegato II</td></tr>
       <tr><td><strong>Omnibus I</strong></td><td>La direttiva che ha modificato CSRD e CSDDD</td><td>Dir. (UE) 2026/470</td></tr>
-      <tr><td><strong>Prima ondata</strong></td><td>Enti di interesse pubblico con più di 500 dipendenti, che rendicontano dall'esercizio 2024</td><td>Dir. (UE) 2022/2464, art. 5, par. 2, lett. a)</td></tr>
+      <tr><td><strong>Prima ondata</strong></td><td>Grandi enti di interesse pubblico ed emittenti con più di 500 dipendenti, anche su base consolidata: rendicontano dall'esercizio 2024</td><td>Dir. (UE) 2022/2464, art. 5, par. 2, lett. a)</td></tr>
       <tr><td><strong>Principi volontari</strong></td><td>Principio di rendicontazione di sostenibilità ad uso volontario, già noto come VSME</td><td>Reg. delegato (UE) 2026/1560</td></tr>
       <tr><td><strong>Stop the clock</strong></td><td>La direttiva che ha rinviato le date di CSRD e CSDDD</td><td>Dir. (UE) 2025/794</td></tr>
       <tr><td><strong>Tassonomia</strong></td><td>Regolamento che stabilisce quando un'attività economica è ecosostenibile</td><td>Reg. (UE) 2020/852</td></tr>
@@ -767,10 +763,10 @@ L'impresa è soggetta alla rendicontazione di sostenibilità (percorso 2.1)?
     <h2>Diritto italiano (Normattiva, Gazzetta Ufficiale)</h2>
     <ol>
       <li>D.Lgs. 6 settembre 2024, n. 125, testo vigente all'11 novembre 2026: articolo 17. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-06;125">normattiva.it</a></li>
-      <li>D.L. 30 giugno 2025, n. 95, convertito con modificazioni dalla L. 8 agosto 2025, n. 118: articolo 10. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2025-06-30;95">normattiva.it</a></li>
+      <li>D.L. 30 giugno 2025, n. 95, convertito con modificazioni dalla L. 8 agosto 2025, n. 118: articolo 10, comma 1-bis. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2025-06-30;95">normattiva.it</a></li>
       <li>D.L. 23 ottobre 2026, n. 193 (GU n. 247 del 23 ottobre 2026): articolo 10. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2026-10-23;193">normattiva.it</a></li>
       <li>D.Lgs. 4 settembre 2024, n. 138 (GU n. 230 del 1° ottobre 2024): articoli 3 e 7. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138">normattiva.it</a></li>
-      <li>Costituzione della Repubblica italiana, articolo 77.</li>
+      <li>Costituzione della Repubblica italiana, articolo 77. <a href="https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:costituzione:1947-12-27~art77">normattiva.it</a></li>
     </ol>
 
     <h2>Cosa è stato tolto rispetto alla versione 1.0</h2>

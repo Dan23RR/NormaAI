@@ -258,6 +258,8 @@ _MARKER_RE = re.compile(
     r"^(\d{1,4}(?:\.\d{1,2})?(?:\s?-\s?[a-z]+)?\.\s+|[a-z0-9]{1,3}(?:-[a-z]+)?\)\s+)"
 )
 _PLACEHOLDER = "NON ANCORA ESISTENTE O VIGENTE"
+# How the preamble of an act ends, before its first article.
+_PREAMBLE_RE = re.compile(r"\b(?:emana|promulga|decreta)\b|\bhanno approvato\b", re.IGNORECASE)
 
 
 def _has_lowercase(text: str) -> bool:
@@ -294,7 +296,7 @@ def _raw_lines(node: Tag) -> list[str]:
                     walk(child)
                     parts.append(" ")
                 else:
-                    classes = child.get("class") or []
+                    classes: Any = child.get("class") or []
                     block = name in _BLOCK_TAGS and "ins-akn" not in classes
                     if block:
                         parts.append("\n")
@@ -462,12 +464,13 @@ def parse_article_html(html: str) -> ParsedArticle:
     parts = _label_parts(label)
     if parts is not None:
         label = f"Art. {parts[0]}" + (f"-{parts[1]}" if parts[1] else "")
-        # The article's own number inside the text: what precedes it is the
-        # preamble of the act, given as plain text with some first articles
-        # (a repealed article just repeats its number there).
+        # The article's own number as a line of the text. A repealed article
+        # repeats it at the top. Some first articles come as plain text with the
+        # preamble of the act before it ("... EMANA il seguente decreto
+        # legislativo: / Articolo 1."): the article starts after that line.
         own = [i for i, line in enumerate(lines) if _same_parts(_label_parts(line), parts)]
-        if own:
-            lines = lines[own[-1] + 1 :]
+        if own and (own[0] == 0 or (not marks and _PREAMBLE_RE.search(" ".join(lines[: own[0]])))):
+            lines = lines[own[0] + 1 :]
 
     text = " ".join(lines)
     if _PLACEHOLDER in text:
@@ -627,12 +630,20 @@ class NormattivaClient:
         except ValueError:
             payload = None
         message = str(payload.get("message") or "") if isinstance(payload, dict) else ""
-        if response.status_code == 400:
-            raise ActNotFoundError(message or "atto non trovato")
-        if response.status_code == 404:
-            if "atto non trovato" in message.lower():
+        lowered = message.lower()
+        # Only the answers the API gives for a missing act or article count as
+        # such. Any other error (the gateway's own 404 when a path changes, a
+        # block by the site's protection) says nothing about the law: reading it
+        # as "the article does not exist" would be a false alarm on every reference.
+        if isinstance(payload, dict) and "description" not in payload:
+            if response.status_code == 400 and (payload.get("code") == "1003" or "urn" in lowered):
                 raise ActNotFoundError(message)
-            raise ArticleNotFoundError(message or "articolo non trovato")
+            if response.status_code == 404 and "atto non trovato" in lowered:
+                raise ActNotFoundError(message)
+            if response.status_code == 404 and (
+                not message or "idarticolo" in lowered or "nessun articolo" in lowered
+            ):
+                raise ArticleNotFoundError(message or "articolo non trovato")
         if response.status_code != 200 or not isinstance(payload, dict):
             raise TextUnavailableError(
                 f"risposta inattesa di Normattiva per {urn}: HTTP {response.status_code}"

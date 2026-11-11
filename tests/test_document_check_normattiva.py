@@ -458,6 +458,18 @@ class TestParsing:
         parsed = parse_article_html(html)
         assert parsed.lines[0] == "Principio del risultato." and parsed.commi == ("1", "2")
 
+    def test_an_article_that_replaces_another_keeps_the_line_with_its_number(self):
+        html = (
+            '<div class="bodyTesto"><h2 class="article-num-akn">Art. 2</h2>'
+            '<div class="art-commi-div-akn"><div class="art-comma-div-akn">'
+            '<span class="comma-num-akn">1. </span><span class="art_text_in_comma">L\'articolo 2 '
+            "della legge è sostituito dal seguente:<br>Art. 2.<br>(Finalità)<br>La legge "
+            "promuove la trasparenza.</span></div></div></div>"
+        )
+        parsed = parse_article_html(html)
+        assert parsed.lines[0].startswith("1. L'articolo 2 della legge è sostituito")
+        assert parsed.lines[1] == "Art. 2." and parsed.commi == ("1",)
+
     def test_urn_tokens(self):
         assert article_tokens("art:13") == ["art13"]
         assert article_tokens("art:2ter") == ["art2ter"]
@@ -518,6 +530,25 @@ class TestClient:
             _client(lambda r: httpx.Response(200, text="<html>blocked</html>")).article("urn")
         with pytest.raises(TextUnavailableError):
             _client(lambda r: httpx.Response(200, json={"data": {"atto": None}})).article("urn")
+
+    def test_an_error_that_is_not_about_the_law_is_never_read_as_a_missing_article(self):
+        # The gateway's own 404 (a path that changed), as the specification shows it.
+        gateway = {
+            "code": "404",
+            "type": "Status report",
+            "message": "Runtime Error",
+            "description": "No matching resource found for given API Request",
+        }
+        with pytest.raises(TextUnavailableError, match="HTTP 404"):
+            _client(lambda r: httpx.Response(404, json=gateway)).article("urn~art1")
+        # The site's protection (HTTP 409), which blocked the older crawler.
+        blocked = {"status": "KO", "message": "La pagina richiesta è stata bloccata"}
+        with pytest.raises(TextUnavailableError, match="HTTP 409"):
+            _client(lambda r: httpx.Response(409, json=blocked)).article("urn~art1")
+        with pytest.raises(TextUnavailableError, match="HTTP 400"):
+            _client(lambda r: httpx.Response(400, json={"error": "Bad Request"})).article("urn")
+        with pytest.raises(TextUnavailableError, match="HTTP 404"):
+            _client(lambda r: httpx.Response(404, text="Not Found")).article("urn~art1")
 
     def test_a_server_error_is_tried_again(self):
         calls: list[int] = []

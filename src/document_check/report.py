@@ -30,7 +30,7 @@ _SUMMARY_LABELS = {
     "correggere": "da correggere",
     "controllare": "da controllare",
     "a_posto": "a posto",
-    "non_coperto": "non letti",
+    "non_coperto": "fuori copertura",
 }
 
 _CSS = """
@@ -94,6 +94,8 @@ _FOOTER_ITALIAN = (
     "non cambiare il testo su Normattiva ed essere riportata solo nelle note sotto l'articolo: il "
     "controllo segnala gli articoli che ne hanno una, non la applica al testo."
 )
+# How much of the last wording of a repealed article a card shows.
+_LAST_TEXT_CHARS = 1200
 _NORMATTIVA_CREDIT = (
     '<p>Testi italiani: <a href="https://www.normattiva.it/">Normattiva</a>, dati aperti di '
     '<a href="https://dati.normattiva.it/">dati.normattiva.it</a>, licenza '
@@ -185,9 +187,13 @@ def _card(finding: Finding) -> str:
     elif finding.before:
         # A repealed article: there is no text in force to compare with, only the last one.
         label = finding.before_version.label if finding.before_version else "testo precedente"
+        last = finding.before
+        if len(last) > _LAST_TEXT_CHARS:
+            last = last[:_LAST_TEXT_CHARS].rsplit(" ", 1)[0] + " [...]"
+        lines = "<br>".join(escape(line) for line in last.split("\n"))
         parts.append(
             f'<div class="diff"><p><strong>Ultimo testo: {escape(label)}</strong></p>'
-            f"<p>{escape(finding.before)}</p></div>"
+            f"<p>{lines}</p></div>"
         )
     if finding.url:
         where = "su Normattiva" if finding.act and not finding.act.eu else "su EUR-Lex"

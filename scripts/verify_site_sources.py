@@ -84,6 +84,8 @@ CELLAR_RESOURCE = "http://publications.europa.eu/resource/celex/{celex}"
 ISO639_3 = {"IT": "ita", "EN": "eng"}
 # A "document" entry is read only from the site of the authority that issued it.
 DOCUMENT_HOSTS = frozenset({"www.acn.gov.it"})
+# An article, an act in HTML or a determination in PDF is far below this size.
+MAX_BYTES = 25_000_000
 
 KIND_EURLEX = "eurlex"
 KIND_NORMATTIVA = "normattiva"
@@ -237,7 +239,10 @@ def http_request(
         )
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-                return response.read()
+                body = response.read(MAX_BYTES + 1)
+            if len(body) > MAX_BYTES:
+                raise NotFoundError(f"risposta oltre {MAX_BYTES} byte: non è il testo atteso")
+            return body
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")[:200].replace("\n", " ")
             if e.code < 500:

@@ -235,6 +235,38 @@ def test_build_record_keeps_an_earlier_verification_through_an_outage(vss):
     assert failed["status"] == "failed" and failed["verified_on"] is None
 
 
+class _Response:
+    def __init__(self, size):
+        self.size = size
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self, limit=-1):
+        return b"x" * (self.size if limit < 0 else min(limit, self.size))
+
+
+def test_http_request_refuses_an_answer_larger_than_any_official_text(vss, monkeypatch):
+    monkeypatch.setattr(vss, "MAX_BYTES", 10)
+    monkeypatch.setattr(vss.urllib.request, "urlopen", lambda *a, **k: _Response(10))
+    assert vss.http_request("https://example.invalid/a", attempts=1) == b"x" * 10
+    monkeypatch.setattr(vss.urllib.request, "urlopen", lambda *a, **k: _Response(11))
+    with pytest.raises(vss.NotFoundError):
+        vss.http_request("https://example.invalid/a", attempts=1)
+
+
+def test_http_request_reports_unreachable_after_its_attempts(vss, monkeypatch):
+    def timeout(*args, **kwargs):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(vss.urllib.request, "urlopen", timeout)
+    with pytest.raises(vss.UnreachableError):
+        vss.http_request("https://example.invalid/a", attempts=2, pause=0)
+
+
 def test_load_registry_refuses_malformed_entries(vss, tmp_path):
     def registry(**fields):
         path = tmp_path / "sources.json"

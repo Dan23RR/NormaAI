@@ -1663,7 +1663,7 @@
       "resultTitle": "Requisiti {framework} da verificare",
       "analysedOn": "Elenco del {date}",
       "explain": "Qui non viene esaminato nessun documento del cliente: è l'elenco dei requisiti dell'atto con i loro articoli, ciascuno da verificare, senza punteggio né giudizio di conformità.",
-      "counts": "{toVerify, plural, =1 {# requisito da verificare} other {# requisiti da verificare}}, {notApplicable, plural, =0 {nessuno non applicabile al profilo} =1 {# non applicabile al profilo} other {# non applicabili al profilo}}.",
+      "counts": "{toVerify, plural, =1 {# requisito da verificare} other {# requisiti da verificare}}, {notApplicable, plural, =0 {tutti applicabili al profilo} =1 {# non applicabile al profilo} other {# non applicabili al profilo}}.",
       "noRequirements": "L'analisi non ha restituito requisiti per questo framework.",
       "aiNotice": "Elenco generato da un sistema di IA (Regolamento (UE) 2024/1689, art. 50) a partire dal profilo inserito: non è una valutazione di conformità né una consulenza legale."
     },

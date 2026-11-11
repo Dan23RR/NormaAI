@@ -193,14 +193,14 @@
       }
     },
     "codex": {
-      "kicker": "Guida gratuita in PDF, 17 pagine",
+      "kicker": "Guida gratuita in PDF, 18 pagine, versione 1.1 di novembre 2026",
       "title": "Codex Post-Omnibus 2025-2029",
-      "lead": "La guida operativa per chi gestisce CSRD, CSDDD e Tassonomia dopo l’Omnibus I: chi resta in ambito, il calendario fino al 2029, cosa resta dei principi ESRS, gli errori più comuni nelle prime rendicontazioni.",
+      "lead": "La guida operativa per chi segue CSRD, CSDDD e Tassonomia dopo la direttiva Omnibus I: chi resta in ambito e da quando, che cosa può chiedere un cliente obbligato ai fornitori, i principi ESRS rivisti, il calendario fino al 2029. Ogni data e ogni soglia rimanda al testo ufficiale.",
       "points": {
-        "1": "Diagramma \"sono in ambito?\" per CSRD, CSDDD e Tassonomia",
-        "2": "ESRS Set 1: cosa resta dopo la riduzione dei datapoint",
-        "3": "Standard volontario VSME: quando conviene adottarlo",
-        "4": "Calendario 2026-2029 con recepimenti e prime rendicontazioni"
+        "1": "Tre percorsi per verificare se un cliente è in ambito: CSRD, CSDDD, Tassonomia",
+        "2": "ESRS rivisti: che cosa cambia con il regolamento delegato del 3 luglio 2026",
+        "3": "Principi volontari e limite per la catena del valore: che cosa si può chiedere a una PMI",
+        "4": "Calendario 2026-2029, con il recepimento italiano e il decreto-legge 193/2026"
       }
     },
     "demo": {

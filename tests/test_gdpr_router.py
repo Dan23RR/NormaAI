@@ -105,6 +105,10 @@ def _model_from_sql(sql_text: str) -> str:
     """
     lowered = sql_text.lower()
     for table, key in (
+        # The document tables first: "document_check_id" in the alerts
+        # statement is a column, not the table "document_checks".
+        ("document_dependencies", "DocumentDependency"),
+        ("document_checks", "DocumentCheck"),
         ("conversations", "Conversation"),
         ("assessments", "Assessment"),
         ("clients", "Client"),
@@ -397,6 +401,8 @@ class TestEraseHappyPath:
             "Alert": 2,
             "Conversation": 4,
             "Client": 1,
+            "DocumentCheck": 5,
+            "DocumentDependency": 12,
         }
         session = _FakeSession(rows_by_model=rows, delete_counts=delete_counts)
         fake_db = _make_fake_db_manager(session)
@@ -417,7 +423,13 @@ class TestEraseHappyPath:
             "alerts": 2,
             "conversations": 4,
             "clients": 1,
+            "document_checks": 5,
+            "document_dependencies": 12,
         }
+        # Alerts before the document checks they point to, checks before clients.
+        order = session.deleted_models
+        assert order.index("Alert") < order.index("DocumentCheck") < order.index("Client")
+        assert order.index("DocumentDependency") < order.index("DocumentCheck")
         # The session was committed (writes are durable, not rolled back).
         assert session.committed is True
         # Session scoped to the caller's org for RLS.
@@ -496,8 +508,11 @@ class TestEraseHappyPath:
             "conversations": 0,
             "assessments": 0,
             "alerts": 0,
+            "document_checks": 0,
+            "document_dependencies": 0,
         }
-        # With no client_ids and no user_ids, only the Client delete runs.
+        # With no client_ids, user_ids or document checks, only the deletes
+        # that filter on the organisation itself run.
         assert "Assessment" not in session.deleted_models
         assert "Alert" not in session.deleted_models
         assert "Conversation" not in session.deleted_models

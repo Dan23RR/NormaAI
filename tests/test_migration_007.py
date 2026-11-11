@@ -198,12 +198,25 @@ def test_spec_mirrors_the_orm_metadata(m):
     from src.db.models import Base
 
     # Objects introduced by later migrations are not part of the 007 snapshot.
-    later_tables = {"invites"}  # 008_invites
-    later_columns = {("users", "email_verified")}  # 008_invites
+    later_tables = {
+        "invites",  # 008_invites
+        "document_checks",  # 009_document_checks
+        "document_dependencies",
+        "system_state",
+    }
+    later_columns = {
+        ("users", "email_verified"),  # 008_invites
+        ("users", "notify_document_changes"),  # 009_document_checks
+        ("alerts", "document_check_id"),
+    }
 
     dialect = pg.dialect()
     orm_tables = {name: t for name, t in Base.metadata.tables.items() if name not in later_tables}
     assert set(m.TABLES) == set(orm_tables)
+
+    def later(table_name: str, column_names) -> bool:
+        """True for an index or a foreign key on a column a later migration added."""
+        return any((table_name, name) in later_columns for name in column_names)
 
     for table_name, table in orm_tables.items():
         orm_columns = [c for c in table.columns if (table_name, c.name) not in later_columns]
@@ -218,7 +231,9 @@ def test_spec_mirrors_the_orm_metadata(m):
             assert spec.nullable == expected_nullable, f"{table_name}.{col.name}"
 
         orm_indexes = {
-            (ix.name, tuple(c.name for c in ix.columns), bool(ix.unique)) for ix in table.indexes
+            (ix.name, tuple(c.name for c in ix.columns), bool(ix.unique))
+            for ix in table.indexes
+            if not later(table_name, [c.name for c in ix.columns])
         }
         spec_indexes = {
             (ix.name, ix.columns, ix.unique) for ix in m.INDEXES if ix.table == table_name
@@ -243,6 +258,7 @@ def test_spec_mirrors_the_orm_metadata(m):
                 fk.ondelete,
             )
             for fk in table.foreign_key_constraints
+            if not later(table_name, [c.name for c in fk.columns])
         }
         spec_fks = {
             ((fk.column,), fk.ref_table, fk.ref_column, fk.ondelete)

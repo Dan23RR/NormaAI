@@ -296,7 +296,9 @@ class Settings(BaseSettings):
 
     # ─── CORS ───────────────────────────────────────────────
     cors_origins: str = "http://localhost:3000"  # comma-separated
-    cors_allow_methods: str = "GET,POST,PUT,DELETE,OPTIONS"
+    # PATCH: the alerts (read, dismiss) and PATCH /documents/preferences. Without it
+    # the browser's preflight from the frontend origin is refused.
+    cors_allow_methods: str = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
     cors_allow_headers: str = "Authorization,Content-Type,X-Request-ID,Accept"
     cors_max_age: int = 600  # preflight cache in seconds
 
@@ -321,6 +323,43 @@ class Settings(BaseSettings):
     resend_from_name: str = "Daniel Culotta - NormaAI"
     resend_reply_to: str = "info@normaai.org"
     resend_webhook_secret: str = ""
+
+    # ═══ Document check: begin (src/document_check, /api/v1/documents) ═══
+    # Limits of one check. The uploaded file is read in memory and not kept.
+    document_check_max_bytes: int = 10 * 1024 * 1024
+    # Characters of text after extraction, and provisions cited ("artt. 1-30" is 30).
+    document_check_max_chars: int = 400_000
+    document_check_max_references: int = 300
+    # The check reads the official texts over the network, off the event loop:
+    # seconds before the request gives up (the first check of an act downloads it).
+    document_check_timeout_seconds: float = 120.0
+    # Checks and re-checks one organisation may have running at the same time,
+    # in each API process, and threads each process keeps for them.
+    document_check_concurrency_per_org: int = 2
+    document_check_workers: int = 4
+    # slowapi limit of POST /documents/check and of the re-check, per user. The
+    # check calls no language model, so it does not count against the LLM quota.
+    document_check_rate_limit: str = "30/hour"
+    # Checks an organisation can keep (0 = no limit): delete some to add more.
+    document_checks_max_per_org: int = 1000
+    # Seconds an API process keeps the same text source (and the texts it parsed).
+    document_check_source_ttl_seconds: int = 900
+    # Public origin of this API, e.g. https://api.normaai.org: the unsubscribe
+    # link of the digest email points here. Empty: https://<API_DOMAIN>, which
+    # bootstrap_hetzner.sh writes to .env. With neither, no digest is sent.
+    api_public_url: str = ""
+    api_domain: str = ""
+
+    @property
+    def api_base_url(self) -> str:
+        """Public origin of the API without a trailing slash, or "" when unknown."""
+        explicit = self.api_public_url.strip().rstrip("/")
+        if explicit:
+            return explicit
+        domain = self.api_domain.strip().strip("/")
+        return f"https://{domain}" if domain else ""
+
+    # ═══ Document check: end ═══
 
     @property
     def corpus_language_list(self) -> list[str]:

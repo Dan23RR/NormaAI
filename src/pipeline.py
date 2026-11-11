@@ -14,13 +14,19 @@ Usage:
     python -m src.pipeline --action seed --recreate   # drop + rebuild the collection
     python -m src.pipeline --action update   # Check for amendments and index new content
     python -m src.pipeline --action stats    # Show collection statistics
+
+Scheduled jobs (cron on the server; they do not load the embedding model):
+    python -m src.pipeline --action recheck-documents   # weekly: watched documents
+    python -m src.pipeline --action check-freshness     # nightly: corpus vs CELLAR
 """
 
 import argparse
 import json
 import logging
 import time
-from datetime import datetime
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from src.config import get_settings
 from src.crawler.eurlex import celex as celex_utils
@@ -725,6 +731,216 @@ def refresh_in_force_status(eurlex, indexer, tracked_celex: list[str], amendment
     }
 
 
+# ─── Scheduled jobs ──────────────────────────────────────────────────
+# Run by cron on the server (the in-process scheduler stays off). Neither
+# builds an IngestionPipeline: no embedding model, no document processor.
+
+
+def _iso_z(moment: datetime) -> str:
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def corpus_freshness(
+    corpus: dict | None,
+    versions_of: Callable[[str], list[Any]],
+    now: datetime | None = None,
+) -> dict:
+    """Compare the version of each tracked EU act in the corpus with CELLAR's latest.
+
+    ``corpus`` is the corpus metadata point the seed writes
+    (``HybridIndexer.get_corpus_info()``: its ``acts`` say which text of each act
+    was indexed, per language). ``versions_of(celex)`` lists the versions of an
+    act, oldest first, as the document check reads them
+    (``default_source().versions``): objects with ``celex``, ``as_of`` and
+    ``initial``.
+
+    An act is outdated when CELLAR lists a consolidated text newer than the one
+    indexed in some language. A corpus that holds the act as adopted is not
+    behind a consolidated text that is only CELLAR's snapshot of the act as
+    published (``initial``): the words are the same. Acts registered as
+    amending are skipped, they have no consolidated text of their own.
+
+    Returns ``{"status", "checked_at", "outdated", "missing", "unknown", ...}``:
+    ``status`` is ``ok``, ``outdated`` or ``unknown`` (no corpus metadata, or no
+    act could be compared); ``missing`` are tracked acts the corpus does not
+    hold, ``unknown`` those CELLAR could not be asked about.
+    """
+    now = now or datetime.now(UTC)
+    acts = corpus.get("acts") if isinstance(corpus, dict) else None
+    if not isinstance(acts, list) or not acts:
+        return {
+            "status": "unknown",
+            "checked_at": None,
+            "outdated": [],
+            "missing": [],
+            "unknown": [],
+            "reason": "corpus metadata not available",
+            "attempted_at": _iso_z(now),
+        }
+
+    indexed: dict[str, dict[str, str]] = {}  # act -> {language: id of the text indexed}
+    for entry in acts:
+        if not isinstance(entry, dict):
+            continue
+        celex = celex_utils.base_celex(str(entry.get("celex") or ""))
+        text_id = str(entry.get("source_celex") or entry.get("celex") or "")
+        if celex and text_id:
+            indexed.setdefault(celex, {})[str(entry.get("lang") or "")] = text_id
+
+    def age(text_id: str) -> str:
+        """Sorts the act as adopted before every consolidated text."""
+        return celex_utils.consolidated_as_of(text_id) or ""
+
+    outdated: list[dict] = []
+    missing: list[str] = []
+    unknown: list[str] = []
+    compared = 0
+    for act in TRACKED_ACTS:
+        if not act.consolidated:
+            continue
+        in_corpus = indexed.get(act.celex)
+        if not in_corpus:
+            missing.append(act.celex)
+            continue
+        try:
+            consolidated = [v for v in versions_of(act.celex) if getattr(v, "as_of", None)]
+        except Exception as e:  # noqa: BLE001 - CELLAR not reachable for this act
+            logger.warning(f"  freshness: versions of {act.celex} not available: {e}")
+            unknown.append(act.celex)
+            continue
+        compared += 1
+        if not consolidated:
+            continue
+        real = [v for v in consolidated if not getattr(v, "initial", False)]
+        behind: dict[str, str] = {}
+        for lang, text_id in in_corpus.items():
+            if celex_utils.is_consolidated_celex(text_id):
+                if age(text_id) < str(consolidated[-1].as_of):
+                    behind[lang] = text_id
+            elif real:
+                behind[lang] = text_id
+        if behind:
+            outdated.append(
+                {
+                    "celex": act.celex,
+                    "indexed": min(behind.values(), key=age),
+                    "latest": consolidated[-1].celex,
+                    "langs": sorted(lang for lang in behind if lang),
+                }
+            )
+
+    if outdated:
+        status = "outdated"
+    elif compared and not unknown:
+        status = "ok"
+    else:
+        status = "unknown"
+    return {
+        "status": status,
+        "checked_at": _iso_z(now) if compared else None,
+        "outdated": outdated,
+        "missing": missing,
+        "unknown": unknown,
+        "acts": compared,
+        "corpus_as_of": corpus.get("corpus_as_of") if isinstance(corpus, dict) else None,
+        "attempted_at": _iso_z(now),
+    }
+
+
+async def store_freshness(sessions: Any, outcome: dict, now: datetime | None = None) -> None:
+    """Keep the outcome in ``system_state``, where GET /api/v1/stats reads it."""
+    from src.db.models import CORPUS_FRESHNESS_KEY, SystemState
+
+    now = now or datetime.now(UTC)
+    async with sessions() as session:
+        row = await session.get(SystemState, CORPUS_FRESHNESS_KEY)
+        if row is None:
+            session.add(SystemState(key=CORPUS_FRESHNESS_KEY, value=outcome, updated_at=now))
+        else:
+            row.value = outcome
+            row.updated_at = now
+        await session.commit()
+
+
+def run_check_freshness() -> dict:
+    """``--action check-freshness``: compare, store, return the outcome.
+
+    Without Qdrant (or on a corpus seeded before the metadata point existed)
+    the outcome is ``unknown`` and is stored as such.
+    """
+    import asyncio
+
+    from src.db.engine import db_manager
+    from src.document_check.sources import default_source
+
+    try:
+        corpus = HybridIndexer(**indexer_kwargs_from_settings(get_settings())).get_corpus_info()
+    except Exception as e:  # noqa: BLE001 - Qdrant not reachable
+        logger.warning(f"freshness: corpus metadata not readable: {e}")
+        corpus = None
+
+    source: Any = None
+
+    def versions_of(celex: str) -> list[Any]:
+        # One source for the run: it keeps the lists on disk for a day, the
+        # same lists the document checks read.
+        nonlocal source
+        if source is None:
+            source = default_source()
+        return list(source.versions(celex))
+
+    outcome = corpus_freshness(corpus if isinstance(corpus, dict) else None, versions_of)
+
+    async def _store() -> None:
+        db_manager.init()
+        try:
+            await store_freshness(db_manager.session, outcome)
+        finally:
+            await db_manager.close()
+
+    asyncio.run(_store())
+    logger.info(
+        f"FRESHNESS: {outcome['status']}, {len(outcome['outdated'])} outdated, "
+        f"{len(outcome['missing'])} missing, {len(outcome['unknown'])} not checked"
+    )
+    return outcome
+
+
+def run_recheck_documents() -> dict:
+    """``--action recheck-documents``: the surveillance of the watched documents.
+
+    Re-checks the provisions every watched document cites, writes the alerts
+    and sends the digest emails (src/document_check/surveillance.py). Safe to
+    run again: a change is announced once.
+    """
+    import asyncio
+
+    from src.db.engine import db_manager
+    from src.document_check import surveillance
+    from src.document_check.sources import default_source
+
+    async def _run() -> dict:
+        db_manager.init()
+        try:
+            report = await surveillance.run(db_manager.session, default_source())
+            return report.as_dict()
+        finally:
+            await db_manager.close()
+
+    result = asyncio.run(_run())
+    logger.info(
+        f"RECHECK: {result['checks']} watched documents, {result['provisions']} provisions, "
+        f"{result['checks_changed']} documents to review, {result['emails_sent']} emails"
+    )
+    return result
+
+
+SCHEDULED_ACTIONS: dict[str, Callable[[], dict]] = {
+    "recheck-documents": run_recheck_documents,
+    "check-freshness": run_check_freshness,
+}
+
+
 def main():
     # CLI entry point only: when imported by the API (data router, scheduler)
     # the application's own logging setup applies - a module-level basicConfig
@@ -737,7 +953,7 @@ def main():
     parser = argparse.ArgumentParser(description="NormaAI Ingestion Pipeline")
     parser.add_argument(
         "--action",
-        choices=["seed", "update", "stats"],
+        choices=["seed", "update", "stats", *SCHEDULED_ACTIONS],
         required=True,
         help="Pipeline action to run",
     )
@@ -778,6 +994,12 @@ def main():
 
     def _split(values: list[str]) -> list[str]:
         return [item.strip() for value in values for item in value.split(",") if item.strip()]
+
+    if args.action in SCHEDULED_ACTIONS:
+        # Before IngestionPipeline(): these jobs need no embedding model.
+        result = SCHEDULED_ACTIONS[args.action]()
+        print("\n" + json.dumps(result, indent=2, ensure_ascii=False))
+        return
 
     pipeline = IngestionPipeline()
 

@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     Date,
@@ -28,6 +29,21 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+# Key of ``system_state`` under which ``python -m src.pipeline --action
+# check-freshness`` stores its outcome (read by GET /api/v1/stats).
+CORPUS_FRESHNESS_KEY = "corpus_freshness"
+
+
+def _json_doc() -> Any:
+    """JSONB on PostgreSQL (what the migrations create and ``alembic check``
+    compares), JSON on SQLite, where the test-suite creates these tables."""
+    return JSONB().with_variant(JSON(), "sqlite")
+
+
+def _text_array() -> Any:
+    """TEXT[] on PostgreSQL, a JSON list on SQLite (see ``_json_doc``)."""
+    return ARRAY(Text).with_variant(JSON(), "sqlite")
 
 
 class Base(DeclarativeBase):
@@ -74,6 +90,9 @@ class User(Base):
     # email matches). Gates the intelligence endpoints when
     # settings.require_email_verification is on.
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # The digest email "N documenti da rivedere" of the document surveillance.
+    # Turned off from PATCH /documents/preferences or from the link in the email.
+    notify_document_changes: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -129,8 +148,8 @@ class Client(Base):
     sector: Mapped[str | None] = mapped_column(String(100))
     employee_count: Mapped[int | None] = mapped_column(Integer)
     revenue_eur: Mapped[int | None] = mapped_column(BigInteger)
-    jurisdictions: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    applicable_frameworks: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    jurisdictions: Mapped[list[str]] = mapped_column(_text_array(), default=list)
+    applicable_frameworks: Mapped[list[str]] = mapped_column(_text_array(), default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -174,7 +193,7 @@ class Regulation(Base):
     urn: Mapped[str | None] = mapped_column(String(200), nullable=True, unique=True)
     current_text_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     versions: Mapped[dict | None] = mapped_column(
-        JSONB, nullable=True
+        _json_doc(), nullable=True
     )  # [{date, status, url}, ...]
 
     # Relationships
@@ -215,11 +234,17 @@ class Alert(Base):
     framework: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    actions_required: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    actions_required: Mapped[list[str] | None] = mapped_column(_text_array())
     deadline: Mapped[date | None] = mapped_column(Date)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     is_dismissed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Set on the alerts the document surveillance writes: the check to open.
+    # Such an alert belongs to the organisation of the check and may have no
+    # client (the row-level-security policies of migration 009 let it through).
+    document_check_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document_checks.id", ondelete="CASCADE"), index=True
+    )
 
     __table_args__ = (Index("idx_alerts_client", "client_id", "created_at"),)
 
@@ -238,8 +263,8 @@ class Assessment(Base):
     framework: Mapped[str] = mapped_column(String(50), nullable=False)
     overall_score: Mapped[float | None] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(50), default="in_progress")
-    gaps: Mapped[Any] = mapped_column(JSONB, default=dict)
-    recommendations: Mapped[Any] = mapped_column(JSONB, default=dict)
+    gaps: Mapped[Any] = mapped_column(_json_doc(), default=dict)
+    recommendations: Mapped[Any] = mapped_column(_json_doc(), default=dict)
     assessed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -264,7 +289,7 @@ class Conversation(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
-    messages: Mapped[Any] = mapped_column(JSONB, default=list)
+    messages: Mapped[Any] = mapped_column(_json_doc(), default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -311,7 +336,7 @@ class ParentDocument(Base):
     section_title: Mapped[str | None] = mapped_column(String(500))
     full_text: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)  # SHA-256 for dedup
-    chunk_ids: Mapped[list[str] | None] = mapped_column(ARRAY(Text))  # Qdrant point ids
+    chunk_ids: Mapped[list[str] | None] = mapped_column(_text_array())  # Qdrant point ids
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -379,3 +404,117 @@ class Lead(Base):
     email_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_leads_email_created", "email", "created_at"),)
+
+
+class DocumentCheck(Base):
+    """One check of a document's legal references (src/document_check).
+
+    The document is read in memory and never stored. What is kept: its name,
+    its SHA-256, the dates and ``findings``, the outcome for every reference
+    (the reference, at most 160 characters of the text around it, the quotes).
+    ``status`` and ``counts`` describe the findings as they stand after the
+    last re-check; ``needs_review`` is set when a provision the document cites
+    changed since the check.
+
+    Tenant-scoped: row-level security on ``org_id``, like ``clients``.
+    """
+
+    __tablename__ = "document_checks"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    # Deleting a client deletes the checks of its documents with it.
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE")
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    document_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_date: Mapped[date | None] = mapped_column(Date)
+    lang: Mapped[str] = mapped_column(String(8), nullable=False, default="IT")
+    # Watched checks are re-checked by the scheduled surveillance.
+    watch: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="a_posto")
+    needs_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    counts: Mapped[Any] = mapped_column(_json_doc(), default=dict, nullable=False)
+    findings: Mapped[Any] = mapped_column(_json_doc(), default=list, nullable=False)
+    checked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+    rechecked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the digest email about the present changes was sent. Cleared when a
+    # new change is found, so every change is announced once.
+    review_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_document_checks_org_checked", "org_id", "checked_at"),
+        Index("ix_document_checks_client_id", "client_id"),
+    )
+
+
+class DocumentDependency(Base):
+    """A provision a checked document relies on, as it was on the day of the check.
+
+    ``version``, ``fingerprint`` and ``official_text`` are the term of
+    comparison of every later re-check (one entry of the lock file of
+    ``src.document_check.check.build_lock``). ``state`` is ``current``,
+    ``changed``, ``removed`` or ``unavailable``; ``change`` holds what the last
+    re-check found when the provision is no longer the same.
+
+    Tenant-scoped: row-level security on ``org_id``, like ``clients``. The
+    official text is public; ``cited_as`` comes from the document.
+    """
+
+    __tablename__ = "document_dependencies"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    check_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("document_checks.id", ondelete="CASCADE"), nullable=False
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    # Order in which the document first cites the provision.
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="eurlex")
+    act: Mapped[str] = mapped_column(String(300), nullable=False)  # CELEX, or URN:NIR
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    article: Mapped[str] = mapped_column(String(100), nullable=False)  # "Art. 33"
+    key: Mapped[str] = mapped_column(String(100), nullable=False)  # "art:33"
+    lang: Mapped[str] = mapped_column(String(8), nullable=False, default="IT")
+    version: Mapped[str] = mapped_column(String(300), nullable=False)
+    as_of: Mapped[str | None] = mapped_column(String(32))  # ISO date of the version
+    fingerprint: Mapped[str] = mapped_column(String(80), nullable=False)
+    official_text: Mapped[str] = mapped_column(Text, nullable=False)
+    cited_as: Mapped[Any] = mapped_column(_json_doc(), default=list, nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="current")
+    changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    change: Mapped[Any | None] = mapped_column(_json_doc())
+
+    __table_args__ = (
+        Index("ix_document_dependencies_provision", "source", "act", "key"),
+        Index("ix_document_dependencies_check_id", "check_id"),
+        Index("ix_document_dependencies_org_id", "org_id"),
+    )
+
+
+class SystemState(Base):
+    """Small key-value store for state that belongs to no tenant.
+
+    Written by the scheduled jobs (``CORPUS_FRESHNESS_KEY``: the outcome of the
+    nightly corpus freshness check). No row-level security: nothing here comes
+    from a tenant.
+    """
+
+    __tablename__ = "system_state"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[Any] = mapped_column(_json_doc(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )

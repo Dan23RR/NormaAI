@@ -13,9 +13,10 @@ Env vars (read via src.config.get_settings):
     RESEND_REPLY_TO        (default: info@normaai.org)
     NORMAAI_PUBLIC_URL     (used to build absolute URLs)
 
-Exposes two send paths:
-    send_codex_email()         - inbound (post-form Codex download)
-    send_verification_email()  - account email verification link
+Exposes three send paths:
+    send_codex_email()            - inbound (post-form Codex download)
+    send_verification_email()     - account email verification link
+    send_document_digest_email()  - "N documenti da rivedere" (document surveillance)
 
 Returns (success, error_message) without raising. Without RESEND_API_KEY every
 send is a no-op that logs ``resend_not_configured``.
@@ -24,6 +25,7 @@ send is a no-op that logs ``resend_not_configured``.
 from __future__ import annotations
 
 import os
+from html import escape
 
 import structlog
 
@@ -263,6 +265,155 @@ def send_verification_email(
         html=_verification_email_html(recipient_name, verify_url, ttl_hours),
         text=_verification_email_text(recipient_name, verify_url, ttl_hours),
         tags=[{"name": "campaign", "value": "email_verification"}],
+    )
+
+
+# ─────────────────────────── Document digest ───────────────────────────
+# Sent by the scheduled surveillance (src/document_check/surveillance.py) to the
+# users of an organisation when provisions cited in its documents changed.
+
+
+def _digest_title(total: int) -> str:
+    return "1 documento da rivedere" if total == 1 else f"{total} documenti da rivedere"
+
+
+def _digest_opening(recipient_name: str, total: int) -> str:
+    greeting = f"Ciao {recipient_name}," if recipient_name else "Ciao,"
+    where = "in questo documento" if total == 1 else "in questi documenti"
+    return f"{greeting} dopo il controllo sono cambiate disposizioni di legge citate {where}."
+
+
+def _digest_more(shown: int, total: int) -> str:
+    rest = total - shown
+    if rest <= 0:
+        return ""
+    return "E un altro documento." if rest == 1 else f"E altri {rest} documenti."
+
+
+_DIGEST_NOTE = (
+    "Il confronto riguarda il testo ufficiale delle disposizioni: apri il controllo per "
+    "vedere che cosa è cambiato. Non è un parere legale."
+)
+_DIGEST_WHY = (
+    "Ricevi questa email perché in NormaAI sono attivi gli avvisi sui documenti controllati "
+    "dalla tua organizzazione."
+)
+
+
+def _document_digest_html(
+    recipient_name: str,
+    documents: list[dict],
+    total: int,
+    app_url: str,
+    unsubscribe_url: str,
+    contact: str,
+) -> str:
+    items = "".join(
+        '<li style="margin:0 0 12px;">'
+        f'<a href="{escape(str(doc.get("url") or app_url), quote=True)}" '
+        f'style="color:#0A3A9C;font-weight:600;">{escape(str(doc.get("filename") or ""))}</a>'
+        f'<br><span style="color:#44506A;font-size:14px;">'
+        f"{escape('; '.join(str(p) for p in doc.get('provisions') or []))}</span></li>"
+        for doc in documents
+    )
+    more = _digest_more(len(documents), total)
+    more_html = f'<p style="font-size:15px;margin:0 0 16px;">{escape(more)}</p>' if more else ""
+    return f"""<!doctype html>
+<html lang="it"><body style="margin:0;padding:0;background:#ffffff;color:#0C1B33;font-family:'Public Sans',Arial,Helvetica,sans-serif;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;">
+  <tr><td align="center" style="padding:24px 12px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+      <tr><td style="font-size:16px;font-weight:600;color:#0C1B33;padding:0 0 20px;">NormaAI</td></tr>
+      <tr><td>
+        <h1 style="font-family:Literata,Georgia,serif;font-size:22px;line-height:1.3;color:#0C1B33;margin:0 0 12px;font-weight:600;">{escape(_digest_title(total))}</h1>
+        <p style="font-size:15px;line-height:1.55;margin:0 0 16px;">{escape(_digest_opening(recipient_name, total))}</p>
+        <ul style="font-size:15px;line-height:1.5;margin:0 0 16px;padding:0 0 0 20px;">{items}</ul>
+        {more_html}
+        <p style="margin:20px 0;">
+          <a href="{escape(app_url, quote=True)}"
+             style="display:inline-block;background:#0A3A9C;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:6px;font-size:15px;">
+            Apri i controlli
+          </a>
+        </p>
+        <p style="font-size:13px;line-height:1.5;color:#44506A;margin:0 0 20px;">{escape(_DIGEST_NOTE)}</p>
+      </td></tr>
+      <tr><td style="border-top:1px solid #D9DEE8;padding:16px 0 0;font-size:12px;line-height:1.5;color:#44506A;">
+        {escape(_DIGEST_WHY)}
+        <a href="{escape(unsubscribe_url, quote=True)}" style="color:#0A3A9C;">Non ricevere più questa email</a>.<br>
+        NormaAI, {escape(contact)}
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>
+"""
+
+
+def _document_digest_text(
+    recipient_name: str,
+    documents: list[dict],
+    total: int,
+    app_url: str,
+    unsubscribe_url: str,
+    contact: str,
+) -> str:
+    lines = [_digest_opening(recipient_name, total), ""]
+    for doc in documents:
+        lines.append(f"- {doc.get('filename') or ''}")
+        provisions = "; ".join(str(p) for p in doc.get("provisions") or [])
+        if provisions:
+            lines.append(f"  {provisions}")
+        lines.append(f"  {doc.get('url') or app_url}")
+    more = _digest_more(len(documents), total)
+    if more:
+        lines += ["", more]
+    lines += [
+        "",
+        f"Apri i controlli: {app_url}",
+        "",
+        _DIGEST_NOTE,
+        "",
+        _DIGEST_WHY,
+        f"Per non riceverla più: {unsubscribe_url}",
+        "",
+        f"NormaAI, {contact}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def send_document_digest_email(
+    *,
+    to_email: str,
+    recipient_name: str,
+    documents: list[dict],
+    app_url: str,
+    unsubscribe_url: str,
+    total: int | None = None,
+) -> tuple[bool, str | None]:
+    """The digest of the document surveillance: "N documenti da rivedere".
+
+    ``documents`` are ``{"filename", "url", "provisions": [...]}``; ``total`` is
+    how many there are in all when only the first ones are listed. The message
+    carries the ``List-Unsubscribe`` headers (one click, RFC 8058) next to the
+    link in its footer.
+    """
+    count = total if total is not None else len(documents)
+    contact = _get_config()["reply_to"]
+    return _send_via_resend(
+        to_email=to_email,
+        subject=f"NormaAI: {_digest_title(count)}",
+        html=_document_digest_html(
+            recipient_name, documents, count, app_url, unsubscribe_url, contact
+        ),
+        text=_document_digest_text(
+            recipient_name, documents, count, app_url, unsubscribe_url, contact
+        ),
+        headers={
+            "List-Unsubscribe": f"<{unsubscribe_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+        tags=[{"name": "campaign", "value": "document_digest"}],
     )
 
 

@@ -1,4 +1,9 @@
-"""Alert endpoints: CRUD for compliance alerts with org-scoped access."""
+"""Alert endpoints: CRUD for compliance alerts with org-scoped access.
+
+An alert belongs to an organisation through its client or, for the alerts the
+document surveillance writes (``src/document_check``), through its document
+check: such an alert has ``document_check_id`` and may have no client.
+"""
 
 import uuid
 from datetime import date, datetime
@@ -7,12 +12,12 @@ from enum import Enum
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from src.audit import AuditAction, audit_log, get_client_ip
 from src.auth.dependencies import CurrentUser, get_current_user
 from src.db.engine import db_manager
-from src.db.models import Alert, Client
+from src.db.models import Alert, Client, DocumentCheck
 
 logger = structlog.get_logger()
 
@@ -67,6 +72,8 @@ class AlertResponse(BaseModel):
     is_read: bool
     is_dismissed: bool
     created_at: datetime
+    # The document check to open (/app/controlla/{id}) for an alert about a document.
+    document_check_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 
@@ -106,6 +113,18 @@ class AlertSummary(BaseModel):
 # --- Helpers --------------------------------------------------------------
 
 
+def _in_org(org_id: uuid.UUID):
+    """Condition: the alert is of this organisation.
+
+    Through its client, or through its document check (the same two ways in as
+    the row-level-security policies of migration 009).
+    """
+    return or_(
+        Alert.client_id.in_(select(Client.id).where(Client.org_id == org_id)),
+        Alert.document_check_id.in_(select(DocumentCheck.id).where(DocumentCheck.org_id == org_id)),
+    )
+
+
 async def _verify_client_org(session, client_id: uuid.UUID, org_id: uuid.UUID) -> Client:
     """Verify that a client belongs to the user's organization.
 
@@ -120,15 +139,11 @@ async def _verify_client_org(session, client_id: uuid.UUID, org_id: uuid.UUID) -
 
 
 async def _get_alert_for_org(session, alert_id: uuid.UUID, org_id: uuid.UUID) -> Alert:
-    """Fetch an alert and verify org ownership via the client join.
+    """Fetch an alert of the organisation (see ``_in_org``).
 
     Returns the Alert row if valid, raises 404 otherwise.
     """
-    stmt = (
-        select(Alert)
-        .join(Client, Alert.client_id == Client.id)
-        .where(and_(Alert.id == alert_id, Client.org_id == org_id))
-    )
+    stmt = select(Alert).where(and_(Alert.id == alert_id, _in_org(org_id)))
     result = await session.execute(stmt)
     alert = result.scalar_one_or_none()
     if alert is None:
@@ -154,11 +169,7 @@ async def get_alerts_summary(
     Requires authentication.
     """
     async with db_manager.session(org_id=str(user.org_id)) as session:
-        base = (
-            select(Alert)
-            .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
-        )
+        base = select(Alert).where(and_(_in_org(user.org_id), Alert.is_dismissed.is_(False)))
 
         # Total count
         total_stmt = select(func.count()).select_from(base.subquery())
@@ -173,8 +184,7 @@ async def get_alerts_summary(
         # By severity
         sev_stmt = (
             select(Alert.severity, func.count().label("count"))
-            .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
+            .where(and_(_in_org(user.org_id), Alert.is_dismissed.is_(False)))
             .group_by(Alert.severity)
             .order_by(func.count().desc())
         )
@@ -184,8 +194,7 @@ async def get_alerts_summary(
         # By framework
         fw_stmt = (
             select(Alert.framework, func.count().label("count"))
-            .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_dismissed.is_(False)))
+            .where(and_(_in_org(user.org_id), Alert.is_dismissed.is_(False)))
             .group_by(Alert.framework)
             .order_by(func.count().desc())
         )
@@ -224,11 +233,7 @@ async def list_alerts(
     """
     async with db_manager.session(org_id=str(user.org_id)) as session:
         # Base query: alerts for the user's org
-        base = (
-            select(Alert)
-            .join(Client, Alert.client_id == Client.id)
-            .where(Client.org_id == user.org_id)
-        )
+        base = select(Alert).where(_in_org(user.org_id))
 
         # Apply filters
         if severity is not None:
@@ -252,8 +257,7 @@ async def list_alerts(
         unread_stmt = (
             select(func.count())
             .select_from(Alert)
-            .join(Client, Alert.client_id == Client.id)
-            .where(and_(Client.org_id == user.org_id, Alert.is_read.is_(False)))
+            .where(and_(_in_org(user.org_id), Alert.is_read.is_(False)))
         )
         unread_count = (await session.execute(unread_stmt)).scalar() or 0
 

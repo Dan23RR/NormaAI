@@ -87,7 +87,10 @@
       "article": "Art. 4",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 4, par. 1", "en": "Art. 4(1)" },
+      "label": {
+        "it": "art. 4, par. 1",
+        "en": "Art. 4(1)"
+      },
       "excerpt": "I fornitori e i deployer di sistemi di IA adottano misure volte a sostenere lo sviluppo dell'alfabetizzazione in materia di IA del loro personale [...] Tale obbligo non impone ai fornitori o ai deployer di garantire un livello specifico di alfabetizzazione in materia di IA per alcuna persona."
     },
     {
@@ -97,7 +100,10 @@
       "article": "Art. 5",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 1, lett. f)", "en": "Art. 5(1)(f)" },
+      "label": {
+        "it": "art. 5, par. 1, lett. f)",
+        "en": "Art. 5(1)(f)"
+      },
       "excerpt": "l'uso di sistemi di IA per inferire le emozioni di una persona fisica nell'ambito del luogo di lavoro e degli istituti di istruzione, tranne laddove l'uso del sistema di IA sia destinato a essere messo in funzione o immesso sul mercato per motivi medici o di sicurezza"
     },
     {
@@ -107,7 +113,10 @@
       "article": "Art. 5",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 1, lett. b bis)", "en": "Art. 5(1)(ba)" },
+      "label": {
+        "it": "art. 5, par. 1, lett. b bis)",
+        "en": "Art. 5(1)(ba)"
+      },
       "excerpt": "l'immissione sul mercato, la messa in servizio o l'uso di un sistema di IA che genera o manipola immagini, video e audio realistici o materiale analogo delle parti intime di una persona fisica riconoscibile, o di una persona fisica riconoscibile che partecipi ad atti sessualmente espliciti senza il consenso liberamente prestato, specifico, informato e inequivocabile di tale persona"
     },
     {
@@ -117,7 +126,10 @@
       "article": "Art. 5",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 1, lett. b ter)", "en": "Art. 5(1)(bb)" },
+      "label": {
+        "it": "art. 5, par. 1, lett. b ter)",
+        "en": "Art. 5(1)(bb)"
+      },
       "excerpt": "l'immissione sul mercato, la messa in servizio o l'uso di un sistema di IA che genera o manipola materiale o spettacoli ai sensi dell'articolo 2, lettere c) ed e), della direttiva 2011/93/UE"
     },
     {
@@ -127,7 +139,10 @@
       "article": "Art. 26",
       "paragraph": "7",
       "lang": "IT",
-      "label": { "it": "art. 26, par. 7", "en": "Art. 26(7)" },
+      "label": {
+        "it": "art. 26, par. 7",
+        "en": "Art. 26(7)"
+      },
       "excerpt": "Prima di mettere in servizio o utilizzare un sistema di IA ad alto rischio sul luogo di lavoro, i deployer che sono datori di lavoro informano i rappresentanti dei lavoratori e i lavoratori interessati che saranno soggetti all'uso del sistema di IA ad alto rischio."
     },
     {
@@ -137,7 +152,10 @@
       "article": "Annex III",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "allegato III, punto 4", "en": "Annex III, point 4" },
+      "label": {
+        "it": "allegato III, punto 4",
+        "en": "Annex III, point 4"
+      },
       "excerpt": "Occupazione, gestione dei lavoratori e accesso al lavoro autonomo: a) i sistemi di IA destinati a essere utilizzati per l'assunzione o la selezione di persone fisiche [...] b) i sistemi di IA destinati a essere utilizzati per adottare decisioni riguardanti le condizioni dei rapporti di lavoro, la promozione o cessazione dei rapporti contrattuali di lavoro"
     },
     {
@@ -147,7 +165,10 @@
       "article": "Art. 50",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 50, par. 1", "en": "Art. 50(1)" },
+      "label": {
+        "it": "art. 50, par. 1",
+        "en": "Art. 50(1)"
+      },
       "excerpt": "I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate siano informate del fatto di stare interagendo con un sistema di IA"
     },
     {
@@ -157,7 +178,10 @@
       "article": "Art. 50",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 50, par. 2", "en": "Art. 50(2)" },
+      "label": {
+        "it": "art. 50, par. 2",
+        "en": "Art. 50(2)"
+      },
       "excerpt": "I fornitori di sistemi di IA, compresi i sistemi di IA per finalità generali, che generano contenuti audio, immagine, video o testuali sintetici, garantiscono che gli output del sistema di IA siano marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente."
     },
     {
@@ -167,7 +191,10 @@
       "article": "Art. 50",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 50, par. 3", "en": "Art. 50(3)" },
+      "label": {
+        "it": "art. 50, par. 3",
+        "en": "Art. 50(3)"
+      },
       "excerpt": "I deployer di un sistema di riconoscimento delle emozioni o di un sistema di categorizzazione biometrica informano le persone fisiche che vi sono esposte in merito al funzionamento del sistema"
     },
     {
@@ -177,7 +204,10 @@
       "article": "Art. 50",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 50, par. 4", "en": "Art. 50(4)" },
+      "label": {
+        "it": "art. 50, par. 4",
+        "en": "Art. 50(4)"
+      },
       "excerpt": "I deployer di un sistema di IA che genera o manipola immagini o contenuti audio o video che costituiscono un «deep fake» rendono noto che il contenuto è stato generato o manipolato artificialmente."
     },
     {
@@ -187,8 +217,24 @@
       "article": "Art. 50",
       "paragraph": "5",
       "lang": "IT",
-      "label": { "it": "art. 50, par. 5", "en": "Art. 50(5)" },
+      "label": {
+        "it": "art. 50, par. 5",
+        "en": "Art. 50(5)"
+      },
       "excerpt": "Le informazioni di cui ai paragrafi da 1 a 4 sono fornite alle persone fisiche interessate in maniera chiara e distinguibile al più tardi al momento della prima interazione o esposizione."
+    },
+    {
+      "id": "ai-act-53-1",
+      "kind": "eurlex",
+      "act": "32024R1689",
+      "article": "Art. 53",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 53, par. 1, lett. a)",
+        "en": "Art. 53(1)(a)"
+      },
+      "excerpt": "I fornitori di modelli di IA per finalità generali: a) redigono e mantengono aggiornata la documentazione tecnica del modello"
     },
     {
       "id": "ai-act-99-4",
@@ -197,7 +243,10 @@
       "article": "Art. 99",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 99, par. 4, lett. g)", "en": "Art. 99(4)(g)" },
+      "label": {
+        "it": "art. 99, par. 4, lett. g)",
+        "en": "Art. 99(4)(g)"
+      },
       "excerpt": "è soggetta a sanzioni amministrative pecuniarie fino a 15 000 000 EUR o, se l'autore del reato è un'impresa, fino al 3 % del fatturato mondiale totale annuo dell'esercizio precedente, se superiore [...] gli obblighi di trasparenza per i fornitori e i deployers a norma dell'articolo 50"
     },
     {
@@ -207,7 +256,10 @@
       "article": "Art. 99",
       "paragraph": "6",
       "lang": "IT",
-      "label": { "it": "art. 99, par. 6", "en": "Art. 99(6)" },
+      "label": {
+        "it": "art. 99, par. 6",
+        "en": "Art. 99(6)"
+      },
       "excerpt": "Nel caso delle PMI, comprese le start-up, ciascuna sanzione pecuniaria di cui al presente articolo è pari al massimo alle percentuali o all'importo di cui ai paragrafi 3, 4 e 5, se inferiore."
     },
     {
@@ -217,7 +269,10 @@
       "article": "Art. 111",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 111, par. 3", "en": "Art. 111(3)" },
+      "label": {
+        "it": "art. 111, par. 3",
+        "en": "Art. 111(3)"
+      },
       "excerpt": "I fornitori di modelli di IA per finalità generali che sono stati immessi sul mercato prima del 2 agosto 2025 adottano le misure necessarie per conformarsi agli obblighi di cui al presente regolamento entro 2 agosto 2027."
     },
     {
@@ -227,7 +282,10 @@
       "article": "Art. 111",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 111, par. 4", "en": "Art. 111(4)" },
+      "label": {
+        "it": "art. 111, par. 4",
+        "en": "Art. 111(4)"
+      },
       "excerpt": "I fornitori di sistemi di IA, compresi i sistemi di IA per finalità generali, che generano contenuti audio, immagine, video o testuali sintetici, immessi sul mercato prima del 2 agosto 2026, adottano le misure necessarie per conformarsi all'articolo 50, paragrafo 2, entro il 2 dicembre 2026."
     },
     {
@@ -237,7 +295,10 @@
       "article": "Art. 113",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 113, secondo comma", "en": "Art. 113, second paragraph" },
+      "label": {
+        "it": "art. 113, secondo comma",
+        "en": "Art. 113, second paragraph"
+      },
       "excerpt": "Si applica a decorrere dal 2 agosto 2026."
     },
     {
@@ -247,7 +308,10 @@
       "article": "Art. 113",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 113, terzo comma, lett. a)", "en": "Art. 113, third paragraph, point (a)" },
+      "label": {
+        "it": "art. 113, terzo comma, lett. a)",
+        "en": "Art. 113, third paragraph, point (a)"
+      },
       "excerpt": "I capi I e II si applicano a decorrere dal 2 febbraio 2025, ad eccezione dell'articolo 5, paragrafo 1, primo comma, lettere b bis) e b ter), e dell'articolo 5, paragrafi 1 bis e 1 ter, che si applicano a decorrere dal 2 dicembre 2026"
     },
     {
@@ -257,7 +321,10 @@
       "article": "Art. 113",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 113, terzo comma, lett. b)", "en": "Art. 113, third paragraph, point (b)" },
+      "label": {
+        "it": "art. 113, terzo comma, lett. b)",
+        "en": "Art. 113, third paragraph, point (b)"
+      },
       "excerpt": "Il capo III, sezione 4, il capo V, il capo VII, il capo XII e l'articolo 78 si applicano a decorrere dal 2 agosto 2025, ad eccezione dell'articolo 101"
     },
     {
@@ -267,8 +334,11 @@
       "article": "Art. 113",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 113, terzo comma, lett. c), punto i)", "en": "Art. 113, third paragraph, point (c)(i)" },
-      "excerpt": "2 dicembre 2027 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 2, e dell'allegato III"
+      "label": {
+        "it": "art. 113, terzo comma, lett. c), punto i)",
+        "en": "Art. 113, third paragraph, point (c)(i)"
+      },
+      "excerpt": "Il capo III, sezioni 1, 2 e 3, ad eccezione dell'articolo 6, paragrafo 5, si applica a decorrere dal: i) 2 dicembre 2027 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 2, e dell'allegato III"
     },
     {
       "id": "ai-act-113-c-ii",
@@ -277,8 +347,11 @@
       "article": "Art. 113",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 113, terzo comma, lett. c), punto ii)", "en": "Art. 113, third paragraph, point (c)(ii)" },
-      "excerpt": "2 agosto 2028 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 1, e dell'allegato I"
+      "label": {
+        "it": "art. 113, terzo comma, lett. c), punto ii)",
+        "en": "Art. 113, third paragraph, point (c)(ii)"
+      },
+      "excerpt": "Il capo III, sezioni 1, 2 e 3, ad eccezione dell'articolo 6, paragrafo 5, si applica a decorrere dal: [...] ii) 2 agosto 2028 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 1, e dell'allegato I"
     },
     {
       "id": "dir-2013-34-19bis-1",
@@ -287,8 +360,37 @@
       "article": "Art. 19 bis",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 19 bis, par. 1", "en": "Art. 19a(1)" },
+      "label": {
+        "it": "art. 19 bis, par. 1",
+        "en": "Art. 19a(1)"
+      },
       "excerpt": "Le imprese che, alla data di chiusura del bilancio, presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR e superano un numero medio di 1 000 dipendenti occupati durante l'esercizio includono nella relazione sulla gestione informazioni necessarie alla comprensione dell'impatto dell'impresa sulle questioni di sostenibilità"
+    },
+    {
+      "id": "dir-2013-34-19bis-3-protetta",
+      "kind": "eurlex",
+      "act": "32013L0034",
+      "article": "Art. 19 bis",
+      "paragraph": "3",
+      "lang": "IT",
+      "label": {
+        "it": "art. 19 bis, par. 3, secondo comma, lett. b)",
+        "en": "Art. 19a(3), second subparagraph, point (b)"
+      },
+      "excerpt": "«impresa protetta»: un'impresa che: i) alla data di chiusura del bilancio, non supera un numero medio di 1 000 dipendenti occupati durante l'esercizio precedente; e ii) si trova nella catena del valore di un'impresa che comunica informazioni"
+    },
+    {
+      "id": "dir-2013-34-19bis-3-rifiuto",
+      "kind": "eurlex",
+      "act": "32013L0034",
+      "article": "Art. 19 bis",
+      "paragraph": "3",
+      "lang": "IT",
+      "label": {
+        "it": "art. 19 bis, par. 3, quarto comma",
+        "en": "Art. 19a(3), fourth subparagraph"
+      },
+      "excerpt": "Le imprese protette hanno il diritto di rifiutarsi di fornire informazioni in più rispetto a quelle specificate nei principi volontari in risposta a una richiesta presentata ai fini della rendicontazione di sostenibilità come previsto dalla presente direttiva."
     },
     {
       "id": "dir-2013-34-29bis-1",
@@ -297,7 +399,10 @@
       "article": "Art. 29 bis",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 29 bis, par. 1", "en": "Art. 29a(1)" },
+      "label": {
+        "it": "art. 29 bis, par. 1",
+        "en": "Art. 29a(1)"
+      },
       "excerpt": "Le imprese madri di un gruppo che, alla data di chiusura del bilancio, su base consolidata, presenta ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR e supera un numero medio di 1 000 dipendenti occupati durante l'esercizio"
     },
     {
@@ -307,7 +412,10 @@
       "article": "Art. 40 bis",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 40 bis, par. 1, quinto comma", "en": "Art. 40a(1), fifth subparagraph" },
+      "label": {
+        "it": "art. 40 bis, par. 1, quinto comma",
+        "en": "Art. 40a(1), fifth subparagraph"
+      },
       "excerpt": "se l'impresa del paese terzo, a livello di gruppo o, se non applicabile, a livello individuale, ha generato nell'Unione ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR per ciascuno degli ultimi due esercizi consecutivi"
     },
     {
@@ -317,8 +425,24 @@
       "article": "Art. 40 bis",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 40 bis, par. 1, secondo comma", "en": "Art. 40a(1), second subparagraph" },
+      "label": {
+        "it": "art. 40 bis, par. 1, secondo comma",
+        "en": "Art. 40a(1), second subparagraph"
+      },
       "excerpt": "Il primo comma si applica unicamente alle imprese figlie che, alla data di chiusura del bilancio, hanno generato ricavi netti delle vendite e delle prestazioni superiori a 200 000 000 EUR nell'esercizio precedente."
+    },
+    {
+      "id": "csrd-5-2-a",
+      "kind": "eurlex",
+      "act": "32022L2464",
+      "article": "Art. 5",
+      "paragraph": "2",
+      "lang": "IT",
+      "label": {
+        "it": "art. 5, par. 2, primo comma, lett. a)",
+        "en": "Art. 5(2), first subparagraph, point (a)"
+      },
+      "excerpt": "alle grandi imprese quali definite all'articolo 3, paragrafo 4, della direttiva 2013/34/UE che costituiscono enti di interesse pubblico a norma dell'articolo 2, punto 1), di tale direttiva e che alla data di chiusura del bilancio superano il numero medio di 500 dipendenti occupati durante l'esercizio"
     },
     {
       "id": "csrd-5-2-b",
@@ -327,7 +451,10 @@
       "article": "Art. 5",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 2, primo comma, lett. b)", "en": "Art. 5(2), first subparagraph, point (b)" },
+      "label": {
+        "it": "art. 5, par. 2, primo comma, lett. b)",
+        "en": "Art. 5(2), first subparagraph, point (b)"
+      },
       "excerpt": "per gli esercizi aventi inizio il [...] gennaio 2027 o in data successiva: i) alle imprese che, alla data di chiusura del bilancio, presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR e superano un numero medio di 1 000 dipendenti occupati durante l'esercizio"
     },
     {
@@ -337,8 +464,11 @@
       "article": "Art. 5",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 2, ultimo comma", "en": "Art. 5(2), last subparagraph" },
-      "excerpt": "gli Stati membri possono esentare, se del caso, le imprese o gli emittenti che, su base consolidata, non presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR o non superano un numero medio di 1 000 dipendenti occupati durante l'esercizio"
+      "label": {
+        "it": "art. 5, par. 2, ultimo comma",
+        "en": "Art. 5(2), last subparagraph"
+      },
+      "excerpt": "gli Stati membri possono esentare, se del caso, le imprese o gli emittenti che, su base consolidata, non presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR o non superano un numero medio di 1 000 dipendenti occupati durante l'esercizio dall'obbligo di rispettare le misure necessarie per conformarsi all'articolo 1, ad eccezione del punto 14), e all'articolo 2, per gli esercizi aventi inizio tra il [...] gennaio 2025 e il 31 dicembre 2026"
     },
     {
       "id": "omnibus-5-1",
@@ -347,7 +477,10 @@
       "article": "Art. 5",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 5, par. 1", "en": "Art. 5(1)" },
+      "label": {
+        "it": "art. 5, par. 1",
+        "en": "Art. 5(1)"
+      },
       "excerpt": "Gli Stati membri mettono in vigore le disposizioni legislative, regolamentari e amministrative necessarie per conformarsi agli articoli 1, 2 e 3 entro il 19 marzo 2027."
     },
     {
@@ -357,7 +490,10 @@
       "article": "Art. 2",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 2, par. 1, lett. a)", "en": "Art. 2(1)(a)" },
+      "label": {
+        "it": "art. 2, par. 1, lett. a)",
+        "en": "Art. 2(1)(a)"
+      },
       "excerpt": "avere avuto, in media, più di 5 000 dipendenti e un fatturato netto a livello mondiale superiore a 1 500 000 000 EUR nell'ultimo esercizio per il quale è stato o avrebbe dovuto essere adottato il bilancio d'esercizio"
     },
     {
@@ -367,7 +503,10 @@
       "article": "Art. 2",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 2, par. 2, lett. a)", "en": "Art. 2(2)(a)" },
+      "label": {
+        "it": "art. 2, par. 2, lett. a)",
+        "en": "Art. 2(2)(a)"
+      },
       "excerpt": "avere generato un fatturato netto superiore a 1 500 000 000 EUR nell'Unione nell'esercizio precedente l'ultimo esercizio"
     },
     {
@@ -377,8 +516,24 @@
       "article": "Art. 2",
       "paragraph": "5",
       "lang": "IT",
-      "label": { "it": "art. 2, par. 5", "en": "Art. 2(5)" },
+      "label": {
+        "it": "art. 2, par. 5",
+        "en": "Art. 2(5)"
+      },
       "excerpt": "La direttiva si applica alle società che soddisfano le condizioni di cui ai paragrafi 1 o 2 solo se tali condizioni sono soddisfatte per due esercizi consecutivi."
+    },
+    {
+      "id": "csddd-8-2bis-a",
+      "kind": "eurlex",
+      "act": "32024L1760",
+      "article": "Art. 8",
+      "paragraph": "2 bis",
+      "lang": "IT",
+      "label": {
+        "it": "art. 8, par. 2 bis, lett. a)",
+        "en": "Art. 8(2a)(a)"
+      },
+      "excerpt": "le società possano chiedere informazioni ai partner commerciali soltanto qualora tali informazioni siano necessarie, e nel caso di partner commerciali con meno di 5 000 dipendenti soltanto qualora le informazioni non possano ragionevolmente essere ottenute con altri mezzi"
     },
     {
       "id": "csddd-19-3",
@@ -387,7 +542,10 @@
       "article": "Art. 19",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 19, par. 3", "en": "Art. 19(3)" },
+      "label": {
+        "it": "art. 19, par. 3",
+        "en": "Art. 19(3)"
+      },
       "excerpt": "Gli orientamenti di cui al paragrafo 2, lettere a), d) ed e), sono adottati entro il 26 luglio 2027."
     },
     {
@@ -397,7 +555,10 @@
       "article": "Art. 27",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 27, par. 4", "en": "Art. 27(4)" },
+      "label": {
+        "it": "art. 27, par. 4",
+        "en": "Art. 27(4)"
+      },
       "excerpt": "Gli Stati membri provvedono a che il limite massimo delle sanzioni pecuniarie sia fissato al 3 % del fatturato netto mondiale della società nell'esercizio precedente quello della decisione di irrogare una sanzione pecuniaria"
     },
     {
@@ -407,7 +568,10 @@
       "article": "Art. 37",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 37, par. 1, primo comma", "en": "Art. 37(1), first subparagraph" },
+      "label": {
+        "it": "art. 37, par. 1, primo comma",
+        "en": "Art. 37(1), first subparagraph"
+      },
       "excerpt": "Gli Stati membri adottano e pubblicano, entro il 26 luglio 2028, le disposizioni legislative, regolamentari e amministrative necessarie per conformarsi alla presente direttiva."
     },
     {
@@ -417,7 +581,10 @@
       "article": "Art. 37",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 37, par. 1, secondo comma", "en": "Art. 37(1), second subparagraph" },
+      "label": {
+        "it": "art. 37, par. 1, secondo comma",
+        "en": "Art. 37(1), second subparagraph"
+      },
       "excerpt": "Essi applicano tali misure a decorrere dal 26 luglio 2029"
     },
     {
@@ -427,7 +594,10 @@
       "article": "Art. 2",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 2, par. 1", "en": "Art. 2(1)" },
+      "label": {
+        "it": "art. 2, par. 1",
+        "en": "Art. 2(1)"
+      },
       "excerpt": "Il presente regolamento si applica alle macchine e ai prodotti correlati seguenti: a) attrezzature intercambiabili; b) componenti di sicurezza; c) accessori di sollevamento; d) catene, funi e cinghie; e) dispositivi amovibili di trasmissione meccanica. Il presente regolamento si applica altresì alle quasi-macchine."
     },
     {
@@ -437,8 +607,50 @@
       "article": "Art. 3",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 3, punto 16)", "en": "Art. 3, point (16)" },
-      "excerpt": "«modifica sostanziale»: una modifica di una macchina o di un prodotto correlato, mediante mezzi fisici o digitali dopo che tale macchina o prodotto correlato è stato immesso sul mercato o messo in servizio, che non è prevista né pianificata dal fabbricante, e che incide sulla sicurezza della macchina o del prodotto correlato creando un nuovo pericolo o aumentando un rischio esistente"
+      "label": {
+        "it": "art. 3, punto 16)",
+        "en": "Art. 3, point (16)"
+      },
+      "excerpt": "«modifica sostanziale»: una modifica di una macchina o di un prodotto correlato, mediante mezzi fisici o digitali dopo che tale macchina o prodotto correlato è stato immesso sul mercato o messo in servizio, che non è prevista né pianificata dal fabbricante, e che incide sulla sicurezza della macchina o del prodotto correlato creando un nuovo pericolo o aumentando un rischio esistente, che richiede: a) l'aggiunta di ripari o di dispositivi di protezione alla macchina o al prodotto correlato, operazione che necessita la modifica del sistema di controllo della sicurezza esistente, o b) l'adozione di misure di protezione supplementari per garantire la stabilità o la resistenza meccanica di tale macchina o prodotto correlato"
+    },
+    {
+      "id": "mach-3-18",
+      "kind": "eurlex",
+      "act": "32023R1230",
+      "article": "Art. 3",
+      "paragraph": "",
+      "lang": "IT",
+      "label": {
+        "it": "art. 3, punto 18)",
+        "en": "Art. 3, point (18)"
+      },
+      "excerpt": "«fabbricante»: qualsiasi persona fisica o giuridica che: a) fabbrichi prodotti rientranti nell'ambito di applicazione del presente regolamento o che faccia progettare o fabbricare tali prodotti e li commercializzi con il proprio nome o con il proprio marchio; oppure b) fabbrichi prodotti rientranti nell'ambito di applicazione del presente regolamento e li metta in servizio per uso proprio"
+    },
+    {
+      "id": "mach-3-20",
+      "kind": "eurlex",
+      "act": "32023R1230",
+      "article": "Art. 3",
+      "paragraph": "",
+      "lang": "IT",
+      "label": {
+        "it": "art. 3, punto 20)",
+        "en": "Art. 3, point (20)"
+      },
+      "excerpt": "«importatore»: qualsiasi persona fisica o giuridica stabilita nell'Unione che immette sul mercato dell'Unione un prodotto rientrante nell'ambito di applicazione del presente regolamento originario da un paese terzo"
+    },
+    {
+      "id": "mach-3-21",
+      "kind": "eurlex",
+      "act": "32023R1230",
+      "article": "Art. 3",
+      "paragraph": "",
+      "lang": "IT",
+      "label": {
+        "it": "art. 3, punto 21)",
+        "en": "Art. 3, point (21)"
+      },
+      "excerpt": "«distributore»: qualsiasi persona fisica o giuridica nella catena di approvvigionamento, diversa dal fabbricante o dall'importatore, che mette a disposizione un prodotto rientrante nell'ambito di applicazione del presente regolamento sul mercato"
     },
     {
       "id": "mach-10-1",
@@ -447,7 +659,10 @@
       "article": "Art. 10",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 10, par. 1", "en": "Art. 10(1)" },
+      "label": {
+        "it": "art. 10, par. 1",
+        "en": "Art. 10(1)"
+      },
       "excerpt": "All'atto dell'immissione sul mercato o della messa in servizio di una macchina o di un prodotto correlato, i fabbricanti garantiscono che siano stati progettati e fabbricati conformemente ai requisiti essenziali di sicurezza e di tutela della salute di cui all'allegato III."
     },
     {
@@ -457,7 +672,10 @@
       "article": "Art. 10",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 10, par. 2", "en": "Art. 10(2)" },
+      "label": {
+        "it": "art. 10, par. 2",
+        "en": "Art. 10(2)"
+      },
       "excerpt": "i fabbricanti redigono la documentazione tecnica di cui all'allegato IV, parte A, ed eseguono o fanno eseguire la pertinente procedura di valutazione della conformità di cui all'articolo 25. [...] i fabbricanti redigono la dichiarazione di conformità UE conformemente all'articolo 21 e appongono la marcatura CE"
     },
     {
@@ -467,7 +685,10 @@
       "article": "Art. 10",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 10, par. 3", "en": "Art. 10(3)" },
+      "label": {
+        "it": "art. 10, par. 3",
+        "en": "Art. 10(3)"
+      },
       "excerpt": "I fabbricanti mantengono la documentazione tecnica e la dichiarazione di conformità UE a disposizione delle autorità di vigilanza del mercato per un periodo di almeno 10 anni dalla data di immissione sul mercato o dalla messa in servizio della macchina o del prodotto correlato."
     },
     {
@@ -477,7 +698,10 @@
       "article": "Art. 10",
       "paragraph": "7",
       "lang": "IT",
-      "label": { "it": "art. 10, par. 7", "en": "Art. 10(7)" },
+      "label": {
+        "it": "art. 10, par. 7",
+        "en": "Art. 10(7)"
+      },
       "excerpt": "I fabbricanti garantiscono che le macchine o i prodotti correlati siano accompagnati dalle istruzioni per l'uso e dalle informazioni di cui all'allegato III. Le istruzioni possono essere fornite in formato digitale."
     },
     {
@@ -487,7 +711,10 @@
       "article": "Art. 11",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 11, par. 2", "en": "Art. 11(2)" },
+      "label": {
+        "it": "art. 11, par. 2",
+        "en": "Art. 11(2)"
+      },
       "excerpt": "Prima dell'immissione sul mercato di una quasi-macchina, i fabbricanti redigono la documentazione tecnica di cui all'allegato IV, parte B. [...] i fabbricanti redigono la dichiarazione di incorporazione UE conformemente all'articolo 22."
     },
     {
@@ -497,7 +724,10 @@
       "article": "Art. 13",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 13, par. 1", "en": "Art. 13(1)" },
+      "label": {
+        "it": "art. 13, par. 1",
+        "en": "Art. 13(1)"
+      },
       "excerpt": "Gli importatori immettono sul mercato soltanto macchine o prodotti correlati conformi."
     },
     {
@@ -507,7 +737,10 @@
       "article": "Art. 13",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 13, par. 2", "en": "Art. 13(2)" },
+      "label": {
+        "it": "art. 13, par. 2",
+        "en": "Art. 13(2)"
+      },
       "excerpt": "Prima dell'immissione sul mercato di una macchina o di un prodotto correlato, gli importatori si assicurano che il fabbricante abbia svolto le procedure di valutazione della conformità adeguate di cui all'articolo 25."
     },
     {
@@ -517,7 +750,10 @@
       "article": "Art. 13",
       "paragraph": "8",
       "lang": "IT",
-      "label": { "it": "art. 13, par. 8", "en": "Art. 13(8)" },
+      "label": {
+        "it": "art. 13, par. 8",
+        "en": "Art. 13(8)"
+      },
       "excerpt": "Gli importatori mantengono una copia della dichiarazione di conformità UE a disposizione delle autorità di vigilanza del mercato per un periodo di almeno 10 anni dalla data di immissione sul mercato della macchina o del prodotto correlato"
     },
     {
@@ -527,7 +763,10 @@
       "article": "Art. 15",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 15, par. 1", "en": "Art. 15(1)" },
+      "label": {
+        "it": "art. 15, par. 1",
+        "en": "Art. 15(1)"
+      },
       "excerpt": "Quando mettono una macchina o un prodotto correlato a disposizione sul mercato, i distributori esercitano la dovuta diligenza per rispettare le prescrizioni del presente regolamento."
     },
     {
@@ -537,8 +776,11 @@
       "article": "Art. 15",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 15, par. 2", "en": "Art. 15(2)" },
-      "excerpt": "Prima di mettere una macchina o un prodotto correlato a disposizione sul mercato, i distributori verificano che: a) la macchina o il prodotto correlato rechi la marcatura CE; b) la macchina o il prodotto correlato siano accompagnati dalla dichiarazione di conformità UE di cui all'articolo 10, paragrafo 8;"
+      "label": {
+        "it": "art. 15, par. 2",
+        "en": "Art. 15(2)"
+      },
+      "excerpt": "Prima di mettere una macchina o un prodotto correlato a disposizione sul mercato, i distributori verificano che: a) la macchina o il prodotto correlato rechi la marcatura CE; b) la macchina o il prodotto correlato siano accompagnati dalla dichiarazione di conformità UE di cui all'articolo 10, paragrafo 8; c) la macchina o il prodotto correlato siano accompagnati dalle istruzioni per l'uso e dalle informazioni di cui all'articolo 10, paragrafo 7"
     },
     {
       "id": "mach-17",
@@ -547,7 +789,10 @@
       "article": "Art. 17",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 17", "en": "Art. 17" },
+      "label": {
+        "it": "art. 17",
+        "en": "Art. 17"
+      },
       "excerpt": "Un importatore o distributore è considerato un fabbricante ai fini del presente regolamento, ed è soggetto agli obblighi del fabbricante di cui agli articoli 10 e 11, quando immette sul mercato un prodotto rientrante nell'ambito di applicazione del presente regolamento con il proprio nome o marchio commerciale o modifica un prodotto già immesso sul mercato in un modo suscettibile di incidere sulla conformità ai requisiti applicabili."
     },
     {
@@ -557,7 +802,10 @@
       "article": "Art. 18",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 18, primo comma", "en": "Art. 18, first paragraph" },
+      "label": {
+        "it": "art. 18, primo comma",
+        "en": "Art. 18, first paragraph"
+      },
       "excerpt": "Una persona fisica o giuridica che apporta una modifica sostanziale alla macchina o a un prodotto correlato è considerata un fabbricante ai fini del presente regolamento ed è soggetta agli obblighi del fabbricante"
     },
     {
@@ -567,7 +815,10 @@
       "article": "Art. 52",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 52, par. 1", "en": "Art. 52(1)" },
+      "label": {
+        "it": "art. 52, par. 1",
+        "en": "Art. 52(1)"
+      },
       "excerpt": "Gli Stati membri non impediscono la messa a disposizione sul mercato di prodotti immessi sul mercato in conformità della direttiva 2006/42/CE prima del 20 gennaio 2027"
     },
     {
@@ -577,8 +828,24 @@
       "article": "Art. 54",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 54, secondo comma", "en": "Art. 54, second paragraph" },
+      "label": {
+        "it": "art. 54, secondo comma",
+        "en": "Art. 54, second paragraph"
+      },
       "excerpt": "Esso si applica a partire dal 20 gennaio 2027"
+    },
+    {
+      "id": "nis2-dir-2-1",
+      "kind": "eurlex",
+      "act": "32022L2555",
+      "article": "Art. 2",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 2, par. 1",
+        "en": "Art. 2(1)"
+      },
+      "excerpt": "La presente direttiva si applica ai soggetti pubblici o privati delle tipologie di cui all'allegato I o II che sono considerati medie imprese"
     },
     {
       "id": "nis2-dir-41-1",
@@ -587,8 +854,24 @@
       "article": "Art. 41",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 41, par. 1", "en": "Art. 41(1)" },
+      "label": {
+        "it": "art. 41, par. 1",
+        "en": "Art. 41(1)"
+      },
       "excerpt": "Essi applicano tali disposizioni a decorrere dal 18 ottobre 2024."
+    },
+    {
+      "id": "dora-2-1",
+      "kind": "eurlex",
+      "act": "32022R2554",
+      "article": "Art. 2",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 2, par. 1",
+        "en": "Art. 2(1)"
+      },
+      "excerpt": "il presente regolamento si applica alle entità seguenti: a) enti creditizi; b) istituti di pagamento [...] e) imprese di investimento; [...] n) imprese di assicurazione e di riassicurazione; [...] u) fornitori terzi di servizi TIC."
     },
     {
       "id": "dora-64",
@@ -597,8 +880,24 @@
       "article": "Art. 64",
       "paragraph": "",
       "lang": "IT",
-      "label": { "it": "art. 64, secondo comma", "en": "Art. 64, second paragraph" },
+      "label": {
+        "it": "art. 64, secondo comma",
+        "en": "Art. 64, second paragraph"
+      },
       "excerpt": "Esso si applica a decorrere dal 17 gennaio 2025."
+    },
+    {
+      "id": "cra-2-1",
+      "kind": "eurlex",
+      "act": "32024R2847",
+      "article": "Art. 2",
+      "paragraph": "1",
+      "lang": "IT",
+      "label": {
+        "it": "art. 2, par. 1",
+        "en": "Art. 2(1)"
+      },
+      "excerpt": "Il presente regolamento si applica ai prodotti con elementi digitali messi a disposizione sul mercato la cui finalità prevista o il cui utilizzo ragionevolmente prevedibile include una connessione dati logica o fisica diretta o indiretta a un dispositivo o a una rete."
     },
     {
       "id": "cra-14-1",
@@ -607,7 +906,10 @@
       "article": "Art. 14",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 14, par. 1", "en": "Art. 14(1)" },
+      "label": {
+        "it": "art. 14, par. 1",
+        "en": "Art. 14(1)"
+      },
       "excerpt": "Un fabbricante notifica simultaneamente al CSIRT designato come coordinatore, conformemente al paragrafo 7 del presente articolo, e all'ENISA, qualsiasi vulnerabilità attivamente sfruttata contenuta nel prodotto con elementi digitali di cui viene a conoscenza."
     },
     {
@@ -617,7 +919,10 @@
       "article": "Art. 14",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 14, par. 2, lett. a) e b)", "en": "Art. 14(2)(a) and (b)" },
+      "label": {
+        "it": "art. 14, par. 2, lett. a) e b)",
+        "en": "Art. 14(2)(a) and (b)"
+      },
       "excerpt": "una notifica di preallarme di una vulnerabilità attivamente sfruttata, senza indebito ritardo e in ogni caso entro 24 ore dal momento in cui il fabbricante ne è venuto a conoscenza [...] una notifica delle vulnerabilità, senza indebito ritardo e in ogni caso entro 72 ore dal momento in cui il fabbricante è venuto a conoscenza della vulnerabilità attivamente sfruttata"
     },
     {
@@ -627,7 +932,10 @@
       "article": "Art. 71",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 71, par. 2", "en": "Art. 71(2)" },
+      "label": {
+        "it": "art. 71, par. 2",
+        "en": "Art. 71(2)"
+      },
       "excerpt": "Il presente regolamento si applica dall'11 dicembre 2027. Tuttavia, l'articolo 14 si applica a decorrere dall'11 settembre 2026"
     },
     {
@@ -637,8 +945,11 @@
       "article": "Art. 1",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 1, par. 1", "en": "Art. 1(1)" },
-      "excerpt": "prodotti interessati, elencati nell'allegato I, che contengono o che sono stati nutriti o fabbricati usando materie prime interessate, vale a dire bovini, cacao, caffè, palma da olio, gomma, soia e legno"
+      "label": {
+        "it": "art. 1, par. 1",
+        "en": "Art. 1(1)"
+      },
+      "excerpt": "norme relative all'immissione e alla messa a disposizione sul mercato dell'Unione nonché all'esportazione dall'Unione di prodotti interessati, elencati nell'allegato I, che contengono o che sono stati nutriti o fabbricati usando materie prime interessate, vale a dire bovini, cacao, caffè, palma da olio, gomma, soia e legno"
     },
     {
       "id": "eudr-38-2",
@@ -647,7 +958,10 @@
       "article": "Art. 38",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 38, par. 2", "en": "Art. 38(2)" },
+      "label": {
+        "it": "art. 38, par. 2",
+        "en": "Art. 38(2)"
+      },
       "excerpt": "gli articoli da 3 a 13, gli articoli da 16 a 24 e gli articoli 26, 31 e 32 si applicano a decorrere dal 30 dicembre 2026"
     },
     {
@@ -657,8 +971,11 @@
       "article": "Art. 38",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 38, par. 3", "en": "Art. 38(3)" },
-      "excerpt": "per gli operatori, siano essi persone fisiche o microimprese o piccole imprese [...] che erano costituiti come tali al 31 dicembre 2024, gli articoli di cui al paragrafo 2 del presente articolo si applicano a decorrere dal 30 giugno 2027"
+      "label": {
+        "it": "art. 38, par. 3",
+        "en": "Art. 38(3)"
+      },
+      "excerpt": "Fatta eccezione per i prodotti che figurano nell'allegato del regolamento (UE) n. 995/2010, per gli operatori, siano essi persone fisiche o microimprese o piccole imprese [...] che erano costituiti come tali al 31 dicembre 2024, gli articoli di cui al paragrafo 2 del presente articolo si applicano a decorrere dal 30 giugno 2027"
     },
     {
       "id": "rec-2003-361-2-1",
@@ -667,7 +984,10 @@
       "article": "Allegato, art. 2",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "allegato, art. 2, par. 1", "en": "Annex, Art. 2(1)" },
+      "label": {
+        "it": "allegato, art. 2, par. 1",
+        "en": "Annex, Art. 2(1)"
+      },
       "excerpt": "è costituita da imprese che occupano meno di 250 persone, il cui fatturato annuo non supera i 50 milioni di EUR oppure il cui totale di bilancio annuo non supera i 43 milioni di EUR"
     },
     {
@@ -677,8 +997,24 @@
       "article": "Allegato, art. 2",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "allegato, art. 2, par. 2", "en": "Annex, Art. 2(2)" },
+      "label": {
+        "it": "allegato, art. 2, par. 2",
+        "en": "Annex, Art. 2(2)"
+      },
       "excerpt": "Nella categoria delle PMI si definisce piccola impresa un'impresa che occupa meno di 50 persone e realizza un fatturato annuo o un totale di bilancio annuo non superiori a 10 milioni di EUR."
+    },
+    {
+      "id": "rec-2003-361-6-2",
+      "kind": "eurlex",
+      "act": "32003H0361",
+      "article": "Allegato, art. 6",
+      "paragraph": "2",
+      "lang": "IT",
+      "label": {
+        "it": "allegato, art. 6, par. 2",
+        "en": "Annex, Art. 6(2)"
+      },
+      "excerpt": "Ai dati di cui al primo e al secondo comma si aggiunge il 100 % dei dati relativi alle eventuali imprese direttamente o indirettamente collegate all'impresa in questione che non siano già stati ripresi nei conti tramite consolidamento."
     },
     {
       "id": "dlgs-138-2024-3-2",
@@ -687,7 +1023,10 @@
       "article": "Art. 3",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 2", "en": "Art. 3(2)" },
+      "label": {
+        "it": "art. 3, comma 2",
+        "en": "Art. 3(2)"
+      },
       "excerpt": "Il presente decreto si applica ai soggetti delle tipologie di cui all'allegato I e II, che superano i massimali per le piccole imprese ai sensi dell'articolo 2, paragrafo 2, dell'allegato alla raccomandazione 2003/361/CE"
     },
     {
@@ -697,7 +1036,10 @@
       "article": "Art. 3",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 4", "en": "Art. 3(4)" },
+      "label": {
+        "it": "art. 3, comma 4",
+        "en": "Art. 3(4)"
+      },
       "excerpt": "si applica l'articolo 6, paragrafo 2, del medesimo allegato, salvo che ciò non sia proporzionato, tenuto anche conto dell'indipendenza del soggetto dalle sue imprese collegate in termini di sistemi informativi e di rete"
     },
     {
@@ -707,7 +1049,10 @@
       "article": "Art. 3",
       "paragraph": "5",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 5", "en": "Art. 3(5)" },
+      "label": {
+        "it": "art. 3, comma 5",
+        "en": "Art. 3(5)"
+      },
       "excerpt": "Il presente decreto si applica, indipendentemente dalle loro dimensioni, anche: [...] b) ai fornitori di reti pubbliche di comunicazione elettronica o di servizi di comunicazione elettronica accessibili al pubblico; c) ai prestatori di servizi fiduciari; d) ai gestori di registri dei nomi di dominio di primo livello e fornitori di servizi di sistema dei nomi di dominio; e) ai fornitori di servizi di registrazione dei nomi di dominio."
     },
     {
@@ -717,7 +1062,10 @@
       "article": "Art. 3",
       "paragraph": "6",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 6", "en": "Art. 3(6)" },
+      "label": {
+        "it": "art. 3, comma 6",
+        "en": "Art. 3(6)"
+      },
       "excerpt": "Il presente decreto si applica, altresì, anche indipendentemente dalle loro dimensioni, alle pubbliche amministrazioni di cui all'articolo 1, comma 3, della legge 31 dicembre 2009, n. 196, ricomprese nelle categorie elencate nell'allegato III."
     },
     {
@@ -727,7 +1075,10 @@
       "article": "Art. 3",
       "paragraph": "8",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 8", "en": "Art. 3(8)" },
+      "label": {
+        "it": "art. 3, comma 8",
+        "en": "Art. 3(8)"
+      },
       "excerpt": "Il presente decreto si applica, altresì, indipendentemente dalle loro dimensioni, anche ai soggetti delle tipologie di cui all'allegato IV, individuati secondo le procedure di cui al comma 13."
     },
     {
@@ -737,7 +1088,10 @@
       "article": "Art. 3",
       "paragraph": "9",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 9", "en": "Art. 3(9)" },
+      "label": {
+        "it": "art. 3, comma 9",
+        "en": "Art. 3(9)"
+      },
       "excerpt": "Il presente decreto si applica, altresì, anche ai soggetti dei settori o delle tipologie di cui agli allegati I, II, III e IV, indipendentemente dalle loro dimensioni, individuati secondo le procedure di cui al comma 13"
     },
     {
@@ -747,8 +1101,37 @@
       "article": "Art. 3",
       "paragraph": "10",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 10", "en": "Art. 3(10)" },
+      "label": {
+        "it": "art. 3, comma 10",
+        "en": "Art. 3(10)"
+      },
       "excerpt": "Il presente decreto si applica, infine, indipendentemente dalle sue dimensioni, all'impresa collegata ad un soggetto essenziale o importante, se soddisfa almeno uno dei seguenti criteri:"
+    },
+    {
+      "id": "dlgs-138-2024-3-13",
+      "kind": "normattiva",
+      "act": "urn:nir:stato:decreto.legislativo:2024-09-04;138",
+      "article": "Art. 3",
+      "paragraph": "13",
+      "lang": "IT",
+      "label": {
+        "it": "art. 3, comma 13",
+        "en": "Art. 3(13)"
+      },
+      "excerpt": "L'Autorità nazionale competente NIS notifica a tali soggetti la loro individuazione ai fini della registrazione di cui all'articolo 7, comma 1."
+    },
+    {
+      "id": "dlgs-138-2024-3-14",
+      "kind": "normattiva",
+      "act": "urn:nir:stato:decreto.legislativo:2024-09-04;138",
+      "article": "Art. 3",
+      "paragraph": "14",
+      "lang": "IT",
+      "label": {
+        "it": "art. 3, comma 14",
+        "en": "Art. 3(14)"
+      },
+      "excerpt": "Le disposizioni di cui all'articolo 17 e ai Capi IV e V del presente decreto non si applicano ai soggetti identificati come essenziali o importanti dei settori 3 e 4 di cui all'allegato I, ai quali si applica la disciplina di cui al regolamento (UE) 2022/2554"
     },
     {
       "id": "dlgs-138-2024-6-1",
@@ -757,7 +1140,10 @@
       "article": "Art. 6",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 6, comma 1, lett. a)", "en": "Art. 6(1)(a)" },
+      "label": {
+        "it": "art. 6, comma 1, lett. a)",
+        "en": "Art. 6(1)(a)"
+      },
       "excerpt": "sono considerati soggetti essenziali: a) i soggetti di cui all'allegato I che superano i massimali per le medie imprese di cui all'articolo 2, paragrafo 1, dell'allegato della raccomandazione 2003/361/CE"
     },
     {
@@ -767,7 +1153,10 @@
       "article": "Art. 6",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 6, comma 3", "en": "Art. 6(3)" },
+      "label": {
+        "it": "art. 6, comma 3",
+        "en": "Art. 6(3)"
+      },
       "excerpt": "sono considerati soggetti importanti i soggetti di cui all'articolo 3 che non sono considerati essenziali ai sensi dei commi 1 e 2 del presente articolo"
     },
     {
@@ -777,7 +1166,10 @@
       "article": "Art. 7",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 7, comma 1", "en": "Art. 7(1)" },
+      "label": {
+        "it": "art. 7, comma 1",
+        "en": "Art. 7(1)"
+      },
       "excerpt": "Dal 1° gennaio al 28 febbraio di ogni anno successivo alla data di entrata in vigore del presente decreto, i soggetti di cui all'articolo 3, si registrano o aggiornano la propria registrazione sulla piattaforma digitale resa disponibile dall'Autorità nazionale competente NIS"
     },
     {
@@ -787,7 +1179,10 @@
       "article": "Art. 7",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 7, comma 3", "en": "Art. 7(3)" },
+      "label": {
+        "it": "art. 7, comma 3",
+        "en": "Art. 7(3)"
+      },
       "excerpt": "l'Autorità nazionale competente NIS comunica ai soggetti registrati di cui al comma 2: a) l'inserimento nell'elenco dei soggetti essenziali o importanti;"
     },
     {
@@ -797,7 +1192,10 @@
       "article": "Art. 7",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 7, comma 4", "en": "Art. 7(4)" },
+      "label": {
+        "it": "art. 7, comma 4",
+        "en": "Art. 7(4)"
+      },
       "excerpt": "Dal 15 aprile al 31 maggio di ogni anno successivo alla data di entrata in vigore del presente decreto, tramite la piattaforma digitale di cui al comma 1, i soggetti che hanno ricevuto la comunicazione di cui al comma 3, lettere a) e b), forniscono o aggiornano almeno le informazioni seguenti:"
     },
     {
@@ -807,8 +1205,11 @@
       "article": "Art. 23",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 23, comma 1", "en": "Art. 23(1)" },
-      "excerpt": "Gli organi di amministrazione e gli organi direttivi dei soggetti essenziali e dei soggetti importanti: a) approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica adottate da tali soggetti ai sensi dell'articolo 24;"
+      "label": {
+        "it": "art. 23, comma 1",
+        "en": "Art. 23(1)"
+      },
+      "excerpt": "Gli organi di amministrazione e gli organi direttivi dei soggetti essenziali e dei soggetti importanti: a) approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica adottate da tali soggetti ai sensi dell'articolo 24; b) sovrintendono all'implementazione degli obblighi di cui al presente capo e di cui all'articolo 7; c) sono responsabili delle violazioni di cui al presente decreto."
     },
     {
       "id": "dlgs-138-2024-24-1",
@@ -817,7 +1218,10 @@
       "article": "Art. 24",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 24, comma 1", "en": "Art. 24(1)" },
+      "label": {
+        "it": "art. 24, comma 1",
+        "en": "Art. 24(1)"
+      },
       "excerpt": "I soggetti essenziali e i soggetti importanti adottano misure tecniche, operative e organizzative adeguate e proporzionate"
     },
     {
@@ -827,7 +1231,10 @@
       "article": "Art. 24",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 24, comma 2, lett. d)", "en": "Art. 24(2)(d)" },
+      "label": {
+        "it": "art. 24, comma 2, lett. d)",
+        "en": "Art. 24(2)(d)"
+      },
       "excerpt": "sicurezza della catena di approvvigionamento, ivi compresi gli aspetti relativi alla sicurezza riguardanti i rapporti tra ciascun soggetto e i suoi diretti fornitori o fornitori di servizi"
     },
     {
@@ -837,8 +1244,11 @@
       "article": "Art. 25",
       "paragraph": "5",
       "lang": "IT",
-      "label": { "it": "art. 25, comma 5, lett. a) e b)", "en": "Art. 25(5)(a) and (b)" },
-      "excerpt": "senza ingiustificato ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, una pre-notifica [...] senza ingiustificato ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente"
+      "label": {
+        "it": "art. 25, comma 5, lett. a), b) e d)",
+        "en": "Art. 25(5)(a), (b) and (d)"
+      },
+      "excerpt": "senza ingiustificato ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, una pre-notifica [...] senza ingiustificato ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente [...] una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)"
     },
     {
       "id": "dlgs-138-2024-38-9",
@@ -847,7 +1257,10 @@
       "article": "Art. 38",
       "paragraph": "9",
       "lang": "IT",
-      "label": { "it": "art. 38, comma 9, lett. a) e b)", "en": "Art. 38(9)(a) and (b)" },
+      "label": {
+        "it": "art. 38, comma 9, lett. a) e b)",
+        "en": "Art. 38(9)(a) and (b)"
+      },
       "excerpt": "per i soggetti essenziali, escluse le pubbliche amministrazioni, con sanzioni amministrative pecuniarie fino a un massimo di euro 10.000.000 o del 2% del totale del fatturato annuo su scala mondiale per l'esercizio precedente del soggetto [...] per i soggetti importanti, escluse le pubbliche amministrazioni, con sanzioni amministrative pecuniarie fino a un massimo di euro 7.000.000 o dell'1,4% del totale del fatturato annuo su scala mondiale per l'esercizio precedente del soggetto"
     },
     {
@@ -858,7 +1271,10 @@
       "paragraph": "",
       "annex": 1,
       "lang": "IT",
-      "label": { "it": "allegato I, colonna «Settore»", "en": "Annex I, column \"Settore\" (sector)" },
+      "label": {
+        "it": "allegato I, colonna «Settore»",
+        "en": "Annex I, column \"Settore\" (sector)"
+      },
       "excerpt": "1. Energia 2. Trasporti 3. Settore bancario 4. Infrastrutture dei mercati finanziari 5. Settore sanitario 6. Acqua potabile 7. Acque reflue 8. Infrastrutture digitali 9. Gestione dei servizi TIC (business-to-business) 10. Spazio"
     },
     {
@@ -869,7 +1285,10 @@
       "paragraph": "",
       "annex": 2,
       "lang": "IT",
-      "label": { "it": "allegato II, colonna «Settore»", "en": "Annex II, column \"Settore\" (sector)" },
+      "label": {
+        "it": "allegato II, colonna «Settore»",
+        "en": "Annex II, column \"Settore\" (sector)"
+      },
       "excerpt": "1. Servizi postali e di corriere 2. Gestione dei rifiuti 3. Fabbricazione, produzione e distribuzione di sostanze chimiche 4. Produzione, trasformazione e distribuzione di alimenti 5. Fabbricazione 6. Fornitori di servizi digitali 7. Ricerca"
     },
     {
@@ -880,7 +1299,10 @@
       "paragraph": "5",
       "annex": 2,
       "lang": "IT",
-      "label": { "it": "allegato II, settore 5, colonna «Sottosettore»", "en": "Annex II, sector 5, column \"Sottosettore\" (subsector)" },
+      "label": {
+        "it": "allegato II, settore 5, colonna «Sottosettore»",
+        "en": "Annex II, sector 5, column \"Sottosettore\" (subsector)"
+      },
       "excerpt": "a) Fabbricazione di dispositivi medici e di dispositivi medico-diagnostici in vitro b) Fabbricazione di computer e prodotti di elettronica e ottica c) Fabbricazione di apparecchiature elettriche d) Fabbricazione di macchinari e apparecchiature n.c.a. e) Fabbricazione di autoveicoli, rimorchi e semirimorchi f) Fabbricazione di altri mezzi di trasporto"
     },
     {
@@ -891,7 +1313,10 @@
       "paragraph": "",
       "annex": 3,
       "lang": "IT",
-      "label": { "it": "allegato III", "en": "Annex III" },
+      "label": {
+        "it": "allegato III",
+        "en": "Annex III"
+      },
       "excerpt": "a) amministrazioni centrali: 1) gli Organi costituzionali e di rilievo costituzionale; 2) la Presidenza del Consiglio dei ministri e i Ministeri; 3) le Agenzie fiscali; 4) le Autorità amministrative indipendenti; b) amministrazioni regionali: 1. le Regioni e le Province autonome. c) amministrazioni locali 1. le Città metropolitane; 2. i Comuni con popolazione superiore a 100.000 abitanti; 3. i Comuni capoluoghi di regione; 4. le Aziende sanitarie locali."
     },
     {
@@ -902,7 +1327,10 @@
       "paragraph": "",
       "annex": 4,
       "lang": "IT",
-      "label": { "it": "allegato IV", "en": "Annex IV" },
+      "label": {
+        "it": "allegato IV",
+        "en": "Annex IV"
+      },
       "excerpt": "1. Soggetti che forniscono servizi di trasporto pubblico locale. 2. Istituti di istruzione che svolgono attività di ricerca. 3. Soggetti che svolgono attività di interesse culturale. 4. Società in house, società partecipate e società a controllo pubblico"
     },
     {
@@ -913,7 +1341,10 @@
       "article": "Art. 1",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 1, comma 1", "en": "Art. 1(1)" },
+      "label": {
+        "it": "art. 1, comma 1",
+        "en": "Art. 1(1)"
+      },
       "excerpt": "Per i soggetti inseriti nell'elenco dei soggetti NIS nel corso dell'anno solare 2026 ai sensi dell'articolo 7, comma 3, lettera a), del decreto NIS, il termine per l'adozione delle misure di sicurezza [...] scade il 31 luglio 2027."
     },
     {
@@ -924,7 +1355,10 @@
       "article": "Art. 1",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 1, comma 2", "en": "Art. 1(2)" },
+      "label": {
+        "it": "art. 1, comma 2",
+        "en": "Art. 1(2)"
+      },
       "excerpt": "il termine per l'adempimento dell'obbligo di notifica degli incidenti significativi [...] decorre dal 1° gennaio 2027."
     },
     {
@@ -935,7 +1369,10 @@
       "article": "Art. 3",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 1", "en": "Art. 3(1)" },
+      "label": {
+        "it": "art. 3, comma 1",
+        "en": "Art. 3(1)"
+      },
       "excerpt": "Il termine per l'adozione delle misure di sicurezza di base di cui agli allegati 1 e 2 è fissato in diciotto mesi dalla ricezione"
     },
     {
@@ -946,7 +1383,10 @@
       "article": "Art. 3",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 3, comma 2", "en": "Art. 3(2)" },
+      "label": {
+        "it": "art. 3, comma 2",
+        "en": "Art. 3(2)"
+      },
       "excerpt": "Il termine per l'adempimento dell'obbligo di notifica degli incidenti significativi di base descritti negli allegati 3 e 4 è fissato in nove mesi dalla ricezione"
     },
     {
@@ -957,7 +1397,10 @@
       "paragraph": "1",
       "lang": "IT",
       "in_force_from": "2026-10-23",
-      "label": { "it": "art. 41, comma 1", "en": "Art. 41(1)" },
+      "label": {
+        "it": "art. 41, comma 1",
+        "en": "Art. 41(1)"
+      },
       "excerpt": "il datore di lavoro che si avvale di sistemi di intelligenza artificiale, quali definiti dall'articolo 3, punto 1), del regolamento IA, assicura che le decisioni finali relative alla costituzione, alla modificazione o alla risoluzione del rapporto, ivi compresi i provvedimenti disciplinari e le valutazioni delle prestazioni, non siano adottate unicamente sulla base di un trattamento automatizzato [...] La decisione definitiva è in ogni caso riservata a una persona fisica, che eserciti un potere effettivo e autonomo."
     },
     {
@@ -967,8 +1410,11 @@
       "article": "Art. 41",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 41, comma 1, terzo periodo", "en": "Art. 41(1), third sentence" },
-      "excerpt": "Non rientrano tra le decisioni finali relative alla costituzione del rapporto di lavoro le attività di ricerca e selezione delle candidature, anche quando comportino la mancata ammissione alle successive fasi della selezione."
+      "label": {
+        "it": "art. 41, comma 1, terzo e quarto periodo",
+        "en": "Art. 41(1), third and fourth sentences"
+      },
+      "excerpt": "Non rientrano tra le decisioni finali relative alla costituzione del rapporto di lavoro le attività di ricerca e selezione delle candidature, anche quando comportino la mancata ammissione alle successive fasi della selezione. Il consenso del lavoratore non costituisce un'eccezione al divieto di cui al presente comma."
     },
     {
       "id": "dlgs-179-2026-41-3",
@@ -977,7 +1423,10 @@
       "article": "Art. 41",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 41, comma 3", "en": "Art. 41(3)" },
+      "label": {
+        "it": "art. 41, comma 3",
+        "en": "Art. 41(3)"
+      },
       "excerpt": "Prima dell'avvio del trattamento, il datore di lavoro assolve agli obblighi di informativa previsti dall'articolo 1-bis del decreto legislativo 26 maggio 1997, n. 152. Il lavoratore ha diritto di ottenere, a richiesta e mediante l'intervento di una persona fisica, una motivazione intelligibile della decisione che lo riguarda"
     },
     {
@@ -987,7 +1436,10 @@
       "article": "Art. 41",
       "paragraph": "4",
       "lang": "IT",
-      "label": { "it": "art. 41, comma 4", "en": "Art. 41(4)" },
+      "label": {
+        "it": "art. 41, comma 4",
+        "en": "Art. 41(4)"
+      },
       "excerpt": "Il licenziamento intimato in violazione del comma 1 è nullo. Le decisioni assunte dal datore di lavoro in violazione del comma 1 sono nulle."
     },
     {
@@ -997,8 +1449,12 @@
       "article": "Art. 42",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 42, comma 2", "en": "Art. 42(2)" },
-      "excerpt": "L'utilizzo di sistemi di intelligenza artificiale che incidono sull'organizzazione del lavoro, sui ritmi produttivi, sulle modalità di esecuzione della prestazione o sui processi decisionali rilevanti ai fini della sicurezza è valutato nell'ambito della valutazione dei rischi di cui all'articolo 28 del decreto legislativo n. 81 del 2008."
+      "label": {
+        "it": "art. 42, comma 2",
+        "en": "Art. 42(2)"
+      },
+      "excerpt": "L'utilizzo di sistemi di intelligenza artificiale che incidono sull'organizzazione del lavoro, sui ritmi produttivi, sulle modalità di esecuzione della prestazione o sui processi decisionali rilevanti ai fini della sicurezza è valutato nell'ambito della valutazione dei rischi di cui all'articolo 28 del decreto legislativo n. 81 del 2008.",
+      "in_force_from": "2026-10-23"
     },
     {
       "id": "dlgs-179-2026-42-3",
@@ -1007,7 +1463,10 @@
       "article": "Art. 42",
       "paragraph": "3",
       "lang": "IT",
-      "label": { "it": "art. 42, comma 3", "en": "Art. 42(3)" },
+      "label": {
+        "it": "art. 42, comma 3",
+        "en": "Art. 42(3)"
+      },
       "excerpt": "I datori di lavoro assicurano un'adeguata informazione e formazione dei lavoratori in merito ai rischi specifici connessi all'utilizzo dei sistemi di intelligenza artificiale"
     },
     {
@@ -1017,7 +1476,10 @@
       "article": "Art. 11",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 11, comma 2", "en": "Art. 11(2)" },
+      "label": {
+        "it": "art. 11, comma 2",
+        "en": "Art. 11(2)"
+      },
       "excerpt": "Il datore di lavoro o il committente è tenuto a informare il lavoratore dell'utilizzo dell'intelligenza artificiale nei casi e con le modalità di cui all'articolo 1-bis del decreto legislativo 26 maggio 1997, n. 152."
     },
     {
@@ -1027,7 +1489,10 @@
       "article": "Art. 13",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 13, comma 1", "en": "Art. 13(1)" },
+      "label": {
+        "it": "art. 13, comma 1",
+        "en": "Art. 13(1)"
+      },
       "excerpt": "L'utilizzo di sistemi di intelligenza artificiale nelle professioni intellettuali è finalizzato al solo esercizio delle attività strumentali e di supporto all'attività professionale e con prevalenza del lavoro intellettuale oggetto della prestazione d'opera."
     },
     {
@@ -1037,7 +1502,10 @@
       "article": "Art. 13",
       "paragraph": "2",
       "lang": "IT",
-      "label": { "it": "art. 13, comma 2", "en": "Art. 13(2)" },
+      "label": {
+        "it": "art. 13, comma 2",
+        "en": "Art. 13(2)"
+      },
       "excerpt": "le informazioni relative ai sistemi di intelligenza artificiale utilizzati dal professionista sono comunicate al soggetto destinatario della prestazione intellettuale con linguaggio chiaro, semplice ed esaustivo"
     },
     {
@@ -1047,7 +1515,10 @@
       "article": "Art. 20",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 20, comma 1", "en": "Art. 20(1)" },
+      "label": {
+        "it": "art. 20, comma 1",
+        "en": "Art. 20(1)"
+      },
       "excerpt": "l'Agenzia per l'Italia digitale (AgID) e l'Agenzia per la cybersicurezza nazionale (ACN) sono designate quali Autorità nazionali per l'intelligenza artificiale"
     },
     {
@@ -1057,7 +1528,10 @@
       "article": "Art. 1-bis",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 1-bis, comma 1", "en": "Art. 1-bis(1)" },
+      "label": {
+        "it": "art. 1-bis, comma 1",
+        "en": "Art. 1-bis(1)"
+      },
       "excerpt": "Il datore di lavoro o il committente pubblico e privato è tenuto a informare il lavoratore dell'utilizzo di sistemi decisionali o di monitoraggio integralmente automatizzati deputati a fornire indicazioni rilevanti ai fini della assunzione o del conferimento dell'incarico, della gestione o della cessazione del rapporto di lavoro"
     },
     {
@@ -1067,7 +1541,10 @@
       "article": "Art. 1-bis",
       "paragraph": "6",
       "lang": "IT",
-      "label": { "it": "art. 1-bis, comma 6", "en": "Art. 1-bis(6)" },
+      "label": {
+        "it": "art. 1-bis, comma 6",
+        "en": "Art. 1-bis(6)"
+      },
       "excerpt": "La comunicazione delle medesime informazioni e dati deve essere effettuata anche alle rappresentanze sindacali aziendali ovvero alla rappresentanza sindacale unitaria"
     },
     {
@@ -1077,7 +1554,10 @@
       "article": "Art. 17",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 17, comma 1, lett. b)", "en": "Art. 17(1)(b)" },
+      "label": {
+        "it": "art. 17, comma 1, lett. b)",
+        "en": "Art. 17(1)(b)"
+      },
       "excerpt": "per gli esercizi aventi inizio il 1° gennaio 2027 o in data successiva: 1) alle imprese di grandi dimensioni diverse da quelle di cui al comma 1, lettera a), numero 1);"
     },
     {
@@ -1087,7 +1567,10 @@
       "article": "Art. 17",
       "paragraph": "3-bis",
       "lang": "IT",
-      "label": { "it": "art. 17, comma 3-bis", "en": "Art. 17(3-bis)" },
+      "label": {
+        "it": "art. 17, comma 3-bis",
+        "en": "Art. 17(3-bis)"
+      },
       "excerpt": "per gli esercizi finanziari aventi inizio tra il 1° gennaio 2026 e il 31 dicembre 2027, il presente decreto non si applica in ogni caso alle imprese che, su base individuale o, ove applicabile, su base consolidata, presentano ricavi netti delle vendite e delle prestazioni non superiori a euro 450.000.000 ovvero un numero medio di dipendenti occupati durante l'esercizio non superiore a 1.000"
     },
     {
@@ -1097,7 +1580,10 @@
       "article": "Art. 9",
       "paragraph": "1",
       "lang": "IT",
-      "label": { "it": "art. 9, comma 1", "en": "Art. 9(1)" },
+      "label": {
+        "it": "art. 9, comma 1",
+        "en": "Art. 9(1)"
+      },
       "excerpt": "I dati oggetto di comunicazione ai fini del presente decreto sono quelli relativi a: a) il divario retributivo di genere;"
     },
     {
@@ -1107,7 +1593,10 @@
       "article": "Art. 9",
       "paragraph": "5",
       "lang": "IT",
-      "label": { "it": "art. 9, comma 5", "en": "Art. 9(5)" },
+      "label": {
+        "it": "art. 9, comma 5",
+        "en": "Art. 9(5)"
+      },
       "excerpt": "Tutti i dati di cui al comma 1 sono comunicati all'organismo di monitoraggio previsto dall'articolo 14"
     },
     {
@@ -1117,7 +1606,10 @@
       "article": "Art. 9",
       "paragraph": "8",
       "lang": "IT",
-      "label": { "it": "art. 9, comma 8", "en": "Art. 9(8)" },
+      "label": {
+        "it": "art. 9, comma 8",
+        "en": "Art. 9(8)"
+      },
       "excerpt": "Le disposizioni di cui al presente articolo si applicano ai datori di lavoro con almeno cento dipendenti."
     },
     {
@@ -1127,7 +1619,10 @@
       "article": "Art. 9",
       "paragraph": "9",
       "lang": "IT",
-      "label": { "it": "art. 9, comma 9", "en": "Art. 9(9)" },
+      "label": {
+        "it": "art. 9, comma 9",
+        "en": "Art. 9(9)"
+      },
       "excerpt": "Per i datori di lavoro che occupano almeno duecentocinquanta dipendenti, i dati sono raccolti entro il 7 giugno 2027 e successivamente ogni anno. Per i datori di lavoro che occupano tra i centocinquanta e i duecentoquarantanove dipendenti, i dati sono raccolti entro il 7 giugno 2027 e successivamente ogni tre anni."
     }
   ]

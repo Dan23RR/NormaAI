@@ -157,6 +157,20 @@
       "fingerprint": "sha256:2e88550d2d0dd589d8601c6440d68aa222e65d7a1af3e995b5467a9532a0b739"
     },
     {
+      "id": "ai-act-53-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02024R1689-20260727",
+      "version_label": "testo consolidato al 27/07/2026",
+      "consolidated_as_of": "2026-07-27",
+      "in_force_from": null,
+      "official_quote": "I fornitori di modelli di IA per finalità generali:\na) redigono e mantengono aggiornata la documentazione tecnica del modello",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727",
+      "detail": null,
+      "fingerprint": "sha256:37927019f84ebf2267510a3ba799afe03b4628ecc1c6e5d34fd3b59cc86fe437"
+    },
+    {
       "id": "ai-act-99-4",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -263,10 +277,10 @@
       "version_label": "testo consolidato al 27/07/2026",
       "consolidated_as_of": "2026-07-27",
       "in_force_from": null,
-      "official_quote": "2 dicembre 2027 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 2, e dell'allegato III",
+      "official_quote": "Il capo III, sezioni 1, 2 e 3, ad eccezione dell'articolo 6, paragrafo 5, si applica a decorrere dal:\ni) 2 dicembre 2027 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 2, e dell'allegato III",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727",
       "detail": null,
-      "fingerprint": "sha256:052a568f45cc78223c069b36ef02d09c5078f76d2f2852b59e1881d7ddb576fc"
+      "fingerprint": "sha256:d4e74a0f2fc47da7d9b10db74667e3f054c1758172d3262f81b9ebecad38e281"
     },
     {
       "id": "ai-act-113-c-ii",
@@ -277,10 +291,10 @@
       "version_label": "testo consolidato al 27/07/2026",
       "consolidated_as_of": "2026-07-27",
       "in_force_from": null,
-      "official_quote": "2 agosto 2028 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 1, e dell'allegato I",
+      "official_quote": "Il capo III, sezioni 1, 2 e 3, ad eccezione dell'articolo 6, paragrafo 5, si applica a decorrere dal [...] ii) 2 agosto 2028 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 1, e dell'allegato I",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727",
       "detail": null,
-      "fingerprint": "sha256:2920177f8b21a6aabac3924f3385a6cb335d979b9c698990530adde9564cff9c"
+      "fingerprint": "sha256:e7bff0b3490ca03977667c1cb7598c47d0d6728f266ca0d530770f87a0b14229"
     },
     {
       "id": "dir-2013-34-19bis-1",
@@ -295,6 +309,34 @@
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02013L0034-20260318",
       "detail": null,
       "fingerprint": "sha256:b1c8ad21e562ca7bcab9d4b5d03aed7711dda07e3a63e572f1e28b63424d676a"
+    },
+    {
+      "id": "dir-2013-34-19bis-3-protetta",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02013L0034-20260318",
+      "version_label": "testo consolidato al 18/03/2026",
+      "consolidated_as_of": "2026-03-18",
+      "in_force_from": null,
+      "official_quote": "impresa protetta»: un’impresa che:\ni) alla data di chiusura del bilancio, non supera un numero medio di 1 000 dipendenti occupati durante l’esercizio precedente; e\nii) si trova nella catena del valore di un’impresa che comunica informazioni",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02013L0034-20260318",
+      "detail": null,
+      "fingerprint": "sha256:bfcaa83e527911f4e5ad461e262d2d5babb0bc2b792af805676abb4c4f367af1"
+    },
+    {
+      "id": "dir-2013-34-19bis-3-rifiuto",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02013L0034-20260318",
+      "version_label": "testo consolidato al 18/03/2026",
+      "consolidated_as_of": "2026-03-18",
+      "in_force_from": null,
+      "official_quote": "Le imprese protette hanno il diritto di rifiutarsi di fornire informazioni in più rispetto a quelle specificate nei principi volontari in risposta a una richiesta presentata ai fini della rendicontazione di sostenibilità come previsto dalla presente direttiva",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02013L0034-20260318",
+      "detail": null,
+      "fingerprint": "sha256:01406432c63fbfd1ee873adf4ff75501538aa1f15e00766f0a3c00f98bf7c2f8"
     },
     {
       "id": "dir-2013-34-29bis-1",
@@ -339,6 +381,20 @@
       "fingerprint": "sha256:73c92baed6ee2339a34724196636f4f3d7c7658cf1bb4e29016349095b12121b"
     },
     {
+      "id": "csrd-5-2-a",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02022L2464-20260318",
+      "version_label": "testo consolidato al 18/03/2026",
+      "consolidated_as_of": "2026-03-18",
+      "in_force_from": null,
+      "official_quote": "alle grandi imprese quali definite all'articolo 3, paragrafo 4, della direttiva 2013/34/UE che costituiscono enti di interesse pubblico a norma dell'articolo 2, punto 1), di tale direttiva e che alla data di chiusura del bilancio superano il numero medio di 500 dipendenti occupati durante l'esercizio",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02022L2464-20260318",
+      "detail": null,
+      "fingerprint": "sha256:7993feb7292a7d4788cc406743889bd27d00dbfeaef3904842609ea3be7aa3ef"
+    },
+    {
       "id": "csrd-5-2-b",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -361,10 +417,10 @@
       "version_label": "testo consolidato al 18/03/2026",
       "consolidated_as_of": "2026-03-18",
       "in_force_from": null,
-      "official_quote": "gli Stati membri possono esentare, se del caso, le imprese o gli emittenti che, su base consolidata, non presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR o non superano un numero medio di 1 000 dipendenti occupati durante l’esercizio",
+      "official_quote": "gli Stati membri possono esentare, se del caso, le imprese o gli emittenti che, su base consolidata, non presentano ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR o non superano un numero medio di 1 000 dipendenti occupati durante l’esercizio dall’obbligo di rispettare le misure necessarie per conformarsi all’articolo 1, ad eccezione del punto 14), e all’articolo 2, per gli esercizi aventi inizio tra il [...] gennaio 2025 e il 31 dicembre 2026",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02022L2464-20260318",
       "detail": null,
-      "fingerprint": "sha256:99ed08c215677a71d62db2b9844f7d3fc58c8443569bc270e79915e4fae334e2"
+      "fingerprint": "sha256:b062b61439eccc2f882e4fd4ab34653c771f932158a9804c88e46d154aa2bfa2"
     },
     {
       "id": "omnibus-5-1",
@@ -421,6 +477,20 @@
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024L1760-20260318",
       "detail": null,
       "fingerprint": "sha256:7a7236c16b2d0b8dea70ec95c9eaf02021e03a92d7d718ed236ff18d97568625"
+    },
+    {
+      "id": "csddd-8-2bis-a",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02024L1760-20260318",
+      "version_label": "testo consolidato al 18/03/2026",
+      "consolidated_as_of": "2026-03-18",
+      "in_force_from": null,
+      "official_quote": "le società possano chiedere informazioni ai partner commerciali soltanto qualora tali informazioni siano necessarie, e nel caso di partner commerciali con meno di 5 000 dipendenti soltanto qualora le informazioni non possano ragionevolmente essere ottenute con altri mezzi",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024L1760-20260318",
+      "detail": null,
+      "fingerprint": "sha256:22dbba34e41d5c5f6bae8a0520502bae448a8c790cb7c2065b5da2fb2b94cb8f"
     },
     {
       "id": "csddd-19-3",
@@ -501,10 +571,52 @@
       "version_label": "testo consolidato al 27/07/2026",
       "consolidated_as_of": "2026-07-27",
       "in_force_from": null,
-      "official_quote": "modifica sostanziale»: una modifica di una macchina o di un prodotto correlato, mediante mezzi fisici o digitali dopo che tale macchina o prodotto correlato è stato immesso sul mercato o messo in servizio, che non è prevista né pianificata dal fabbricante, e che incide sulla sicurezza della macchina o del prodotto correlato creando un nuovo pericolo o aumentando un rischio esistente",
+      "official_quote": "modifica sostanziale»: una modifica di una macchina o di un prodotto correlato, mediante mezzi fisici o digitali dopo che tale macchina o prodotto correlato è stato immesso sul mercato o messo in servizio, che non è prevista né pianificata dal fabbricante, e che incide sulla sicurezza della macchina o del prodotto correlato creando un nuovo pericolo o aumentando un rischio esistente, che richiede:\na) l'aggiunta di ripari o di dispositivi di protezione alla macchina o al prodotto correlato, operazione che necessita la modifica del sistema di controllo della sicurezza esistente, o\nb) l'adozione di misure di protezione supplementari per garantire la stabilità o la resistenza meccanica di tale macchina o prodotto correlato",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1230-20260727",
       "detail": null,
-      "fingerprint": "sha256:d7f59a9a858b878a7f6d150bb39eb58e4db125e09b40308bb28879ae21ef58b4"
+      "fingerprint": "sha256:035f5d54b3ec842878f86c9781d49b30a730d595f918f1adda67b67a207a5c99"
+    },
+    {
+      "id": "mach-3-18",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02023R1230-20260727",
+      "version_label": "testo consolidato al 27/07/2026",
+      "consolidated_as_of": "2026-07-27",
+      "in_force_from": null,
+      "official_quote": "fabbricante»: qualsiasi persona fisica o giuridica che:\na) fabbrichi prodotti rientranti nell'ambito di applicazione del presente regolamento o che faccia progettare o fabbricare tali prodotti e li commercializzi con il proprio nome o con il proprio marchio; oppure\nb) fabbrichi prodotti rientranti nell'ambito di applicazione del presente regolamento e li metta in servizio per uso proprio",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1230-20260727",
+      "detail": null,
+      "fingerprint": "sha256:3abe43aa1e7e8b12c831e9bb33ed01598d836795e93c542e0800c9c30fdaba41"
+    },
+    {
+      "id": "mach-3-20",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02023R1230-20260727",
+      "version_label": "testo consolidato al 27/07/2026",
+      "consolidated_as_of": "2026-07-27",
+      "in_force_from": null,
+      "official_quote": "importatore»: qualsiasi persona fisica o giuridica stabilita nell'Unione che immette sul mercato dell'Unione un prodotto rientrante nell'ambito di applicazione del presente regolamento originario da un paese terzo",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1230-20260727",
+      "detail": null,
+      "fingerprint": "sha256:025ab476d75d1bfbd8cefc8dda2fd4a73e6975e746c909c9ba9bb50209019b9d"
+    },
+    {
+      "id": "mach-3-21",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02023R1230-20260727",
+      "version_label": "testo consolidato al 27/07/2026",
+      "consolidated_as_of": "2026-07-27",
+      "in_force_from": null,
+      "official_quote": "distributore»: qualsiasi persona fisica o giuridica nella catena di approvvigionamento, diversa dal fabbricante o dall'importatore, che mette a disposizione un prodotto rientrante nell'ambito di applicazione del presente regolamento sul mercato",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1230-20260727",
+      "detail": null,
+      "fingerprint": "sha256:192b88e1e0280c5404af1048215a79436ff8da9bd5c4ee096b274bc3aa46c95a"
     },
     {
       "id": "mach-10-1",
@@ -641,10 +753,10 @@
       "version_label": "testo consolidato al 27/07/2026",
       "consolidated_as_of": "2026-07-27",
       "in_force_from": null,
-      "official_quote": "Prima di mettere una macchina o un prodotto correlato a disposizione sul mercato, i distributori verificano che:\na) la macchina o il prodotto correlato rechi la marcatura CE;\nb) la macchina o il prodotto correlato siano accompagnati dalla dichiarazione di conformità UE di cui all'articolo 10, paragrafo 8",
+      "official_quote": "Prima di mettere una macchina o un prodotto correlato a disposizione sul mercato, i distributori verificano che:\na) la macchina o il prodotto correlato rechi la marcatura CE;\nb) la macchina o il prodotto correlato siano accompagnati dalla dichiarazione di conformità UE di cui all'articolo 10, paragrafo 8;\nc) la macchina o il prodotto correlato siano accompagnati dalle istruzioni per l'uso e dalle informazioni di cui all'articolo 10, paragrafo 7",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1230-20260727",
       "detail": null,
-      "fingerprint": "sha256:b9c95e0df75b991de78bc9d8eae3d35b26646fcfa877718bd68feb3723f9c759"
+      "fingerprint": "sha256:8987d80157341643a53dad84ae11a16ab69a731129a8e2ec98a4489f218a485e"
     },
     {
       "id": "mach-17",
@@ -703,6 +815,20 @@
       "fingerprint": "sha256:fb03d27e2fd0925f48aa7d560af3f381cf89c52271908cf22fd20130044cbd21"
     },
     {
+      "id": "nis2-dir-2-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02022L2555-20221227",
+      "version_label": "testo consolidato al 27/12/2022",
+      "consolidated_as_of": "2022-12-27",
+      "in_force_from": null,
+      "official_quote": "La presente direttiva si applica ai soggetti pubblici o privati delle tipologie di cui all'allegato I o II che sono considerati medie imprese",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02022L2555-20221227",
+      "detail": null,
+      "fingerprint": "sha256:95a0c642dee2e2416c3a32186c305922c2a1de120ed0d5b6f4b7da871223285e"
+    },
+    {
       "id": "nis2-dir-41-1",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -717,6 +843,20 @@
       "fingerprint": "sha256:8ee8c94b9d73c64fabdabfbc3c7fa1e37d921cbb8b4949c310e804563a953df5"
     },
     {
+      "id": "dora-2-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "32022R2554",
+      "version_label": "testo originale",
+      "consolidated_as_of": null,
+      "in_force_from": null,
+      "official_quote": "il presente regolamento si applica alle entità seguenti:\na) enti creditizi;\nb) istituti di pagamento [...] e) imprese di investimento [...] n) imprese di assicurazione e di riassicurazione [...] u) fornitori terzi di servizi TIC",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022R2554",
+      "detail": null,
+      "fingerprint": "sha256:08fdd0d320ad6c6eeb8d33362c94682bddcbf371890f46747292a569762bfae0"
+    },
+    {
       "id": "dora-64",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -729,6 +869,20 @@
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022R2554",
       "detail": null,
       "fingerprint": "sha256:867860d65de4be96a3f83895d2cee88b7bfbc022de56363e77f2d2b98ad44449"
+    },
+    {
+      "id": "cra-2-1",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "02024R2847-20241120",
+      "version_label": "testo consolidato al 20/11/2024",
+      "consolidated_as_of": "2024-11-20",
+      "in_force_from": null,
+      "official_quote": "Il presente regolamento si applica ai prodotti con elementi digitali messi a disposizione sul mercato la cui finalità prevista o il cui utilizzo ragionevolmente prevedibile include una connessione dati logica o fisica diretta o indiretta a un dispositivo o a una rete",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R2847-20241120",
+      "detail": null,
+      "fingerprint": "sha256:c59a579d413075c46bcbc1b2813122d05e59ddb385a5593859b9c7818dfc0c3f"
     },
     {
       "id": "cra-14-1",
@@ -781,10 +935,10 @@
       "version_label": "testo consolidato al 18/09/2026",
       "consolidated_as_of": "2026-09-18",
       "in_force_from": null,
-      "official_quote": "prodotti interessati, elencati nell’allegato I, che contengono o che sono stati nutriti o fabbricati usando materie prime interessate, vale a dire bovini, cacao, caffè, palma da olio, gomma, soia e legno",
+      "official_quote": "norme relative all’immissione e alla messa a disposizione sul mercato dell’Unione nonché all’esportazione dall’Unione di prodotti interessati, elencati nell’allegato I, che contengono o che sono stati nutriti o fabbricati usando materie prime interessate, vale a dire bovini, cacao, caffè, palma da olio, gomma, soia e legno",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1115-20260918",
       "detail": null,
-      "fingerprint": "sha256:2b71e09cd008f8f2551dbc36a62f24ca8b31cc00a82416eec40088f7156c58c9"
+      "fingerprint": "sha256:7a3204ccea82bd041000d3640f8b89e76edf104c61b65d2f44bc25b831ac2849"
     },
     {
       "id": "eudr-38-2",
@@ -809,10 +963,10 @@
       "version_label": "testo consolidato al 18/09/2026",
       "consolidated_as_of": "2026-09-18",
       "in_force_from": null,
-      "official_quote": "per gli operatori, siano essi persone fisiche o microimprese o piccole imprese [...] che erano costituiti come tali al 31 dicembre 2024, gli articoli di cui al paragrafo 2 del presente articolo si applicano a decorrere dal 30 giugno 2027",
+      "official_quote": "Fatta eccezione per i prodotti che figurano nell'allegato del regolamento (UE) n. 995/2010, per gli operatori, siano essi persone fisiche o microimprese o piccole imprese [...] che erano costituiti come tali al 31 dicembre 2024, gli articoli di cui al paragrafo 2 del presente articolo si applicano a decorrere dal 30 giugno 2027",
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02023R1115-20260918",
       "detail": null,
-      "fingerprint": "sha256:a77c6aab9ee9df23fa4fe09495a5dd803e4c8f86619d6022c470046eca210ff6"
+      "fingerprint": "sha256:fc15501e5fdbee9a1d2bde4f9b6d3c4745a3f457a33433a77a9be1397b83f745"
     },
     {
       "id": "rec-2003-361-2-1",
@@ -841,6 +995,20 @@
       "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32003H0361",
       "detail": null,
       "fingerprint": "sha256:9e767f20578abc7ce7fa69ceef02d0e79c1474dd6abbde3877412b90db5985a6"
+    },
+    {
+      "id": "rec-2003-361-6-2",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "32003H0361",
+      "version_label": "testo originale (formato HTML)",
+      "consolidated_as_of": null,
+      "in_force_from": null,
+      "official_quote": "Ai dati di cui al primo e al secondo comma si aggiunge il 100 % dei dati relativi alle eventuali imprese direttamente o indirettamente collegate all'impresa in questione che non siano già stati ripresi nei conti tramite consolidamento",
+      "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32003H0361",
+      "detail": null,
+      "fingerprint": "sha256:d5997692ee52dcbe58a57c1ae2f585baf98aae9abb6f8aefa1f64211e29614f4"
     },
     {
       "id": "dlgs-138-2024-3-2",
@@ -941,6 +1109,34 @@
       "fingerprint": "sha256:5c4f3040881208ec1e2890fe589f1434f52bb1f687715e1e641a186621da8897"
     },
     {
+      "id": "dlgs-138-2024-3-13",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "vigente al 2026-11-11",
+      "version_label": "testo vigente al 2026-11-11 (Normattiva)",
+      "consolidated_as_of": null,
+      "in_force_from": "2024-10-16",
+      "official_quote": "L'Autorità nazionale competente NIS notifica a tali soggetti la loro individuazione ai fini della registrazione di cui all'articolo 7, comma 1",
+      "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138~art3",
+      "detail": null,
+      "fingerprint": "sha256:8247e1b8472a9a91dbb9f60fc1428c5aa9420b9c1f9116f8eee1a92143e18505"
+    },
+    {
+      "id": "dlgs-138-2024-3-14",
+      "status": "verified",
+      "verified_on": "2026-11-11",
+      "checked_on": "2026-11-11",
+      "version": "vigente al 2026-11-11",
+      "version_label": "testo vigente al 2026-11-11 (Normattiva)",
+      "consolidated_as_of": null,
+      "in_force_from": "2024-10-16",
+      "official_quote": "Le disposizioni di cui all'articolo 17 e ai Capi IV e V del presente decreto non si applicano ai soggetti identificati come essenziali o importanti dei settori 3 e 4 di cui all'allegato I, ai quali si applica la disciplina di cui al regolamento (UE) 2022/2554",
+      "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138~art3",
+      "detail": null,
+      "fingerprint": "sha256:f5f17bb0bba27427e2285a0a8ee0c5fd97c2e828b14f93a22cf7b4b59ad67804"
+    },
+    {
       "id": "dlgs-138-2024-6-1",
       "status": "verified",
       "verified_on": "2026-11-11",
@@ -1019,10 +1215,10 @@
       "version_label": "testo vigente al 2026-11-11 (Normattiva)",
       "consolidated_as_of": null,
       "in_force_from": "2024-10-16",
-      "official_quote": "Gli organi di amministrazione e gli organi direttivi dei soggetti essenziali e dei soggetti importanti:\na) approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica adottate da tali soggetti ai sensi dell'articolo 24",
+      "official_quote": "Gli organi di amministrazione e gli organi direttivi dei soggetti essenziali e dei soggetti importanti:\na) approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica adottate da tali soggetti ai sensi dell'articolo 24;\nb) sovrintendono all'implementazione degli obblighi di cui al presente capo e di cui all'articolo 7;\nc) sono responsabili delle violazioni di cui al presente decreto",
       "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138~art23",
       "detail": null,
-      "fingerprint": "sha256:33451b00e4b2b8a799314d1a46582507c06b8781fa1e4920e37a2ceed256fe3a"
+      "fingerprint": "sha256:ffc00a74963d6f95db5efb8fb5d3adc7f5afc927bc2674c7c7ca457148b396ca"
     },
     {
       "id": "dlgs-138-2024-24-1",
@@ -1061,10 +1257,10 @@
       "version_label": "testo vigente al 2026-11-11 (Normattiva)",
       "consolidated_as_of": null,
       "in_force_from": "2024-10-16",
-      "official_quote": "senza ingiustificato ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, una pre-notifica [...] senza ingiustificato ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente",
+      "official_quote": "senza ingiustificato ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, una pre-notifica [...] senza ingiustificato ritardo, e comunque entro 72 ore da quando sono venuti a conoscenza dell'incidente significativo, una notifica dell'incidente [...] una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)",
       "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2024-09-04;138~art25",
       "detail": null,
-      "fingerprint": "sha256:8c6bb6d3e476e911e6809c71f5435696905441741f6fdcbb939a681084b8241c"
+      "fingerprint": "sha256:7d7022bb8be00c21c80c2c242b062569f665689dd78e2ddeea868a57c1a2c029"
     },
     {
       "id": "dlgs-138-2024-38-9",
@@ -1229,10 +1425,10 @@
       "version_label": "testo vigente al 2026-11-11 (Normattiva)",
       "consolidated_as_of": null,
       "in_force_from": "2026-10-23",
-      "official_quote": "Non rientrano tra le decisioni finali relative alla costituzione del rapporto di lavoro le attività di ricerca e selezione delle candidature, anche quando comportino la mancata ammissione alle successive fasi della selezione",
+      "official_quote": "Non rientrano tra le decisioni finali relative alla costituzione del rapporto di lavoro le attività di ricerca e selezione delle candidature, anche quando comportino la mancata ammissione alle successive fasi della selezione. Il consenso del lavoratore non costituisce un'eccezione al divieto di cui al presente comma",
       "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2026-10-07;179~art41",
       "detail": null,
-      "fingerprint": "sha256:7d3cdaee79b8cfc97a72acbb26cee6e6ebf8126311d7998dc8ca0b4982fee1a0"
+      "fingerprint": "sha256:a7707fa2026d97eb97a2ed4bb39349fc7e6c396fdb1c01a409fb57a56bcec26a"
     },
     {
       "id": "dlgs-179-2026-41-3",
@@ -1274,7 +1470,7 @@
       "official_quote": "L'utilizzo di sistemi di intelligenza artificiale che incidono sull'organizzazione del lavoro, sui ritmi produttivi, sulle modalità di esecuzione della prestazione o sui processi decisionali rilevanti ai fini della sicurezza è valutato nell'ambito della valutazione dei rischi di cui all'articolo 28 del decreto legislativo n. 81 del 2008",
       "url": "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2026-10-07;179~art42",
       "detail": null,
-      "fingerprint": "sha256:734ea21ecf4676371a32a259992d42424ec10741d1486750e64fac6d144130de"
+      "fingerprint": "sha256:2d7ad5ef6b90f8d0f4d36dcda6a517c97f0586ee17f991717ae9a0a5bbfd6186"
     },
     {
       "id": "dlgs-179-2026-42-3",

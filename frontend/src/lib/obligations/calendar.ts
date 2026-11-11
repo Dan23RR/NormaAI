@@ -1,212 +1,98 @@
 /**
  * Dated obligations and milestones for the Monitoraggio calendar.
  *
- * Curated by hand. Every date comes from a file of this repository and the
- * entry says which one (`sourceNote`). Dates the sources give only by month
- * or quarter keep that precision; entries the sources present as expected
- * rather than fixed carry `confirmed: false` and the interface says so.
- * No automatic EUR-Lex watcher feeds this list yet. The title, who and
- * what of each entry live in the `monitoraggio.calendar` messages.
+ * Curated by hand, one provision per date: `source` is the id, in the
+ * registry of src/lib/verification, of the provision whose official text
+ * carries the date; `related` are the provisions the description of the
+ * entry relies on. Whether and when each one was found in the official text
+ * comes from scripts/verify_site_sources.py: an entry whose source that
+ * check did not verify is not shown. The title, who and what of each entry
+ * live in the `monitoraggio.calendar` messages.
  */
 import type { TextContext } from '@/i18n/types'
-import type { Source } from '@/lib/sources'
-import { VERIFIED_ON, scopeSources, type ScopeSourceKey } from '@/lib/scope/sources'
+import { scopeSource, scopeSources, type ScopeSource } from '@/lib/scope/sources'
 import { addDays, parseIsoDate, startOfDay, toIsoDate, type DatePrecision } from './dates'
 
 export interface ObligationData {
   id: string
-  /** ISO date. Month precision uses day 01; quarter precision uses the first day of the quarter. */
+  /** ISO date. */
   date: string
   precision: DatePrecision
-  /** Key of FRAMEWORK_META (CSRD, CSDDD, AI_ACT, CRA, NIS2, DORA, ...). */
+  /** Key of the badge: CSRD, CSDDD, AI_ACT, AI_WORK, NIS2, DORA, CRA, MACHINERY, EUDR, PAY. */
   framework: string
-  source: ScopeSourceKey
-  /** Where in the repository the date was read (provenance, kept as written). */
-  sourceNote: string
-  /** False when the sources present the date as expected, not fixed. */
-  confirmed: boolean
-  verifiedOn: string
+  /** Registry id of the provision that carries the date. */
+  source: string
+  /** Registry ids of the provisions the description relies on. */
+  related: string[]
 }
 
-export interface Obligation extends Omit<ObligationData, 'source'> {
+export interface Obligation extends Omit<ObligationData, 'source' | 'related'> {
   title: string
   /** Who the entry applies to. */
   who: string
   /** What to do. */
   what: string
-  source: Source
+  source: ScopeSource
+  related: ScopeSource[]
+  /** ISO date of the check that found the provision in the official text; undefined when not verified. */
+  verifiedOn?: string
 }
 
-type Draft = Omit<ObligationData, 'verifiedOn' | 'confirmed' | 'precision'> & {
-  precision?: DatePrecision
-  confirmed?: boolean
-}
-
-function entry(d: Draft): ObligationData {
-  return { precision: 'day', confirmed: true, verifiedOn: VERIFIED_ON, ...d }
+function entry(id: string, date: string, framework: string, source: string, related: string[] = []): ObligationData {
+  return { id, date, precision: 'day', framework, source, related }
 }
 
 export const OBLIGATION_DATA: ObligationData[] = [
-  entry({
-    id: 'nis2-application',
-    date: '2024-10-18',
-    framework: 'NIS2',
-    source: 'nis2',
-    sourceNote: 'Codex, cap. 5.1 e note (CELEX 32022L2555); landing, tabella Fonti',
-  }),
-  entry({
-    id: 'dora-application',
-    date: '2025-01-17',
-    framework: 'DORA',
-    source: 'dora',
-    sourceNote: 'Codex, cap. 5.1 e note (CELEX 32022R2554); landing, tabella Fonti',
-  }),
-  entry({
-    id: 'aiact-art4-art5',
-    date: '2025-02-02',
-    framework: 'AI_ACT',
-    source: 'aiAct5',
-    sourceNote:
-      'public/scope-aiact.html, note del verdetto; art. 4 sostituito dal Reg. (UE) 2026/1744 (CELEX 32026R1744, art. 1, punto 5)',
-  }),
-  entry({
-    id: 'aiact-gpai',
-    date: '2025-08-02',
-    framework: 'AI_ACT',
-    source: 'aiActGpai',
-    sourceNote: 'public/scope-aiact.html, note del verdetto',
-  }),
-  entry({
-    id: 'omnibus-published',
-    date: '2026-02-26',
-    framework: 'CSRD',
-    source: 'omnibusI',
-    sourceNote: 'README.md, Regulatory Context; .planning/decisions/003',
-  }),
-  entry({
-    id: 'omnibus-in-force',
-    date: '2026-03-18',
-    framework: 'CSRD',
-    source: 'omnibusI',
-    sourceNote: 'public/scope-csrd.html; prompts/gap_analyst.txt riga 45; README.md',
-  }),
-  entry({
-    id: 'aiact-code-of-practice',
-    date: '2026-06-10',
-    framework: 'AI_ACT',
-    source: 'aiAct50_2',
-    sourceNote: 'public/scope-aiact.html, obbligo "gen"',
-  }),
-  entry({
-    id: 'aiact-art50',
-    date: '2026-08-02',
-    framework: 'AI_ACT',
-    source: 'aiAct113',
-    sourceNote: 'public/scope-aiact.html; src/app/page.tsx (esempio di risposta); Codex, cap. 5.2',
-  }),
-  entry({
-    id: 'cra-reporting',
-    date: '2026-09-11',
-    framework: 'CRA',
-    source: 'cra',
-    sourceNote: 'prompts/gap_analyst.txt riga 47; .planning/decisions/004',
-  }),
-  entry({
-    id: 'aiact-legacy-marking',
-    date: '2026-12-02',
-    framework: 'AI_ACT',
-    source: 'aiAct50_2',
-    sourceNote: 'public/scope-aiact.html, obbligo "gen"',
-  }),
-  entry({
-    id: 'csrd-prepare-fy2027',
-    date: '2026-12-31',
-    framework: 'CSRD',
-    source: 'codex',
-    sourceNote: 'Codex, cap. 5.2 (2026, Q3)',
-  }),
-  entry({
-    id: 'csrd-first-post-omnibus',
-    date: '2027-01-01',
-    precision: 'quarter',
-    framework: 'CSRD',
-    source: 'codex',
-    sourceNote: 'Codex, cap. 5.1 e 5.2 (2027, Q1)',
-    confirmed: false,
-  }),
-  entry({
-    id: 'csrd-csddd-review-clause',
-    date: '2027-04-01',
-    precision: 'quarter',
-    framework: 'CSRD',
-    source: 'codex',
-    sourceNote: 'Codex, cap. 1.2 e 5.2 (2027, Q2)',
-    confirmed: false,
-  }),
-  entry({
-    id: 'csddd-guidelines',
-    date: '2027-07-01',
-    precision: 'month',
-    framework: 'CSDDD',
-    source: 'csddd',
-    sourceNote: '.planning/decisions/003 (verifica 2026-06-11)',
-    confirmed: false,
-  }),
-  entry({
-    id: 'aiact-high-risk-annex-iii',
-    date: '2027-12-02',
-    framework: 'AI_ACT',
-    source: 'aiActHighRisk',
-    sourceNote: 'public/scope-aiact.html (quadro aggiornato al 12 luglio 2026)',
-  }),
-  entry({
-    id: 'cra-full-application',
-    date: '2027-12-11',
-    framework: 'CRA',
-    source: 'cra',
-    sourceNote: 'prompts/gap_analyst.txt riga 47; .planning/decisions/004',
-  }),
-  entry({
-    id: 'csrd-wave1-fy2027',
-    date: '2028-04-01',
-    precision: 'quarter',
-    framework: 'CSRD',
-    source: 'codex',
-    sourceNote: 'Codex, cap. 5.2 (2028, Q2)',
-  }),
-  entry({
-    id: 'csddd-transposition',
-    date: '2028-07-26',
-    framework: 'CSDDD',
-    source: 'csddd',
-    sourceNote: 'public/scope-csrd.html; Codex, cap. 1.4 e 5; prompts/gap_analyst.txt riga 46; .planning/decisions/003; landing, tabella Fonti',
-  }),
-  entry({
-    id: 'aiact-high-risk-annex-i',
-    date: '2028-08-02',
-    framework: 'AI_ACT',
-    source: 'aiActHighRisk',
-    sourceNote: 'public/scope-aiact.html (quadro aggiornato al 12 luglio 2026)',
-  }),
-  entry({
-    id: 'csddd-first-compliance',
-    date: '2029-07-26',
-    framework: 'CSDDD',
-    source: 'csddd',
-    sourceNote: 'prompts/gap_analyst.txt riga 46; .planning/decisions/003; Codex, cap. 2.2 e 5.2',
-  }),
+  entry('nis2-application', '2024-10-18', 'NIS2', 'nis2-dir-41-1', ['nis2-dir-2-1']),
+  entry('dora-application', '2025-01-17', 'DORA', 'dora-64', ['dora-2-1']),
+  entry('aiact-art4-art5', '2025-02-02', 'AI_ACT', 'ai-act-113-a', ['ai-act-4-1', 'ai-act-5-1-f']),
+  entry('aiact-gpai', '2025-08-02', 'AI_ACT', 'ai-act-113-b', ['ai-act-53-1']),
+  entry('aiact-art50', '2026-08-02', 'AI_ACT', 'ai-act-113-general', ['ai-act-50-1', 'ai-act-50-2', 'ai-act-50-4']),
+  entry('cra-reporting', '2026-09-11', 'CRA', 'cra-71-2', ['cra-14-1', 'cra-14-2']),
+  entry('ai-work-decree', '2026-10-23', 'AI_WORK', 'dlgs-179-2026-41-1', ['dlgs-179-2026-41-3', 'dlgs-179-2026-42-2']),
+  entry('aiact-legacy-marking', '2026-12-02', 'AI_ACT', 'ai-act-111-4', ['ai-act-50-2']),
+  entry('aiact-new-prohibitions', '2026-12-02', 'AI_ACT', 'ai-act-113-a', ['ai-act-5-1-bbis', 'ai-act-5-1-bter']),
+  entry('eudr-application', '2026-12-30', 'EUDR', 'eudr-38-2', ['eudr-1-1']),
+  entry('csrd-first-year', '2027-01-01', 'CSRD', 'csrd-5-2-b', ['dlgs-125-2024-17-1-b', 'dlgs-125-2024-17-3bis']),
+  entry('nis2-incidents-2026', '2027-01-01', 'NIS2', 'acn-det-127434-2026-1-2', ['dlgs-138-2024-25-5']),
+  entry('machinery-application', '2027-01-20', 'MACHINERY', 'mach-54', ['mach-52-1']),
+  entry('nis2-registration', '2027-02-28', 'NIS2', 'dlgs-138-2024-7-1'),
+  entry('omnibus-transposition', '2027-03-19', 'CSRD', 'omnibus-5-1', ['dir-2013-34-19bis-1']),
+  entry('nis2-annual-update', '2027-05-31', 'NIS2', 'dlgs-138-2024-7-4', ['dlgs-138-2024-7-3']),
+  entry('pay-gap-first-data', '2027-06-07', 'PAY', 'dlgs-96-2026-9-9', ['dlgs-96-2026-9-1', 'dlgs-96-2026-9-5', 'dlgs-96-2026-9-8']),
+  entry('eudr-small-operators', '2027-06-30', 'EUDR', 'eudr-38-3', ['eudr-38-2']),
+  entry('csddd-guidelines', '2027-07-26', 'CSDDD', 'csddd-19-3'),
+  entry('nis2-measures-2026', '2027-07-31', 'NIS2', 'acn-det-127434-2026-1-1', ['dlgs-138-2024-24-1']),
+  entry('aiact-gpai-legacy', '2027-08-02', 'AI_ACT', 'ai-act-111-3'),
+  entry('aiact-high-risk-annex-iii', '2027-12-02', 'AI_ACT', 'ai-act-113-c-i', ['ai-act-26-7']),
+  entry('cra-full-application', '2027-12-11', 'CRA', 'cra-71-2', ['cra-2-1']),
+  entry('csddd-transposition', '2028-07-26', 'CSDDD', 'csddd-37-1-recepimento'),
+  entry('aiact-high-risk-annex-i', '2028-08-02', 'AI_ACT', 'ai-act-113-c-ii'),
+  entry('csddd-first-compliance', '2029-07-26', 'CSDDD', 'csddd-37-1-applicazione', ['csddd-2-1-a']),
 ]
 
-/** The calendar in the words of the interface. */
+/** Every registry id the calendar cites. */
+export const CALENDAR_SOURCE_IDS: string[] = Array.from(new Set(OBLIGATION_DATA.flatMap((o) => [o.source, ...o.related])))
+
+/** The calendar in the words of the interface, every entry with what the last check found. */
 export function obligations(ctx: TextContext): Obligation[] {
-  const sources = scopeSources(ctx)
-  return OBLIGATION_DATA.map(({ source, ...data }) => ({
-    ...data,
-    title: ctx.t(`monitoraggio.calendar.${data.id}.title`),
-    who: ctx.t(`monitoraggio.calendar.${data.id}.who`),
-    what: ctx.t(`monitoraggio.calendar.${data.id}.what`),
-    source: sources[source],
-  }))
+  return OBLIGATION_DATA.map(({ source, related, ...data }) => {
+    const primary = scopeSource(source, ctx)
+    return {
+      ...data,
+      title: ctx.t(`monitoraggio.calendar.${data.id}.title`),
+      who: ctx.t(`monitoraggio.calendar.${data.id}.who`),
+      what: ctx.t(`monitoraggio.calendar.${data.id}.what`),
+      source: primary,
+      related: scopeSources(related, ctx),
+      verifiedOn: primary.status === 'verified' ? primary.verifiedAt : undefined,
+    }
+  })
+}
+
+/** Only the entries whose date was found in the official text: the ones the calendar shows. */
+export function verifiedOnly(list: Obligation[]): Obligation[] {
+  return list.filter((o) => o.verifiedOn != null)
 }
 
 function byDate(a: Obligation, b: Obligation): number {

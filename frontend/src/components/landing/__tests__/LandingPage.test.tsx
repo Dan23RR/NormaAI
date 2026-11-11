@@ -75,7 +75,7 @@ describe('landing page', () => {
     for (const link of pilot) expect(link.getAttribute('href')).toMatch(/^mailto:info@normaai\.org\?subject=/)
   })
 
-  it('promises no sign-up and sends nobody to the scope checks from the hero', () => {
+  it('promises no sign-up and keeps the scope checks as links of their own section', () => {
     renderLanding()
     const main = within(screen.getByRole('main'))
     const targets = main.getAllByRole('link').map((link) => link.getAttribute('href') ?? '')

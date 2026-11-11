@@ -1,271 +1,283 @@
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
-import { getFormatter, getLocale, getTranslations } from 'next-intl/server'
+import { useLocale, useTranslations } from 'next-intl'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { CodexForm } from '@/components/site/CodexForm'
+import { AnswerExample } from '@/components/landing/AnswerExample'
+import { DocumentCheckExample } from '@/components/landing/DocumentCheckExample'
+import { ProvisionChangeExample } from '@/components/landing/ProvisionChangeExample'
 import { ButtonLink } from '@/components/ui/Button'
-import { Badge, FrameworkBadge } from '@/components/ui/Badge'
-import { LawQuote } from '@/components/ui/LawQuote'
+import { FrameworkBadge } from '@/components/ui/Badge'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/Table'
 import { itemKeys } from '@/components/LegalLayout'
 import { eurlexLang } from '@/i18n/config'
-import { LONG_DATE } from '@/i18n/format'
-import { AI_ACT_ART_50_1_IT } from '@/lib/law-passages'
+import { cn } from '@/lib/cn'
+import { CORPUS_ACTS, CORPUS_AREAS, actsOf, corpusActName } from '@/lib/corpus-acts'
 import { eurlexUrl } from '@/lib/sources'
 
-// Public landing page. Every claim here must be true of the code as it ships
-// (see DESIGN.md, "stati onesti"). The hero shows the product's signature
-// element: an answer with the passage of law that supports it.
+// Public landing page. It opens with the document check, the thing NormaAI
+// does that a general assistant does not: checking the legal references of a
+// document against the official text and saying when a cited provision
+// changes. Asking questions and the scope checks follow.
+//
+// Every claim must be true of the code as it ships (DESIGN.md, "stati
+// onesti"). The sections say what each capability checks and on which text;
+// what a visitor cannot reach yet is said once, in the dated status line of
+// the hero (`landing.hero.status`): update that line when it changes.
 
-const ACT_ROWS = ['CSRD', 'CSDDD', 'AI_ACT', 'NIS2', 'DORA', 'GDPR', 'TAXONOMY', 'CRA', 'ESRS'] as const
-
-/** 2 August 2026: application of Article 50 of the AI Act (Art. 113). */
-const ART_50_APPLIES = new Date(Date.UTC(2026, 7, 2))
-
-async function AnswerExample() {
-  const t = await getTranslations('landing.example')
-  const tu = await getTranslations('ui')
-  const format = await getFormatter()
-  const locale = await getLocale()
-  const date = format.dateTime(ART_50_APPLIES, LONG_DATE)
-  const ref = (id: string) => (chunks: React.ReactNode) => (
-    <a href={`#${id}`} className="font-medium text-union">
-      {chunks}
-    </a>
-  )
+/** The two actions that work today: the demo with sample data, and an email for a pilot. */
+function Actions({ className }: { className?: string }) {
+  const t = useTranslations('landing.cta')
   return (
-    <figure className="rounded-xl border border-rule bg-surface shadow-doc">
-      <figcaption className="flex items-center justify-between border-b border-rule px-5 py-3 text-caption text-ink-3">
-        <span>{t('caption')}</span>
-        <span>{t('sourceCaption')}</span>
-      </figcaption>
-      <div className="px-5 py-5">
-        <p className="text-small text-ink-3">{t('questionLabel')}</p>
-        <p className="mt-1 text-read text-ink">{t('question')}</p>
-        <p className="mt-5 text-small text-ink-3">{t('answerLabel')}</p>
-        <p className="mt-1 text-read text-ink">
-          {t.rich('answer', { date, ref1: ref('esempio-fonte-1'), ref2: ref('esempio-fonte-2') })}
-        </p>
-        <div className="mt-5 space-y-4 border-t border-rule pt-5">
-          <div id="esempio-fonte-1">
-            <LawQuote
-              quote={AI_ACT_ART_50_1_IT.quote}
-              before={AI_ACT_ART_50_1_IT.before}
-              after={AI_ACT_ART_50_1_IT.after}
-              lang={AI_ACT_ART_50_1_IT.lang}
-              act={tu('acts.AI_ACT')}
-              article={t('article1')}
-              celex={AI_ACT_ART_50_1_IT.celex}
-              url={eurlexUrl(AI_ACT_ART_50_1_IT.celex, eurlexLang(locale))}
-              origin="EUR-Lex"
-            />
-          </div>
-          <p id="esempio-fonte-2" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-2">
-            <span>
-              <span className="font-medium text-ink">{tu('acts.AI_ACT')}</span>, {t('article2')}
-            </span>
-            <span className="inline-flex items-center gap-1 text-ok">
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {tu('sourceStatus.verified.short')}
-            </span>
-            <span>{t('appliesFrom', { date })}</span>
-          </p>
-        </div>
-      </div>
-    </figure>
+    <div className={cn('flex flex-wrap gap-3', className)}>
+      <ButtonLink href="/demo" size="lg">
+        {t('tryDemo')}
+      </ButtonLink>
+      <ButtonLink href={t('mailto')} variant="secondary" size="lg">
+        {t('pilot')}
+      </ButtonLink>
+    </div>
   )
 }
 
-export default async function Home() {
-  const t = await getTranslations('landing')
+/**
+ * The acts of the question-and-answer corpus, by area, each linked to its
+ * text on EUR-Lex. On a narrow screen the area moves above its acts, so the
+ * names of the acts keep the whole width.
+ */
+function CorpusTable() {
+  const t = useTranslations()
+  const lang = eurlexLang(useLocale())
+  return (
+    <Table>
+      <THead>
+        <TR>
+          <TH className="hidden sm:table-cell">{t('landing.sources.qa.colArea')}</TH>
+          <TH>{t('landing.sources.qa.colActs')}</TH>
+        </TR>
+      </THead>
+      <TBody>
+        {CORPUS_AREAS.map((area) => (
+          <TR key={area}>
+            <TD className="hidden whitespace-nowrap sm:table-cell">
+              <FrameworkBadge framework={area} />
+            </TD>
+            <TD>
+              <FrameworkBadge framework={area} className="mb-2 sm:hidden" />
+              <ul className="space-y-1.5">
+                {actsOf(area).map((act) => (
+                  <li key={act.celex}>
+                    <a
+                      href={eurlexUrl(act.celex, lang)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-serif text-read text-union hover:underline"
+                    >
+                      {corpusActName(act, t)}
+                    </a>
+                    <span className="block text-small text-ink-2 sm:inline">
+                      <span className="hidden sm:inline">, </span>
+                      {t(`landing.sources.acts.${act.celex}`)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </TD>
+          </TR>
+        ))}
+      </TBody>
+    </Table>
+  )
+}
+
+export default function Home() {
+  const t = useTranslations('landing')
+  const acts = CORPUS_ACTS.length
 
   return (
     <div className="min-h-screen bg-surface text-ink">
       <SiteHeader />
 
-      {/* Hero */}
-      <section className="mx-auto max-w-site px-6 pb-20 pt-14 md:pt-20">
-        <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-6 lg:pt-6">
-            <h1 className="text-display md:text-display-lg">{t('hero.title')}</h1>
-            <p className="mt-6 max-w-prose text-read text-ink-2 md:text-h4 md:font-normal">{t('hero.lead')}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="#demo" size="lg">
-                {t('hero.requestDemo')}
-              </ButtonLink>
-              <ButtonLink href="/scope-csrd.html" variant="secondary" size="lg">
-                {t('hero.checkScope')}
-              </ButtonLink>
+      <main>
+        {/* Hero: the positioning, the two actions, today's status, a checked document */}
+        <section className="mx-auto max-w-site px-6 pb-16 pt-12 md:pb-20 md:pt-16">
+          <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
+            <div className="lg:col-span-6 lg:pt-4">
+              <h1 className="text-h1 sm:text-display">{t('hero.title')}</h1>
+              <p className="mt-5 max-w-prose text-h4 text-ink md:text-h3">{t('hero.support')}</p>
+              <p className="mt-4 max-w-prose text-read text-ink-2">{t('hero.lead')}</p>
+              <Actions className="mt-8" />
+              <p className="mt-6 max-w-prose border-l-2 border-rule-2 pl-3 text-small text-ink-2">
+                {t.rich('hero.status', {
+                  b: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
+                })}
+              </p>
             </div>
-            <p className="mt-5 text-small text-ink-3">{t('hero.note')}</p>
+            <div className="lg:col-span-6">
+              <DocumentCheckExample />
+            </div>
           </div>
-          <div className="lg:col-span-6">
-            <AnswerExample />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Come funziona */}
-      <section id="come-funziona" className="border-t border-rule">
-        <div className="mx-auto max-w-site px-6 py-20">
-          <h2 className="max-w-3xl text-h1 md:text-display">{t('how.title')}</h2>
-          <div className="mt-12 grid gap-10 md:grid-cols-3 md:gap-0 md:divide-x md:divide-rule">
-            <div className="md:pr-8">
-              <h3 className="text-h3">{t('how.ask.title')}</h3>
-              <p className="mt-3 text-body text-ink-2">{t('how.ask.body')}</p>
-              <ul className="mt-4 space-y-1.5 text-small text-ink-2">
-                {itemKeys(t.raw('how.ask.points')).map((k) => (
-                  <li key={k}>{t(`how.ask.points.${k}`)}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="md:px-8">
-              <h3 className="text-h3">{t('how.scope.title')}</h3>
-              <p className="mt-3 text-body text-ink-2">{t('how.scope.body')}</p>
-              <ul className="mt-4 space-y-1.5 text-small">
-                <li>
-                  <a href="/scope-csrd.html" className="text-union hover:underline">
-                    {t('how.scope.csrd')}
-                  </a>
-                </li>
-                <li>
-                  <a href="/scope-aiact.html" className="text-union hover:underline">
-                    {t('how.scope.aiAct')}
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div className="md:pl-8">
-              <div className="flex items-center gap-2">
-                <h3 className="text-h3">{t('how.monitor.title')}</h3>
-                <Badge tone="warn">{t('how.monitor.badge')}</Badge>
-              </div>
-              <p className="mt-3 text-body text-ink-2">{t('how.monitor.body')}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Fonti */}
-      <section id="fonti" className="border-t border-rule bg-surface-2">
-        <div className="mx-auto max-w-site px-6 py-20">
-          <div className="max-w-3xl">
-            <h2 className="text-h1 md:text-display">{t('sources.title')}</h2>
-            <p className="mt-5 text-read text-ink-2">{t('sources.lead')}</p>
-          </div>
-          <div className="mt-10">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>{t('sources.colScope')}</TH>
-                  <TH>{t('sources.colActs')}</TH>
-                  <TH className="hidden md:table-cell">{t('sources.colCovers')}</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {ACT_ROWS.map((framework) => (
-                  <TR key={framework}>
-                    <TD className="whitespace-nowrap">
-                      <FrameworkBadge framework={framework} />
-                    </TD>
-                    <TD>
-                      <span className="font-serif text-read">{t(`sources.rows.${framework}.act`)}</span>
-                      <span className="mt-1 block text-small text-ink-2 md:hidden">{t(`sources.rows.${framework}.covers`)}</span>
-                    </TD>
-                    <TD className="hidden text-ink-2 md:table-cell">{t(`sources.rows.${framework}.covers`)}</TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          </div>
-        </div>
-      </section>
-
-      {/* Metodo */}
-      <section className="border-t border-rule">
-        <div className="mx-auto grid max-w-site gap-12 px-6 py-20 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <h2 className="text-h1 md:text-display">{t('method.title')}</h2>
-            <p className="mt-5 text-read text-ink-2">{t('method.lead')}</p>
-            <Link href="/metodo" className="mt-6 inline-block text-body font-medium text-union hover:underline">
-              {t('method.link')}
-            </Link>
-          </div>
-          <ol className="space-y-6 lg:col-span-7">
-            {itemKeys(t.raw('method.steps')).map((k, i) => (
-              <li key={k} className="flex gap-5">
-                <span className="mt-0.5 font-serif text-h2 tabular text-ink-3" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <div>
-                  <h3 className="text-h3">{t(`method.steps.${k}.title`)}</h3>
-                  <p className="mt-2 text-body text-ink-2">{t(`method.steps.${k}.body`)}</p>
+        {/* Check a document: the three checks, what comes out, what it does not do */}
+        <section id="come-funziona" className="scroll-mt-16 border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-16 md:py-20">
+            <h2 className="max-w-3xl text-h2 md:text-h1">{t('check.title')}</h2>
+            <p className="mt-4 max-w-prose text-read text-ink-2">{t('check.lead')}</p>
+            <div className="mt-10 grid gap-10 md:grid-cols-3 md:gap-0 md:divide-x md:divide-rule">
+              {itemKeys(t.raw('check.items')).map((k) => (
+                <div key={k} className="md:px-8 md:first:pl-0 md:last:pr-0">
+                  <h3 className="text-h3">{t(`check.items.${k}.title`)}</h3>
+                  <p className="mt-3 text-body text-ink-2">{t(`check.items.${k}.body`)}</p>
                 </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Per chi */}
-      <section className="border-t border-rule bg-surface-2">
-        <div className="mx-auto max-w-site px-6 py-20">
-          <h2 className="max-w-3xl text-h1 md:text-display">{t('who.title')}</h2>
-          <div className="mt-12 grid gap-10 md:grid-cols-3">
-            {itemKeys(t.raw('who.items')).map((k) => (
-              <div key={k}>
-                <h3 className="text-h3">{t(`who.items.${k}.who`)}</h3>
-                <p className="mt-3 text-body text-ink-2">{t(`who.items.${k}.text`)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Codex */}
-      <section id="codex" className="border-t border-rule">
-        <div className="mx-auto grid max-w-site gap-12 px-6 py-20 lg:grid-cols-12 lg:items-start">
-          <div className="lg:col-span-7">
-            <p className="text-small text-ink-3">{t('codex.kicker')}</p>
-            <h2 className="mt-2 text-h1 md:text-display">{t('codex.title')}</h2>
-            <p className="mt-5 max-w-prose text-read text-ink-2">{t('codex.lead')}</p>
-            <ul className="mt-6 space-y-2.5 text-body text-ink-2">
-              {itemKeys(t.raw('codex.points')).map((k) => (
-                <li key={k} className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
-                  {t(`codex.points.${k}`)}
-                </li>
               ))}
+            </div>
+            <div className="mt-12 grid gap-8 border-t border-rule pt-8 md:grid-cols-2 md:gap-12">
+              <div>
+                <h3 className="text-h4">{t('check.result.title')}</h3>
+                <p className="mt-2 text-body text-ink-2">{t('check.result.body')}</p>
+              </div>
+              <div>
+                <h3 className="text-h4">{t('check.limits.title')}</h3>
+                <p className="mt-2 text-body text-ink-2">{t('check.limits.body')}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Watch: the warning when a cited provision changes */}
+        <section id="sorveglia" className="scroll-mt-16 border-t border-rule bg-surface-2">
+          <div className="mx-auto grid max-w-site gap-10 px-6 py-16 md:py-20 lg:grid-cols-12 lg:gap-12">
+            <div className="lg:col-span-5">
+              <h2 className="text-h2 md:text-h1">{t('watch.title')}</h2>
+              <p className="mt-4 text-read text-ink-2">{t('watch.body')}</p>
+              <p className="mt-4 text-read text-ink-2">{t('watch.clients')}</p>
+            </div>
+            <div className="lg:col-span-7">
+              <ProvisionChangeExample />
+            </div>
+          </div>
+        </section>
+
+        {/* Ask: questions answered with the passage of law */}
+        <section id="chiedi" className="scroll-mt-16 border-t border-rule">
+          <div className="mx-auto grid max-w-site gap-10 px-6 py-16 md:py-20 lg:grid-cols-12 lg:gap-12">
+            <div className="lg:col-span-5">
+              <h2 className="text-h2 md:text-h1">{t('ask.title')}</h2>
+              <p className="mt-4 text-read text-ink-2">{t('ask.body', { acts })}</p>
+              <ul className="mt-4 list-disc space-y-1.5 pl-5 text-body text-ink-2 marker:text-ink-3">
+                {itemKeys(t.raw('ask.points')).map((k) => (
+                  <li key={k}>{t(`ask.points.${k}`)}</li>
+                ))}
+              </ul>
+              <Link href="/metodo" className="mt-6 inline-block text-read font-medium text-union hover:underline">
+                {t('ask.method')}
+              </Link>
+            </div>
+            <div className="lg:col-span-7">
+              <AnswerExample />
+            </div>
+          </div>
+        </section>
+
+        {/* Scope and deadlines: the free checks, as secondary links */}
+        <section id="ambito" className="scroll-mt-16 border-t border-rule">
+          <div className="mx-auto grid max-w-site gap-6 px-6 py-12 md:py-14 lg:grid-cols-12 lg:gap-12">
+            <div className="lg:col-span-7">
+              <h2 className="text-h3 md:text-h2">{t('scope.title')}</h2>
+              <p className="mt-3 max-w-prose text-read text-ink-2">{t('scope.body')}</p>
+            </div>
+            <ul className="space-y-2 text-read lg:col-span-5 lg:pt-1">
+              <li>
+                <a href="/scope-csrd.html" className="text-union hover:underline">
+                  {t('scope.csrd')}
+                </a>
+              </li>
+              <li>
+                <a href="/scope-aiact.html" className="text-union hover:underline">
+                  {t('scope.aiAct')}
+                </a>
+              </li>
             </ul>
           </div>
-          <div className="lg:col-span-5">
-            <CodexForm />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Demo */}
-      <section id="demo" className="bg-[#0C1B33] text-[#E8ECF3]">
-        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
-          <h2 className="text-h1 text-white md:text-display">{t('demo.title')}</h2>
-          <p className="mx-auto mt-5 max-w-xl text-read text-[#B3BCCB]">{t('demo.lead')}</p>
-          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a
-              href={t('demo.mailto')}
-              className="inline-flex h-12 items-center justify-center rounded-md bg-white px-6 text-read font-medium text-[#0C1B33] no-underline transition-colors hover:bg-[#E8ECF3]"
-            >
-              {t('demo.mail')}
-            </a>
-            <Link
-              href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-md border border-white/30 px-6 text-read font-medium text-white no-underline transition-colors hover:border-white/60"
-            >
-              {t('demo.login')}
-            </Link>
+        {/* Sources: the corpus of the answers and, apart from it, the texts the document check reads */}
+        <section id="fonti" className="scroll-mt-16 border-t border-rule bg-surface-2">
+          <div className="mx-auto max-w-site px-6 py-16 md:py-20">
+            <h2 className="max-w-3xl text-h2 md:text-h1">{t('sources.title')}</h2>
+            <p className="mt-4 max-w-prose text-read text-ink-2">{t('sources.lead')}</p>
+
+            <h3 className="mt-10 text-h3">{t('sources.qa.title', { acts })}</h3>
+            <p className="mt-3 max-w-prose text-read text-ink-2">{t('sources.qa.body')}</p>
+            <div className="mt-6">
+              <CorpusTable />
+            </div>
+
+            <h3 className="mt-12 text-h3">{t('sources.check.title')}</h3>
+            <dl className="mt-4 grid gap-8 md:grid-cols-2 md:gap-12">
+              {(['eu', 'it'] as const).map((k) => (
+                <div key={k}>
+                  <dt className="font-serif text-h4 font-medium text-ink">{t(`sources.check.${k}.title`)}</dt>
+                  <dd className="mt-2 text-read text-ink-2">{t(`sources.check.${k}.body`)}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-10 border-t border-rule pt-6">
+              <p className="max-w-prose text-small text-ink-2">{t('sources.authentic')}</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* For whom: consultants first */}
+        <section className="border-t border-rule">
+          <div className="mx-auto max-w-site px-6 py-16 md:py-20">
+            <h2 className="max-w-3xl text-h2 md:text-h1">{t('who.title')}</h2>
+            <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:gap-12">
+              {itemKeys(t.raw('who.items')).map((k, i) => (
+                <div key={k} className={i === 0 ? 'lg:col-span-6' : 'lg:col-span-3'}>
+                  <h3 className="text-h3">{t(`who.items.${k}.who`)}</h3>
+                  <p className="mt-3 max-w-prose text-read text-ink-2">
+                    {t(`who.items.${k}.text`, { areas: CORPUS_AREAS.length })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Codex (the words of this block belong to the Codex stream: `landing.codex`, `site.codexForm`) */}
+        <section id="codex" className="scroll-mt-16 border-t border-rule">
+          <div className="mx-auto grid max-w-site gap-12 px-6 py-16 md:py-20 lg:grid-cols-12 lg:items-start">
+            <div className="lg:col-span-7">
+              <p className="text-small text-ink-3">{t('codex.kicker')}</p>
+              <h2 className="mt-2 text-h2 md:text-h1">{t('codex.title')}</h2>
+              <p className="mt-5 max-w-prose text-read text-ink-2">{t('codex.lead')}</p>
+              <ul className="mt-6 space-y-2.5 text-body text-ink-2">
+                {itemKeys(t.raw('codex.points')).map((k) => (
+                  <li key={k} className="flex items-start gap-2.5">
+                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
+                    {t(`codex.points.${k}`)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="lg:col-span-5">
+              <CodexForm />
+            </div>
+          </div>
+        </section>
+
+        {/* Demo and pilot: the two actions again */}
+        <section id="demo" className="scroll-mt-16 border-t border-rule bg-surface-2">
+          <div className="mx-auto max-w-site px-6 py-16 md:py-20">
+            <h2 className="max-w-3xl text-h2 md:text-h1">{t('demo.title')}</h2>
+            <p className="mt-4 max-w-prose text-read text-ink-2">{t('demo.lead')}</p>
+            <Actions className="mt-8" />
+          </div>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

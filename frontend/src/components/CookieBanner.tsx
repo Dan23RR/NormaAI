@@ -6,18 +6,26 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/Button'
 
 /**
- * Cookie banner informativo (no opt-in gate).
+ * Cookie notice, informative only (no opt-in gate).
  *
- * NormaAI usa SOLO cookie/storage tecnici di prima parte (token di sessione
- * JWT in localStorage, cookie della lingua, tema, stato UI) e NESSUN cookie
- * di analytics o marketing di terze parti. Ai sensi della Direttiva ePrivacy
- * e del Provvedimento del Garante 231/2021, i cookie strettamente tecnici
- * sono esenti dal consenso preventivo: basta un'informativa con link alla
- * cookie policy, senza pulsanti accetta/rifiuta.
+ * NormaAI uses ONLY first-party technical storage (one language cookie, the
+ * session tokens and the interface preferences in localStorage) and NO
+ * third-party analytics or marketing cookie. Under the ePrivacy Directive and
+ * Decision 231/2021 of the Italian data protection authority, strictly
+ * technical storage is exempt from prior consent: a notice with a link to the
+ * cookie policy is enough, without accept and reject buttons.
  *
- * NOTA: se si aggiungono strumenti di terze parti (analytics con cookie,
- * pixel), questo banner va trasformato in un consent manager con opt-in
- * granulare PRIMA di caricare gli script di tracciamento.
+ * NOTE: if third-party tools are added (analytics with cookies, pixels), this
+ * notice must become a consent manager with granular opt-in BEFORE any
+ * tracking script is loaded.
+ *
+ * Placement. The notice never sits on page content. On small screens it is a
+ * plain block in the flow, at the end of the document (a fixed bar there
+ * covered the last controls of a page, for example the demo button of the
+ * sign-in page on a 390 x 844 phone). From the `sm` breakpoint it is sticky
+ * at the bottom of the viewport: it stays in view while reading, and since it
+ * still takes its own space at the end of the document, the last lines of the
+ * page can always be scrolled clear of it.
  */
 
 const DISMISS_KEY = 'normaai.cookie-banner.dismissed'
@@ -48,18 +56,22 @@ export function CookieBanner() {
   if (!visible) return null
 
   return (
-    <div role="region" aria-label={t('label')} className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4 sm:px-6">
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-lg border border-rule bg-surface p-4 shadow-pop sm:flex-row sm:items-center sm:gap-5">
+    <div
+      role="region"
+      aria-label={t('label')}
+      className="border-t border-rule bg-surface sm:pointer-events-none sm:sticky sm:bottom-0 sm:z-40 sm:border-t-0 sm:bg-transparent sm:px-6 sm:pb-4 sm:pt-2"
+    >
+      <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4 sm:pointer-events-auto sm:flex-row sm:items-center sm:gap-5 sm:rounded-lg sm:border sm:border-rule sm:bg-surface sm:p-4 sm:shadow-pop">
         <p className="text-small text-ink-2">
           {t.rich('text', {
             link: (chunks) => (
-              <Link href="/cookie" className="text-union hover:underline">
+              <Link href="/cookie" className="text-union underline hover:no-underline">
                 {chunks}
               </Link>
             ),
           })}
         </p>
-        <Button size="sm" variant="secondary" onClick={dismiss} className="shrink-0">
+        <Button size="sm" variant="secondary" onClick={dismiss} className="shrink-0 self-start sm:self-auto">
           {t('ok')}
         </Button>
       </div>

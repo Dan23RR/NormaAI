@@ -36,6 +36,7 @@ export function AnswerTurn({
   onToggleSources,
   onMarkerClick,
   onSourceSelect,
+  onAsk,
   onFollowUp,
   onRetry,
   onCopy,
@@ -47,6 +48,9 @@ export function AnswerTurn({
   onToggleSources: () => void
   onMarkerClick: (index: number) => void
   onSourceSelect: (index: number) => void
+  /** Ask a complete question at once (the example questions of an abstention). */
+  onAsk: (question: string) => void
+  /** Put a question to complete in the box (the follow-up on a related act). */
   onFollowUp: (question: string) => void
   onRetry: () => void
   onCopy: (text: string) => void
@@ -102,7 +106,7 @@ export function AnswerTurn({
             code={abstention.code}
             reason={abstention.reason}
             suggestions={data.suggested_questions}
-            onSuggestion={onFollowUp}
+            onSuggestion={onAsk}
             corpusAsOf={message.corpusAsOf}
             demo={demo}
           />

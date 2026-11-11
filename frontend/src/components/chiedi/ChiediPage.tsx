@@ -468,9 +468,10 @@ export function ChiediPage() {
                     const s = t(`suggestions.${k}`)
                     return (
                       <li key={k}>
+                        {/* A suggested question is a whole question: one click asks it. */}
                         <button
                           type="button"
-                          onClick={() => prefill(s)}
+                          onClick={() => send(s)}
                           className="rounded-md border border-rule bg-surface px-3 py-1.5 text-left text-small text-ink-2 hover:border-rule-2 hover:text-ink"
                         >
                           {s}
@@ -499,6 +500,7 @@ export function ChiediPage() {
                       onToggleSources={() => setOpenSources((s) => ({ ...s, [m.id]: !s[m.id] }))}
                       onMarkerClick={(index) => goToSource(m.id, index)}
                       onSourceSelect={(index) => goToMarker(m.id, index)}
+                      onAsk={send}
                       onFollowUp={prefill}
                       onRetry={() => retry(m)}
                       onCopy={copy}

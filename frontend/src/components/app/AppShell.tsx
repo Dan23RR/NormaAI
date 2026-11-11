@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import {
+  FileCheck2,
   MessageSquareText,
   ListChecks,
   CalendarClock,
@@ -31,6 +32,7 @@ export const APP_NAV: Array<{
   icon: typeof MessageSquareText
   adminOnly?: boolean
 }> = [
+  { href: '/app/controlla', key: 'controlla', icon: FileCheck2 },
   { href: '/app/chiedi', key: 'chiedi', icon: MessageSquareText },
   { href: '/app/ambito', key: 'ambito', icon: ListChecks },
   { href: '/app/monitoraggio', key: 'monitoraggio', icon: CalendarClock },
@@ -263,7 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className={cn('flex min-h-screen flex-col transition-[padding]', collapsed ? 'md:pl-rail-collapsed' : 'md:pl-rail')}>
         {demoMode && (
-          <div className="border-b border-mark-deep/40 bg-mark/30 px-4 py-2 text-small text-[#0C1B33] md:px-8">
+          <div className="border-b border-warn/30 bg-warn/10 px-4 py-2 text-small text-ink md:px-8">
             {t('shell.demoBanner')}{' '}
             <button type="button" onClick={logout} className="font-medium underline underline-offset-4">
               {t('shell.leaveDemo')}

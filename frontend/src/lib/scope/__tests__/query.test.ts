@@ -1,9 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { EMPTY_INPUT, inputToQuery, queryToInput, keysToAi, NO_AI } from '../query'
+import {
+  EMPTY_INPUT,
+  NO_AI,
+  NO_MACHINERY,
+  NO_NIS,
+  NO_WORK_AI,
+  inputToQuery,
+  keysToAi,
+  keysToMachinery,
+  keysToWork,
+  machineryToKeys,
+  queryToInput,
+  workToKeys,
+} from '../query'
 import { parseNumber, formatInt, formatEur, formatMillionsEur } from '@/i18n/format'
 import { textContextFor } from '@/test/i18n'
 
-describe('parseNumber (port of toNum in public/scope-csrd.html)', () => {
+describe('parseNumber', () => {
   it('reads Italian thousands separators', () => {
     expect(parseNumber('1.200', 'it-IT')).toBe(1200)
     expect(parseNumber('450.000.000', 'it-IT')).toBe(450_000_000)
@@ -33,7 +46,7 @@ describe('formatting', () => {
   it('uses the separators of the locale', () => {
     expect(formatInt(1200, 'it-IT')).toBe('1.200')
     // Intl keeps the euro sign on the same line as the amount (no-break space).
-    expect(formatEur(450_000_000, 'it-IT')).toBe('450.000.000 €')
+    expect(formatEur(450_000_000, 'it-IT')).toBe('450.000.000\u00a0€')
     expect(formatInt(1200, 'en-GB')).toBe('1,200')
     expect(formatEur(450_000_000, 'en-GB')).toBe('€450,000,000')
   })
@@ -48,6 +61,16 @@ describe('formatting', () => {
   })
 })
 
+describe('answer keys', () => {
+  it('turn into answers and back for each group', () => {
+    expect(workToKeys(keysToWork(['dec', 'emo']))).toEqual(['dec', 'emo'])
+    expect(keysToWork([])).toEqual(NO_WORK_AI)
+    expect(machineryToKeys(keysToMachinery(['imp', 'mod']))).toEqual(['imp', 'mod'])
+    expect(keysToMachinery([])).toEqual(NO_MACHINERY)
+    expect(keysToAi([])).toEqual(NO_AI)
+  })
+})
+
 describe('query string round trip', () => {
   it('keeps every field that was set', () => {
     const input = {
@@ -55,32 +78,62 @@ describe('query string round trip', () => {
       name: 'Acme Srl',
       employees: 1500,
       turnoverEur: 620_000_000,
+      balanceSheetEur: 410_000_000,
       listedEu: true,
       wave1Reporter: true,
       groupRole: 'parent' as const,
       sector: 'Manifattura',
       country: 'IT',
       ai: keysToAi(['chat', 'deep']),
+      work: keysToWork(['dec', 'uso']),
+      nis: { sector: 'fabbricazione' as const, anySize: false, linked: true },
+      machinery: keysToMachinery(['fab', 'mod']),
     }
     const q = inputToQuery(input).toString()
     expect(queryToInput(q)).toEqual(input)
   })
-  it('encodes "none of the four" as an answered question', () => {
-    const q = inputToQuery({ ...EMPTY_INPUT, employees: 10, turnoverEur: 1, ai: NO_AI })
-    expect(q.get('ia')).toBe('nessuna')
-    expect(queryToInput(q)?.ai).toEqual(NO_AI)
+  it('keeps a company outside the EU with its turnover in the Union', () => {
+    const input = { ...EMPTY_INPUT, nonEu: true, euTurnoverEur: 500_000_000 }
+    expect(queryToInput(inputToQuery(input))).toEqual(input)
   })
-  it('leaves the AI answers null when the key is absent', () => {
-    expect(queryToInput('dip=600&ricavi=120000000')?.ai).toBeNull()
+  it('encodes "none of these" as an answered question in every group', () => {
+    const q = inputToQuery({ ...EMPTY_INPUT, ai: NO_AI, work: NO_WORK_AI, nis: NO_NIS, machinery: NO_MACHINERY })
+    expect(q.get('ia')).toBe('nessuna')
+    expect(q.get('lav')).toBe('nessuna')
+    expect(q.get('nis')).toBe('nessuno')
+    expect(q.get('mac')).toBe('nessuna')
+    const back = queryToInput(q)
+    expect(back?.ai).toEqual(NO_AI)
+    expect(back?.work).toEqual(NO_WORK_AI)
+    expect(back?.nis).toEqual(NO_NIS)
+    expect(back?.machinery).toEqual(NO_MACHINERY)
+  })
+  it('leaves a group null when its key is absent: unanswered is never read as "none"', () => {
+    const input = queryToInput('dip=600&ricavi=120000000')
+    expect(input?.ai).toBeNull()
+    expect(input?.work).toBeNull()
+    expect(input?.nis).toBeNull()
+    expect(input?.machinery).toBeNull()
+    expect(input?.balanceSheetEur).toBeNull()
+  })
+  it('assesses a query that carries only one of the new sections', () => {
+    expect(queryToInput('mac=fab')?.machinery).toEqual(keysToMachinery(['fab']))
+    expect(queryToInput('lav=prof')?.work).toEqual(keysToWork(['prof']))
+    expect(queryToInput('nis=energia&nisdim=1')?.nis).toEqual({ sector: 'energia', anySize: true, linked: false })
   })
   it('returns null for a query with nothing to assess', () => {
     expect(queryToInput('')).toBeNull()
     expect(queryToInput('nome=Acme')).toBeNull()
+    expect(queryToInput('bilancio=12000000')).toBeNull()
   })
-  it('ignores negative or malformed numbers and unknown AI keys', () => {
-    const input = queryToInput('dip=-5&ricavi=abc&ia=chat,bogus')
+  it('ignores negative or malformed numbers, unknown keys and unknown sectors', () => {
+    const input = queryToInput('dip=-5&ricavi=abc&bilancio=x&ia=chat,bogus&lav=dec,boh&mac=zzz&nis=agricoltura')
     expect(input?.employees).toBeNull()
     expect(input?.turnoverEur).toBeNull()
+    expect(input?.balanceSheetEur).toBeNull()
     expect(input?.ai).toEqual(keysToAi(['chat']))
+    expect(input?.work).toEqual(keysToWork(['dec']))
+    expect(input?.machinery).toEqual(NO_MACHINERY)
+    expect(input?.nis).toBeNull()
   })
 })

@@ -1,12 +1,12 @@
 {
   "site": {
     "meta": {
-      "title": "NormaAI: risposte sul diritto UE con la fonte esatta",
-      "description": "Domande su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia UE con l’articolo citato e il passaggio di legge verificabile su EUR-Lex e Normattiva.",
-      "ogDescription": "Ogni risposta cita l’atto, l’articolo e il passaggio di legge, con il link al testo ufficiale. Se il testo non basta, il sistema lo dice.",
-      "orgDescription": "Risposte sul diritto UE (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia, GDPR) con la fonte esatta su EUR-Lex e Normattiva.",
-      "appDescription": "Domande e risposte sul diritto UE con citazione dell’atto, dell’articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze.",
-      "offer": "Accesso su invito. Codex Post-Omnibus 2025-2029 gratuito."
+      "title": "NormaAI: ogni riferimento di legge, verificato sul testo ufficiale",
+      "description": "Risposte sul diritto dell’Unione (CSRD, CSDDD, AI Act, NIS2, DORA, GDPR, Tassonomia) con l’atto, l’articolo e il passaggio di legge citato. Ogni citazione è confrontata, parola per parola, con il testo ufficiale pubblicato su EUR-Lex.",
+      "ogDescription": "Ogni risposta cita l’atto, l’articolo e il passaggio di legge, confrontato parola per parola con il testo ufficiale. Se il testo non basta, il sistema lo dice.",
+      "ogImageAlt": "NormaAI. Ogni riferimento di legge, verificato sul testo ufficiale.",
+      "orgDescription": "NormaAI verifica i riferimenti di legge sul testo ufficiale dell’Unione europea pubblicato su EUR-Lex e risponde alle domande citando atto, articolo e passaggio.",
+      "appDescription": "Domande e risposte sul diritto UE con citazione dell’atto, dell’articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze."
     },
     "header": {
       "nav": "Principale",
@@ -17,7 +17,7 @@
       "codex": "Codex",
       "openApp": "Vai all’applicazione",
       "signIn": "Accedi",
-      "requestDemo": "Richiedi una demo",
+      "tryDemo": "Prova la demo",
       "openMenu": "Apri il menu",
       "closeMenu": "Chiudi il menu"
     },
@@ -37,12 +37,24 @@
       "cookie": "Cookie",
       "terms": "Termini",
       "security": "Sicurezza",
-      "credits": "NormaAI è un progetto di Daniel Culotta, Inverigo (CO), Italia. © {year}",
+      "credits": "© {year} Daniel Culotta",
       "aiNotice": "Le risposte sono generate da un sistema di intelligenza artificiale e non sostituiscono la consulenza di un professionista."
+    },
+    "imprint": {
+      "title": "Chi gestisce NormaAI",
+      "identity": "NormaAI è un progetto di Daniel Culotta, persona fisica, Inverigo (CO), Italia, non ancora costituito in società.",
+      "contact": "Contatti: <mail>info@normaai.org</mail>",
+      "vat": "Partita IVA: {vat}"
+    },
+    "notFound": {
+      "title": "Pagina non trovata",
+      "body": "L’indirizzo che hai aperto non corrisponde a nessuna pagina: può essere stato scritto male, oppure la pagina è stata spostata.",
+      "home": "Vai alla pagina principale",
+      "elsewhere": "Oppure apri"
     },
     "codexForm": {
       "invalidEmail": "Inserisci un indirizzo email valido.",
-      "successDefault": "Richiesta registrata. Riceverai il Codex entro 24 ore.",
+      "successDefault": "Richiesta registrata.",
       "tooMany": "Troppe richieste recenti dallo stesso indirizzo. Riprova tra un’ora.",
       "invalidData": "Dati non validi. Controlla email e nome organizzazione.",
       "unexpected": "Errore inatteso ({status}). Riprova o scrivi a info@normaai.org.",
@@ -67,151 +79,187 @@
   },
   "landing": {
     "hero": {
-      "title": "Ogni risposta sul diritto UE, con il passaggio di legge che la sostiene.",
-      "lead": "NormaAI risponde su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia citando l’atto e l’articolo, con il testo ufficiale di EUR-Lex e Normattiva a un clic. Quando il testo non basta, lo dice.",
-      "requestDemo": "Richiedi una demo",
-      "checkScope": "Verifica se sei in ambito CSRD",
-      "note": "Accesso su invito durante i pilot. Codice aperto. Data del corpus dichiarata in ogni risposta."
+      "title": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.",
+      "support": "Norme UE e italiane, parola per parola. Con l'avviso quando una norma citata cambia.",
+      "lead": "NormaAI legge un parere, un'informativa o una policy, trova gli articoli citati, li confronta con il testo ufficiale e ti dice quali riferimenti correggere, quali controllare e quali sono a posto.",
+      "status": "<b>Stato all'11 novembre 2026.</b> Aperti a tutti: la demo con dati di esempio, le due verifiche gratuite di ambito (CSRD e articolo 50 dell'AI Act) e la guida Codex. Il controllo dei riferimenti di legge UE e italiani (su EUR-Lex e Normattiva) e gli avvisi quando una norma citata cambia sono scritti e si vedono nella demo; sui tuoi documenti si potranno usare quando il nuovo server sarà attivo. Fino ad allora gli account, e con loro le risposte sul corpus reale, sono sospesi."
+    },
+    "cta": {
+      "tryDemo": "Prova la demo",
+      "pilot": "Scrivi per un pilot",
+      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie."
     },
     "example": {
-      "caption": "Esempio di risposta",
-      "sourceCaption": "Fonte: testo ufficiale su EUR-Lex",
-      "questionLabel": "Domanda",
-      "question": "Un assistente virtuale che risponde ai clienti sul nostro sito deve dichiarare che è un’intelligenza artificiale?",
-      "answerLabel": "Risposta",
-      "answer": "Sì. L’articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un sistema di IA destinato a interagire con le persone a progettarlo in modo che le persone sappiano di parlare con un’IA, salvo che sia evidente dal contesto <ref1>[1]</ref1>. L’obbligo si applica dal {date} <ref2>[2]</ref2>.",
-      "article1": "art. 50, par. 1",
-      "article2": "art. 113",
-      "appliesFrom": "applicazione dal {date}"
+      "label": "Esempio di controllo di un documento",
+      "caption": "Esempio: una nota inventata",
+      "checkedOn": "Data del controllo: {date}",
+      "inDocument": "Nel documento",
+      "toFinding": "Vai all'esito {n}",
+      "outcome": "Esito del controllo: {fix} da correggere, {ok} a posto",
+      "altered": "Citazione diversa dal testo ufficiale",
+      "difference": "La citazione è diversa dal testo vigente: nel documento «{quoted}», nel testo ufficiale «{official}».",
+      "article1": "art. 33, par. 1",
+      "inForce": "testo vigente, consolidato al {date}",
+      "verified": "Citazione verificata",
+      "verifiedNote": "{act}, {article}: la citazione è nel testo vigente, parola per parola.",
+      "article5": "art. 33, par. 5"
     },
-    "how": {
-      "title": "Tre strumenti, una regola: niente senza fonte.",
-      "ask": {
-        "title": "Chiedi",
-        "body": "Domande in italiano o inglese. La risposta cita atto, articolo e passaggio, mostra per ogni citazione se il passaggio è stato ritrovato nel testo ufficiale e porta al testo con un clic. Se il corpus non copre la domanda, NormaAI si astiene e lo dice.",
-        "points": {
-          "1": "Profilo aziendale opzionale per risposte sul vostro caso",
-          "2": "Astensione dichiarata invece di una risposta inventata",
-          "3": "Data del corpus in ogni risposta"
-        }
-      },
-      "scope": {
-        "title": "Ambito",
-        "body": "Dimensione, settore, Paese: quali obblighi si applicano all’azienda e da quando, con la norma che lo stabilisce. Oggi disponibile come verifica gratuita per la CSRD e per l’articolo 50 dell’AI Act.",
-        "csrd": "Verifica CSRD dopo l’Omnibus I",
-        "aiAct": "Verifica AI Act, articolo 50"
-      },
-      "monitor": {
-        "title": "Monitoraggio",
-        "badge": "In sviluppo",
-        "body": "Il calendario degli obblighi dei vostri clienti e le novità normative, ciascuna con la data in cui è stata verificata. Disponibile ai partecipanti ai pilot man mano che viene completato."
-      }
-    },
-    "sources": {
-      "title": "I testi da cui partono le risposte.",
-      "lead": "Gli atti vengono da EUR-Lex, la banca dati ufficiale del diritto dell’Unione, e da Normattiva per il recepimento italiano. Il corpus ha una data, mostrata in ogni risposta; le versioni consolidate e italiane degli atti sono in corso di inserimento.",
-      "colScope": "Ambito",
-      "colActs": "Atti",
-      "colCovers": "Cosa copre",
-      "rows": {
-        "CSRD": {
-          "act": "Direttiva (UE) 2022/2464, modificata dalla Direttiva (UE) 2026/470 (Omnibus I); D.Lgs. 125/2024",
-          "covers": "Rendicontazione di sostenibilità: soglie, calendario, principi ESRS"
-        },
-        "CSDDD": {
-          "act": "Direttiva (UE) 2024/1760, modificata dalla Direttiva (UE) 2026/470",
-          "covers": "Dovere di diligenza: recepimento entro il 26 luglio 2028, prima applicazione nel 2029"
-        },
-        "AI_ACT": {
-          "act": "Regolamento (UE) 2024/1689",
-          "covers": "Obblighi per fornitori e deployer, trasparenza (art. 50), sistemi ad alto rischio"
-        },
-        "NIS2": {
-          "act": "Direttiva (UE) 2022/2555; D.Lgs. 138/2024",
-          "covers": "Soggetti essenziali e importanti, misure di sicurezza, notifica degli incidenti"
-        },
-        "DORA": {
-          "act": "Regolamento (UE) 2022/2554",
-          "covers": "Resilienza operativa digitale del settore finanziario, rischio ICT e fornitori terzi"
-        },
-        "GDPR": {
-          "act": "Regolamento (UE) 2016/679",
-          "covers": "Protezione dei dati personali, basi giuridiche, diritti degli interessati"
-        },
-        "TAXONOMY": {
-          "act": "Regolamento (UE) 2020/852",
-          "covers": "Attività economiche ecosostenibili e obblighi di informativa"
-        },
-        "CRA": {
-          "act": "Regolamento (UE) 2024/2847",
-          "covers": "Cybersicurezza dei prodotti con elementi digitali"
-        },
-        "ESRS": {
-          "act": "Regolamento delegato (UE) 2023/2772",
-          "covers": "Principi di rendicontazione di sostenibilità (Set 1)"
-        }
-      }
-    },
-    "method": {
-      "title": "Perché puoi fidarti di una citazione.",
-      "lead": "Un modello linguistico, da solo, inventa riferimenti plausibili. NormaAI lo costringe a lavorare sul testo di legge e a mostrare il lavoro.",
-      "link": "Il metodo nel dettaglio",
-      "steps": {
-        "1": {
-          "title": "Recupero dal testo ufficiale",
-          "body": "La domanda cerca i passaggi pertinenti negli atti indicizzati, per significato e per parole esatte, con la data del corpus dichiarata."
-        },
-        "2": {
-          "title": "Risposta ancorata ai passaggi",
-          "body": "Il modello risponde solo a partire dai passaggi recuperati e cita per atto e articolo; il testo citato resta visibile accanto alla risposta."
-        },
-        "3": {
-          "title": "Verifica di ogni citazione",
-          "body": "Ogni citazione mostra se il passaggio è stato ritrovato nel testo ufficiale. Se non lo è, viene segnata come da verificare, non nascosta."
-        },
-        "4": {
-          "title": "Astensione quando serve",
-          "body": "Se i passaggi recuperati non bastano, NormaAI dice che non può rispondere e suggerisce dove guardare, invece di completare con un’invenzione."
-        }
-      }
-    },
-    "who": {
-      "title": "Per chi deve rispondere con l’articolo, non con un’opinione.",
+    "check": {
+      "title": "Controlla un documento: l'articolo, la citazione, la data.",
+      "lead": "NormaAI cerca nel documento i rimandi a un articolo, a un considerando o a un allegato, con l'atto a cui appartengono, e li confronta con il testo ufficiale in tre modi.",
       "items": {
         "1": {
-          "who": "Compliance officer",
-          "text": "Una persona, sette ambiti normativi. Quando la direzione chiede \"siamo a posto?\", la risposta deve avere l’articolo accanto."
+          "title": "L'articolo esiste",
+          "body": "L'articolo e ogni paragrafo citato devono esserci nel testo vigente, cioè nell'ultima versione consolidata. Se l'articolo c'era in una versione precedente, il report dice che è stato abrogato o rinumerato."
         },
         "2": {
-          "who": "Consulenti e studi",
-          "text": "Offrite compliance UE ai clienti senza un partner senior per ogni materia: la base normativa verificata la mette NormaAI, la valutazione e la firma restano vostre."
+          "title": "La citazione è parola per parola",
+          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera sbagliata in una parola lunga. Se le parole sono in un altro articolo, o solo in una versione precedente, il report lo dice."
         },
         "3": {
-          "who": "PMI e direzione finanziaria",
-          "text": "Capire se un obbligo vi riguarda, da quando e cosa comporta, prima di decidere dove spendere."
+          "title": "La norma non è cambiata dopo la data del documento",
+          "body": "Se indichi la data del documento, NormaAI confronta la disposizione in vigore quel giorno con quella di oggi. Se è cambiata, vedi il testo di allora e quello di adesso, con le differenze."
+        }
+      },
+      "result": {
+        "title": "Cosa ricevi",
+        "body": "Un report che divide i riferimenti per cosa c'è da fare: da correggere, da controllare, a posto. Per ognuno trovi la riga del documento, l'esito, il testo ufficiale e il link al testo su EUR-Lex o su Normattiva."
+      },
+      "limits": {
+        "title": "Cosa non fa",
+        "body": "Non dice se il riferimento è quello giusto per il tuo caso, né se una citazione esatta lascia fuori un'eccezione: controlla le parole, la valutazione resta tua. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. Non è un parere legale."
+      }
+    },
+    "watch": {
+      "title": "L'avviso quando una norma citata cambia.",
+      "body": "Dopo il controllo NormaAI tiene l'elenco delle disposizioni su cui il documento si regge: atto, articolo, versione e impronta del testo. A ogni nuova versione del testo ufficiale le confronta di nuovo e ti dice quali documenti rivedere, perché una norma citata è cambiata o non c'è più.",
+      "clients": "Se segui molti clienti, una modifica diventa un elenco: i documenti da riaprire, con il testo di prima e quello di adesso.",
+      "example": {
+        "label": "Esempio di una norma citata che è cambiata",
+        "caption": "Un caso vero: l'articolo 4 dell'AI Act",
+        "checkedOn": "Data del controllo: {date}",
+        "outdated": "Citazione superata",
+        "message": "L'articolo è cambiato dopo la data del documento ({documentDate}): il documento cita il testo originale, oggi vale il testo consolidato al {date}.",
+        "inDocument": "Nel documento, dal testo originale",
+        "inForce": "Nel testo vigente",
+        "article": "art. 4, par. 1",
+        "consolidated": "testo consolidato al {date}",
+        "replacedBy": "L'articolo 4 è stato sostituito dal regolamento (UE) 2026/1744."
+      }
+    },
+    "ask": {
+      "title": "Chiedi: risposte con il passaggio di legge che le sostiene.",
+      "body": "Domande in italiano o in inglese sui {acts} atti dell'Unione del corpus. La risposta cita l'atto e l'articolo, mostra il passaggio e segna una citazione come verificata solo se le sue parole sono state ritrovate nel testo ufficiale. Quando i testi non bastano, NormaAI si astiene e lo dice.",
+      "points": {
+        "1": "Profilo dell'azienda opzionale, per risposte sul caso concreto",
+        "2": "Data del corpus dichiarata in ogni risposta"
+      },
+      "method": "Il metodo nel dettaglio",
+      "example": {
+        "label": "Esempio di risposta con i passaggi di legge",
+        "caption": "Esempio di risposta",
+        "checkedOn": "Data della verifica: {date}",
+        "questionLabel": "Domanda",
+        "question": "Un assistente virtuale che risponde ai clienti sul nostro sito deve dichiarare che è un'intelligenza artificiale?",
+        "answerLabel": "Risposta",
+        "answer": "Sì. L'articolo 50, paragrafo 1, del Regolamento (UE) 2024/1689 obbliga chi fornisce un sistema di IA destinato a interagire con le persone a progettarlo in modo che le persone sappiano di parlare con un'IA, salvo che sia evidente dal contesto <ref1>[1]</ref1>. L'obbligo si applica dal {date} <ref2>[2]</ref2>.",
+        "article1": "art. 50, par. 1",
+        "article2": "art. 113"
+      }
+    },
+    "scope": {
+      "title": "Ambito e scadenze.",
+      "body": "Quali obblighi riguardano un'azienda e da quando, con la norma che lo stabilisce. Due verifiche sono gratuite e aperte a tutti; nella demo trovi anche la verifica di ambito per azienda e il calendario delle scadenze.",
+      "csrd": "Verifica CSRD dopo l'Omnibus I",
+      "aiAct": "Verifica AI Act, articolo 50"
+    },
+    "sources": {
+      "title": "Su quali testi lavora.",
+      "lead": "Due elenchi diversi, tenuti distinti: i testi da cui NormaAI risponde alle domande e i testi che legge quando controlla un documento.",
+      "qa": {
+        "title": "Per le risposte: {acts} atti dell'Unione",
+        "body": "Il corpus di Chiedi contiene questi atti, in italiano e in inglese, presi da EUR-Lex (CELLAR) nel testo consolidato quando esiste. Il diritto nazionale italiano non è nel corpus delle risposte. Ogni atto dell'elenco porta al suo testo su EUR-Lex.",
+        "colArea": "Ambito",
+        "colActs": "Atti nel corpus"
+      },
+      "kinds": {
+        "delegated": "Regolamento delegato (UE) {year}/{number}",
+        "implementing": "Regolamento di esecuzione (UE) {year}/{number}"
+      },
+      "acts": {
+        "32022L2464": "rendicontazione societaria di sostenibilità",
+        "32013L0034": "bilanci d'esercizio e bilanci consolidati",
+        "32023R2772": "principi di rendicontazione di sostenibilità (ESRS)",
+        "32025L0794": "date di applicazione degli obblighi",
+        "32026L0470": "Omnibus I: modifiche a rendicontazione e dovere di diligenza",
+        "32024L1760": "dovere di diligenza delle imprese ai fini della sostenibilità",
+        "32024R1689": "regolamento sull'intelligenza artificiale",
+        "32026R1744": "Omnibus digitale sull'IA",
+        "32022R2554": "resilienza operativa digitale per il settore finanziario",
+        "32024R1773": "politica sui servizi TIC prestati da fornitori terzi",
+        "32024R1774": "gestione dei rischi informatici",
+        "32024R2956": "modelli per il registro delle informazioni",
+        "32022L2555": "direttiva NIS 2: cibersicurezza nell'Unione",
+        "32020R0852": "quadro che favorisce gli investimenti sostenibili",
+        "32023R2486": "criteri di vaglio tecnico per acque, economia circolare, inquinamento e biodiversità",
+        "32016R0679": "regolamento generale sulla protezione dei dati",
+        "32024R2847": "regolamento sulla ciberresilienza",
+        "32025R2392": "categorie di prodotti importanti e critici"
+      },
+      "check": {
+        "title": "Per il controllo dei documenti: l'atto che citi",
+        "eu": {
+          "title": "Diritto dell'Unione",
+          "body": "Qualsiasi regolamento, direttiva o decisione citati con il loro numero, anche fuori dall'elenco qui sopra. NormaAI legge da EUR-Lex (CELLAR) l'ultima versione consolidata disponibile come testo, e le versioni precedenti per dirti che cosa è cambiato. Se CELLAR non dà il testo di una versione, il report lo dice e segna il riferimento come da controllare."
+        },
+        "it": {
+          "title": "Diritto italiano",
+          "body": "Decreti legislativi e leggi, letti articolo per articolo da Normattiva nel testo vigente. Le leggi regionali non sono lette: il report le segna come da controllare a mano."
+        }
+      },
+      "authentic": "I testi consolidati di EUR-Lex sono uno strumento di documentazione: fanno fede le versioni pubblicate nella Gazzetta ufficiale dell'Unione europea. Ogni esito porta al testo, così puoi controllarlo tu."
+    },
+    "who": {
+      "title": "Per chi lavora con documenti che citano la legge.",
+      "items": {
+        "1": {
+          "who": "Consulenti che seguono molte aziende",
+          "text": "Consulenti privacy e DPO, commercialisti, consulenti del lavoro, avvocati. Per ogni cliente hai già informative, nomine, pareri, policy e circolari: NormaAI ne controlla i riferimenti e ti avvisa quando una norma citata cambia. La valutazione e la firma restano tue."
+        },
+        "2": {
+          "who": "PMI e titolari d'azienda",
+          "text": "Controlla i documenti che ti hanno consegnato un consulente o un fornitore, e chiedi se un obbligo ti riguarda, da quando e in base a quale articolo."
+        },
+        "3": {
+          "who": "Compliance officer e uffici legali",
+          "text": "Una persona, {areas} ambiti normativi. Quando la direzione chiede \"siamo a posto?\", la risposta ha l'articolo accanto."
         }
       }
     },
     "codex": {
-      "kicker": "Guida gratuita in PDF, 17 pagine",
+      "kicker": "Guida gratuita in PDF, 19 pagine, versione 1.1 di novembre 2026",
       "title": "Codex Post-Omnibus 2025-2029",
-      "lead": "La guida operativa per chi gestisce CSRD, CSDDD e Tassonomia dopo l’Omnibus I: chi resta in ambito, il calendario fino al 2029, cosa resta dei principi ESRS, gli errori più comuni nelle prime rendicontazioni.",
+      "lead": "La guida operativa per chi segue CSRD, CSDDD e Tassonomia dopo la direttiva Omnibus I: chi resta in ambito e da quando, che cosa può chiedere un cliente obbligato ai fornitori, i principi ESRS rivisti, il calendario fino al 2029. Ogni data e ogni soglia rimanda al testo ufficiale.",
       "points": {
-        "1": "Diagramma \"sono in ambito?\" per CSRD, CSDDD e Tassonomia",
-        "2": "ESRS Set 1: cosa resta dopo la riduzione dei datapoint",
-        "3": "Standard volontario VSME: quando conviene adottarlo",
-        "4": "Calendario 2026-2029 con recepimenti e prime rendicontazioni"
+        "1": "Tre percorsi per verificare se un cliente è in ambito: CSRD, CSDDD, Tassonomia",
+        "2": "ESRS rivisti: che cosa cambia con il regolamento delegato del 3 luglio 2026",
+        "3": "Principi volontari e limite per la catena del valore: che cosa si può chiedere a una PMI",
+        "4": "Calendario 2026-2029, con il recepimento italiano e il decreto-legge 193/2026"
       }
     },
     "demo": {
-      "title": "Porta una domanda vera. Trenta minuti, senza impegno.",
-      "lead": "Mostriamo NormaAI sul vostro caso. Se la risposta non è migliore della ricerca che fate oggi, finisce lì. Se lo è, parliamo di un pilot.",
-      "mail": "Scrivi a info@normaai.org",
-      "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie.",
-      "login": "Hai già un account? Accedi"
+      "title": "Prova la demo, oppure porta un documento vero.",
+      "lead": "La demo si apre subito, con dati di esempio. Per un pilot scrivici: in 30 minuti guardiamo NormaAI su un tuo documento, anche senza i nomi. Se non ti è più utile di come lavori oggi, finisce lì."
+    },
+    "demoEntry": {
+      "metaTitle": "Demo con dati di esempio",
+      "opening": "Sto aprendo la demo con dati di esempio.",
+      "fallback": "Se la pagina non cambia, <link>apri la demo da qui</link>."
     }
   },
   "login": {
+    "metaTitle": "Accedi",
+    "metaDescription": "Accedi a NormaAI con il tuo account, oppure apri la demo con dati di esempio.",
     "titleLogin": "Accedi a NormaAI",
     "titleRegister": "Crea il tuo account",
     "leadLogin": "Usa l’email e la password del tuo account.",
@@ -233,7 +281,7 @@
     "terms": "Accedendo accetti i <terms>Termini di servizio</terms> e la <privacy>Privacy</privacy>.",
     "claim": "Ogni risposta mostra il passaggio di legge che la sostiene.",
     "article": "art. 50, par. 1",
-    "asideNote": "Codice aperto su GitHub. Dati in Europa.",
+    "asideNote": "Codice aperto su GitHub. Database e indice di ricerca in Germania; la domanda va al fornitore del modello linguistico configurato.",
     "verifyEmail": {
       "title": "Conferma dell’email",
       "verifying": "Sto confermando il tuo indirizzo.",
@@ -248,12 +296,13 @@
       "goToApp": "Vai all’applicazione",
       "goToLogin": "Accedi"
     },
-    "unavailableTitle": "L’accesso agli account è sospeso per qualche giorno",
-    "unavailableBody": "Stiamo spostando il server che ospita gli account. Nel frattempo puoi usare la demo con dati di esempio; per i pilot in corso scrivi a <mail>info@normaai.org</mail>."
+    "unavailableTitle": "Accesso agli account sospeso",
+    "unavailableBody": "Stiamo spostando il server che ospita gli account: finché non torna in linea non si può accedere né creare un account. Puoi usare la demo con dati di esempio; per i pilot in corso scrivi a <mail>info@normaai.org</mail>. Ultimo aggiornamento di questo stato: {date}."
   },
   "app": {
     "nav": {
       "label": "Sezioni",
+      "controlla": "Controlla",
       "chiedi": "Chiedi",
       "ambito": "Ambito",
       "monitoraggio": "Monitoraggio",
@@ -368,6 +417,7 @@
       "notice": "Risposta generata da un sistema di IA (NormaAI).",
       "corpus": "Corpus al {date}.",
       "corpusDemo": "Corpus al {date} (dati di esempio).",
+      "near": "diversa dal testo ufficiale, che dice «{official}»",
       "status": {
         "verified": "verificata",
         "unverified": "da verificare",
@@ -416,7 +466,16 @@
       "waiting": "Le fonti arrivano con la risposta.",
       "abstained": "Nessuna fonte: NormaAI non ha risposto a questa domanda.",
       "none": "Nessuna fonte citata in questa risposta: trattala come un orientamento da verificare, non come un riferimento.",
-      "legend": "«Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora confermato."
+      "legend": "«Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora confermato.",
+      "near": {
+        "title": "Diversa dal testo ufficiale",
+        "quoted": "Nella risposta: «{text}»",
+        "both": "Nella risposta <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
+        "missing": "Nella risposta manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
+        "extra": "Nella risposta c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",
+        "official": "Testo ufficiale",
+        "officialIn": "Testo ufficiale, {article}"
+      }
     },
     "profile": {
       "title": "Profilo aziendale",
@@ -445,12 +504,296 @@
       }
     }
   },
+  "controlla": {
+    "title": "Controlla",
+    "description": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.",
+    "detailTitle": "Documento controllato",
+    "loading": "Caricamento",
+    "demo": {
+      "form": "Demo con dati di esempio: il documento che scegli non viene letto né inviato. Il controllo apre il risultato di un documento di esempio.",
+      "afterUpload": "Demo con dati di esempio: il documento che hai scelto non è stato letto né inviato. Questo è il risultato di un documento di esempio.",
+      "detail": "Demo con dati di esempio: il documento, il cliente e le date sono inventati. I passaggi di legge sono quelli ufficiali.",
+      "recheck": "Demo con dati di esempio: nessun testo ufficiale è stato riletto.",
+      "digest": "Demo con dati di esempio: non parte nessuna email."
+    },
+    "form": {
+      "title": "Nuovo controllo",
+      "lead": "NormaAI trova i riferimenti di legge nel documento, controlla che esistano nel testo ufficiale in vigore e confronta le citazioni parola per parola.",
+      "modeLabel": "Come dai il documento",
+      "modeFile": "Carica un file",
+      "modeText": "Incolla il testo",
+      "fileLabel": "Documento da controllare",
+      "drop": "Trascina qui il documento, oppure",
+      "choose": "Scegli un file",
+      "formats": "File .docx, .pdf con testo selezionabile, .html, .txt o .md, fino a 10 MB.",
+      "selected": "File scelto: {name} ({size})",
+      "remove": "Togli il file",
+      "textLabel": "Testo del documento",
+      "textPlaceholder": "Incolla il testo con i riferimenti e le citazioni, così come sono scritti nel documento.",
+      "nameLabel": "Nome del documento",
+      "namePlaceholder": "Per esempio: Informativa privacy 2026",
+      "nameHelp": "Facoltativo: serve a ritrovarlo nell'elenco.",
+      "pastedName": "Testo incollato",
+      "client": "Cliente",
+      "clientNone": "Nessun cliente",
+      "clientHelp": "Facoltativo: il controllo compare anche nella pagina del cliente.",
+      "clientsUnavailable": "L'elenco dei clienti non si è caricato: puoi fare il controllo senza collegarlo a un cliente.",
+      "date": "Data del documento",
+      "dateHelp": "Facoltativa: con la data, NormaAI ti dice anche quali norme citate sono cambiate dopo che il documento è stato scritto.",
+      "watch": "Sorveglia questo documento",
+      "watchHelp": "Le norme che cita vengono ricontrollate ogni settimana sul testo vigente. Se una cambia, il documento passa tra quelli da rivedere e in Monitoraggio compare un avviso.",
+      "submit": "Controlla il documento",
+      "submitting": "Controllo in corso",
+      "progress": "Lettura del documento, ricerca dei riferimenti e confronto con i testi ufficiali: può richiedere fino a un minuto.",
+      "failedTitle": "Il controllo non è riuscito",
+      "errors": {
+        "chooseFile": "Scegli un file o trascinalo nel riquadro, oppure passa a «Incolla il testo».",
+        "unsupported": "Formato non supportato ({ext}). Carica un file .docx, .pdf, .html, .txt o .md, oppure incolla il testo.",
+        "noExtension": "senza estensione",
+        "emptyFile": "Il file è vuoto.",
+        "tooLarge": "Il file pesa {size}: il limite è 10 MB. Riducilo oppure incolla il testo.",
+        "textRequired": "Incolla il testo da controllare.",
+        "dateFuture": "La data del documento non può essere nel futuro."
+      }
+    },
+    "storage": {
+      "title": "Il documento non viene conservato",
+      "body": "Il file o il testo che invii viene letto in memoria per il tempo del controllo, poi scartato. Sul server restano solo:",
+      "items": {
+        "1": "il nome del file e la sua impronta SHA-256;",
+        "2": "la data del documento e quella del controllo;",
+        "3": "i riferimenti trovati: per ciascuno al massimo 160 caratteri di contesto, le citazioni e l'esito;",
+        "4": "le norme da cui il documento dipende, per poterle ricontrollare."
+      },
+      "delete": "Puoi eliminare un controllo in ogni momento dalla sua pagina.",
+      "short": "Il documento non viene conservato: restano il nome, l'impronta, le date, i riferimenti trovati e le norme citate."
+    },
+    "digest": {
+      "label": "Riepilogo via email dei documenti da rivedere",
+      "help": "Un messaggio dopo il ricontrollo settimanale, solo quando una norma citata è cambiata.",
+      "savedTitle": "Preferenza salvata",
+      "on": "Riceverai il riepilogo via email.",
+      "off": "Non riceverai il riepilogo via email.",
+      "failedTitle": "Preferenza non salvata"
+    },
+    "list": {
+      "heading": "Documenti controllati",
+      "filterLabel": "Filtra i documenti controllati",
+      "all": "Tutti",
+      "review": "Da rivedere",
+      "loading": "Caricamento dei documenti controllati",
+      "loadFailedTitle": "I documenti controllati non si sono caricati",
+      "emptyTitle": "Nessun documento controllato",
+      "emptyDescription": "Carica il primo documento qui sopra. L'esito resta in questo elenco, insieme alle norme che il documento cita.",
+      "emptyReviewTitle": "Nessun documento da rivedere",
+      "emptyReviewDescription": "Finora nessun ricontrollo ha segnalato cambiamenti nelle norme citate dai tuoi documenti.",
+      "showAll": "Mostra tutti i documenti",
+      "more": "Mostra altri documenti",
+      "shown": "{shown} di {total} documenti",
+      "colDocument": "Documento",
+      "colStatus": "Stato",
+      "colClient": "Cliente",
+      "colChecked": "Controllato il",
+      "colWatch": "Sorveglianza",
+      "watchOn": "Attiva",
+      "watchOff": "Non attiva",
+      "noClient": "Nessuno",
+      "clientGone": "Cliente non in elenco",
+      "needsReview": "Da rivedere",
+      "needsReviewHint": "una norma citata è cambiata",
+      "noReferences": "Nessun riferimento trovato",
+      "counts": {
+        "correggere": "{count} da correggere",
+        "controllare": "{count} da controllare",
+        "a_posto": "{count} a posto",
+        "non_coperto": "{count, plural, =1 {# non coperto} other {# non coperti}}"
+      }
+    },
+    "detail": {
+      "back": "Tutti i documenti",
+      "loading": "Caricamento del controllo",
+      "loadFailedTitle": "Il controllo non si è caricato",
+      "missingTitle": "Controllo non trovato",
+      "missingDescription": "Questo controllo non esiste o è stato eliminato. Torna all'elenco per aprirne un altro.",
+      "goToList": "Vai ai documenti controllati",
+      "metaWithDate": "Controllato il {checked}. Data del documento: {date}.",
+      "metaNoDate": "Controllato il {checked}. Data del documento non indicata.",
+      "recheck": "Ricontrolla le norme citate",
+      "rechecking": "Ricontrollo in corso",
+      "recheckHelp": "Confronta le norme registrate con il testo vigente oggi. Il file non serve.",
+      "report": "Apri il report",
+      "delete": "Elimina",
+      "recheckDoneTitle": "Ricontrollo completato",
+      "recheckNone": "Questo controllo non ha norme registrate da ricontrollare.",
+      "recheckUnchanged": "{count, plural, =1 {La norma citata non è cambiata.} other {Nessuna delle # norme citate è cambiata.}}",
+      "recheckChanged": "{count, plural, =1 {È cambiata una norma citata} other {Sono cambiate # norme citate}}: il documento è da rivedere.",
+      "recheckUnavailable": "{count, plural, =1 {Una norma non è stata ricontrollata} other {# norme non sono state ricontrollate}}: il testo ufficiale non era raggiungibile.",
+      "recheckFailedTitle": "Ricontrollo non riuscito",
+      "summaryLabel": "Esito per gruppo",
+      "noFindingsTitle": "Nessun riferimento di legge trovato",
+      "noFindingsDescription": "NormaAI riconosce i riferimenti scritti nei modi più comuni, per esempio «art. 13 del GDPR». Se il documento ne contiene, controlla che il testo sia selezionabile oppure incollalo.",
+      "limits": "I testi consolidati di EUR-Lex sono documentazione: fa fede solo la Gazzetta ufficiale dell'Unione europea. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. Non è un parere legale."
+    },
+    "review": {
+      "title": "Da rivedere",
+      "body": "Dopo il controllo del {date} {count, plural, =1 {è cambiata una norma citata} other {sono cambiate # norme citate}}. Qui sotto, {count, plural, =1 {il riferimento a quella norma mostra} other {i riferimenti a quelle norme mostrano}} che cosa è cambiato.",
+      "bodyUnknown": "Dopo il controllo del {date} una norma citata è cambiata. Ricontrolla le norme citate per vedere quale.",
+      "whatToDo": "Apri il testo vigente, aggiorna il documento e caricalo di nuovo: il nuovo controllo confronta le citazioni con il testo di oggi.",
+      "newCheck": "Controlla la versione aggiornata"
+    },
+    "groups": {
+      "heading": "{label} ({count})",
+      "correggere": {
+        "label": "Da correggere",
+        "description": "Citazioni e riferimenti che non corrispondono al testo vigente."
+      },
+      "controllare": {
+        "label": "Da controllare",
+        "description": "Riferimenti che NormaAI non ha potuto confermare da solo: guardali tu."
+      },
+      "a_posto": {
+        "label": "A posto",
+        "description": "Riferimenti che esistono nel testo vigente e citazioni ritrovate parola per parola."
+      },
+      "non_coperto": {
+        "label": "Non coperto",
+        "description": "Norme che NormaAI non ha tra i suoi testi ufficiali: vanno controllate sulla fonte."
+      }
+    },
+    "status": {
+      "superata": "Citazione superata",
+      "cambiato": "Cambiato dopo la data del documento",
+      "inesistente": "Non esiste nel testo vigente",
+      "alterata": "Citazione diversa dal testo ufficiale",
+      "non_trovata": "Citazione non trovata",
+      "altro_articolo": "Citazione in un altro articolo",
+      "non_disponibile": "Testo ufficiale non raggiungibile",
+      "versione_non_letta": "Versione più recente non leggibile",
+      "atto_mancante": "Atto non indicato",
+      "valido": "Riferimento valido",
+      "verificata": "Citazione verificata",
+      "non_coperto": "Non coperto da NormaAI",
+      "cambiato_dopo_controllo": "Cambiato dopo il controllo",
+      "soppresso_dopo_controllo": "Non esiste più nel testo vigente"
+    },
+    "finding": {
+      "noAct": "Atto non indicato",
+      "comparedWith": "Confrontato con il {version}",
+      "line": "riga {line}",
+      "inDocument": "Nel documento, riga {line}",
+      "inDocumentNoLine": "Nel documento",
+      "quote": "Citazione nel documento",
+      "quoted": "«{text}»",
+      "outcome": "Esito",
+      "outcomeThen": "Esito al momento del controllo",
+      "differences": "Parole diverse",
+      "differenceBoth": "Nel documento <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
+      "differenceMissing": "Nel documento manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
+      "differenceExtra": "Nel documento c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",
+      "official": "Il testo ufficiale dice",
+      "officialThen": "Al controllo il testo ufficiale diceva ({version})",
+      "change": "Che cosa è cambiato",
+      "changeFromTo": "Dal {before} al {after}.",
+      "former": "Com'era nel {version}",
+      "openOfficial": "Testo vigente su {origin}",
+      "openSource": "Apri su {origin}",
+      "openGeneric": "Apri il testo ufficiale",
+      "stale": "Dopo il controllo questa norma è cambiata.",
+      "staleNow": "Dopo il controllo questa norma è cambiata: oggi vale il {version}.",
+      "staleRemoved": "Dopo il controllo questa norma è uscita dal testo vigente.",
+      "staleThen": "L'esito e la citazione qui sotto sono quelli del controllo, sul {version}.",
+      "changedSince": "Norma cambiata dopo il controllo"
+    },
+    "version": {
+      "original": "testo originale",
+      "consolidated": "testo consolidato al {date}",
+      "earlier": "testo di allora"
+    },
+    "diff": {
+      "same": "Il testo è uguale nelle due versioni.",
+      "removed": "tolto:",
+      "added": "aggiunto:",
+      "omitted": "{count, plural, =1 {una parola uguale omessa} other {# parole uguali omesse}}",
+      "legend": "<del>Barrato</del>: c'era prima, oggi non c'è. <ins>Sottolineato</ins>: c'è oggi, prima non c'era. Le parentesi quadre con tre punti segnano le parole uguali omesse."
+    },
+    "facts": {
+      "title": "Documento",
+      "checked": "Controllato il",
+      "rechecked": "Ultimo ricontrollo delle norme",
+      "documentDate": "Data del documento",
+      "noDate": "Non indicata",
+      "client": "Cliente",
+      "noClient": "Nessuno",
+      "clientGone": "Non in elenco",
+      "language": "Lingua",
+      "languages": {
+        "IT": "Italiano",
+        "EN": "Inglese"
+      },
+      "watch": "Sorveglianza",
+      "watchOn": "Attiva",
+      "watchOff": "Non attiva (scelta al momento del controllo)",
+      "sha": "Impronta SHA-256",
+      "notStored": "Il documento non è conservato: restano questi dati, i riferimenti trovati e le norme da cui dipende."
+    },
+    "dependencies": {
+      "title": "Norme da cui dipende ({count})",
+      "watched": "Vengono ricontrollate ogni settimana sul testo vigente.",
+      "notWatched": "Non vengono ricontrollate in automatico: puoi farlo tu con «Ricontrolla le norme citate».",
+      "none": "Nessuna norma registrata: il controllo non ha trovato riferimenti a testi che NormaAI può seguire.",
+      "checkedOn": "Controllata sul {version}",
+      "detectedOn": "rilevato il {date}",
+      "now": "oggi vale il {version}",
+      "state": {
+        "current": "Invariata",
+        "changed": "Cambiata",
+        "removed": "Non più nel testo vigente",
+        "unavailable": "Non ricontrollata: testo ufficiale non raggiungibile"
+      }
+    },
+    "remove": {
+      "title": "Elimina il controllo",
+      "question": "Vuoi eliminare il controllo di <strong>{name}</strong>?",
+      "warning": "Vengono cancellati i riferimenti trovati, le citazioni e le norme registrate, e il documento non viene più sorvegliato. Il file non è mai stato conservato. L'operazione non si può annullare.",
+      "cancel": "Annulla",
+      "confirm": "Elimina il controllo",
+      "deletedTitle": "Controllo eliminato"
+    },
+    "report": {
+      "title": "Report del controllo",
+      "description": "La pagina da stampare o da mandare al cliente. È scritta in italiano.",
+      "loading": "Caricamento del report",
+      "frameTitle": "Report del controllo di {name}",
+      "download": "Scarica il report (.html)",
+      "failedTitle": "Il report non si è caricato",
+      "fileSuffix": "controllo"
+    },
+    "errors": {
+      "tooLarge": "Il documento è troppo grande: un file può pesare al massimo 10 MB. Riducilo, dividilo in parti oppure incolla solo il testo che ti serve.",
+      "unsupported": "Il server non legge questo formato. Carica un file .docx, .pdf con testo selezionabile, .html, .txt o .md, oppure incolla il testo.",
+      "unreadable": "Il server non ha potuto controllare il documento così com'è. Se è un PDF fatto di sole immagini, protetto da password o danneggiato, incolla il testo oppure carica una versione con testo selezionabile.",
+      "rateLimited": "Troppe richieste in poco tempo, oppure c'è già un controllo in corso. Aspetta un momento e riprova.",
+      "timeout": "Il controllo ha superato il tempo massimo prima di finire. Riprova tra qualche minuto; se il documento è molto lungo, controllane una parte alla volta.",
+      "full": "Hai raggiunto il numero massimo di controlli salvati. Elimina quelli che non servono più e riprova.",
+      "forbidden": "Il tuo account non può fare questa operazione.",
+      "notFound": "Questo controllo non esiste più: torna all'elenco dei documenti controllati.",
+      "missingApi": "Il server in uso non ha ancora il controllo dei documenti. Riprova più tardi o scrivi a info@normaai.org.",
+      "rejected": "Il server non ha accettato la richiesta. Controlla i dati inseriti e riprova.",
+      "server": "Il server ha avuto un problema. Riprova tra qualche minuto; se continua, scrivi a info@normaai.org.",
+      "network": "Il server non risponde. Riprova tra un minuto; se il problema continua, scrivi a info@normaai.org.",
+      "session": "La sessione è scaduta. Accedi di nuovo e ripeti l'operazione.",
+      "invalid": "Il server ha risposto in un modo che questa pagina non riconosce. Riprova; se succede ancora, scrivi a info@normaai.org.",
+      "generic": "Qualcosa non ha funzionato. Riprova; se succede ancora, scrivi a info@normaai.org.",
+      "serverDetail": "Dal server: {detail}",
+      "code": "Codice {status}"
+    }
+  },
   "ambito": {
     "title": "Ambito",
-    "description": "Quali obblighi si applicano a un’impresa, e da quando, con la norma che lo stabilisce.",
-    "meta": "Regole e date verificate il {date}. Primo filtro indicativo, non un parere legale.",
+    "description": "Quali obblighi si applicano a un’impresa, e da quando, con il passaggio di legge che lo stabilisce.",
+    "meta": "Ogni fonte dice se e quando il passaggio è stato ritrovato nel testo ufficiale (ultimo controllo: {date}). Primo filtro indicativo, non un parere legale.",
     "loading": "Caricamento della pagina Ambito",
-    "formError": "Indica dipendenti e ricavi netti, oppure rispondi alle domande sull’IA, poi premi di nuovo Verifica l’ambito.",
+    "formError": "Indica dipendenti e ricavi netti, oppure rispondi ad almeno una sezione (IA e lavoro, NIS, macchine, AI Act), poi premi di nuovo Verifica l’ambito.",
     "copy": {
       "ok": "Copiato",
       "failed": "Copia non riuscita",
@@ -459,7 +802,7 @@
     },
     "empty": {
       "title": "Compila il profilo e premi Verifica l’ambito",
-      "description": "Il risultato mostra, per CSRD, CSDDD e AI Act (art. 50), se l’obbligo si applica, da quando e su quale norma si fonda."
+      "description": "Il risultato dice, per IA nei rapporti di lavoro, NIS, regolamento macchine, AI Act (art. 50), CSRD e CSDDD, se l’obbligo si applica, da quando e su quale passaggio di legge si fonda."
     },
     "form": {
       "loadClient": "Carica da un cliente",
@@ -476,16 +819,19 @@
       "turnover": "Ricavi netti annui",
       "turnoverHelp": "In euro, per esempio 450.000.000.",
       "turnoverPlaceholder": "Es. 300.000.000",
+      "balanceSheet": "Totale di bilancio",
+      "balanceSheetHelp": "Facoltativo, in euro: sotto i 50 dipendenti decide, con i ricavi, la classe dimensionale per la NIS.",
+      "balanceSheetPlaceholder": "Es. 12.000.000",
       "examples": "Prova con un esempio:",
       "example": "{employees} dipendenti, {millions} milioni",
       "listed": "Quotata in un mercato regolamentato UE",
-      "listedHelp": "Le PMI quotate sono escluse dal nuovo perimetro, ma restano casi di confine.",
-      "wave1": "Già soggetta a rendicontazione di sostenibilità (Wave 1 / NFRD, esercizio 2024)",
-      "wave1Help": "Per i reporter Wave 1 l’Omnibus I prevede un’esenzione transitoria per gli esercizi 2025 e 2026.",
+      "listedHelp": "Con le soglie in vigore conta la dimensione, non la quotazione: sotto le soglie una quotata va verificata caso per caso.",
+      "wave1": "Rendiconta già la sostenibilità dall’esercizio 2024",
+      "wave1Help": "Grandi enti di interesse pubblico con più di 500 dipendenti (direttiva (UE) 2022/2464, art. 5, par. 2).",
       "nonEu": "Sede fuori dall’Unione europea",
       "nonEuHelp": "Per le imprese di Paesi terzi conta il fatturato realizzato nell’Unione.",
       "euTurnover": "Ricavi netti realizzati nell’Unione",
-      "euTurnoverHelp": "Soglia del Codex per le imprese di Paesi terzi: 450 milioni di euro.",
+      "euTurnoverHelp": "Soglie per le imprese di Paesi terzi: 450 milioni di euro per la CSRD, 1,5 miliardi di euro per la CSDDD.",
       "euTurnoverPlaceholder": "Es. 500.000.000",
       "groupRole": "Ruolo nel gruppo",
       "groupRoles": {
@@ -498,38 +844,130 @@
       "sectorHelp": "Facoltativo: non cambia il risultato, resta nel profilo.",
       "sectorPlaceholder": "Per esempio manifattura, servizi finanziari",
       "ai": {
-        "legend": "Intelligenza artificiale (AI Act, art. 50)",
-        "intro": "Spunta ciò che vale per l’impresa, sia che il sistema lo offriate voi (fornitore) sia che lo usiate da terzi (utilizzatore): il risultato distingue i due casi.",
+        "legend": "Intelligenza artificiale: trasparenza (AI Act, art. 50)",
+        "intro": "Spunta ciò che vale per l’impresa, sia che offra il sistema (fornitore) sia che lo usi da terzi (utilizzatore): il risultato distingue i due casi.",
         "chat": {
           "label": "Un sistema di IA interagisce direttamente con persone",
           "description": "Chatbot, assistenti virtuali, voicebot rivolti a clienti, utenti o dipendenti."
         },
         "gen": {
-          "label": "Generate contenuti sintetici: testo, immagini, audio o video",
-          "description": "Strumenti di IA generativa offerti ai vostri utenti o integrati nei vostri prodotti."
+          "label": "Un sistema genera contenuti sintetici: testo, immagini, audio o video",
+          "description": "Strumenti di IA generativa offerti agli utenti o integrati nei prodotti dell’impresa."
         },
         "emo": {
-          "label": "Usate riconoscimento delle emozioni o categorizzazione biometrica",
-          "description": "Per esempio su clienti, utenti o personale (analisi del tono, del volto, del comportamento)."
+          "label": "È in uso il riconoscimento delle emozioni o la categorizzazione biometrica",
+          "description": "Per esempio su clienti o utenti (analisi del tono, del volto, del comportamento)."
         },
         "deep": {
-          "label": "Pubblicate deepfake o testi generati dall’IA per informare il pubblico",
+          "label": "L’impresa pubblica deepfake o testi generati dall’IA per informare il pubblico",
           "description": "Immagini, audio o video generati o manipolati, o testi generati dall’IA su temi di interesse pubblico."
         },
-        "none": "Nessuna delle quattro situazioni ci riguarda",
+        "none": "Nessuna delle quattro situazioni riguarda l’impresa",
         "noneHelp": "Senza una risposta, l’AI Act resta non valutato."
+      },
+      "work": {
+        "legend": "IA nei rapporti di lavoro (D.Lgs. 179/2026, legge 132/2025, AI Act)",
+        "intro": "Spunta ciò che vale per l’impresa come datore di lavoro o come studio professionale.",
+        "dec": {
+          "label": "Un sistema di IA contribuisce a decisioni sul personale",
+          "description": "Assunzione, modifiche o cessazione del rapporto, provvedimenti disciplinari, valutazione delle prestazioni."
+        },
+        "org": {
+          "label": "Un sistema di IA incide sull’organizzazione del lavoro o sulla sicurezza",
+          "description": "Organizzazione, ritmi produttivi, modalità di esecuzione della prestazione, decisioni rilevanti per la sicurezza."
+        },
+        "uso": {
+          "label": "Il personale usa strumenti di IA nel proprio lavoro",
+          "description": "Per esempio assistenti generativi per testi, analisi, codice o immagini."
+        },
+        "prof": {
+          "label": "È uno studio professionale che usa l’IA nel lavoro per i clienti",
+          "description": "Professioni intellettuali: la legge chiede di informare il destinatario della prestazione."
+        },
+        "emo": {
+          "label": "Un sistema inferisce le emozioni dei lavoratori",
+          "description": "Analisi del volto, della voce o del comportamento sul luogo di lavoro."
+        },
+        "none": "Nessuna di queste situazioni riguarda l’impresa",
+        "noneHelp": "Senza una risposta, questa sezione resta non valutata."
+      },
+      "nis": {
+        "legend": "Cybersicurezza: decreto NIS (D.Lgs. 138/2024)",
+        "intro": "Scegli il settore in cui l’impresa opera tra quelli degli allegati del decreto. Le soglie usano dipendenti, ricavi e totale di bilancio indicati sopra.",
+        "sector": "Settore dell’allegato",
+        "sectorHelp": "Allegati I e II: settori; allegato III: pubbliche amministrazioni; allegato IV: altre tipologie di soggetti.",
+        "choose": "Non risposto",
+        "groupAnnexI": "Allegato I: settori ad alta criticità",
+        "groupAnnexII": "Allegato II: altri settori critici",
+        "groupOther": "Altri casi",
+        "anySize": "È un fornitore che il decreto considera a prescindere dalle dimensioni",
+        "anySizeHelp": "Reti pubbliche o servizi di comunicazione elettronica accessibili al pubblico, servizi fiduciari, registri dei nomi di dominio di primo livello, servizi DNS, registrazione dei nomi di dominio (art. 3, comma 5).",
+        "linked": "È un’impresa collegata a un soggetto NIS e ne gestisce sistemi, sicurezza o servizi TIC",
+        "linkedHelp": "Per esempio la società del gruppo che gestisce i sistemi informativi e di rete o la sicurezza informatica di un soggetto essenziale o importante (art. 3, comma 10)."
+      },
+      "machinery": {
+        "legend": "Macchine: regolamento (UE) 2023/1230",
+        "intro": "Spunta i ruoli dell’impresa rispetto a macchine, prodotti correlati (per esempio componenti di sicurezza e accessori di sollevamento) e quasi-macchine.",
+        "fab": {
+          "label": "Fabbricante",
+          "description": "Fabbrica questi prodotti, o li fa progettare o fabbricare e li commercializza con il proprio nome o marchio, oppure li fabbrica e li mette in servizio per uso proprio."
+        },
+        "imp": {
+          "label": "Importatore",
+          "description": "Immette sul mercato dell’Unione prodotti originari di un paese terzo."
+        },
+        "dis": {
+          "label": "Distributore",
+          "description": "Mette i prodotti a disposizione sul mercato senza esserne fabbricante o importatore."
+        },
+        "mod": {
+          "label": "Modifica macchine già immesse sul mercato o in servizio",
+          "description": "Interventi fisici o digitali non previsti dal fabbricante, che incidono sulla sicurezza."
+        },
+        "none": "Nessuno di questi ruoli riguarda l’impresa",
+        "noneHelp": "Senza una risposta, questa sezione resta non valutata."
+      },
+      "csrd": {
+        "legend": "CSRD e CSDDD: casi particolari",
+        "intro": "Le soglie si leggono su dipendenti e ricavi indicati sopra; qui i casi che cambiano la lettura."
       },
       "submit": "Verifica l’ambito",
       "reset": "Azzera il modulo",
       "numberError": "Inserisci un numero, per esempio 1.200."
+    },
+    "nis": {
+      "sectors": {
+        "energia": "Energia",
+        "trasporti": "Trasporti",
+        "banche": "Settore bancario",
+        "mercati": "Infrastrutture dei mercati finanziari",
+        "sanita": "Settore sanitario",
+        "acqua": "Acqua potabile",
+        "reflue": "Acque reflue",
+        "digitale": "Infrastrutture digitali",
+        "tic": "Gestione dei servizi TIC (business-to-business)",
+        "spazio": "Spazio",
+        "postali": "Servizi postali e di corriere",
+        "rifiuti": "Gestione dei rifiuti",
+        "chimica": "Fabbricazione, produzione e distribuzione di sostanze chimiche",
+        "alimenti": "Produzione, trasformazione e distribuzione di alimenti",
+        "fabbricazione": "Fabbricazione (dispositivi medici, elettronica, apparecchiature elettriche, macchinari, autoveicoli, altri mezzi di trasporto)",
+        "servizi-digitali": "Fornitori di servizi digitali",
+        "ricerca": "Ricerca",
+        "pa": "Pubblica amministrazione (allegato III)",
+        "altri": "Altre tipologie (allegato IV): trasporto pubblico locale, istituti di istruzione che fanno ricerca, attività di interesse culturale, società in house, partecipate o a controllo pubblico",
+        "nessuno": "Nessuno di questi settori"
+      }
     },
     "results": {
       "title": "Risultato",
       "copyResult": "Copia il risultato",
       "copyLink": "Copia il link",
       "notes": "Da tenere presente",
+      "duties": "Cosa chiede la norma",
       "legalBasis": "Base normativa",
-      "verifiedNote": "Regole e date verificate il {date} sulle fonti indicate. Primo filtro indicativo, non un parere legale.",
+      "legalBasisSummary": "{count, plural, one {# fonte} other {# fonti}}, {verified, plural, =0 {nessuna verificata} one {# verificata} other {# verificate}} sul testo ufficiale",
+      "filterNote": "Primo filtro indicativo, non un parere legale. Per ogni fonte è indicato se e quando il passaggio è stato ritrovato nel testo ufficiale.",
       "status": {
         "in_scope": "Si applica",
         "out_of_scope": "Non si applica",
@@ -539,21 +977,47 @@
       "frameworks": {
         "CSRD": "CSRD, rendicontazione di sostenibilità",
         "CSDDD": "CSDDD, dovere di diligenza",
-        "AI_ACT": "AI Act, trasparenza (art. 50)"
+        "AI_ACT": "AI Act, trasparenza (art. 50)",
+        "AI_WORK": "IA nei rapporti di lavoro",
+        "NIS2": "NIS, cybersicurezza (D.Lgs. 138/2024)",
+        "MACHINERY": "Regolamento macchine (UE) 2023/1230"
+      },
+      "badges": {
+        "CSRD": "CSRD",
+        "CSDDD": "CSDDD",
+        "AI_ACT": "AI Act",
+        "AI_WORK": "IA e lavoro",
+        "NIS2": "NIS2",
+        "MACHINERY": "Macchine"
       },
       "who": {
         "provider": "Obbligo del fornitore",
-        "deployer": "Obbligo dell’utilizzatore"
+        "deployer": "Obbligo dell’utilizzatore",
+        "employer": "Obbligo del datore di lavoro",
+        "professional": "Obbligo del professionista",
+        "nisEntity": "Obbligo del soggetto NIS",
+        "governingBodies": "Organi di amministrazione e direttivi",
+        "manufacturer": "Obbligo del fabbricante",
+        "importer": "Obbligo dell’importatore",
+        "distributor": "Obbligo del distributore",
+        "modifier": "Chi modifica la macchina"
       }
+    },
+    "verification": {
+      "verified": "Verificata {date}",
+      "verifiedConsolidated": "Verificata {date} sul testo consolidato al {textDate}",
+      "notVerified": "Fonte indicata, non ancora verificata"
     },
     "summary": {
       "employees": "{count} dipendenti",
       "turnover": "ricavi netti {amount}",
+      "balanceSheet": "totale di bilancio {amount}",
       "nonEu": "sede fuori dall’UE",
       "euTurnover": "ricavi netti nell’UE {amount}",
       "listed": "quotata in un mercato regolamentato UE",
       "notListed": "non quotata",
-      "wave1": "già in rendicontazione (Wave 1)",
+      "wave1": "già in rendicontazione di sostenibilità",
+      "nisSector": "settore NIS: {sector}",
       "groupRoles": {
         "standalone": "società singola",
         "parent": "capogruppo con bilancio consolidato",
@@ -561,200 +1025,277 @@
       }
     },
     "text": {
-      "header": "Ambito NormaAI, regole e date verificate il {date}",
+      "header": "Ambito NormaAI, fonti controllate sul testo ufficiale {date}",
+      "headerUnchecked": "Ambito NormaAI, fonti indicate ma non ancora verificate sul testo ufficiale",
       "profile": "Profilo: {summary}",
       "disclaimer": "Primo filtro indicativo, non un parere legale.",
       "notes": "Note:",
-      "passage": "Testo: «{text}» ({act}, {article})",
+      "passage": "Testo: «{text}»",
       "sources": "Fonti:"
     },
     "rules": {
+      "shared": {
+        "obligation": "{who}: {title} ({article})."
+      },
       "csrd": {
-        "fromLabel": "Soglie in vigore dal {date} (Omnibus I)",
+        "fromLabel": "Nuovo perimetro: esercizi che iniziano dal {date} (direttiva (UE) 2022/2464, art. 5, par. 2)",
         "nonEuMissing": "Indica i ricavi netti realizzati nell’Unione per valutare la CSRD come impresa di un Paese terzo.",
         "nonEuOverHeadline": "Può applicarsi la rendicontazione prevista per le imprese di Paesi terzi.",
-        "nonEuOverReason1": "Ricavi netti nell’Unione: {amount}, oltre la soglia di {threshold} indicata dal Codex per le imprese extra-UE.",
-        "nonEuOverReason2": "Il Codex (cap. 1.2) lega l’obbligo anche alla presenza di una sussidiaria o succursale nell’Unione sopra 200 milioni di euro: la verifica richiede il bilancio consolidato del gruppo e i ricavi per Stato membro (cap. 2.4, caso 2).",
+        "nonEuOverReason1": "Ricavi netti nell’Unione: {amount}, oltre la soglia di {threshold} che la direttiva 2013/34/UE fissa per le imprese di Paesi terzi, per ciascuno degli ultimi due esercizi consecutivi (art. 40 bis, par. 1).",
+        "nonEuOverReason2": "L’obbligo ricade sull’impresa figlia stabilita nell’Unione che ha generato ricavi netti superiori a {threshold} nell’esercizio precedente (art. 40 bis, par. 1): servono il bilancio del gruppo e i ricavi delle società nell’Unione.",
         "nonEuUnderHeadline": "Sotto la soglia di ricavi UE per le imprese di Paesi terzi.",
-        "nonEuUnderReason1": "Ricavi netti nell’Unione: {amount}, sotto la soglia di {threshold} (Codex, cap. 2.1).",
-        "nonEuUnderReason2": "Una società di diritto italiano controllata dal gruppo può comunque rientrare come sussidiaria UE: in quel caso valuta la controllata con le soglie UE.",
+        "nonEuUnderReason1": "Ricavi netti nell’Unione: {amount}, non oltre la soglia di {threshold} (direttiva 2013/34/UE, art. 40 bis, par. 1).",
+        "nonEuUnderReason2": "Una società di diritto italiano controllata dal gruppo può comunque rientrare per conto proprio: in quel caso valuta la controllata con le soglie dell’art. 19 bis.",
         "missing": "Indica il numero medio di dipendenti e i ricavi netti annui per valutare la CSRD.",
         "axisEmployees": "Dipendenti: {count} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
         "axisTurnover": "Ricavi netti: {amount} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
         "inHeadline": "L’impresa è quasi certamente in ambito di rendicontazione CSRD.",
-        "inReason": "Superi entrambe le soglie cumulative post-Omnibus: più di 1.000 dipendenti e oltre 450 milioni di euro di ricavi netti. Salvo esenzioni specifiche, ricadi nell’obbligo di rendicontazione di sostenibilità secondo gli ESRS.",
-        "inNote1": "Verifica le esenzioni: reporter Wave 1 (esenzione transitoria FY2025-2026) e perimetri di gruppo con holding possono cambiare il quadro.",
-        "inNote2": "Doppia materialità ed ESRS Set 1 (ridotto di circa il 61% dei datapoint) restano il cuore del lavoro: la riduzione non semplifica l’assessment.",
+        "inReason": "Superi entrambe le soglie cumulative: ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media (direttiva 2013/34/UE, art. 19 bis, par. 1). La relazione sulla gestione deve includere le informazioni di sostenibilità.",
+        "inNote1": "In Italia il D.Lgs. 125/2024 si applica dagli esercizi che iniziano dal {date} alle imprese di grandi dimensioni che non rendicontavano già (art. 17, comma 1, lett. b)).",
         "borderHeadline": "Oggi fuori dall’obbligo CSRD, ma sul filo della soglia.",
         "borderEmployees": "Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.",
         "borderTurnover": "Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.",
-        "borderListed": "Come società quotata sotto le nuove soglie dimensionali sei in linea di principio esclusa, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).",
+        "borderListed": "Sei una società quotata sotto le soglie: l’art. 19 bis guarda alla dimensione, non alla quotazione, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).",
         "borderMargin": "Oggi sei fuori dall’obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all’altro.",
-        "borderCheck": "È il caso in cui una verifica puntuale (e una scelta tra obbligo, adozione volontaria e VSME) vale di più.",
-        "borderNote1": "Perimetro variabile: l’ambito si misura a fine esercizio, ma i dati ESG vanno raccolti su tutto l’anno. Con M&A o riassetti in corso l’analisi diventa multi-scenario.",
-        "borderNote2": "Pressione di filiera: anche fuori dall’obbligo, i clienti in ambito CSRD o CSDDD chiederanno disclosure (VSME) come fornitore.",
+        "borderCheck": "È il caso in cui una verifica puntuale sui dati di bilancio vale di più.",
+        "borderNote1": "Le soglie si misurano alla data di chiusura del bilancio: con acquisizioni o riassetti in corso conviene rifare il conto a fine esercizio.",
+        "noteProtected": "Se sei nella catena del valore di un’impresa obbligata e non superi {threshold} dipendenti, sei un’«impresa protetta»: puoi rifiutarti di fornire informazioni oltre quelle dei principi di rendicontazione volontari (direttiva 2013/34/UE, art. 19 bis, par. 3).",
+        "noteItalyExemption": "In Italia, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027, il D.Lgs. 125/2024 non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro o con non più di 1.000 dipendenti in media (art. 17, comma 3-bis).",
         "outHeadline": "Probabilmente fuori dall’ambito di rendicontazione CSRD obbligatoria.",
-        "outReason": "Non superi le soglie cumulative post-Omnibus (1.000 dipendenti e 450 milioni di euro di ricavi netti). L’obbligo diretto non scatta, ma fuori dalla CSRD non significa fuori da tutto.",
-        "outNote1": "Pressione di filiera (VSME): se sei fornitore di un gruppo in ambito, riceverai richieste di disclosure di sostenibilità lungo la catena.",
-        "outNote2": "Tassonomia indiretta: se hai finanziamento bancario, la banca (per il proprio GAR) può chiederti dati Taxonomy-eligible.",
-        "outNote3": "CSDDD di filiera: i grandi gruppi obbligati alla due diligence trasferiscono requisiti ai fornitori, ben sotto le loro soglie dirette.",
-        "noteWave1": "Hai indicato una rendicontazione già in corso (Wave 1, FY2024): l’Omnibus I prevede un’esenzione transitoria per gli esercizi 2025 e 2026, dopo la quale si riapplicano le nuove soglie sull’esercizio rilevante.",
-        "noteParent": "Capogruppo: i valori vanno letti sul bilancio consolidato; per i gruppi la base è l’art. 29-bis della Direttiva 2013/34/UE.",
+        "outReason": "Non superi le soglie cumulative dell’art. 19 bis della direttiva 2013/34/UE (ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti): l’obbligo diretto non scatta.",
+        "noteWave1": "Hai indicato una rendicontazione già in corso: se non superi le soglie, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027 vale l’esclusione dell’art. 17, comma 3-bis, del D.Lgs. 125/2024; la direttiva (UE) 2022/2464 lascia agli Stati membri la facoltà di esentare gli esercizi 2025 e 2026 (art. 5, par. 2).",
+        "noteParent": "Capogruppo: le soglie si leggono su base consolidata (direttiva 2013/34/UE, art. 29 bis, par. 1).",
         "noteSubsidiary": "Società controllata: l’ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo."
       },
       "csddd": {
-        "nonEu": "Per le imprese di Paesi terzi le fonti disponibili non riportano le soglie CSDDD: non valutato.",
+        "nonEuMissing": "Indica i ricavi netti realizzati nell’Unione per valutare la CSDDD come impresa di un Paese terzo.",
+        "nonEuInHeadline": "Come impresa di un Paese terzo superi la soglia del dovere di diligenza (CSDDD).",
+        "nonEuInReason": "Ricavi netti nell’Unione: {amount}, oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
+        "nonEuOutReason": "Ricavi netti nell’Unione: {amount}, non oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
         "missing": "Indica dipendenti e ricavi netti per valutare la CSDDD.",
-        "calendar": "Recepimento negli Stati membri entro il {transposition}, prima applicazione dal {firstCompliance} (Direttiva (UE) 2026/470).",
+        "calendar": "Recepimento negli Stati membri entro il {transposition}, applicazione dal {firstCompliance} (direttiva (UE) 2024/1760, art. 37, par. 1).",
         "inHeadline": "Superi anche le soglie dirette del dovere di diligenza (CSDDD).",
-        "inFromLabel": "Prima applicazione dal {date}",
-        "inReason": "Superi entrambe le soglie cumulative post-Omnibus: più di 5.000 dipendenti e oltre 1,5 miliardi di euro di ricavi netti.",
-        "inNote1": "L’Omnibus I ha rimosso l’obbligo del piano di transizione climatica e il regime armonizzato di responsabilità civile, e ha sostituito la mappatura completa della catena del valore con un esercizio generale di scoping (Codex, cap. 1.4).",
-        "inNote2": "Sanzioni: tetto massimo al 3% dei ricavi netti mondiali (Codex, cap. 1.4).",
+        "inFromLabel": "Applicazione dal {date}",
+        "inReason": "Superi entrambe le soglie cumulative: più di 5.000 dipendenti in media e fatturato netto mondiale superiore a 1,5 miliardi di euro (art. 2, par. 1, lett. a)).",
+        "inNote1": "Le condizioni devono essere soddisfatte per due esercizi consecutivi (art. 2, par. 5).",
+        "inNote2": "Sanzioni pecuniarie: gli Stati membri fissano il limite massimo al 3% del fatturato netto mondiale (art. 27, par. 4).",
+        "inNote3": "La Commissione adotta gli orientamenti su come assolvere il dovere di diligenza entro il {date} (art. 19, par. 3).",
         "outHeadline": "Fuori dalle soglie dirette del dovere di diligenza (CSDDD).",
         "outReasonOne": "Superi una sola delle due soglie cumulative: l’obbligo diretto oggi non scatta.",
-        "outReasonNone": "Non superi le soglie cumulative post-Omnibus (5.000 dipendenti e 1,5 miliardi di euro): l’obbligo diretto non scatta.",
-        "outNote": "CSDDD di filiera: i grandi gruppi obbligati trasferiscono requisiti ai fornitori, ben sotto le loro soglie dirette. Le richieste di disclosure in catena arrivano prima della scadenza di legge."
+        "outReasonNone": "Non superi le soglie cumulative (più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro): l’obbligo diretto non scatta.",
+        "outNote": "Come fornitore di un gruppo obbligato puoi ricevere richieste di informazioni: se hai meno di {threshold} dipendenti la società può chiederle solo quando non le può ragionevolmente ottenere con altri mezzi (art. 8, par. 2 bis, lett. a))."
       },
       "aiAct": {
         "notAnswered": "Rispondi alle quattro domande sull’IA per valutare gli obblighi di trasparenza dell’art. 50.",
-        "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell’art. 50 non vi toccano direttamente.",
+        "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell’art. 50 non ti toccano direttamente.",
         "noneReason": "Nessuna delle quattro situazioni dell’art. 50 risulta applicabile. Fuori dall’art. 50 non significa fuori dall’AI Act.",
-        "noneNote1": "Alfabetizzazione in materia di IA (art. 4): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione del personale che li usa, senza dover garantire un livello specifico. È il testo sostituito dal regolamento (UE) 2026/1744 dal 27 luglio 2026; la versione applicabile dal {date} chiedeva di garantire un livello sufficiente.",
-        "noneNote2": "Pratiche vietate (art. 5): in vigore dal {date} (per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul lavoro).",
-        "noneNote3": "Modelli di IA per finalità generali: se fornite modelli GPAI, gli obblighi del Capo V si applicano dal {date}, con poteri di enforcement dal 2026.",
-        "noneNote4": "Alto rischio: rinviato, non cancellato. La disciplina si applica dal {annexIII} per i sistemi stand-alone (allegato III) e dal {annexI} per l’IA integrata in prodotti regolamentati (allegato I); la preparazione richiede mesi.",
-        "inHeadline": "Dal {date} l’art. 50 tocca le situazioni che hai indicato.",
-        "inFromLabel": "Applicazione dal {date} (art. 113)",
-        "inObligation": "{who}: {title} ({article}).",
-        "inReason1": "Attenzione a chi è il destinatario: alcuni obblighi gravano su chi fornisce il sistema, altri su chi lo utilizza. Se il vostro ruolo è solo di utilizzatore, gli obblighi del fornitore gravano sul vostro fornitore, e viceversa.",
-        "inReason2": "Le informazioni vanno date in modo chiaro e riconoscibile, al più tardi alla prima interazione o esposizione (art. 50, par. 5).",
-        "inNote1": "Sanzioni: fino a 15 milioni di euro o al 3% del fatturato mondiale annuo, se superiore; per PMI e start-up il minore dei due importi (art. 99, par. 4 e par. 6).",
-        "inNote2": "In Italia la Legge 132/2025 designa ACN (vigilanza e sanzioni) e AgID come autorità nazionali per l’AI Act.",
-        "inNote3": "Cosa non scatta il 2 agosto 2026: la disciplina dei sistemi ad alto rischio (allegato III), rinviata al {date} dal pacchetto Omnibus digitale."
+        "noneNote1": "Alfabetizzazione in materia di IA (art. 4, in applicazione dal {date}): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione del proprio personale, senza dover garantire un livello specifico.",
+        "noneNote2": "Pratiche vietate (art. 5): in applicazione dal {date}, per esempio inferire le emozioni delle persone sul luogo di lavoro; dal {added} si aggiungono i divieti delle lettere b bis) e b ter) del paragrafo 1.",
+        "noneNote3": "Modelli di IA per finalità generali: per chi li fornisce gli obblighi del capo V si applicano dal {date}.",
+        "noneNote4": "Sistemi ad alto rischio: le regole si applicano dal {annexIII} per i sistemi dell’allegato III e dal {annexI} per quelli dell’allegato I (art. 113).",
+        "inHeadline": "L’art. 50, in applicazione dal {date}, riguarda le situazioni che hai indicato.",
+        "inFromLabel": "In applicazione dal {date} (art. 113)",
+        "inReason1": "Attenzione a chi è il destinatario: alcuni obblighi gravano su chi fornisce il sistema, altri su chi lo utilizza. Se il tuo ruolo è solo di utilizzatore, gli obblighi del fornitore gravano sul tuo fornitore, e viceversa.",
+        "inReason2": "Le informazioni vanno date in maniera chiara e distinguibile, al più tardi al momento della prima interazione o esposizione (art. 50, par. 5).",
+        "inNote1": "Sanzioni: fino a 15 milioni di euro o, per un’impresa, fino al 3% del fatturato mondiale totale annuo, se superiore; per le PMI, start-up comprese, vale l’importo inferiore tra i due (art. 99, par. 4 e 6).",
+        "inNote2": "In Italia la legge 132/2025 designa AgID e ACN quali Autorità nazionali per l’intelligenza artificiale (art. 20, comma 1).",
+        "inNote3": "Le regole sui sistemi ad alto rischio dell’allegato III si applicano dal {date} (art. 113)."
       },
       "obligations": {
         "chat": {
           "title": "Chatbot e assistenti: la persona deve sapere che sta parlando con un’IA",
           "requirement": "I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un’IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.",
-          "exception": "Eccezione: sistemi autorizzati per legge per finalità di contrasto, a determinate condizioni. Se il chatbot lo comprate da terzi, l’obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a voi.",
-          "article": "art. 50, par. 1"
+          "exception": "Eccezione: sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati. Se il chatbot lo compri da terzi, l’obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a te."
         },
         "gen": {
           "title": "Contenuti generati: marcatura leggibile dalle macchine",
-          "requirement": "I fornitori di sistemi che generano contenuti sintetici (audio, immagini, video o testo) devono garantire che gli output siano marcati in un formato leggibile dalle macchine e rilevabili come generati o manipolati artificialmente; le soluzioni tecniche devono essere efficaci, interoperabili, robuste e affidabili per quanto tecnicamente possibile.",
-          "exception": "Eccezioni: funzioni di assistenza all’editing standard o che non alterano sostanzialmente i dati di input, e ambiti autorizzati per legge. Transitorio: per i sistemi generativi già sul mercato prima del 2 agosto 2026 la marcatura si applica dal 2 dicembre 2026; per i sistemi nuovi vale il 2 agosto 2026. Un Codice di buone pratiche UE sulla trasparenza dei contenuti IA (10 giugno 2026, adesione volontaria) supporta l’attuazione.",
-          "article": "art. 50, par. 2"
+          "requirement": "I fornitori di sistemi che generano contenuti sintetici (audio, immagini, video o testo) devono garantire che gli output siano marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente.",
+          "exception": "Eccezioni: funzioni di assistenza per l’editing standard o che non modificano in modo sostanziale i dati di input. Per i sistemi immessi sul mercato prima del {applies} il termine per conformarsi è il {legacy} (art. 111, par. 4)."
         },
         "emo": {
           "title": "Riconoscimento delle emozioni e categorizzazione biometrica: informare le persone esposte",
-          "requirement": "Chi utilizza un sistema di riconoscimento delle emozioni o di categorizzazione biometrica deve informare le persone fisiche che vi sono esposte sul funzionamento del sistema, e trattare i dati personali nel rispetto del GDPR.",
-          "exception": "Attenzione ai divieti già in vigore (art. 5, dal 2 febbraio 2025): per esempio il riconoscimento delle emozioni sul luogo di lavoro e negli istituti di istruzione è vietato, salvo motivi medici o di sicurezza.",
-          "article": "art. 50, par. 3"
+          "requirement": "Chi utilizza un sistema di riconoscimento delle emozioni o di categorizzazione biometrica informa le persone fisiche che vi sono esposte sul funzionamento del sistema.",
+          "exception": "Attenzione ai divieti in applicazione dal {prohibitions}: inferire le emozioni sul luogo di lavoro e negli istituti di istruzione è vietato, salvo motivi medici o di sicurezza (art. 5, par. 1, lett. f))."
         },
         "deep": {
           "title": "Deepfake e testi IA pubblicati: dichiararne l’origine",
           "requirement": "Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall’IA pubblicati per informare il pubblico su questioni di interesse pubblico.",
-          "exception": "Eccezioni: per opere manifestamente artistiche, creative o satiriche la disclosure va data in modo appropriato senza pregiudicare l’opera; per i testi, l’obbligo non si applica se c’è revisione umana o controllo editoriale e una persona fisica o giuridica se ne assume la responsabilità editoriale.",
-          "article": "art. 50, par. 4"
+          "exception": "Eccezioni: per opere manifestamente artistiche, creative o satiriche basta rivelare l’esistenza dei contenuti generati senza ostacolare l’opera; per i testi, l’obbligo non si applica se c’è revisione umana o controllo editoriale e una persona fisica o giuridica ha la responsabilità editoriale."
         }
-      }
-    },
-    "sources": {
-      "omnibusI": {
-        "act": "Direttiva (UE) 2026/470 (Omnibus I)",
-        "article": "art. 19-bis e art. 29-bis della Direttiva 2013/34/UE, come modificati; in vigore dal 18 marzo 2026"
       },
-      "csrd": {
-        "act": "Direttiva (UE) 2022/2464 (CSRD)",
-        "article": "art. 19-bis Direttiva 2013/34/UE (art. 29-bis per i gruppi)"
+      "work": {
+        "notAnswered": "Rispondi alle domande sull’IA nei rapporti di lavoro per valutare questa sezione.",
+        "noneHeadline": "Dalle risposte, le norme sull’IA nei rapporti di lavoro oggi non ti toccano.",
+        "noneReason": "Nessuna delle situazioni indicate riguarda l’impresa.",
+        "noneNote": "Se introduci strumenti di IA che incidono su decisioni, organizzazione del lavoro o sicurezza, rifai la verifica: valgono il D.Lgs. 179/2026 (articoli 41 e 42) e l’art. 4 dell’AI Act.",
+        "inHeadline": "Le norme sull’IA nei rapporti di lavoro riguardano le situazioni che hai indicato.",
+        "inHeadlineProhibited": "Una delle situazioni indicate è una pratica vietata dall’AI Act; le altre comportano obblighi.",
+        "inFromLabel": "D.Lgs. 179/2026, articoli 41 e 42, in vigore dal {date}",
+        "reasons": {
+          "dec": "Un sistema di IA contribuisce a decisioni sul rapporto di lavoro: vale l’art. 41 del D.Lgs. 179/2026.",
+          "org": "Un sistema di IA incide su organizzazione, ritmi, esecuzione della prestazione o sicurezza: vale l’art. 42 del D.Lgs. 179/2026.",
+          "uso": "Il personale usa strumenti di IA: valgono l’art. 4 dell’AI Act e l’art. 42, comma 3, del D.Lgs. 179/2026.",
+          "prof": "Professione intellettuale che usa l’IA: vale l’art. 13 della legge 132/2025.",
+          "emo": "Inferire le emozioni dei lavoratori rientra nelle pratiche vietate dall’art. 5 dell’AI Act."
+        },
+        "inNote1": "L’art. 41 non considera decisioni finali sulla costituzione del rapporto la ricerca e la selezione delle candidature; i sistemi di IA per l’assunzione o la selezione sono comunque elencati nell’allegato III, punto 4, dell’AI Act.",
+        "inNote2": "La legge 132/2025 richiama gli stessi obblighi informativi: il datore di lavoro informa il lavoratore dell’uso dell’IA nei casi e con le modalità dell’art. 1-bis del D.Lgs. 152/1997 (art. 11, comma 2).",
+        "duties": {
+          "emotions": {
+            "title": "Inferire le emozioni dei lavoratori: pratica vietata",
+            "requirement": "È vietato l’uso di sistemi di IA per inferire le emozioni di una persona nell’ambito del luogo di lavoro, tranne quando il sistema è destinato a essere usato per motivi medici o di sicurezza.",
+            "exception": "Divieto in applicazione dal {date} (art. 113, terzo comma, lett. a))."
+          },
+          "decisions": {
+            "title": "Decisioni sul rapporto di lavoro: mai solo automatiche",
+            "requirement": "Le decisioni finali su costituzione, modificazione o risoluzione del rapporto, compresi provvedimenti disciplinari e valutazioni delle prestazioni, non possono essere adottate unicamente sulla base di un trattamento automatizzato: la decisione definitiva è riservata a una persona fisica con potere effettivo e autonomo.",
+            "exception": "Il consenso del lavoratore non fa eccezione. Il licenziamento e le decisioni in violazione sono nulli (art. 41, comma 4). Ricerca e selezione delle candidature non sono decisioni finali sulla costituzione del rapporto."
+          },
+          "information": {
+            "title": "Informativa prima dell’avvio e motivazione su richiesta",
+            "requirement": "Prima dell’avvio del trattamento il datore di lavoro assolve agli obblighi di informativa dell’art. 1-bis del D.Lgs. 152/1997. Il lavoratore può ottenere, a richiesta e con l’intervento di una persona fisica, una motivazione intelligibile della decisione che lo riguarda.",
+            "exception": "L’art. 1-bis riguarda i sistemi decisionali o di monitoraggio integralmente automatizzati; la comunicazione va fatta anche alle rappresentanze sindacali (art. 1-bis, commi 1 e 6)."
+          },
+          "highRisk": {
+            "title": "Sistemi ad alto rischio sul luogo di lavoro: informare lavoratori e rappresentanti",
+            "requirement": "I sistemi di IA per l’assunzione o la selezione e quelli per decisioni su condizioni, promozione o cessazione del rapporto sono elencati nell’allegato III, punto 4, dell’AI Act. Prima di metterli in servizio o usarli sul luogo di lavoro, il datore di lavoro informa i rappresentanti dei lavoratori e i lavoratori interessati.",
+            "exception": "Obbligo dei deployer di sistemi ad alto rischio: si applica dal {date} (art. 113)."
+          },
+          "riskAssessment": {
+            "title": "Valutazione dei rischi: l’IA entra nel documento",
+            "requirement": "L’uso di sistemi di IA che incidono su organizzazione del lavoro, ritmi produttivi, modalità di esecuzione della prestazione o processi decisionali rilevanti per la sicurezza è valutato nella valutazione dei rischi dell’art. 28 del D.Lgs. 81/2008."
+          },
+          "training": {
+            "title": "Informazione e formazione dei lavoratori sui rischi dell’IA",
+            "requirement": "I datori di lavoro assicurano un’adeguata informazione e formazione dei lavoratori sui rischi specifici connessi all’uso dei sistemi di IA e sulle misure di prevenzione e protezione adottate."
+          },
+          "literacy": {
+            "title": "Alfabetizzazione in materia di IA del personale",
+            "requirement": "Chi utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione in materia di IA del proprio personale.",
+            "exception": "L’obbligo non impone di garantire un livello specifico di alfabetizzazione. In applicazione dal {date} (art. 113)."
+          },
+          "clients": {
+            "title": "Professioni intellettuali: informare il cliente",
+            "requirement": "Le informazioni sui sistemi di IA utilizzati dal professionista sono comunicate al destinatario della prestazione con linguaggio chiaro, semplice ed esaustivo.",
+            "exception": "L’IA è ammessa per le sole attività strumentali e di supporto, con prevalenza del lavoro intellettuale oggetto della prestazione (art. 13, comma 1)."
+          }
+        }
       },
-      "dlgs125": {
-        "act": "D.Lgs. 6 settembre 2024, n. 125",
-        "article": "recepimento italiano della CSRD, testo pre-Omnibus (GU n. 212 del 10 settembre 2024)"
+      "nis": {
+        "notAnswered": "Scegli il settore (o «Nessuno di questi settori») per valutare il decreto NIS.",
+        "inHeadline": "L’impresa rientra nell’ambito del decreto NIS.",
+        "financialHeadline": "Settore bancario o dei mercati finanziari: per i capi IV e V del decreto NIS vale DORA.",
+        "noSectorHeadline": "Dalle risposte, l’impresa è fuori dall’ambito del decreto NIS.",
+        "smallHeadline": "Settore NIS, ma sotto i massimali delle piccole imprese: fuori dall’ambito.",
+        "sizeDependsHeadline": "Settore NIS: l’ambito dipende dalla classe dimensionale.",
+        "annexIVHeadline": "Tipologia dell’allegato IV: il decreto si applica solo se ACN individua il soggetto.",
+        "reasonAnnexI": "Settore dell’allegato I (alta criticità): {sector}.",
+        "reasonAnnexII": "Settore dell’allegato II (altri settori critici): {sector}.",
+        "reasonNotSmall": "Superi i massimali delle piccole imprese (meno di {employees} persone e fatturato o totale di bilancio non superiori a {amount}): il decreto si applica (art. 3, comma 2).",
+        "reasonSmall": "Sei entro i massimali delle piccole imprese (meno di {employees} persone e fatturato o totale di bilancio non superiori a {amount}): il decreto non si applica per dimensione (art. 3, comma 2).",
+        "reasonLinked": "Impresa collegata a un soggetto essenziale o importante con un ruolo sui suoi sistemi, sulla sua sicurezza o sui suoi servizi TIC: il decreto si applica a prescindere dalle dimensioni (art. 3, comma 10).",
+        "reasonAnySize": "Fornitore che il decreto considera a prescindere dalle dimensioni (art. 3, comma 5).",
+        "reasonPublic": "Pubblica amministrazione delle categorie dell’allegato III: il decreto si applica a prescindere dalle dimensioni (art. 3, comma 6).",
+        "annexIVReason": "Per le tipologie dell’allegato IV il decreto si applica, a prescindere dalle dimensioni, ai soggetti individuati dall’Autorità nazionale competente NIS (art. 3, comma 8).",
+        "annexIVNote": "ACN notifica al soggetto la sua individuazione ai fini della registrazione sulla piattaforma (art. 3, comma 13).",
+        "noSectorReason": "Il decreto riguarda i settori degli allegati I e II, le pubbliche amministrazioni dell’allegato III e le tipologie dell’allegato IV: nessuno è stato indicato.",
+        "missingEmployees": "Indica il numero di dipendenti per valutare la classe dimensionale ai fini NIS.",
+        "missingFinancials": "Con meno di {employees} dipendenti servono ricavi netti o totale di bilancio: sotto {amount} per uno dei due l’impresa è piccola e fuori ambito.",
+        "missingBalance": "Meno di {employees} dipendenti e ricavi oltre {amount}: l’impresa supera i massimali solo se anche il totale di bilancio supera {amount}. Indica il totale di bilancio.",
+        "missingTurnover": "Meno di {employees} dipendenti e totale di bilancio oltre {amount}: l’impresa supera i massimali solo se anche i ricavi superano {amount}. Indica i ricavi netti.",
+        "category": {
+          "essential": "Categoria probabile: soggetto essenziale, perché settore dell’allegato I sopra i massimali delle medie imprese (art. 6, comma 1, lett. a)). La categoria è comunicata da ACN con l’inserimento nell’elenco.",
+          "important": "Categoria probabile: soggetto importante (art. 6, comma 3). La categoria è comunicata da ACN con l’inserimento nell’elenco.",
+          "depends": "Essenziale se l’impresa supera i massimali delle medie imprese (250 persone, oppure fatturato oltre 50 milioni di euro e totale di bilancio oltre 43 milioni), altrimenti importante (art. 6): indica il totale di bilancio per distinguere.",
+          "byAuthority": "La categoria (essenziale o importante) è comunicata da ACN con l’inserimento nell’elenco (art. 7, comma 3)."
+        },
+        "noteFinancial": "Per banche e infrastrutture dei mercati finanziari (settori 3 e 4 dell’allegato I) l’art. 17 e i capi IV e V del decreto non si applicano: vale la disciplina del regolamento (UE) 2022/2554, DORA (art. 3, comma 14).",
+        "notePenalties": "Sanzioni: fino a 10 milioni di euro o al 2% del fatturato annuo mondiale per i soggetti essenziali, fino a 7 milioni di euro o all’1,4% per i soggetti importanti (art. 38, comma 9).",
+        "noteGroup": "Gruppi: per la classe dimensionale ai dati dell’impresa si aggiungono quelli delle imprese collegate (raccomandazione 2003/361/CE, allegato, art. 6, par. 2), salvo che ciò non sia proporzionato (D.Lgs. 138/2024, art. 3, comma 4).",
+        "outNoteDesignated": "ACN può comunque individuare un soggetto di questi settori a prescindere dalle dimensioni (art. 3, comma 9).",
+        "outNoteSupplyChain": "I soggetti NIS devono curare la sicurezza della catena di approvvigionamento, compresi i rapporti con i fornitori diretti (art. 24, comma 2, lett. d)): come fornitore puoi ricevere richieste di sicurezza.",
+        "duties": {
+          "register": {
+            "title": "Registrazione sulla piattaforma di ACN",
+            "requirement": "Dal 1 gennaio al 28 febbraio di ogni anno i soggetti che rientrano nel decreto si registrano, o aggiornano la registrazione, sulla piattaforma digitale dell’Autorità nazionale competente NIS.",
+            "exception": "ACN comunica l’inserimento nell’elenco dei soggetti essenziali o importanti (art. 7, comma 3); dal 15 aprile al 31 maggio di ogni anno chi ha ricevuto la comunicazione fornisce o aggiorna le ulteriori informazioni (art. 7, comma 4)."
+          },
+          "governance": {
+            "title": "Organi di amministrazione e direttivi: approvare e sovrintendere",
+            "requirement": "Approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica, sovrintendono all’implementazione degli obblighi e sono responsabili delle violazioni."
+          },
+          "measures": {
+            "title": "Misure di gestione dei rischi per la sicurezza informatica",
+            "requirement": "Adottare misure tecniche, operative e organizzative adeguate e proporzionate; tra gli elementi minimi c’è la sicurezza della catena di approvvigionamento (art. 24, comma 2, lett. d)).",
+            "exception": "Termini: per i soggetti inseriti nell’elenco nel 2026 le misure di sicurezza di base vanno adottate entro il {measures2026} (determinazione ACN n. 127434/2026, art. 1, comma 1); per quelli inseriti nel 2025 il termine è di diciotto mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 1)."
+          },
+          "incidents": {
+            "title": "Notifica degli incidenti significativi al CSIRT Italia",
+            "requirement": "Pre-notifica entro 24 ore da quando si viene a conoscenza dell’incidente significativo, notifica entro 72 ore, relazione finale entro un mese dalla notifica.",
+            "exception": "Termini: per i soggetti inseriti nell’elenco nel 2026 l’obbligo decorre dal {incidents2026} (determinazione ACN n. 127434/2026, art. 1, comma 2) e il referente CSIRT va designato entro il 31 dicembre dell’anno di inserimento (determinazione ACN n. 314287/2026, art. 7, comma 1); per quelli inseriti nel 2025 il termine è di nove mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 2)."
+          },
+          "activities": {
+            "title": "Elenco delle attività e dei servizi",
+            "requirement": "Dal 1 maggio al 30 giugno di ogni anno, a partire dalla prima comunicazione di inserimento nell’elenco, i soggetti comunicano e aggiornano sulla piattaforma l’elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza di ciascuno."
+          }
+        }
       },
-      "csddd": {
-        "act": "Direttiva (UE) 2024/1760 (CSDDD), modificata dalla Direttiva (UE) 2026/470",
-        "article": "recepimento entro il 26 luglio 2028, prima applicazione dal 26 luglio 2029"
-      },
-      "aiAct50_1": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 50, par. 1"
-      },
-      "aiAct50_2": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 50, par. 2"
-      },
-      "aiAct50_3": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 50, par. 3"
-      },
-      "aiAct50_4": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 50, par. 4"
-      },
-      "aiAct50_5": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 50, par. 5"
-      },
-      "aiAct113": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 113, applicazione dal 2 agosto 2026"
-      },
-      "aiAct99": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 99, par. 4 e par. 6 (sanzioni)"
-      },
-      "aiAct4": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 4, alfabetizzazione in materia di IA"
-      },
-      "aiAct5": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "art. 5, pratiche vietate"
-      },
-      "aiActGpai": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "Capo V, modelli di IA per finalità generali"
-      },
-      "aiActHighRisk": {
-        "act": "Regolamento (UE) 2024/1689 (AI Act)",
-        "article": "sistemi ad alto rischio, allegato III e allegato I"
-      },
-      "legge132": {
-        "act": "Legge 132/2025",
-        "article": "autorità nazionali per l’AI Act: ACN e AgID"
-      },
-      "cra": {
-        "act": "Regolamento (UE) 2024/2847 (CRA)",
-        "article": "art. 14, segnalazione di vulnerabilità sfruttate e incidenti gravi"
-      },
-      "craImplementing": {
-        "act": "Regolamento di esecuzione (UE) 2025/2392",
-        "article": "categorie di prodotti importanti e critici"
-      },
-      "nis2": {
-        "act": "Direttiva (UE) 2022/2555 (NIS2)",
-        "article": "in applicazione dal 18 ottobre 2024; D.Lgs. 138/2024"
-      },
-      "dora": {
-        "act": "Regolamento (UE) 2022/2554 (DORA)",
-        "article": "in applicazione dal 17 gennaio 2025"
-      },
-      "esrs": {
-        "act": "Regolamento delegato (UE) 2023/2772 (ESRS Set 1)",
-        "article": "principi di rendicontazione di sostenibilità"
-      },
-      "codex": {
-        "act": "Codex Post-Omnibus 2025-2029 (NormaAI, v1.0, 28 aprile 2026)",
-        "article": "guida operativa, non parere legale"
+      "machinery": {
+        "notAnswered": "Indica i ruoli dell’impresa rispetto alle macchine (o «Nessuno di questi ruoli») per valutare il regolamento macchine.",
+        "noneHeadline": "Dalle risposte, il regolamento macchine non pone obblighi diretti all’impresa.",
+        "noneReason": "L’impresa non è fabbricante, importatore o distributore di macchine, prodotti correlati o quasi-macchine, e non le modifica.",
+        "noneNote": "Chi apporta una modifica sostanziale a una macchina già in servizio è considerato fabbricante (art. 18): se succede, rifai la verifica.",
+        "inHeadline": "Il regolamento macchine si applica dal {date} ai ruoli che hai indicato.",
+        "inFromLabel": "Si applica dal {date} (art. 54)",
+        "reasons": {
+          "fab": "Fabbricante: fabbrica i prodotti, o li fa fabbricare e li commercializza con il proprio nome o marchio, oppure li mette in servizio per uso proprio (art. 3, punto 18)).",
+          "imp": "Importatore: immette sul mercato dell’Unione un prodotto originario di un paese terzo (art. 3, punto 20)).",
+          "dis": "Distributore: mette a disposizione il prodotto sul mercato senza esserne fabbricante o importatore (art. 3, punto 21)).",
+          "mod": "Modifica di macchine già immesse sul mercato o messe in servizio: se è sostanziale, comporta gli obblighi del fabbricante (art. 18)."
+        },
+        "inNote1": "Il regolamento riguarda macchine, attrezzature intercambiabili, componenti di sicurezza, accessori di sollevamento, catene, funi e cinghie, dispositivi amovibili di trasmissione meccanica e quasi-macchine (art. 2, par. 1).",
+        "inNote2": "I prodotti immessi sul mercato in conformità della direttiva 2006/42/CE prima del {date} possono continuare a essere messi a disposizione sul mercato (art. 52, par. 1).",
+        "duties": {
+          "conformity": {
+            "title": "Requisiti essenziali, documentazione tecnica, valutazione della conformità, marcatura CE",
+            "requirement": "Progettare e fabbricare secondo i requisiti essenziali di sicurezza e di tutela della salute dell’allegato III; redigere la documentazione tecnica (allegato IV, parte A), eseguire la procedura di valutazione della conformità dell’art. 25, redigere la dichiarazione di conformità UE e apporre la marcatura CE (art. 10, par. 1 e 2).",
+            "exception": "Documentazione tecnica e dichiarazione di conformità UE restano a disposizione delle autorità per almeno 10 anni (art. 10, par. 3). Le istruzioni per l’uso accompagnano la macchina e possono essere fornite in formato digitale (art. 10, par. 7)."
+          },
+          "partlyCompleted": {
+            "title": "Quasi-macchine: documentazione tecnica e dichiarazione di incorporazione",
+            "requirement": "Per le quasi-macchine il fabbricante redige la documentazione tecnica dell’allegato IV, parte B, e la dichiarazione di incorporazione UE."
+          },
+          "importer": {
+            "title": "Importare solo prodotti conformi e verificare il lavoro del fabbricante",
+            "requirement": "Immettere sul mercato soltanto macchine o prodotti correlati conformi; prima dell’immissione, assicurarsi che il fabbricante abbia svolto la procedura di valutazione della conformità (art. 13, par. 1 e 2).",
+            "exception": "Una copia della dichiarazione di conformità UE resta a disposizione delle autorità per almeno 10 anni (art. 13, par. 8)."
+          },
+          "distributor": {
+            "title": "Prima di vendere: marcatura CE, dichiarazione di conformità, istruzioni",
+            "requirement": "Prima di mettere il prodotto a disposizione sul mercato, verificare che rechi la marcatura CE e sia accompagnato dalla dichiarazione di conformità UE e dalle istruzioni per l’uso.",
+            "exception": "I distributori esercitano la dovuta diligenza per rispettare le prescrizioni del regolamento (art. 15, par. 1)."
+          },
+          "ownBrand": {
+            "title": "Con il proprio nome o marchio si diventa fabbricanti",
+            "requirement": "L’importatore o il distributore che immette sul mercato un prodotto con il proprio nome o marchio commerciale, o che modifica un prodotto già immesso sul mercato in modo da incidere sulla conformità, è considerato fabbricante e ne assume gli obblighi."
+          },
+          "modification": {
+            "title": "Modifica sostanziale: chi la fa assume gli obblighi del fabbricante",
+            "requirement": "Chi apporta una modifica sostanziale a una macchina o a un prodotto correlato è considerato fabbricante ed è soggetto ai relativi obblighi.",
+            "exception": "È sostanziale la modifica, fisica o digitale, non prevista dal fabbricante, che crea un nuovo pericolo o aumenta un rischio esistente e richiede nuovi ripari o dispositivi di protezione con modifica del sistema di controllo della sicurezza, oppure misure supplementari per la stabilità o la resistenza meccanica (art. 3, punto 16))."
+          }
+        }
       }
     }
   },
   "monitoraggio": {
     "title": "Monitoraggio",
-    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l’analisi di una novità normativa.",
-    "meta": "Calendario curato a mano; ogni voce indica la data di verifica (ultima verifica: {date}). Il controllo automatico delle novità su EUR-Lex non è ancora attivo.",
+    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi sui documenti che tieni sotto controllo e l’analisi di una novità normativa.",
+    "meta": {
+      "manual": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il server non riporta un controllo automatico delle versioni consolidate.",
+      "neverRan": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il controllo automatico delle versioni consolidate non è ancora stato eseguito.",
+      "checked": "Calendario curato a mano. Controllo automatico delle versioni consolidate eseguito {date}: {count, plural, =0 {nessun atto indicizzato ha una versione consolidata più recente} one {# atto indicizzato ha una versione consolidata più recente} other {# atti indicizzati hanno una versione consolidata più recente}}."
+    },
     "loading": "Caricamento della pagina Monitoraggio",
     "tabsLabel": "Sezioni del monitoraggio",
     "tabs": {
@@ -764,117 +1305,168 @@
     },
     "deadlines": {
       "upcoming": "Prossimi dodici mesi",
-      "range": "Dal {from} al {to}. Le date indicate solo per mese o trimestre dalle fonti restano con quella precisione.",
+      "range": "Dal {from} al {to}. Ogni voce riporta il passaggio che fissa la data e quando è stato ritrovato nel testo ufficiale.",
       "emptyTitle": "Nessuna scadenza nei prossimi dodici mesi",
       "emptyDescription": "Il calendario non contiene voci in questo periodo.",
       "past": "Già in applicazione",
       "pastLead": "Date già superate: l’obbligo continua, la voce resta per riferimento.",
-      "expected": "Data attesa, non confermata",
       "who": "A chi si applica: ",
       "what": "Cosa fare: ",
-      "verifiedOn": "Verificata il {date}",
-      "readIn": "Letta in: {note}"
+      "related": "Vedi anche: ",
+      "hidden": "{count, plural, one {# voce non è mostrata: la sua fonte non è ancora verificata sul testo ufficiale.} other {# voci non sono mostrate: le loro fonti non sono ancora verificate sul testo ufficiale.}}"
+    },
+    "frameworks": {
+      "CSRD": "CSRD",
+      "CSDDD": "CSDDD",
+      "AI_ACT": "AI Act",
+      "AI_WORK": "IA e lavoro",
+      "NIS2": "NIS2",
+      "DORA": "DORA",
+      "CRA": "CRA",
+      "MACHINERY": "Macchine",
+      "EUDR": "Deforestazione",
+      "PAY": "Parità retributiva"
     },
     "calendar": {
       "nis2-application": {
-        "title": "NIS2 in applicazione",
-        "who": "Soggetti essenziali e importanti (in Italia: D.Lgs. 138/2024)",
-        "what": "Misure di sicurezza e notifica degli incidenti."
+        "title": "Direttiva NIS2: applicazione delle misure nazionali",
+        "who": "Soggetti pubblici o privati dei settori degli allegati I e II della direttiva, dalle medie imprese in su (in Italia: D.Lgs. 138/2024)",
+        "what": "Gli Stati membri applicano le disposizioni di recepimento da questa data (art. 41, par. 1)."
       },
       "dora-application": {
         "title": "DORA in applicazione",
-        "who": "Settore finanziario e fornitori ICT terzi",
-        "what": "Resilienza operativa digitale e gestione del rischio ICT."
+        "who": "Entità finanziarie (enti creditizi, istituti di pagamento, imprese di investimento, imprese di assicurazione e le altre dell’art. 2, par. 1) e fornitori terzi di servizi TIC",
+        "what": "Il regolamento sulla resilienza operativa digitale si applica da questa data (art. 64)."
       },
       "aiact-art4-art5": {
         "title": "AI Act: alfabetizzazione (art. 4) e pratiche vietate (art. 5)",
-        "who": "Chiunque fornisca o utilizzi sistemi di IA",
-        "what": "Misure per sostenere l’alfabetizzazione del personale che usa l’IA, senza un livello specifico da garantire (art. 4 sostituito dal regolamento (UE) 2026/1744 dal 27 luglio 2026); divieti già in vigore, per esempio manipolazione dannosa, social scoring, riconoscimento delle emozioni sul luogo di lavoro."
+        "who": "Fornitori e deployer di sistemi di IA",
+        "what": "Misure per sostenere l’alfabetizzazione in materia di IA del personale, senza un livello specifico da garantire (art. 4); divieti dell’art. 5, per esempio inferire le emozioni sul luogo di lavoro. I capi I e II si applicano da questa data (art. 113)."
       },
       "aiact-gpai": {
-        "title": "AI Act: obblighi per i modelli di IA per finalità generali (Capo V)",
-        "who": "Fornitori di modelli GPAI",
-        "what": "Obblighi del Capo V; poteri di enforcement dal 2026."
-      },
-      "omnibus-published": {
-        "title": "Omnibus I pubblicato in Gazzetta ufficiale dell’Unione",
-        "who": "Imprese in ambito CSRD e CSDDD",
-        "what": "Direttiva (UE) 2026/470: nuove soglie CSRD (1.000 dipendenti e 450 milioni di euro, cumulative) e nuovo calendario CSDDD."
-      },
-      "omnibus-in-force": {
-        "title": "Omnibus I in vigore: nuove soglie CSRD",
-        "who": "Imprese sopra 1.000 dipendenti e 450 milioni di euro di ricavi netti",
-        "what": "Verificare l’ambito con le soglie cumulative; le PMI quotate escono dal perimetro; esenzione transitoria FY2025-2026 per i reporter Wave 1."
-      },
-      "aiact-code-of-practice": {
-        "title": "Codice di buone pratiche UE sulla trasparenza dei contenuti IA",
-        "who": "Fornitori di sistemi generativi (adesione volontaria)",
-        "what": "Riferimento per attuare la marcatura dei contenuti dell’art. 50, par. 2."
+        "title": "AI Act: obblighi per i modelli di IA per finalità generali (capo V)",
+        "who": "Fornitori di modelli di IA per finalità generali",
+        "what": "Il capo V si applica da questa data (art. 113); tra gli obblighi, la documentazione tecnica del modello (art. 53, par. 1)."
       },
       "aiact-art50": {
         "title": "AI Act: obblighi di trasparenza dell’art. 50",
-        "who": "Fornitori e utilizzatori di chatbot, sistemi generativi, riconoscimento delle emozioni, deepfake",
-        "what": "Informare le persone che interagiscono con un’IA, marcare i contenuti sintetici, dichiarare i deepfake (art. 50, par. 1-4); applicazione dall’art. 113."
+        "who": "Fornitori e deployer di sistemi che interagiscono con le persone, generano contenuti sintetici o deepfake",
+        "what": "Informare le persone che interagiscono con un’IA, marcare i contenuti sintetici, dichiarare i deepfake (art. 50, par. 1, 2 e 4). Il regolamento si applica da questa data (art. 113)."
       },
       "cra-reporting": {
-        "title": "CRA: segnalazione di vulnerabilità sfruttate e incidenti gravi",
-        "who": "Fabbricanti di prodotti con elementi digitali, anche già sul mercato",
-        "what": "Allerta precoce entro 24 ore e notifica entro 72 ore tramite la piattaforma ENISA (art. 14)."
+        "title": "CRA: segnalazione delle vulnerabilità attivamente sfruttate",
+        "who": "Fabbricanti di prodotti con elementi digitali",
+        "what": "Notifica di preallarme entro 24 ore e notifica entro 72 ore al CSIRT coordinatore e all’ENISA (art. 14, par. 1 e 2). L’art. 14 si applica da questa data (art. 71, par. 2)."
+      },
+      "ai-work-decree": {
+        "title": "IA nei rapporti di lavoro: D.Lgs. 179/2026 in vigore",
+        "who": "Datori di lavoro che usano sistemi di IA nelle decisioni sul rapporto di lavoro o nell’organizzazione del lavoro",
+        "what": "Decisioni finali mai solo automatizzate e riservate a una persona fisica, informativa prima dell’avvio (art. 41); IA nella valutazione dei rischi (art. 42). La data è quella da cui gli articoli sono vigenti secondo Normattiva."
       },
       "aiact-legacy-marking": {
         "title": "AI Act: marcatura dei contenuti per i sistemi generativi già sul mercato",
-        "who": "Fornitori di sistemi generativi immessi sul mercato prima del 2 agosto 2026",
-        "what": "Output marcati in formato leggibile dalle macchine (art. 50, par. 2); transitorio del pacchetto Omnibus digitale."
+        "who": "Fornitori di sistemi di IA che generano contenuti sintetici, immessi sul mercato prima del 2 agosto 2026",
+        "what": "Entro questa data adottano le misure per conformarsi all’art. 50, par. 2: output marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente (art. 111, par. 4)."
       },
-      "csrd-prepare-fy2027": {
-        "title": "CSRD: preparazione dell’esercizio 2027 per i gruppi ancora in ambito",
-        "who": "Gruppi oltre 1.000 dipendenti e 450 milioni di euro",
-        "what": "Impostare raccolta dati ESG e doppia materialità per l’esercizio FY2027."
+      "aiact-new-prohibitions": {
+        "title": "AI Act: si applicano i nuovi divieti dell’art. 5, par. 1, lettere b bis) e b ter)",
+        "who": "Chi immette sul mercato, mette in servizio o usa sistemi di IA",
+        "what": "Vietati, alle condizioni dei paragrafi 1 bis e 1 ter, i sistemi di IA che generano o manipolano immagini, video e audio realistici delle parti intime di una persona riconoscibile, o che la mostrano in atti sessualmente espliciti, senza il suo consenso, e quelli che generano o manipolano il materiale dell’art. 2, lettere c) ed e), della direttiva 2011/93/UE (art. 113)."
       },
-      "csrd-first-post-omnibus": {
-        "title": "CSRD: prima rendicontazione post-Omnibus sul nuovo perimetro",
-        "who": "Imprese in ambito con le nuove soglie",
-        "what": "Dichiarazione di sostenibilità secondo gli ESRS Set 1 rivisti. Il Codex indica l’esercizio 2026 nel calendario e l’esercizio 2027 nella tabella: da confermare sul testo consolidato."
+      "eudr-application": {
+        "title": "Regolamento deforestazione: applicazione degli obblighi",
+        "who": "Chi immette o mette a disposizione sul mercato dell’Unione, o esporta, i prodotti dell’allegato I legati a bovini, cacao, caffè, palma da olio, gomma, soia e legno",
+        "what": "Gli articoli da 3 a 13, da 16 a 24 e gli articoli 26, 31 e 32 si applicano da questa data (art. 38, par. 2). Per gli operatori che sono microimprese o piccole imprese la data è il 30 giugno 2027 (art. 38, par. 3)."
       },
-      "csrd-csddd-review-clause": {
-        "title": "Clausola di revisione CSRD e CSDDD: possibile estensione dell’ambito",
-        "who": "Commissione europea; imprese appena fuori dalle soglie",
-        "what": "Avvio della revisione prevista dall’Omnibus I; un riallargamento del perimetro è possibile."
+      "nis2-csirt-contact-2026": {
+        "title": "NIS: referente CSIRT per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Entro il 31 dicembre dell’anno di inserimento il punto di contatto designa il referente CSIRT (determinazione ACN n. 314287/2026, art. 7, comma 1). Per questi soggetti l’obbligo di notifica degli incidenti decorre dal 1 gennaio 2027."
+      },
+      "csrd-first-year": {
+        "title": "CSRD: primo esercizio per le imprese del nuovo perimetro",
+        "who": "Imprese con ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media, che non rendicontavano già",
+        "what": "La rendicontazione di sostenibilità si applica agli esercizi che iniziano da questa data (direttiva (UE) 2022/2464, art. 5, par. 2). In Italia: D.Lgs. 125/2024, art. 17, comma 1, lett. b), con l’esclusione del comma 3-bis per chi resta sotto le soglie."
+      },
+      "nis2-incidents-2026": {
+        "title": "NIS: notifica degli incidenti per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Da questa data decorre l’obbligo di notifica degli incidenti significativi (determinazione ACN n. 127434/2026, art. 1, comma 2): pre-notifica entro 24 ore e notifica entro 72 ore al CSIRT Italia (D.Lgs. 138/2024, art. 25, comma 5)."
+      },
+      "machinery-application": {
+        "title": "Regolamento macchine: applicazione",
+        "who": "Fabbricanti, importatori e distributori di macchine, prodotti correlati e quasi-macchine",
+        "what": "Il regolamento (UE) 2023/1230 si applica da questa data (art. 54). I prodotti immessi sul mercato prima, in conformità della direttiva 2006/42/CE, possono continuare a essere messi a disposizione (art. 52, par. 1)."
+      },
+      "nis2-registration": {
+        "title": "NIS: chiusura della finestra annuale di registrazione",
+        "who": "Soggetti che rientrano nell’ambito del D.Lgs. 138/2024",
+        "what": "Dal 1 gennaio al 28 febbraio di ogni anno i soggetti si registrano, o aggiornano la registrazione, sulla piattaforma di ACN (art. 7, comma 1)."
+      },
+      "omnibus-transposition": {
+        "title": "Omnibus I: termine di recepimento delle nuove regole CSRD",
+        "who": "Stati membri; riguarda le imprese sopra 450 milioni di euro di ricavi netti e 1.000 dipendenti",
+        "what": "Entro questa data gli Stati membri mettono in vigore le disposizioni per conformarsi agli articoli 1, 2 e 3 della direttiva (UE) 2026/470 (art. 5, par. 1)."
+      },
+      "nis2-annual-update": {
+        "title": "NIS: chiusura dell’aggiornamento annuale delle informazioni",
+        "who": "Soggetti che hanno ricevuto da ACN la comunicazione di inserimento o di permanenza nell’elenco",
+        "what": "Dal 15 aprile al 31 maggio di ogni anno forniscono o aggiornano le ulteriori informazioni sulla piattaforma di ACN (art. 7, comma 4)."
+      },
+      "pay-gap-first-data": {
+        "title": "Parità retributiva: primi dati sul divario retributivo di genere",
+        "who": "Datori di lavoro con almeno 150 dipendenti",
+        "what": "I dati sul divario retributivo di genere sono raccolti entro questa data, poi ogni anno da 250 dipendenti e ogni tre anni tra 150 e 249 (D.Lgs. 96/2026, art. 9, comma 9), e comunicati all’organismo di monitoraggio (art. 9, comma 5)."
+      },
+      "eudr-small-operators": {
+        "title": "Regolamento deforestazione: applicazione per microimprese e piccole imprese",
+        "who": "Operatori che sono persone fisiche, microimprese o piccole imprese, costituiti come tali al 31 dicembre 2024",
+        "what": "Gli obblighi si applicano da questa data (art. 38, par. 3), tranne che per i prodotti dell’allegato del regolamento (UE) n. 995/2010."
+      },
+      "nis2-activities-list": {
+        "title": "NIS: chiusura della finestra per l’elenco delle attività e dei servizi",
+        "who": "Soggetti essenziali e importanti che hanno ricevuto la comunicazione di inserimento nell’elenco",
+        "what": "Dal 1 maggio al 30 giugno di ogni anno comunicano e aggiornano sulla piattaforma di ACN l’elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza (art. 30, comma 1)."
       },
       "csddd-guidelines": {
-        "title": "Linee guida della Commissione sulla CSDDD",
-        "who": "Imprese in ambito CSDDD e loro fornitori",
-        "what": "Attese per luglio 2027; data non fissata da un atto."
+        "title": "CSDDD: orientamenti della Commissione",
+        "who": "Imprese in ambito CSDDD e loro partner commerciali",
+        "what": "Entro questa data la Commissione adotta gli orientamenti dell’art. 19, par. 2, lettere a), d) ed e), tra cui quelli su come assolvere il dovere di diligenza (art. 19, par. 3)."
+      },
+      "nis2-measures-2026": {
+        "title": "NIS: misure di sicurezza di base per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Scade il termine per adottare le misure di sicurezza (determinazione ACN n. 127434/2026, art. 1, comma 1), in attuazione dell’obbligo di misure di gestione dei rischi del D.Lgs. 138/2024 (art. 24)."
+      },
+      "aiact-gpai-legacy": {
+        "title": "AI Act: modelli di IA per finalità generali già sul mercato",
+        "who": "Fornitori di modelli di IA per finalità generali immessi sul mercato prima del 2 agosto 2025",
+        "what": "Entro questa data adottano le misure necessarie per conformarsi agli obblighi del regolamento (art. 111, par. 3)."
       },
       "aiact-high-risk-annex-iii": {
-        "title": "AI Act: sistemi ad alto rischio stand-alone (allegato III)",
-        "who": "Fornitori e utilizzatori di sistemi ad alto rischio",
-        "what": "Valutazione di conformità e sistema di gestione della qualità; data rinviata dal pacchetto Omnibus digitale (via libera del Consiglio UE, 29 giugno 2026). Il Codex di aprile 2026 riportava ancora il 2 agosto 2027."
+        "title": "AI Act: sistemi ad alto rischio dell’allegato III",
+        "who": "Fornitori e deployer di sistemi di IA ad alto rischio dell’allegato III",
+        "what": "Le sezioni 1, 2 e 3 del capo III si applicano da questa data ai sistemi dell’allegato III (art. 113). Tra gli obblighi dei deployer: informare lavoratori e rappresentanti prima di usare un sistema ad alto rischio sul luogo di lavoro (art. 26, par. 7)."
       },
       "cra-full-application": {
-        "title": "CRA: piena applicazione",
-        "who": "Fabbricanti, importatori e distributori di prodotti con elementi digitali",
-        "what": "Requisiti essenziali di cybersicurezza e valutazione di conformità; categorie di prodotti nel Regolamento di esecuzione (UE) 2025/2392."
-      },
-      "csrd-wave1-fy2027": {
-        "title": "CSRD: prima rendicontazione FY2027 per i reporter Wave 1",
-        "who": "Imprese già in rendicontazione dal FY2024, dopo l’esenzione transitoria",
-        "what": "Rendicontazione sull’esercizio 2027 con le soglie post-Omnibus."
+        "title": "CRA: applicazione del regolamento",
+        "who": "Chi mette a disposizione sul mercato prodotti con elementi digitali collegabili a un dispositivo o a una rete",
+        "what": "Il regolamento (UE) 2024/2847 si applica da questa data (art. 71, par. 2)."
       },
       "csddd-transposition": {
         "title": "CSDDD: termine di recepimento negli Stati membri",
-        "who": "Stati membri; le imprese in ambito preparano il dovere di diligenza",
-        "what": "Recepimento nazionale della direttiva come modificata dall’Omnibus I."
+        "who": "Stati membri",
+        "what": "Entro questa data gli Stati membri adottano e pubblicano le disposizioni di recepimento (art. 37, par. 1)."
       },
       "aiact-high-risk-annex-i": {
-        "title": "AI Act: alto rischio per l’IA integrata in prodotti regolamentati (allegato I)",
-        "who": "Fabbricanti di prodotti regolamentati con componenti di IA",
-        "what": "Applicazione della disciplina ad alto rischio ai prodotti dell’allegato I."
+        "title": "AI Act: sistemi ad alto rischio dell’allegato I",
+        "who": "Fornitori e deployer di sistemi di IA classificati ad alto rischio ai sensi dell’art. 6, par. 1, e dell’allegato I",
+        "what": "Le sezioni 1, 2 e 3 del capo III si applicano da questa data a questi sistemi (art. 113)."
       },
       "csddd-first-compliance": {
-        "title": "CSDDD: prima applicazione",
-        "who": "Imprese con più di 5.000 dipendenti e oltre 1,5 miliardi di euro di ricavi netti",
-        "what": "Dovere di diligenza sulla catena di attività; sanzioni fino al 3% dei ricavi netti mondiali. Il Codex indica \"luglio 2029\"; il giorno 26 viene dal prompt e dall’ADR-003."
+        "title": "CSDDD: applicazione",
+        "who": "Società con più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro",
+        "what": "Gli Stati membri applicano le misure di recepimento da questa data (art. 37, par. 1)."
       }
     },
     "alerts": {
@@ -890,6 +1482,7 @@
       "deadline": "Scadenza: ",
       "deadlineMissing": "non indicata",
       "deadlinePast": "Scadenza superata",
+      "openCheck": "Apri il controllo del documento",
       "markRead": "Segna come letto",
       "dismiss": "Archivia l’avviso",
       "filterSeverity": "Gravità",
@@ -904,10 +1497,11 @@
       "dismissError": "L’avviso non è stato archiviato. Riprova.",
       "emptyFilteredTitle": "Nessun avviso con questi filtri",
       "emptyFilteredDescription": "Cambia gravità o stato per vedere gli altri avvisi.",
-      "emptyTitle": "Nessun avviso per la vostra organizzazione",
-      "emptyDescription": "Gli avvisi vengono creati dalle analisi e dal monitoraggio dei clienti; quando ci saranno, compariranno qui.",
+      "emptyTitle": "Nessun avviso per la tua organizzazione",
+      "emptyDescription": "Un avviso compare qui quando il ricontrollo settimanale trova cambiata o soppressa una disposizione citata in un documento che tieni sotto controllo.",
       "clearFilters": "Togli i filtri",
-      "aiNotice": "Gli avvisi sono generati da un sistema di IA (Regolamento (UE) 2024/1689, art. 50). Verifica sul testo ufficiale prima di decisioni vincolanti."
+      "origin": "Chi crea gli avvisi: il ricontrollo settimanale dei documenti che tieni sotto controllo. Ogni settimana le disposizioni citate in ciascun documento vengono confrontate con il testo ufficiale in vigore; se una è cambiata o è stata soppressa, qui compare un avviso con il collegamento al controllo del documento.",
+      "aiNotice": "Gli avvisi senza un documento collegato possono essere generati da un sistema di IA (Regolamento (UE) 2024/1689, art. 50). Verifica sul testo ufficiale prima di decisioni vincolanti."
     },
     "analyze": {
       "urgency": {
@@ -962,7 +1556,7 @@
   },
   "clienti": {
     "title": "Clienti",
-    "description": "Le aziende che segui: il profilo, le analisi di conformità e i documenti di ciascuna.",
+    "description": "Le aziende che segui: il profilo, i requisiti da verificare e i documenti di ciascuna.",
     "newClient": "Nuovo cliente",
     "search": "Cerca tra i clienti",
     "searchPlaceholder": "Cerca per nome o settore",
@@ -998,7 +1592,7 @@
       "tabsLabel": "Sezioni del cliente",
       "tabs": {
         "profilo": "Profilo",
-        "conformita": "Analisi di conformità",
+        "conformita": "Requisiti da verificare",
         "documenti": "Documenti"
       }
     },
@@ -1020,7 +1614,7 @@
       "titleEdit": "Modifica il cliente",
       "titleNew": "Nuovo cliente",
       "descriptionEdit": "Le modifiche aggiornano il profilo usato dalle analisi.",
-      "descriptionNew": "Il profilo serve per le analisi di conformità e i report.",
+      "descriptionNew": "Il profilo serve per gli elenchi dei requisiti e per i report.",
       "cancel": "Annulla",
       "save": "Salva le modifiche",
       "create": "Crea il cliente",
@@ -1058,56 +1652,39 @@
     },
     "compliance": {
       "framework": "Framework",
-      "running": "Analisi in corso",
-      "rerun": "Ripeti l’analisi",
-      "run": "Avvia l’analisi",
-      "progress": "Confronto del profilo di {name} con i requisiti {framework}. Può richiedere fino a un minuto.",
-      "failedTitle": "L’analisi non è riuscita",
-      "failed": "Analisi non riuscita. Riprova.",
-      "emptyTitle": "Nessuna analisi per questo cliente",
-      "emptyDescription": "Scegli un framework e avvia l’analisi: il profilo viene confrontato con i requisiti dell’atto, articolo per articolo.",
-      "resultTitle": "Valutazione {framework}",
-      "analysedOn": "Analisi del {date}",
-      "expertReview": "Revisione di un esperto consigliata",
-      "aiNotice": "Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): è una stima preliminare basata sul profilo inserito, non una certificazione di conformità né una consulenza legale.",
-      "requirements": "Requisiti ({count})",
+      "running": "Elenco in preparazione",
+      "rerun": "Prepara di nuovo l'elenco",
+      "run": "Elenca i requisiti",
+      "progress": "Ricerca dei requisiti {framework} per il profilo di {name}. Può richiedere fino a un minuto.",
+      "failedTitle": "L'elenco non è stato preparato",
+      "failed": "Elenco non preparato. Riprova.",
+      "emptyTitle": "Nessun elenco di requisiti per questo cliente",
+      "emptyDescription": "Scegli un framework: ottieni i suoi requisiti con gli articoli, da verificare sui documenti del cliente.",
+      "resultTitle": "Requisiti {framework} da verificare",
+      "analysedOn": "Elenco del {date}",
+      "explain": "Qui non viene esaminato nessun documento del cliente: è l'elenco dei requisiti dell'atto con i loro articoli, ciascuno da verificare, senza punteggio né giudizio di conformità.",
+      "counts": "{toVerify, plural, =1 {# requisito da verificare} other {# requisiti da verificare}}, {notApplicable, plural, =0 {tutti applicabili al profilo} =1 {# non applicabile al profilo} other {# non applicabili al profilo}}.",
+      "noRequirements": "L'analisi non ha restituito requisiti per questo framework.",
+      "aiNotice": "Elenco generato da un sistema di IA (Regolamento (UE) 2024/1689, art. 50) a partire dal profilo inserito: non è una valutazione di conformità né una consulenza legale."
+    },
+    "checklist": {
       "colRequirement": "Requisito",
-      "colStatus": "Stato",
-      "colGap": "Gap",
-      "colEffort": "Impegno",
-      "colPriority": "Priorità",
-      "noGap": "Nessun gap rilevato",
-      "recommendations": "Raccomandazioni principali"
+      "colArticle": "Articolo",
+      "colState": "Stato",
+      "state": {
+        "toVerify": "Da verificare",
+        "notApplicable": "Non applicabile al profilo"
+      }
     },
     "documents": {
-      "demoTitle": "Nella demo il caricamento non è disponibile",
-      "demoBody": "L’elaborazione dei documenti (estrazione del testo, suddivisione per articoli, indicizzazione) gira sul server e non viene simulata con dati di esempio. Con un account reale puoi caricare PDF, HTML e immagini fino a 50 MB.",
-      "uploadTitle": "Carica un documento",
-      "uploadLead": "Politiche, procedure, report: il testo viene estratto, suddiviso per articoli e indicizzato per la tua organizzazione (non per il singolo cliente). PDF, HTML, PNG, JPEG, TIFF o BMP fino a 50 MB.",
-      "file": "File",
-      "framework": "Framework",
-      "frameworkHelp": "Facoltativo: aiuta l’indicizzazione.",
-      "noFramework": "Nessuno in particolare",
-      "unsupported": "Formato non supportato ({ext}). Formati accettati: PDF, HTML, PNG, JPEG, TIFF, BMP.",
-      "noExtension": "senza estensione",
-      "emptyFile": "Il file è vuoto.",
-      "tooLarge": "Il file pesa {size}: il limite è 50 MB.",
-      "chooseFile": "Scegli un file da caricare.",
-      "processedTitle": "Documento elaborato",
-      "failed": "Caricamento non riuscito. Riprova.",
-      "processing": "Elaborazione in corso",
-      "upload": "Carica il documento",
-      "progress": "Estrazione e indicizzazione di {name}: può richiedere qualche minuto per i PDF lunghi.",
-      "emptyTitle": "Nessun documento caricato in questa sessione",
-      "emptyDescription": "Il server non espone ancora l’elenco dei documenti indicizzati: qui compaiono i caricamenti fatti ora.",
-      "sessionTitle": "Caricati in questa sessione",
-      "colFile": "File",
-      "colFramework": "Framework",
-      "colChunks": "Blocchi indicizzati",
-      "colSize": "Dimensione",
-      "colUploaded": "Caricato",
-      "none": "Nessuno",
-      "deleteNote": "La cancellazione di un documento indicizzato non è ancora disponibile dal server: scrivi a info@normaai.org per farlo rimuovere."
+      "title": "Documenti controllati",
+      "lead": "I documenti di {name} di cui hai controllato i riferimenti di legge. I file non sono conservati: restano l'esito e le norme citate.",
+      "check": "Controlla un documento per questo cliente",
+      "loading": "Caricamento dei documenti controllati",
+      "loadFailedTitle": "I documenti controllati non si sono caricati",
+      "emptyTitle": "Nessun documento controllato per questo cliente",
+      "emptyDescription": "Controlla un documento e collegalo a {name}: l'esito compare qui e, se lo sorvegli, ti dice quando una norma citata cambia.",
+      "partial": "Sono mostrati i {shown} controlli più recenti su {total}."
     }
   },
   "report": {
@@ -1151,16 +1728,15 @@
       "pdfBody": "<strong>{filename}</strong>, generato il <num>{date}</num>. Lo trovi nella cartella dei download del browser: conservalo, perché il server non permette ancora di riscaricarlo.",
       "previewTitle": "Anteprima del report per {name}",
       "previewMeta": "Demo con dati di esempio, generata il {date}",
-      "aiNotice": "Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): stima preliminare, non una certificazione né una consulenza legale."
+      "previewExplain": "Nessun documento del cliente è stato esaminato: per ogni framework, i requisiti con i loro articoli, ciascuno da verificare. Il PDF prodotto dal server contiene ancora lo stato, i gap e il punteggio stimati dal modello.",
+      "aiNotice": "Elenco generato da un sistema di IA (Regolamento (UE) 2024/1689, art. 50) a partire dal profilo del cliente: non è una valutazione di conformità né una consulenza legale."
     },
     "table": {
       "date": "Data",
       "client": "Cliente",
       "framework": "Framework",
-      "assessment": "Valutazione",
       "type": "Tipo",
       "actions": "Azioni",
-      "notRecorded": "Non registrata",
       "regenerate": "Genera di nuovo"
     }
   },
@@ -1305,6 +1881,8 @@
       "description": "Quello che il server riferisce di sé: versione, modello, base vettoriale e richieste servite.",
       "loading": "Caricamento dello stato del sistema",
       "loadFailedTitle": "Lo stato del sistema non si è caricato",
+      "demoTitle": "Demo con dati di esempio",
+      "demoBody": "Nella demo non esiste un server da interrogare: versione, modello, base vettoriale e richieste servite compaiono qui solo con un account reale.",
       "status": {
         "healthy": "Operativo",
         "degraded": "Degradato"
@@ -1340,6 +1918,7 @@
   "legal": {
     "lastUpdated": "Ultimo aggiornamento: {date}",
     "inCode": "Nel codice: ",
+    "status": "Gli account sono sospesi mentre il server dell’applicazione viene spostato. Il sito pubblico, le due verifiche gratuite e la demo con dati di esempio funzionano. Ultimo aggiornamento di questo stato: {date}.",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "Come NormaAI tratta i dati personali di chi usa l’applicazione, di chi visita il sito e di chi ci scrive, ai sensi del Regolamento (UE) 2016/679 (GDPR).",
@@ -1359,14 +1938,15 @@
           "2": "Organizzazione: nome, identificativo, piano.",
           "3": "Clienti, cioè le aziende analizzate: nome, settore, numero di dipendenti, fatturato, giurisdizioni, normative applicabili.",
           "4": "Conversazioni: domande e risposte con i relativi metadati (per esempio le fonti citate), collegate all’utente e, se indicato, al cliente.",
-          "5": "Documenti caricati: il file viene elaborato e cancellato; resta il testo estratto, in frammenti indicizzati con l’identificativo dell’organizzazione.",
-          "6": "Valutazioni (gap analysis) e avvisi generati per ciascun cliente.",
-          "7": "Registro degli eventi: azione, esito, utente, organizzazione, indirizzo IP, data e ora.",
-          "8": "Il profilo aziendale compilato nei moduli è conservato nel browser (sessionStorage) e inviato all’API insieme alla domanda."
+          "5": "Documenti caricati per le risposte: il file viene elaborato e cancellato; resta il testo estratto, in frammenti indicizzati con l’identificativo dell’organizzazione.",
+          "6": "Documenti controllati: il file che carichi per controllarne i riferimenti di legge viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende.",
+          "7": "Valutazioni (gap analysis) e avvisi generati per ciascun cliente.",
+          "8": "Registro degli eventi: azione, esito, utente, organizzazione, indirizzo IP, data e ora.",
+          "9": "Il profilo aziendale compilato nei moduli è conservato nel browser (sessionStorage) e inviato all’API insieme alla domanda."
         },
         "intro2": "Sul sito pubblico:",
         "site": {
-          "1": "Richiesta del Codex o di una demo: email, nome dell’organizzazione, ruolo e modulo di provenienza. Quando la richiesta passa dall’API, vengono salvati anche indirizzo IP, user agent e pagina di provenienza (per limitare lo spam), oltre alla data e al numero di download. Quando passa dalla funzione serverless su Vercel, i dati sono scritti nei log della funzione e inviati via email a info@normaai.org.",
+          "1": "Richiesta del Codex, di una demo o dell’analisi dopo una verifica gratuita: email, nome dell’organizzazione, ruolo e modulo di provenienza (per le verifiche anche l’esito e, per l’AI Act, le situazioni spuntate). La richiesta è ricevuta da una funzione serverless su Vercel: i dati sono scritti nei log della funzione e, quando l’invio delle email è configurato, inviati a info@normaai.org tramite Resend. Non sono salvati in un database dell’applicazione.",
           "2": "Email: i dati contenuti nei messaggi inviati a info@normaai.org.",
           "3": "Statistiche di visita: Vercel Web Analytics, senza cookie e senza identificare il visitatore."
         }
@@ -1384,11 +1964,11 @@
       "processors": {
         "title": "4. Sub-responsabili e fornitori",
         "items": {
-          "1": "<strong>Hetzner Online GmbH</strong> (Germania): server su cui girano l’API e i database. I dati dell’applicazione restano nell’Unione europea.",
-          "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, nella regione di Francoforte, e funzione serverless che riceve le richieste del Codex. Statistiche di visita senza cookie.",
-          "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito; il codice permette di configurare in alternativa Anthropic o OpenRouter.",
+          "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione conserva i dati; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
+          "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, con le funzioni lato server nella regione di Francoforte, compresa la funzione che riceve le richieste del Codex e delle verifiche gratuite. Statistiche di visita senza cookie.",
+          "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito oggi: la scelta è una configurazione, e il codice supporta in alternativa Anthropic e OpenRouter.",
           "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali (consegna del Codex, notifica delle nuove richieste).",
-          "5": "<strong>Cloudflare, Inc.</strong>: solo gestione DNS del dominio normaai.org, senza proxy del traffico. Tratta le interrogazioni DNS, non i contenuti."
+          "5": "<strong>Cloudflare, Inc.</strong> (USA): DNS del dominio normaai.org e instradamento della posta in arrivo: i messaggi scritti a info@normaai.org passano dai server di posta di Cloudflare prima di arrivare alla casella di destinazione. Il traffico del sito non passa dal proxy di Cloudflare."
         },
         "p": "Per i fornitori con sede negli Stati Uniti i trasferimenti si basano sulle clausole contrattuali standard previste dai loro accordi sul trattamento dei dati."
       },
@@ -1396,8 +1976,8 @@
         "title": "5. Conservazione",
         "items": {
           "1": "Dati dell’applicazione: per tutta la durata del rapporto. Non esiste una cancellazione automatica a scadenza. L’amministratore dell’organizzazione può in qualsiasi momento esportare i dati e cancellare clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati dall’applicazione; ogni utente può cancellare le proprie conversazioni. Per chiudere gli account e l’organizzazione scrivi a info@normaai.org.",
-          "2": "Copie di backup: il database è copiato ogni notte e le copie sono conservate 30 giorni sul server. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
-          "3": "Richieste del Codex: conservate nel database finché non ne viene chiesta la cancellazione. Il link di download scade dopo 30 giorni.",
+          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni. Quando il gestore configura un archivio esterno con restic, la copia lascia anche il server, cifrata prima dell'invio, ed è conservata per lo stesso periodo. Un dato cancellato può restare in una copia di backup fino a 30 giorni. Oggi il server di produzione è spento e nessun backup è in corso: riprenderanno quando il nuovo server sarà attivo.",
+          "3": "Richieste del Codex e delle verifiche gratuite: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
           "4": "Registro degli eventi: nei log del server, con la loro rotazione.",
           "5": "Dati nel browser: vedi la <cookie>cookie policy</cookie>."
         }
@@ -1413,7 +1993,7 @@
       "ai": {
         "title": "7. Trasparenza AI (art. 50 AI Act)",
         "p": {
-          "1": "NormaAI usa un modello linguistico generativo (Google Gemini per impostazione predefinita) per scrivere le risposte a partire dai passaggi normativi recuperati dal corpus, costruito da EUR-Lex e Normattiva (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Tutti gli output sono generati da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report.",
+          "1": "NormaAI usa un modello linguistico generativo di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) per scrivere le risposte a partire dai passaggi recuperati dal corpus: testi ufficiali di atti dell’Unione pubblicati su EUR-Lex (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Tutti gli output sono generati da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report.",
           "2": "NormaAI non prende decisioni automatizzate con effetti giuridici sulle persone: produce analisi che un professionista valuta."
         }
       },
@@ -1432,9 +2012,8 @@
       "nature": {
         "title": "1. Natura del servizio",
         "p": {
-          "1": "NormaAI è un servizio gestito da Daniel Culotta, persona fisica, Inverigo (CO), Italia, nell’ambito di un progetto non ancora costituito in società. Contatti: <mail>info@normaai.org</mail>.",
-          "2": "NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo esclusivamente informativo e di supporto decisionale in materia di conformità normativa europea. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
-          "3": "La modalità \"Demo con dati di esempio\" usa dati fittizi, non interroga il corpus reale ed è segnalata in ogni pagina dell’applicazione."
+          "1": "NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo esclusivamente informativo e di supporto decisionale in materia di conformità normativa europea. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
+          "2": "La modalità \"Demo con dati di esempio\" usa dati fittizi, non interroga il corpus reale ed è segnalata in ogni pagina dell’applicazione."
         }
       },
       "ai": {
@@ -1442,8 +2021,8 @@
         "intro": "Ai sensi dell’art. 50 del Regolamento (UE) 2024/1689 (AI Act) ti informiamo che:",
         "items": {
           "1": "usando NormaAI interagisci con un sistema di intelligenza artificiale, non con una persona;",
-          "2": "le risposte, le verifiche di ambito, le gap analysis, gli avvisi e i report sono generati automaticamente da un modello linguistico (Google Gemini per impostazione predefinita) a partire dai testi normativi recuperati dal corpus. Nessuno li scrive o li rivede prima che ti vengano mostrati;",
-          "3": "ogni risposta indica le fonti citate (atto, articolo, passaggio) e un livello di affidabilità. Quando il sistema non trova sostegno sufficiente nel corpus, lo dichiara e segnala la necessità di una revisione esperta invece di rispondere;",
+          "2": "le risposte, le gap analysis, gli avvisi e i report sono generati automaticamente da un modello linguistico di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) a partire dai testi normativi recuperati dal corpus; le verifiche di ambito applicano regole scritte a mano ai dati che inserisci. Nessuno scrive o rivede questi risultati prima che ti vengano mostrati;",
+          "3": "ogni risposta indica le fonti citate (atto, articolo, passaggio), per ciascuna se il passaggio è stato ritrovato alla lettera nel testo ufficiale, e un livello di affidabilità. Quando il sistema non trova sostegno sufficiente nel corpus, lo dichiara e segnala la necessità di una revisione esperta invece di rispondere;",
           "4": "le risposte possono contenere errori, omissioni o citazioni imprecise. Verifica sempre il testo ufficiale su EUR-Lex o Normattiva e consulta un professionista prima di prendere decisioni."
         },
         "p": "Lo stesso avviso è riportato nell’applicazione e nei report generati."
@@ -1515,10 +2094,6 @@
           "purpose": "Stato (aperta o compressa) della barra laterale.",
           "duration": "Finché non la cancelli."
         },
-        "alertPrefs": {
-          "purpose": "Filtri scelti nella pagina degli avvisi (gravità, normativa, letti o non letti).",
-          "duration": "Finché non la cancelli."
-        },
         "qaLanguage": {
           "purpose": "Lingua delle risposte scelta nella pagina Chiedi, quando diversa da quella dell’interfaccia.",
           "duration": "Finché non la cancelli o non cambi la lingua dell’interfaccia."
@@ -1531,16 +2106,8 @@
           "purpose": "Conversazione corrente della pagina Chiedi.",
           "duration": "Chiusura della scheda."
         },
-        "gapResult": {
-          "purpose": "Ultimo risultato di gap analysis.",
-          "duration": "Chiusura della scheda."
-        },
-        "gapScores": {
-          "purpose": "Punteggi per framework usati nei grafici di analisi.",
-          "duration": "Chiusura della scheda."
-        },
-        "workflowItems": {
-          "purpose": "Attività della pagina di workflow.",
+        "clientGap": {
+          "purpose": "Ultimo elenco dei requisiti preparato per un cliente (una chiave per ciascun cliente).",
           "duration": "Chiusura della scheda."
         },
         "demoReports": {
@@ -1553,6 +2120,10 @@
         },
         "demoClientsDeleted": {
           "purpose": "Clienti rimossi nella demo con dati di esempio.",
+          "duration": "Chiusura della scheda."
+        },
+        "demoInvites": {
+          "purpose": "Inviti creati nella demo con dati di esempio.",
           "duration": "Chiusura della scheda."
         }
       },
@@ -1594,12 +2165,12 @@
       "intro": "Le misure di sicurezza presenti nel codice di NormaAI e quelle che ancora mancano. Il codice è pubblico: ogni sezione indica i file da cui è presa, così chi deve valutarci può controllare invece di fidarsi.",
       "hosting": {
         "title": "1. Dove girano il sito, l’API e i dati",
-        "p1": "Il sito pubblico e l’interfaccia dell’applicazione sono ospitati su Vercel, nella regione fra1 (Francoforte). L’API e i database (PostgreSQL per i dati, Qdrant per la ricerca, Redis per cache e sessioni) girano su un server Hetzner in Germania.",
-        "p2": "In produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e senza capability Linux aggiuntive."
+        "p1": "Il sito pubblico e l’interfaccia dell’applicazione sono ospitati su Vercel; le funzioni lato server girano nella regione fra1 (Francoforte). L’API e i database (PostgreSQL per i dati, Qdrant per l’indice di ricerca, Redis per cache e sessioni) sono progettati per girare su un server Hetzner in Germania.",
+        "p2": "Nella configurazione di produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e senza capability Linux aggiuntive."
       },
       "model": {
         "title": "2. Il modello linguistico",
-        "p1": "Le risposte sono scritte da un modello linguistico di terze parti. Per impostazione predefinita è Google Gemini (impostazione <code>llm_provider</code> uguale a <code>gemini</code>, modello della famiglia Gemini 2.5 Flash). Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi.",
+        "p1": "Le risposte sono scritte da un modello linguistico di un fornitore esterno, scelto in configurazione (impostazione <code>llm_provider</code>). Oggi il valore predefinito è <code>gemini</code>: Google Gemini, di una società statunitense. Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi.",
         "p2": "Il fornitore si può cambiare in configurazione: il codice supporta anche Anthropic e OpenRouter. Oggi non esiste una modalità in cui le risposte sono generate interamente sui nostri server."
       },
       "access": {
@@ -1618,9 +2189,9 @@
       },
       "isolation": {
         "title": "4. Separazione tra organizzazioni",
-        "p": "Ogni organizzazione vede solo i propri dati, e la separazione è applicata dal database, non solo dall’applicazione.",
+        "p": "Ogni organizzazione vede solo i propri dati. Per le tabelle dei dati delle organizzazioni la separazione è applicata dal database, non solo dall’applicazione.",
         "items": {
-          "1": "PostgreSQL ha policy di Row Level Security su utenti, clienti, conversazioni, valutazioni e avvisi: ogni riga è visibile solo nella sessione dell’organizzazione a cui appartiene.",
+          "1": "PostgreSQL applica policy di Row Level Security alle tabelle dei dati delle organizzazioni (clienti, conversazioni, valutazioni, avvisi e inviti): ogni riga è visibile solo nella sessione dell’organizzazione a cui appartiene. Le tabelle degli utenti e delle organizzazioni non hanno queste policy, per scelta: l’accesso, il rinnovo dei token e la registrazione cercano l’utente prima che esista un contesto di organizzazione. Per queste due tabelle la separazione è applicata dalle query dell’applicazione.",
           "2": "L’applicazione si collega con un ruolo dedicato non superuser (<code>normaai_app</code>), perché PostgreSQL ignora le policy per i superuser e per i proprietari delle tabelle. In produzione, se il ruolo connesso è superuser, l’applicazione si rifiuta di partire.",
           "3": "Il contesto dell’organizzazione viene impostato a ogni transazione e azzerato quando la connessione torna nel pool: non può passare da una richiesta a quella successiva.",
           "4": "La cache delle risposte usa chiavi che includono l’organizzazione: una risposta calcolata per un cliente non viene mai servita a un altro.",
@@ -1631,7 +2202,8 @@
       "documents": {
         "title": "5. Documenti caricati",
         "p1": "Un documento caricato (PDF, HTML o immagine, fino a 50 MB) viene scritto in un file temporaneo, elaborato e cancellato alla fine dell’elaborazione, anche se questa fallisce. Resta il testo estratto, suddiviso in frammenti e indicizzato nel motore di ricerca con l’identificativo dell’organizzazione.",
-        "p2": "L’amministratore dell’organizzazione può esportare in JSON tutti i dati dell’organizzazione e cancellare in blocco clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati. La cancellazione richiede una conferma esplicita ed è registrata nel registro degli eventi."
+        "p2": "L’amministratore dell’organizzazione può esportare in JSON tutti i dati dell’organizzazione e cancellare in blocco clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati. La cancellazione richiede una conferma esplicita ed è registrata nel registro degli eventi.",
+        "p3": "Un documento caricato per il controllo dei riferimenti di legge segue un’altra strada: il file viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende."
       },
       "headers": {
         "title": "6. Intestazioni HTTP, CORS e indirizzi IP",
@@ -1642,8 +2214,8 @@
         }
       },
       "links": {
-        "title": "7. Link di download firmati",
-        "p": "Chi richiede il Codex riceve un link firmato con HMAC-SHA256 e valido 30 giorni. La firma è verificata con un confronto in tempo costante; un link scaduto o modificato viene rifiutato. Il modulo pubblico è limitato in frequenza per indirizzo IP."
+        "title": "7. Download del Codex",
+        "p": "Il Codex è un file PDF pubblico del sito: chi lo richiede dal modulo riceve il suo indirizzo, che non è firmato e non scade. Le richieste passano da una funzione serverless sullo stesso dominio, con un campo esca che scarta in silenzio i moduli compilati da programmi automatici. L’API contiene anche un percorso con link firmati HMAC-SHA256 e validi 30 giorni, ma il sito oggi non lo usa."
       },
       "audit": {
         "title": "8. Registro degli eventi",
@@ -1652,8 +2224,8 @@
       },
       "backup": {
         "title": "9. Backup",
-        "p1": "Uno script avviato da cron ogni notte alle 02:00 esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l’archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> dello stesso server.",
-        "p2": "Lo script non cifra il file e non lo copia su un altro sistema: la copia settimanale su uno storage esterno è una procedura manuale documentata, non automatica. Qdrant e Redis non vengono salvati: l’indice si ricostruisce con una nuova indicizzazione, la cache è effimera per costruzione. La procedura di ripristino è documentata nel repository."
+        "p1": "Il repository contiene lo script di backup, pensato per essere avviato da cron ogni notte alle 02:00: esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l'archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> del server.",
+        "p2": "Se il gestore configura un archivio restic, lo script invia ogni notte fuori dal server il dump del database, le snapshot dell'indice Qdrant e la configurazione del server, cifrati da restic prima dell'invio, e conserva anche quelle copie per 30 giorni. Senza archivio restic resta solo il dump sul disco del server, non cifrato. Redis non viene salvato: la cache è effimera per costruzione. Gli script sono provati su simulazioni: nessuna copia è ancora stata inviata a un archivio reale e nessun ripristino è stato fatto. Il server di produzione oggi è spento, quindi nessun backup è in corso. La procedura di ripristino è documentata nel repository."
       },
       "supplyChain": {
         "title": "10. Sviluppo e catena di fornitura",
@@ -1661,7 +2233,7 @@
           "1": "Il codice è pubblico su <github>GitHub</github> con licenza MIT.",
           "2": "A ogni push e pull request la CI esegue ruff (lint e formato), mypy (bloccante sui moduli di autenticazione, database e audit), i test del backend su PostgreSQL, Qdrant e Redis reali, type-check, test e build del frontend, la build dell’immagine Docker con scansione Trivy, Gitleaks sull’intera cronologia git, Bandit e la generazione di una SBOM CycloneDX.",
           "3": "CodeQL analizza Python e JavaScript/TypeScript con le query security-extended a ogni push sul ramo principale e ogni settimana.",
-          "4": "A ogni release l’immagine è bloccata se Trivy trova vulnerabilità critiche o alte, e la SBOM è allegata alla release. Dependabot propone gli aggiornamenti delle dipendenze.",
+          "4": "Non esiste ancora una release pubblicata. Il workflow di release parte da un tag di versione: costruisce l’immagine, la blocca se Trivy trova vulnerabilità critiche o alte per le quali esiste una correzione, e allega la SBOM alla release. Dependabot propone gli aggiornamenti delle dipendenze.",
           "5": "I file <code>.env</code> e le chiavi <code>.pem</code> sono esclusi dal repository; la CI fallisce se trova chiavi API o chiavi private nei file tracciati."
         }
       },
@@ -1671,7 +2243,7 @@
           "1": "Nessun SSO (SAML o OpenID Connect) e nessuna autenticazione a due fattori: si entra solo con email e password.",
           "2": "Nessuna certificazione SOC 2 o ISO 27001 e nessun penetration test formale di terze parti. Le scansioni automatiche in CI non lo sostituiscono.",
           "3": "Nessuna cifratura dei dati a riposo gestita dall’applicazione: la protezione dei dati sul disco è quella del server.",
-          "4": "Nessun archivio a lungo termine del registro degli eventi e nessuna copia di backup automatica fuori dal server.",
+          "4": "Nessun archivio a lungo termine del registro degli eventi. La copia di backup fuori dal server esiste solo quando il gestore configura restic e non è ancora stata provata su un archivio reale.",
           "5": "Il filtro contro le prompt injection registra i tentativi ma non blocca l’input. La difesa reale è strutturale: il testo dell’utente non entra mai nel prompt di sistema e le citazioni vengono controllate contro i passaggi recuperati.",
           "6": "Nessun programma di bug bounty."
         }
@@ -1685,35 +2257,35 @@
           "3": "Correzione o mitigazione delle segnalazioni critiche e alte entro 30 giorni.",
           "4": "Nessuna ricompensa economica; riconoscimento nelle note di rilascio, se gradito."
         },
-        "p2": "Ricevono correzioni di sicurezza solo il ramo principale e l’ultima release pubblicata.",
+        "p2": "Riceve correzioni di sicurezza il ramo principale. Non esiste ancora una release pubblicata.",
         "p3": "Per questionari di sicurezza o per il modello di accordo sul trattamento dei dati (art. 28 GDPR, nella cartella <code>docs/legal/</code> del repository) scrivi allo stesso indirizzo."
       }
     },
     "metodo": {
       "metaTitle": "Metodo e trasparenza",
-      "metaDescription": "Come nasce una risposta di NormaAI: corpus EUR-Lex e Normattiva con data dichiarata, ricerca ibrida, controlli di aderenza alle fonti, astensione quando il testo non basta. Ogni affermazione rimanda al file del codice pubblico che la realizza.",
+      "metaDescription": "Come nasce una risposta di NormaAI: corpus di atti dell’Unione scaricati da EUR-Lex con data dichiarata, ricerca ibrida, verifica letterale delle citazioni, astensione quando il testo non basta. Ogni affermazione rimanda al file del codice pubblico che la realizza.",
       "title": "Come nasce una risposta, e quando non arriva.",
       "intro": "Pubblichiamo il metodo e il codice. Questa pagina descrive la pipeline così com’è oggi, senza contatori e senza promesse: ogni sezione rimanda ai file del repository pubblico che la realizzano, così si può verificare invece di credere.",
       "corpus": {
         "title": "Il corpus: testi ufficiali, con data",
-        "p1": "Le fonti sono due: EUR-Lex, interrogato tramite l’endpoint SPARQL dell’Ufficio delle pubblicazioni dell’Unione, e gli Open Data di Normattiva per il recepimento italiano. I testi vengono suddivisi per articolo e indicizzati; ogni frammento conserva atto (CELEX o URN), articolo, titolo della sezione e data.",
-        "p2": "Gli atti nell’elenco di acquisizione:",
+        "p1": "Il corpus delle risposte contiene 18 atti dell’Unione, in italiano e in inglese, scaricati da CELLAR, l’archivio dell’Ufficio delle pubblicazioni dell’Unione da cui attinge EUR-Lex. Quando esiste viene indicizzato il testo consolidato più recente, cioè l’atto con le modifiche successive già inserite. Oggi il corpus non contiene leggi nazionali italiane. I testi sono suddivisi per articolo; ogni frammento conserva atto (CELEX), articolo, titolo della sezione, lingua e data.",
+        "p2": "I 18 atti nell’elenco di acquisizione:",
         "frameworks": {
           "1": {
             "name": "CSRD",
-            "acts": "Dir. (UE) 2022/2464, ESRS (Reg. delegato (UE) 2023/2772), direttiva stop-the-clock (Dir. (UE) 2025/794) e Omnibus I (Dir. (UE) 2026/470)"
+            "acts": "Dir. (UE) 2022/2464, direttiva contabile 2013/34/UE, ESRS (Reg. delegato (UE) 2023/2772), direttiva stop-the-clock (Dir. (UE) 2025/794) e Omnibus I (Dir. (UE) 2026/470)"
           },
           "2": {
             "name": "CSDDD",
-            "acts": "Dir. (UE) 2024/1760 e Omnibus I (Dir. (UE) 2026/470)"
+            "acts": "Dir. (UE) 2024/1760, con le due direttive modificative già contate sopra"
           },
           "3": {
             "name": "AI Act",
-            "acts": "Reg. (UE) 2024/1689"
+            "acts": "Reg. (UE) 2024/1689 e Reg. (UE) 2026/1744 (Omnibus digitale sull’IA)"
           },
           "4": {
             "name": "DORA",
-            "acts": "Reg. (UE) 2022/2554"
+            "acts": "Reg. (UE) 2022/2554, Reg. delegati (UE) 2024/1773 e 2024/1774, Reg. di esecuzione (UE) 2024/2956"
           },
           "5": {
             "name": "NIS2",
@@ -1721,7 +2293,7 @@
           },
           "6": {
             "name": "Tassonomia UE",
-            "acts": "Reg. (UE) 2020/852"
+            "acts": "Reg. (UE) 2020/852 e Reg. delegato (UE) 2023/2486"
           },
           "7": {
             "name": "GDPR",
@@ -1729,7 +2301,7 @@
           },
           "8": {
             "name": "CRA",
-            "acts": "Reg. (UE) 2024/2847 e Reg. di esecuzione (UE) 2025/2392, aggiunto per ultimo all’elenco"
+            "acts": "Reg. (UE) 2024/2847 e Reg. di esecuzione (UE) 2025/2392"
           }
         },
         "p3": "Il corpus non si aggiorna da solo. Il ciclo periodico di acquisizione esiste nel codice ma è spento per impostazione predefinita: il corpus viene reindicizzato con operazioni esplicite, e la data di riferimento (<code>corpus_as_of</code>) viene impostata al momento del deploy, restituita nei metadati di ogni risposta dell’API e stampata a piè di pagina dei report. I testi superati da atti successivi sono esclusi dalla ricerca per impostazione predefinita."
@@ -1740,27 +2312,27 @@
         "steps": {
           "1": {
             "title": "Recupero ibrido",
-            "body": "La domanda viene cercata in due modi insieme: per significato, con vettori densi del modello multilingue paraphrase-multilingual-mpnet-base-v2 (768 dimensioni, scelto perché il corpus mescola l’inglese di EUR-Lex e l’italiano di Normattiva), e per termini esatti, con vettori sparsi in stile BM25 che catturano «articolo 29» o un numero CELEX. Le due classifiche sono fuse con Reciprocal Rank Fusion, senza pesi da tarare. I filtri escludono i testi superati e limitano la ricerca al corpus condiviso più i documenti dell’organizzazione."
+            "body": "La domanda viene cercata in due modi insieme: per significato, con vettori densi del modello multilingue paraphrase-multilingual-mpnet-base-v2 (768 dimensioni, scelto perché il corpus è in italiano e in inglese e le domande arrivano per lo più in italiano), e per termini esatti, con vettori sparsi in stile BM25 che catturano «articolo 29» o un numero CELEX. Le due classifiche sono fuse con Reciprocal Rank Fusion, senza pesi da tarare. I filtri escludono i testi superati e limitano la ricerca al corpus condiviso più i documenti dell’organizzazione. Un modello di riordino dei risultati esiste nel codice ed è spento per impostazione predefinita."
           },
           "2": {
             "title": "Redazione dal testo recuperato",
-            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello predefinito è Google Gemini, configurabile."
+            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello è quello del fornitore esterno scelto in configurazione: oggi, per impostazione predefinita, Google Gemini."
           },
           "3": {
-            "title": "Più campioni, una decisione",
-            "body": "Per calibrare la fiducia, il sistema genera più risposte indipendenti (3 per impostazione predefinita) e le raggruppa per comportamento. Ne deriva un punteggio di fiducia calcolato, non autodichiarato dal modello: sopra 0,85 la risposta passa; sotto 0,50, o se nemmeno due campioni concordano, il sistema si astiene e lo scrive, chiedendo una revisione esperta. Se la migliore evidenza recuperata è debole (similarità densa sotto 0,25), la risposta viene comunque segnalata per revisione e la fiducia è limitata."
+            "title": "Controllo di aderenza alle fonti",
+            "body": "Ogni citazione della risposta è confrontata con i passaggi recuperati: la normativa, i numeri CELEX nel testo, il numero di articolo e la frase citata devono esistere nell’evidenza. Una citazione non supportata non blocca la risposta, ma la marca come «revisione esperta necessaria» e ne limita il livello di affidabilità."
           },
           "4": {
-            "title": "Controllo di aderenza alle fonti",
-            "body": "Ogni citazione della risposta è confrontata con i passaggi recuperati: la normativa, i numeri CELEX nel testo, il numero di articolo e la frase citata devono esistere nell’evidenza. Una citazione non supportata non blocca la risposta, ma la marca come «revisione esperta necessaria» e abbassa la fiducia. Il controllo gira sulla bozza e di nuovo sulla risposta effettivamente servita."
+            "title": "Verifica letterale delle citazioni",
+            "body": "È un controllo deterministico, che non dipende da un modello: il passaggio che la risposta cita viene cercato nel testo ufficiale recuperato. Da novembre 2026 una citazione conta come verificata solo se è letterale: numeri, parole brevi e negazioni devono coincidere esattamente; sono tollerati soltanto la punteggiatura, gli accenti, la sillabazione a fine riga e l’errore di una lettera dentro una parola lunga. Il testo dei documenti caricati da un’organizzazione non vale mai come testo ufficiale. Se una risposta ha citazioni e nessuna risulta verificata, viene servita con un avviso e con il segnale di revisione esperta; in configurazione si può scegliere di sostituirla con un’astensione."
           },
           "5": {
-            "title": "Chain-of-Verification, su richiesta",
-            "body": "Esiste una verifica a cinque fasi (estrazione delle affermazioni, domande di verifica, revisione, validazione dei riferimenti CELEX e URN contro EUR-Lex e Normattiva), ma è spenta per impostazione predefinita e si attiva per singola richiesta, solo per le risposte con fiducia sotto 0,85. Non è applicata a ogni risposta."
+            "title": "Campionamento multiplo, spento per impostazione predefinita",
+            "body": "Il sistema può generare più risposte indipendenti (3 nella configurazione di partenza) e raggrupparle per comportamento, per ricavare un punteggio di fiducia calcolato invece che dichiarato dal modello: sopra 0,85 la risposta passa; sotto 0,50, o se nemmeno due campioni concordano, il sistema si astiene e lo scrive. Nello stesso passaggio, se la migliore evidenza recuperata è debole (similarità densa sotto 0,25), la risposta viene segnalata per revisione. Questo strato moltiplica le chiamate al modello ed è spento per impostazione predefinita: finché resta spento, il livello di affidabilità parte dalla stima che il modello dà di sé ed è limitato dai due controlli precedenti."
           },
           "6": {
-            "title": "In lavorazione: verifica deterministica",
-            "body": "Stiamo introducendo un controllo deterministico delle citazioni, cioè un confronto esatto del passaggio citato con il testo ufficiale indicizzato, che non dipende da un modello. Finché non è in produzione, in questa pagina resta un lavoro in corso, non un fatto."
+            "title": "Chain-of-Verification, su richiesta",
+            "body": "Esiste una verifica a cinque fasi (estrazione delle affermazioni, domande di verifica, risposte alle domande, revisione, validazione dei riferimenti CELEX e URN), ma è spenta per impostazione predefinita e si attiva per singola richiesta, solo per le risposte con fiducia sotto 0,85. Non è applicata a ogni risposta."
           }
         }
       },
@@ -1768,14 +2340,15 @@
         "title": "Cosa vede chi legge",
         "items": {
           "1": "L’atto e l’articolo citati, il passaggio riportato e il link al testo ufficiale.",
-          "2": "Un livello di affidabilità espresso a parole, non una percentuale.",
-          "3": "Il segnale «revisione esperta necessaria» quando il sistema si astiene, trova evidenza debole o una citazione non supportata.",
-          "4": "L’avviso che le risposte sono generate da un sistema di intelligenza artificiale (Reg. (UE) 2024/1689, art. 50): nel piè di pagina dell’applicazione, nella pagina Chiedi e nei report."
+          "2": "Per ogni citazione, lo stato: «Verificata» quando il passaggio è stato ritrovato alla lettera nel testo ufficiale, «Da verificare» quando non lo è.",
+          "3": "Un livello di affidabilità espresso a parole, non una percentuale.",
+          "4": "Il segnale «revisione esperta necessaria» quando il sistema si astiene, quando una citazione non è supportata o quando nessuna citazione è verificata.",
+          "5": "L’avviso che le risposte sono generate da un sistema di intelligenza artificiale (Reg. (UE) 2024/1689, art. 50): nel piè di pagina dell’applicazione, nella pagina Chiedi e nei report."
         }
       },
       "data": {
         "title": "Dati e separazione tra organizzazioni",
-        "p1": "Il sito è su Vercel (regione di Francoforte); l’API e i database su un server Hetzner in Germania. Ogni organizzazione vede solo i propri dati: Row Level Security in PostgreSQL con un ruolo non superuser, chiavi di cache per organizzazione, filtro per organizzazione nel motore di ricerca. L’amministratore può esportare e cancellare i dati dell’organizzazione dall’applicazione.",
+        "p1": "Il sito è su Vercel; l’API, il database e l’indice di ricerca sono progettati per girare su un server Hetzner in Germania. La domanda, con i passaggi recuperati, viene inviata al fornitore del modello linguistico configurato. Ogni organizzazione vede solo i propri dati: Row Level Security in PostgreSQL sulle tabelle dei dati delle organizzazioni, con un ruolo non superuser; chiavi di cache per organizzazione; filtro per organizzazione nel motore di ricerca. L’amministratore può esportare e cancellare i dati dell’organizzazione dall’applicazione.",
         "p2": "I dettagli, e ciò che manca ancora (SSO, certificazioni, penetration test), sono nella pagina <securityPage>Sicurezza</securityPage>."
       },
       "ci": {
@@ -1801,7 +2374,7 @@
           },
           "4": {
             "title": "Chain-of-Verification opzionale",
-            "body": "La verifica a cinque fasi aggiunge altre chiamate al modello per ogni risposta. È disponibile su richiesta, non promessa su tutto: i controlli sempre attivi sono il campionamento multiplo e l’aderenza alle fonti."
+            "body": "La verifica a cinque fasi aggiunge altre chiamate al modello per ogni risposta. È disponibile su richiesta, non promessa su tutto. Lo stesso vale per il campionamento multiplo, spento per impostazione predefinita: i controlli sempre attivi sono l’aderenza alle fonti e la verifica letterale delle citazioni."
           },
           "5": {
             "title": "Cyber Resilience Act nell’elenco",
@@ -1926,7 +2499,7 @@
     "compliance": {
       "high": {
         "label": "Buon livello di conformità",
-        "sublabel": "L’organizzazione presenta un solido grado di adempimento"
+        "sublabel": "La maggior parte dei requisiti esaminati risulta coperta"
       },
       "medium": {
         "label": "Conformità parziale",
@@ -1951,7 +2524,7 @@
     },
     "cookieBanner": {
       "label": "Informativa cookie",
-      "text": "Usiamo solo cookie tecnici necessari al funzionamento del sito (sessione, lingua, preferenze). Nessun cookie di profilazione o di terze parti. Dettagli nella <link>cookie policy</link>.",
+      "text": "Questo sito usa un solo cookie tecnico, per la lingua, e l’archiviazione locale del browser per l’accesso e le preferenze. Nessun cookie di profilazione o di terze parti. Dettagli nella <link>cookie policy</link>.",
       "ok": "Ho capito"
     },
     "actRegulation": "Regolamento (UE) {year}/{number}",

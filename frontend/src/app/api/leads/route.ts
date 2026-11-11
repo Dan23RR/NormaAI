@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { LOCALE_COOKIE, toLanguage } from '@/i18n/config'
 
 /**
  * Serverless lead capture. Every public form (landing, /codex, the static
@@ -68,6 +69,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'Invalid JSON body.' }, { status: 422 })
   }
 
+  // The landing form shows `message` as it is, so it follows the interface
+  // language (the `normaai.locale` cookie, Italian by default). The two static
+  // checkers are Italian only and do not show it.
+  const english = toLanguage(req.cookies.get(LOCALE_COOKIE)?.value) === 'en'
+
   // Honeypot: pretend success so bots stop retrying, deliver nothing.
   // Logged first: a human whose browser autofilled the hidden field would
   // otherwise vanish without a trace ("NEVER lose a lead" applies here too).
@@ -83,7 +89,10 @@ export async function POST(req: NextRequest) {
         ts: new Date().toISOString(),
       }),
     )
-    return NextResponse.json({ message: 'Richiesta registrata.' }, { status: 200 })
+    return NextResponse.json(
+      { message: english ? 'Request recorded.' : 'Richiesta registrata.' },
+      { status: 200 },
+    )
   }
 
   const email = clean(body.email)
@@ -94,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json(
-      { detail: 'Indirizzo email non valido.' },
+      { detail: english ? 'Invalid email address.' : 'Indirizzo email non valido.' },
       { status: 422 },
     )
   }
@@ -151,61 +160,76 @@ export async function POST(req: NextRequest) {
       from,
       to: [email],
       subject: isAiAct
-        ? 'Il tuo check AI Act (Art. 50) + Codex Post-Omnibus - NormaAI'
+        ? 'La tua verifica AI Act (art. 50) e il Codex Post-Omnibus - NormaAI'
         : 'Il tuo Codex Post-Omnibus 2025-2029 - NormaAI',
+      // Legal statements checked on the Italian official texts on 2026-11-11:
+      // AI Act art. 113 (application from 2 August 2026) and art. 111(4)
+      // (2 December 2026), consolidated text of 27 July 2026; Directive
+      // 2013/34/EU art. 19a(1) and Directive (EU) 2024/1760 art. 37, both as
+      // consolidated on 18 March 2026.
       text: (isAiAct
         ? [
             "Grazie per l'interesse in NormaAI.",
             '',
-            'Ho ricevuto il tuo check AI Act (Art. 50, Reg. UE 2024/1689): ti',
-            'scrivo io, personalmente, con la lettura del tuo caso - chi è il',
-            'destinatario di ogni obbligo, quali eccezioni valgono per voi e',
-            'cosa predisporre prima del 2 agosto 2026.',
+            "Ho ricevuto la tua verifica sull'articolo 50 dell'AI Act",
+            '(regolamento (UE) 2024/1689). Ti scrivo io, di persona, con la',
+            'lettura del tuo caso: a chi è rivolto ogni obbligo, quali',
+            'eccezioni valgono per te e che cosa predisporre.',
             '',
-            'Se vuoi anticipare, rispondi a questa email: 20 minuti di',
-            'confronto, senza impegno.',
+            "L'articolo 50 si applica dal 2 agosto 2026. Per i sistemi",
+            'generativi immessi sul mercato prima di quella data, i fornitori',
+            'devono adeguarsi alla marcatura entro il 2 dicembre 2026',
+            '(art. 111, par. 4).',
             '',
-            'In omaggio, come promesso, il Codex Post-Omnibus CSRD/CSDDD',
-            '(PDF, 17 pagine - il quadro sostenibilità post-Omnibus I):',
+            'Se vuoi parlarne prima, rispondi a questa email: una chiamata di',
+            '30 minuti, senza impegno.',
+            '',
+            'Come promesso, il Codex Post-Omnibus su CSRD e CSDDD (PDF):',
             `${origin}${CODEX_PATH}`,
             '',
-            'Daniel Culotta · NormaAI · info@normaai.org',
+            'Daniel Culotta, NormaAI, info@normaai.org',
             '',
             '--',
-            'Ricevi questa email perché hai usato il check AI Act sul nostro sito.',
-            'Usiamo i tuoi dati solo per inviarti l\'analisi e ricontattarti su questo',
-            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
-            'rispondendo a questa email.',
+            'Ricevi questa email perché hai usato la verifica AI Act sul sito.',
+            'Uso i tuoi dati solo per mandarti la lettura del caso e ricontattarti',
+            'su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del',
+            'GDPR). Puoi opporti in ogni momento rispondendo a questa email.',
           ]
         : [
             "Grazie per l'interesse in NormaAI.",
             '',
-            `Scarica il Codex Post-Omnibus 2025-2029 (PDF, 17 pagine):`,
+            'Scarica il Codex Post-Omnibus 2025-2029 (PDF):',
             `${origin}${CODEX_PATH}`,
             '',
-            'Dentro trovi: soglie CSRD post-Omnibus (1.000+ dipendenti e €450M,',
-            'cumulativa), calendario CSDDD (trasposizione 26 luglio 2028,',
-            'prima compliance luglio 2029 - Dir. (UE) 2026/470), flowchart',
-            '"sono in scope?", e i 10 errori più comuni nelle prime disclosure.',
+            "Dentro trovi le soglie CSRD dopo l'Omnibus I (più di 1.000",
+            'dipendenti e più di 450 milioni di euro di ricavi netti, insieme),',
+            'il calendario CSDDD (recepimento entro il 26 luglio 2028,',
+            'applicazione dal 26 luglio 2029) e gli errori più comuni nelle',
+            'prime rendicontazioni.',
             '',
-            'Domande su un caso concreto? Rispondi a questa email: 20 minuti,',
-            'senza impegno.',
+            'Domande su un caso concreto? Rispondi a questa email: una',
+            'chiamata di 30 minuti, senza impegno.',
             '',
-            'Daniel Culotta · NormaAI · info@normaai.org',
+            'Daniel Culotta, NormaAI, info@normaai.org',
             '',
             '--',
-            'Ricevi questa email perché hai richiesto il Codex dal nostro sito.',
-            'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo',
-            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
-            'rispondendo a questa email.',
+            'Ricevi questa email perché hai richiesto il Codex dal sito.',
+            'Uso i tuoi dati solo per mandarti il Codex e ricontattarti su questo',
+            'tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR).',
+            'Puoi opporti in ogni momento rispondendo a questa email.',
           ]
       ).join('\n'),
     })
   }
 
+  // The message says only what happened: the request is recorded and the
+  // response carries the link, which the form shows as a download button. No
+  // delivery time is promised (the email above is best-effort).
   return NextResponse.json(
     {
-      message: 'Richiesta registrata. Il download parte subito qui sotto.',
+      message: english
+        ? 'Request recorded. Download the Codex with the button below.'
+        : 'Richiesta registrata. Scarica il Codex con il pulsante qui sotto.',
       download_url: downloadUrl,
     },
     { status: 200 },

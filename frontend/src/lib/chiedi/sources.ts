@@ -3,7 +3,27 @@ import { eurlexLang } from '@/i18n/config'
 import type { TextContext, Translate } from '@/i18n/types'
 import { eurlexUrl, type Source } from '@/lib/sources'
 import type { CitationEvent } from '@/hooks/useSSEStream'
-import type { ChiediCitation } from './types'
+import type { ChiediCitation, CitationDifference } from './types'
+
+/**
+ * A quote that is not in the official text as written, next to the official
+ * wording it almost matched: what the answer says, what the law says, where,
+ * and the words that differ.
+ */
+export interface NearMatch {
+  /** The words as the answer quotes them. */
+  quoted: string
+  /** The official wording. */
+  official: string
+  /** Where the official wording is, e.g. "Art. 33". */
+  article?: string
+  differences: CitationDifference[]
+}
+
+/** A source of the Chiedi margin: the shared `Source`, plus the near match of an unverified quote. */
+export interface ChiediSource extends Source {
+  near?: NearMatch
+}
 
 /**
  * The CELEX number of the act behind each framework NormaAI covers. The
@@ -143,19 +163,50 @@ export function frameworkOf(c: ChiediCitation): string {
   return fromField || fromTitle
 }
 
+function asDifferences(value: unknown): CitationDifference[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((d): d is Record<string, unknown> => !!d && typeof d === 'object')
+    .map((d) => ({
+      quoted: typeof d.quoted === 'string' ? d.quoted.trim() : '',
+      official: typeof d.official === 'string' ? d.official.trim() : '',
+    }))
+    .filter((d) => d.quoted || d.official)
+}
+
+/**
+ * The near match of a citation: only for a quote that is NOT verified and for
+ * which the verifier found the official wording it differs from. A verified
+ * citation never has one, whatever fields it carries.
+ */
+export function nearMatchOf(c: ChiediCitation): NearMatch | undefined {
+  if (c.verified === true) return undefined
+  const official = typeof c.near_quote === 'string' ? c.near_quote.trim() : ''
+  if (!official) return undefined
+  const article = typeof c.near_article === 'string' ? c.near_article.trim() : ''
+  return {
+    quoted: (c.quote_snippet ?? '').trim(),
+    official,
+    article: article || undefined,
+    differences: asDifferences(c.differences),
+  }
+}
+
 /**
  * Map one citation to the `Source` the interface shows. `index` is 1-based
  * and doubles as the in-text marker; `idPrefix` keeps ids unique when the
  * same sources are rendered in the margin and under the answer.
  */
-export function citationToSource(c: ChiediCitation, index: number, idPrefix: string, ctx: TextContext): Source {
+export function citationToSource(c: ChiediCitation, index: number, idPrefix: string, ctx: TextContext): ChiediSource {
   const key = frameworkOf(c)
   const verified = c.verified === true
   const ownCelex = isCelex(c.celex) ? c.celex.trim() : undefined
   const celex = ownCelex ?? CELEX_BY_FRAMEWORK[key]
   const url = isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
-  // Verified: show the official wording, never the model's paraphrase.
-  const quote = ((verified && c.official_quote) || c.quote_snippet || '').trim()
+  const near = nearMatchOf(c)
+  // Verified: show the official wording, never the model's paraphrase. A quote known to
+  // differ from the official text is not shown as the passage of law: it goes with `near`.
+  const quote = near ? '' : ((verified && c.official_quote) || c.quote_snippet || '').trim()
   const baseArticle = ((verified && c.article) || c.reference || c.article || '').trim()
   const paragraph = verified && c.paragraph ? String(c.paragraph).trim() : ''
   const article =
@@ -179,10 +230,11 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
     status: verified ? 'verified' : 'unverified',
     origin: originOf(url),
     note,
+    near,
   }
 }
 
-export function citationsToSources(citations: ChiediCitation[], idPrefix: string, ctx: TextContext): Source[] {
+export function citationsToSources(citations: ChiediCitation[], idPrefix: string, ctx: TextContext): ChiediSource[] {
   return citations.map((c, i) => citationToSource(c, i + 1, idPrefix, ctx))
 }
 
@@ -191,6 +243,8 @@ export function citationsToSources(citations: ChiediCitation[], idPrefix: string
  * backends fill `celex` with the article reference and `title` with the
  * framework key, so each field is checked before it is trusted. `quote` is
  * the official passage when the citation is verified, the model's otherwise.
+ * The near match (`near_quote`, `near_article`, `differences`) is kept only
+ * for a citation that is not verified.
  */
 export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
   const celex = isCelex(ev.celex) ? ev.celex.trim() : undefined
@@ -217,5 +271,8 @@ export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
     lang: ev.lang,
     amending_celex: verified && isCelex(ev.amending_celex) ? ev.amending_celex.trim() : undefined,
     amending_article: verified ? ev.amending_article : undefined,
+    near_quote: !verified && typeof ev.near_quote === 'string' && ev.near_quote.trim() ? ev.near_quote.trim() : undefined,
+    near_article: !verified && typeof ev.near_article === 'string' && ev.near_article.trim() ? ev.near_article.trim() : undefined,
+    differences: !verified && Array.isArray(ev.differences) ? asDifferences(ev.differences) : undefined,
   }
 }

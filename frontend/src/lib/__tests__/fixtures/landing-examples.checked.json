@@ -1,0 +1,424 @@
+{
+  "about": "What the document check of this repository (src/document_check) returned for the example texts of the landing page, and the official paragraphs those examples quote. Written by a script, not by hand: the texts were read from CELLAR (Publications Office of the EU) through src/document_check/official.py. To repeat a check, save a text below to a file and run `python scripts/check_document.py <file> [--data <document_date>]`.",
+  "checked_on": "2026-11-11",
+  "checks": {
+    "note-it": {
+      "lang": "IT",
+      "document_date": null,
+      "text": "Nota al cliente: violazioni dei dati personali\n\nIn caso di violazione, la notifica al Garante va fatta, come prevede l'articolo 33, paragrafo 1, del regolamento (UE) 2016/679, «senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza».\n\nOgni violazione va annotata nel registro interno: il titolare «documenta qualsiasi violazione dei dati personali» (articolo 33, paragrafo 5, del regolamento (UE) 2016/679).\n",
+      "findings": [
+        {
+          "reference": "articolo 33, paragrafo 1, del regolamento (UE) 2016/679",
+          "provision": "art. 33, par. 1",
+          "status": "alterata",
+          "status_label": "Citazione diversa dal testo ufficiale",
+          "group": "correggere",
+          "version": "02016R0679-20160504",
+          "version_as_of": "2016-05-04",
+          "quotes": [
+            "senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza"
+          ],
+          "messages": [
+            "Art. 33, par. 1 esiste nel testo consolidato al 04/05/2016.",
+            "La citazione è diversa dal testo vigente: nel documento «48», nel testo ufficiale «72»."
+          ],
+          "official_quote": "senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza",
+          "differences": [
+            {
+              "quoted": "48",
+              "official": "72"
+            }
+          ],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02016R0679-20160504"
+        },
+        {
+          "reference": "articolo 33, paragrafo 5, del regolamento (UE) 2016/679",
+          "provision": "art. 33, par. 5",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02016R0679-20160504",
+          "version_as_of": "2016-05-04",
+          "quotes": [
+            "documenta qualsiasi violazione dei dati personali"
+          ],
+          "messages": [
+            "Art. 33, par. 5 esiste nel testo consolidato al 04/05/2016.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "documenta qualsiasi violazione dei dati personali",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02016R0679-20160504"
+        }
+      ]
+    },
+    "note-en": {
+      "lang": "EN",
+      "document_date": null,
+      "text": "Client note: personal data breaches\n\nIf a breach occurs, the supervisory authority must be notified, as Article 33(1) of Regulation (EU) 2016/679 provides, \"without undue delay and, where feasible, not later than 48 hours after having become aware of it\".\n\nEvery breach goes into the internal register: the controller \"shall document any personal data breaches\" (Article 33(5) of Regulation (EU) 2016/679).\n",
+      "findings": [
+        {
+          "reference": "Article 33(1) of Regulation (EU) 2016/679",
+          "provision": "art. 33, par. 1",
+          "status": "alterata",
+          "status_label": "Citazione diversa dal testo ufficiale",
+          "group": "correggere",
+          "version": "02016R0679-20160504",
+          "version_as_of": "2016-05-04",
+          "quotes": [
+            "without undue delay and, where feasible, not later than 48 hours after having become aware of it"
+          ],
+          "messages": [
+            "Art. 33, par. 1 esiste nel testo consolidato al 04/05/2016.",
+            "La citazione è diversa dal testo vigente: nel documento «48», nel testo ufficiale «72»."
+          ],
+          "official_quote": "without undue delay and, where feasible, not later than 72 hours after having become aware of it",
+          "differences": [
+            {
+              "quoted": "48",
+              "official": "72"
+            }
+          ],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504"
+        },
+        {
+          "reference": "Article 33(5) of Regulation (EU) 2016/679",
+          "provision": "art. 33, par. 5",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02016R0679-20160504",
+          "version_as_of": "2016-05-04",
+          "quotes": [
+            "shall document any personal data breaches"
+          ],
+          "messages": [
+            "Art. 33, par. 5 esiste nel testo consolidato al 04/05/2016.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "shall document any personal data breaches",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504"
+        }
+      ]
+    },
+    "change-before-it": {
+      "lang": "IT",
+      "document_date": "2026-03-15",
+      "text": "Policy sull'uso dell'intelligenza artificiale\n\nFormazione: secondo l'articolo 4 del regolamento (UE) 2024/1689 fornitori e deployer «adottano misure per garantire nella misura del possibile un livello sufficiente di alfabetizzazione in materia di IA del loro personale».\n",
+      "findings": [
+        {
+          "reference": "articolo 4 del regolamento (UE) 2024/1689",
+          "provision": "art. 4",
+          "status": "superata",
+          "status_label": "Citazione superata",
+          "group": "correggere",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "adottano misure per garantire nella misura del possibile un livello sufficiente di alfabetizzazione in materia di IA del loro personale"
+          ],
+          "messages": [
+            "Art. 4 esiste nel testo consolidato al 27/07/2026.",
+            "Art. 4 è cambiato dopo la data del documento (15/03/2026): il documento si basa sul testo originale, oggi vale il testo consolidato al 27/07/2026.",
+            "La citazione corrisponde al testo originale, in vigore fino al 26/07/2026, non al testo vigente: la disposizione è cambiata."
+          ],
+          "official_quote": null,
+          "differences": [],
+          "before_version": "32024R1689",
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    },
+    "change-now-it": {
+      "lang": "IT",
+      "document_date": null,
+      "text": "Policy sull'uso dell'intelligenza artificiale\n\nFormazione: secondo l'articolo 4, paragrafo 1, del regolamento (UE) 2024/1689 fornitori e deployer «adottano misure volte a sostenere lo sviluppo dell'alfabetizzazione in materia di IA del loro personale».\n",
+      "findings": [
+        {
+          "reference": "articolo 4, paragrafo 1, del regolamento (UE) 2024/1689",
+          "provision": "art. 4, par. 1",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "adottano misure volte a sostenere lo sviluppo dell'alfabetizzazione in materia di IA del loro personale"
+          ],
+          "messages": [
+            "Art. 4, par. 1 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "adottano misure volte a sostenere lo sviluppo dell'alfabetizzazione in materia di IA del loro personale",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    },
+    "change-before-en": {
+      "lang": "EN",
+      "document_date": "2026-03-15",
+      "text": "Policy on the use of artificial intelligence\n\nTraining: under Article 4 of Regulation (EU) 2024/1689 providers and deployers \"shall take measures to ensure, to their best extent, a sufficient level of AI literacy of their staff\".\n",
+      "findings": [
+        {
+          "reference": "Article 4 of Regulation (EU) 2024/1689",
+          "provision": "art. 4",
+          "status": "superata",
+          "status_label": "Citazione superata",
+          "group": "correggere",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "shall take measures to ensure, to their best extent, a sufficient level of AI literacy of their staff"
+          ],
+          "messages": [
+            "Art. 4 esiste nel testo consolidato al 27/07/2026.",
+            "Art. 4 è cambiato dopo la data del documento (15/03/2026): il documento si basa sul testo originale, oggi vale il testo consolidato al 27/07/2026.",
+            "La citazione corrisponde al testo originale, in vigore fino al 26/07/2026, non al testo vigente: la disposizione è cambiata."
+          ],
+          "official_quote": null,
+          "differences": [],
+          "before_version": "32024R1689",
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    },
+    "change-now-en": {
+      "lang": "EN",
+      "document_date": null,
+      "text": "Policy on the use of artificial intelligence\n\nTraining: under Article 4(1) of Regulation (EU) 2024/1689 providers and deployers \"shall take measures to support the development of AI literacy of their staff\".\n",
+      "findings": [
+        {
+          "reference": "Article 4(1) of Regulation (EU) 2024/1689",
+          "provision": "art. 4, par. 1",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "shall take measures to support the development of AI literacy of their staff"
+          ],
+          "messages": [
+            "Art. 4, par. 1 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "shall take measures to support the development of AI literacy of their staff",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    },
+    "answer-it": {
+      "lang": "IT",
+      "document_date": null,
+      "text": "Risposta di esempio\n\nL'articolo 50, paragrafo 1, del regolamento (UE) 2024/1689 chiede che le persone «siano informate del fatto di stare interagendo con un sistema di IA».\n\nQuanto alle date, l'articolo 113 del regolamento (UE) 2024/1689 dice: «Si applica a decorrere dal 2 agosto 2026.»\n",
+      "findings": [
+        {
+          "reference": "articolo 50, paragrafo 1, del regolamento (UE) 2024/1689",
+          "provision": "art. 50, par. 1",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "siano informate del fatto di stare interagendo con un sistema di IA"
+          ],
+          "messages": [
+            "Art. 50, par. 1 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "siano informate del fatto di stare interagendo con un sistema di IA",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727"
+        },
+        {
+          "reference": "articolo 113 del regolamento (UE) 2024/1689",
+          "provision": "art. 113",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "Si applica a decorrere dal 2 agosto 2026."
+          ],
+          "messages": [
+            "Art. 113 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "Si applica a decorrere dal 2 agosto 2026",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    },
+    "answer-en": {
+      "lang": "EN",
+      "document_date": null,
+      "text": "Example answer\n\nArticle 50(1) of Regulation (EU) 2024/1689 requires that people \"are informed that they are interacting with an AI system\".\n\nAs for dates, Article 113 of Regulation (EU) 2024/1689 says: \"It shall apply from 2 August 2026.\"\n",
+      "findings": [
+        {
+          "reference": "Article 50(1) of Regulation (EU) 2024/1689",
+          "provision": "art. 50, par. 1",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "are informed that they are interacting with an AI system"
+          ],
+          "messages": [
+            "Art. 50, par. 1 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "are informed that they are interacting with an AI system",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727"
+        },
+        {
+          "reference": "Article 113 of Regulation (EU) 2024/1689",
+          "provision": "art. 113",
+          "status": "verificata",
+          "status_label": "Citazione verificata",
+          "group": "a_posto",
+          "version": "02024R1689-20260727",
+          "version_as_of": "2026-07-27",
+          "quotes": [
+            "It shall apply from 2 August 2026."
+          ],
+          "messages": [
+            "Art. 113 esiste nel testo consolidato al 27/07/2026.",
+            "La citazione è nel testo vigente, parola per parola."
+          ],
+          "official_quote": "It shall apply from 2 August 2026",
+          "differences": [],
+          "before_version": null,
+          "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727"
+        }
+      ]
+    }
+  },
+  "passages": {
+    "gdpr-33-1-it": {
+      "celex": "32016R0679",
+      "version": "02016R0679-20160504",
+      "version_as_of": "2016-05-04",
+      "article": "Art. 33",
+      "paragraph": "1",
+      "lang": "IT",
+      "text": "1. In caso di violazione dei dati personali, il titolare del trattamento notifica la violazione all'autorità di controllo competente a norma dell'articolo 55 senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza, a meno che sia improbabile che la violazione dei dati personali presenti un rischio per i diritti e le libertà delle persone fisiche. Qualora la notifica all'autorità di controllo non sia effettuata entro 72 ore, è corredata dei motivi del ritardo."
+    },
+    "gdpr-33-1-en": {
+      "celex": "32016R0679",
+      "version": "02016R0679-20160504",
+      "version_as_of": "2016-05-04",
+      "article": "Art. 33",
+      "paragraph": "1",
+      "lang": "EN",
+      "text": "1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 72 hours after having become aware of it, notify the personal data breach to the supervisory authority competent in accordance with Article 55, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. Where the notification to the supervisory authority is not made within 72 hours, it shall be accompanied by reasons for the delay."
+    },
+    "gdpr-33-5-it": {
+      "celex": "32016R0679",
+      "version": "02016R0679-20160504",
+      "version_as_of": "2016-05-04",
+      "article": "Art. 33",
+      "paragraph": "5",
+      "lang": "IT",
+      "text": "5. Il titolare del trattamento documenta qualsiasi violazione dei dati personali, comprese le circostanze a essa relative, le sue conseguenze e i provvedimenti adottati per porvi rimedio. Tale documentazione consente all'autorità di controllo di verificare il rispetto del presente articolo."
+    },
+    "gdpr-33-5-en": {
+      "celex": "32016R0679",
+      "version": "02016R0679-20160504",
+      "version_as_of": "2016-05-04",
+      "article": "Art. 33",
+      "paragraph": "5",
+      "lang": "EN",
+      "text": "5. The controller shall document any personal data breaches, comprising the facts relating to the personal data breach, its effects and the remedial action taken. That documentation shall enable the supervisory authority to verify compliance with this Article."
+    },
+    "ai-act-4-as-adopted-it": {
+      "celex": "32024R1689",
+      "version": "32024R1689",
+      "version_as_of": null,
+      "article": "Art. 4",
+      "paragraph": null,
+      "lang": "IT",
+      "text": "Articolo 4\nAlfabetizzazione in materia di IA\nI fornitori e i deployer dei sistemi di IA adottano misure per garantire nella misura del possibile un livello sufficiente di alfabetizzazione in materia di IA del loro personale nonché di qualsiasi altra persona che si occupa del funzionamento e dell'utilizzo dei sistemi di IA per loro conto, prendendo in considerazione le loro conoscenze tecniche, la loro esperienza, istruzione e formazione, nonché il contesto in cui i sistemi di IA devono essere utilizzati, e tenendo conto delle persone o dei gruppi di persone su cui i sistemi di IA devono essere utilizzati."
+    },
+    "ai-act-4-as-adopted-en": {
+      "celex": "32024R1689",
+      "version": "32024R1689",
+      "version_as_of": null,
+      "article": "Art. 4",
+      "paragraph": null,
+      "lang": "EN",
+      "text": "Article 4\nAI literacy\nProviders and deployers of AI systems shall take measures to ensure, to their best extent, a sufficient level of AI literacy of their staff and other persons dealing with the operation and use of AI systems on their behalf, taking into account their technical knowledge, experience, education and training and the context the AI systems are to be used in, and considering the persons or groups of persons on whom the AI systems are to be used."
+    },
+    "ai-act-4-1-it": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 4",
+      "paragraph": "1",
+      "lang": "IT",
+      "text": "1. I fornitori e i deployer di sistemi di IA adottano misure volte a sostenere lo sviluppo dell'alfabetizzazione in materia di IA del loro personale nonché di qualsiasi altra persona che si occupa del funzionamento e dell'utilizzo dei sistemi di IA per loro conto, prendendo in considerazione le loro conoscenze tecniche, la loro esperienza, istruzione e formazione, nonché il contesto in cui i sistemi di IA devono essere utilizzati, e tenendo conto delle persone o dei gruppi di persone su cui i sistemi di IA devono essere utilizzati. Tale obbligo non impone ai fornitori o ai deployer di garantire un livello specifico di alfabetizzazione in materia di IA per alcuna persona."
+    },
+    "ai-act-4-1-en": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 4",
+      "paragraph": "1",
+      "lang": "EN",
+      "text": "1. Providers and deployers of AI systems shall take measures to support the development of AI literacy of their staff and other persons dealing with the operation and use of AI systems on their behalf, taking into account their technical knowledge, experience, education and training and the context the AI systems are to be used in, and considering the persons or groups of persons on whom the AI systems are to be used. This obligation does not require providers or deployers to guarantee any specific level of AI literacy of any individual."
+    },
+    "ai-act-50-1-it": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 50",
+      "paragraph": "1",
+      "lang": "IT",
+      "text": "1. I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate siano informate del fatto di stare interagendo con un sistema di IA, a meno che ciò non risulti evidente dal punto di vista di una persona fisica ragionevolmente informata, attenta e avveduta, tenendo conto delle circostanze e del contesto di utilizzo. Tale obbligo non si applica ai sistemi di IA autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati, fatte salve le tutele adeguate per i diritti e le libertà dei terzi, a meno che tali sistemi non siano a disposizione del pubblico per segnalare un reato."
+    },
+    "ai-act-50-1-en": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 50",
+      "paragraph": "1",
+      "lang": "EN",
+      "text": "1. Providers shall ensure that AI systems intended to interact directly with natural persons are designed and developed in such a way that the natural persons concerned are informed that they are interacting with an AI system, unless this is obvious from the point of view of a natural person who is reasonably well-informed, observant and circumspect, taking into account the circumstances and the context of use. This obligation shall not apply to AI systems authorised by law to detect, prevent, investigate or prosecute criminal offences, subject to appropriate safeguards for the rights and freedoms of third parties, unless those systems are available for the public to report a criminal offence."
+    },
+    "ai-act-113-it": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 113",
+      "paragraph": null,
+      "lang": "IT",
+      "text": "Articolo 113\nEntrata in vigore e applicazione\nIl presente regolamento entra in vigore il ventesimo giorno successivo alla pubblicazione nella Gazzetta ufficiale dell'Unione europea.\nSi applica a decorrere dal 2 agosto 2026.\nTuttavia:\na) I capi I e II si applicano a decorrere dal 2 febbraio 2025, ad eccezione dell'articolo 5, paragrafo 1, primo comma, lettere b bis) e b ter), e dell'articolo 5, paragrafi 1 bis e 1 ter, che si applicano a decorrere dal 2 dicembre 2026;\nb) Il capo III, sezione 4, il capo V, il capo VII, il capo XII e l’articolo 78 si applicano a decorrere dal 2 agosto 2025, ad eccezione dell'articolo 101;\nc) Il capo III, sezioni 1, 2 e 3, ad eccezione dell'articolo 6, paragrafo 5, si applica a decorrere dal:\ni) 2 dicembre 2027 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 2, e dell'allegato III; e\nii) 2 agosto 2028 per quanto riguarda i sistemi di IA classificati come ad alto rischio ai sensi dell'articolo 6, paragrafo 1, e dell'allegato I;\nd) Gli articoli da 102 a 110 si applicano a decorrere dal 27 luglio 2026.\nIl presente regolamento è obbligatorio in tutti i suoi elementi e direttamente applicabile in ciascuno degli Stati membri."
+    },
+    "ai-act-113-en": {
+      "celex": "32024R1689",
+      "version": "02024R1689-20260727",
+      "version_as_of": "2026-07-27",
+      "article": "Art. 113",
+      "paragraph": null,
+      "lang": "EN",
+      "text": "Article 113\nEntry into force and application\nThis Regulation shall enter into force on the twentieth day following that of its publication in the Official Journal of the European Union.\nIt shall apply from 2 August 2026.\nHowever:\n(a) Chapters I and II shall apply from 2 February 2025, with the exception of Article 5(1), first subparagraph, points (ba) and (bb), and Article 5(1a) and (1b) which shall apply from 2 December 2026;\n(b) Chapter III Section 4, Chapter V, Chapter VII and Chapter XII and Article 78 shall apply from 2 August 2025, with the exception of Article 101;\n(c) Chapter III, Sections 1, 2, and 3, with the exception of Article 6(5), shall apply from:\n(i) 2 December 2027 as regards AI systems classified as high-risk pursuant to Article 6(2) and Annex III; and\n(ii) 2 August 2028 as regards AI systems classified as high-risk pursuant to Article 6(1) and Annex I;\n(d) Articles 102 to 110 shall apply from 27 July 2026.\nThis Regulation shall be binding in its entirety and directly applicable in all Member States."
+    }
+  }
+}

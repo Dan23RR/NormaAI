@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useLocale, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { useAuth } from '@/hooks/useAuth'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/Button'
@@ -11,14 +11,17 @@ import { Field, Input, describedBy } from '@/components/ui/Field'
 import { LawQuote } from '@/components/ui/LawQuote'
 import { eurlexLang } from '@/i18n/config'
 import { useErrorText } from '@/i18n/errors'
+import { LONG_DATE } from '@/i18n/format'
 import { AI_ACT_ART_50_1_IT } from '@/lib/law-passages'
 import { API_CONFIGURED } from '@/lib/api'
+import { SERVICE_STATUS_ON } from '@/lib/service-status'
 import { eurlexUrl } from '@/lib/sources'
 
 type Mode = 'login' | 'register'
 
 function LoginForm() {
   const t = useTranslations('login')
+  const format = useFormatter()
   const errorText = useErrorText()
   const { login, register, loginDemo } = useAuth()
   const router = useRouter()
@@ -35,6 +38,12 @@ function LoginForm() {
   const [inviteCode, setInviteCode] = useState(params.get('invite') || '')
 
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/app'
+
+  // No backend configured for this build: nobody can sign in or register.
+  // The form is then not shown at all (it used to accept input in front of a
+  // disabled button): the notice says what is happening, since when, and
+  // offers the two things that do work, the demo and an email address.
+  const unavailable = !API_CONFIGURED
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +71,7 @@ function LoginForm() {
   const switchTo = (next: Mode) => (chunks: React.ReactNode) => (
     <button
       type="button"
-      className="text-union hover:underline"
+      className="text-union underline hover:no-underline"
       onClick={() => {
         setMode(next)
         setError('')
@@ -72,25 +81,54 @@ function LoginForm() {
     </button>
   )
 
-  return (
-    <div className="w-full max-w-md">
-      <h1 className="text-h2">{mode === 'register' ? t('titleRegister') : t('titleLogin')}</h1>
-      <p className="mt-2 text-body text-ink-2">{mode === 'register' ? t('leadRegister') : t('leadLogin')}</p>
+  const termsNote = (
+    <p className="mt-6 text-caption text-ink-3">
+      {t.rich('terms', {
+        terms: (chunks) => (
+          <Link href="/terms" className="underline">
+            {chunks}
+          </Link>
+        ),
+        privacy: (chunks) => (
+          <Link href="/privacy" className="underline">
+            {chunks}
+          </Link>
+        ),
+      })}
+    </p>
+  )
 
-      {!API_CONFIGURED && (
+  if (unavailable) {
+    return (
+      <div className="w-full max-w-md">
+        <h1 className="text-h2">{t('titleLogin')}</h1>
         <div className="mt-5 rounded-md border border-warn/40 bg-warn/5 px-4 py-3" role="status">
-          <p className="text-body font-medium text-ink">{t('unavailableTitle')}</p>
+          <h2 className="font-sans text-body font-medium text-ink">{t('unavailableTitle')}</h2>
           <p className="mt-1 text-small text-ink-2">
             {t.rich('unavailableBody', {
+              date: format.dateTime(SERVICE_STATUS_ON, LONG_DATE),
               mail: (chunks) => (
-                <a href="mailto:info@normaai.org" className="text-union hover:underline">
+                <a href="mailto:info@normaai.org" className="text-union underline hover:no-underline">
                   {chunks}
                 </a>
               ),
             })}
           </p>
         </div>
-      )}
+        {/* Outside the notice: the label must fit the column down to 360 px. */}
+        <Button className="mt-6 w-full" size="lg" onClick={handleDemo}>
+          {t('demo')}
+        </Button>
+        <p className="mt-2 text-caption text-ink-3">{t('demoNote')}</p>
+        {termsNote}
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full max-w-md">
+      <h1 className="text-h2">{mode === 'register' ? t('titleRegister') : t('titleLogin')}</h1>
+      <p className="mt-2 text-body text-ink-2">{mode === 'register' ? t('leadRegister') : t('leadLogin')}</p>
 
       {error && (
         <div className="mt-5 rounded-md border border-bad/30 bg-bad/5 px-3 py-2.5 text-small text-bad" role="alert">
@@ -149,7 +187,7 @@ function LoginForm() {
             aria-describedby={mode === 'register' ? describedBy('password', { help: true }) : undefined}
           />
         </Field>
-        <Button type="submit" loading={loading} disabled={!API_CONFIGURED} className="w-full" size="lg">
+        <Button type="submit" loading={loading} className="w-full" size="lg">
           {mode === 'register' ? t('submitRegister') : t('submitLogin')}
         </Button>
       </form>
@@ -160,7 +198,7 @@ function LoginForm() {
           : t.rich('haveInvite', {
               register: switchTo('register'),
               mail: (chunks) => (
-                <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union hover:underline">
+                <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union underline hover:no-underline">
                   {chunks}
                 </a>
               ),
@@ -174,20 +212,7 @@ function LoginForm() {
         <p className="mt-2 text-caption text-ink-3">{t('demoNote')}</p>
       </div>
 
-      <p className="mt-6 text-caption text-ink-3">
-        {t.rich('terms', {
-          terms: (chunks) => (
-            <Link href="/terms" className="underline">
-              {chunks}
-            </Link>
-          ),
-          privacy: (chunks) => (
-            <Link href="/privacy" className="underline">
-              {chunks}
-            </Link>
-          ),
-        })}
-      </p>
+      {termsNote}
     </div>
   )
 }

@@ -1,5 +1,13 @@
 import type { Citation, QAResponse } from '@/lib/types'
 
+/** Words of a quote that differ from the official wording it almost matched. */
+export interface CitationDifference {
+  /** The words as the answer quotes them (empty when the quote lacks them). */
+  quoted: string
+  /** The words of the official text (empty when it has none). */
+  official: string
+}
+
 /**
  * A citation as the Chiedi page receives it: the base contract of
  * `POST /api/v1/qa` (framework, reference, quote_snippet) plus the optional
@@ -31,6 +39,13 @@ export interface ChiediCitation extends Citation {
    */
   amending_celex?: string | null
   amending_article?: string | null
+  /**
+   * Set by the verifier only when the quote is NOT verified but a passage almost
+   * matched: the official wording, where it is ("Art. 33") and the words that differ.
+   */
+  near_quote?: string | null
+  near_article?: string | null
+  differences?: CitationDifference[] | null
   grounded?: boolean
   /** Document title as the SSE event names it (may be just a framework key). */
   title?: string

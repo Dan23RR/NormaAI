@@ -16,12 +16,20 @@ import { formatDate } from '@/i18n/format'
 import { useTextContext } from '@/i18n/useTextContext'
 import { assessScope } from '@/lib/scope/rules'
 import { EMPTY_INPUT, inputToQuery, queryToInput } from '@/lib/scope/query'
-import { VERIFIED_ON } from '@/lib/scope/sources'
 import { assessmentToText } from '@/lib/scope/text'
 import type { ScopeAssessment, ScopeInput } from '@/lib/scope/types'
+import { LAST_CHECK_ON } from '@/lib/verification'
 
 function canAssess(input: ScopeInput): boolean {
-  return input.employees != null || input.turnoverEur != null || input.euTurnoverEur != null || input.ai != null
+  return (
+    input.employees != null ||
+    input.turnoverEur != null ||
+    input.euTurnoverEur != null ||
+    input.ai != null ||
+    input.work != null ||
+    input.nis != null ||
+    input.machinery != null
+  )
 }
 
 export default function AmbitoPage() {
@@ -145,7 +153,7 @@ function AmbitoView() {
       <PageHeader
         title={t('title')}
         description={t('description')}
-        meta={t('meta', { date: formatDate(VERIFIED_ON, ctx) })}
+        meta={t('meta', { date: formatDate(LAST_CHECK_ON, ctx) })}
       />
       <div className="grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">

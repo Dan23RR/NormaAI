@@ -25,7 +25,8 @@
 #
 # Backups leave the server, encrypted, only when both of these are in the
 # environment at the first run (docs/BACKUP_STRATEGY.md, docs/DEPLOY_CHECKLIST.md):
-#   RESTIC_REPOSITORY     where restic stores them, e.g. s3:https://<endpoint>/<bucket>/normaai
+#   RESTIC_REPOSITORY     where restic stores them: s3:https://<endpoint>/<bucket> or
+#                         sftp:<user>@<host>:/<path>
 #   RESTIC_PASSWORD_FILE  a file you created with the repository password, which
 #                         you also keep OFF the server (the bootstrap never
 #                         generates it: a password that exists only here is
@@ -34,6 +35,8 @@
 # optionally, BACKUP_HEARTBEAT_URL. Step 9 then installs restic and writes them
 # to /etc/normaai/backup.env (root only), which later runs read. Without them
 # the nightly job only keeps a Postgres dump on this disk, and says so.
+# SKIP_FIRST_BACKUP=1 skips the backup step 9 runs at once: use it when
+# rebuilding a lost server, before its database is restored.
 #
 # The dense model is chosen at the first run (EMBEDDING_CHOICE=e5|mpnet in the
 # environment skips the question): e5, multilingual-e5-large, recommended
@@ -341,8 +344,14 @@ fi
 # (and creates the restic repository the first time) instead of waiting for 02:00.
 bash scripts/backup.sh --install-cron \
   || echo "   ATTENZIONE: riga di cron del backup NON installata (messaggi qui sopra): nessun backup notturno finche' non la installi con: bash $APP_DIR/scripts/backup.sh --install-cron"
-bash scripts/backup.sh \
-  || echo "   ATTENZIONE: il primo backup non e' riuscito (messaggi qui sopra). Correggi e lancia: bash $APP_DIR/scripts/backup.sh"
+if [ "${SKIP_FIRST_BACKUP:-0}" = "1" ]; then
+  # Rebuilding a lost server: the database is still empty here, and its backup
+  # would become the newest copy (docs/BACKUP_STRATEGY.md, section 6.3).
+  echo "   SKIP_FIRST_BACKUP=1: salto il primo backup. Dopo il ripristino lancia: bash $APP_DIR/scripts/backup.sh"
+else
+  bash scripts/backup.sh \
+    || echo "   ATTENZIONE: il primo backup non e' riuscito (messaggi qui sopra). Correggi e lancia: bash $APP_DIR/scripts/backup.sh"
+fi
 echo "   health (interno):  $(docker exec normaai-app curl -fsS http://localhost:8000/health)"
 echo "   readyz (interno):  $(docker exec normaai-app curl -sS http://localhost:8000/readyz)"
 echo -n "   https://$API_DOMAIN/health: "

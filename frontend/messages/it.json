@@ -1305,6 +1305,8 @@
       "description": "Quello che il server riferisce di sé: versione, modello, base vettoriale e richieste servite.",
       "loading": "Caricamento dello stato del sistema",
       "loadFailedTitle": "Lo stato del sistema non si è caricato",
+      "demoTitle": "Demo con dati di esempio",
+      "demoBody": "Nella demo non esiste un server da interrogare: versione, modello, base vettoriale e richieste servite compaiono qui solo con un account reale.",
       "status": {
         "healthy": "Operativo",
         "degraded": "Degradato"
@@ -1926,7 +1928,7 @@
     "compliance": {
       "high": {
         "label": "Buon livello di conformità",
-        "sublabel": "L’organizzazione presenta un solido grado di adempimento"
+        "sublabel": "La maggior parte dei requisiti esaminati risulta coperta"
       },
       "medium": {
         "label": "Conformità parziale",

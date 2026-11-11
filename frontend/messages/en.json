@@ -1305,6 +1305,8 @@
       "description": "What the server reports about itself: version, model, vector store and requests served.",
       "loading": "Loading the system status",
       "loadFailedTitle": "The system status did not load",
+      "demoTitle": "Demo with sample data",
+      "demoBody": "In the demo there is no server to ask: version, model, vector store and requests served appear here only with a real account.",
       "status": {
         "healthy": "Operational",
         "degraded": "Degraded"
@@ -1926,7 +1928,7 @@
     "compliance": {
       "high": {
         "label": "Good level of compliance",
-        "sublabel": "The organisation shows a solid degree of fulfilment"
+        "sublabel": "Most of the requirements examined are covered"
       },
       "medium": {
         "label": "Partial compliance",

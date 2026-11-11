@@ -1,428 +1,331 @@
-# NormaAI - EU Regulatory Intelligence Platform
+# NormaAI
 
-> AI-powered compliance monitoring across 7 EU regulatory frameworks with real-time EUR-Lex integration, anti-hallucination verification, and Italian legislation support.
+Checks the legal references of a document against the text in force, and tells you when a
+provision it cites changes.
 
 [![CI](https://github.com/Dan23RR/NormaAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Dan23RR/NormaAI/actions)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-> 🇮🇹 **In breve**: NormaAI è il copilota normativo *difendibile in audit* per chi gestisce compliance UE. Risponde a domande sui regolamenti con **citazione della fonte primaria EUR-Lex in 30 secondi**, verifica anti-allucinazione (CoVe) e supporto alla legislazione italiana (Normattiva). Copre 7 framework UE (CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR), pensato per il mid-market italiano. Sito: **[normaai.org](https://normaai.org)**.
+> **In breve.** Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.
+> Norme UE e italiane, parola per parola. Con l'avviso quando una norma citata cambia.
+> E chiedi: risposte con il passaggio di legge che le sostiene.
 >
-> *La documentazione tecnica completa è in inglese, qui sotto.*
+> Progetto open source (licenza MIT) pensato per consulenti e PMI italiane. Il backend di
+> produzione è fermo e in fase di trasloco: gli account sono sospesi fino al nuovo server.
+> Il controllo dei documenti si prova da riga di comando, senza account (sotto). Sito:
+> [normaai.org](https://normaai.org). La documentazione tecnica è in inglese.
 
-## Overview
+## What it is
 
-NormaAI monitors 7 major EU regulatory frameworks in real-time and provides AI-powered compliance intelligence for enterprises:
+NormaAI reads a document (a privacy notice, an AI policy, a contract clause, a note),
+finds every reference to EU or Italian law in it, and checks each one against the official
+text in force: the article must exist, and every quoted passage must be there word for word.
+It records the provisions the document relies on, so a later run (or a weekly job on the
+server) says which of them changed. A second surface answers questions on a corpus of 18 EU
+acts, and every citation in an answer is checked word for word against the retrieved text by
+deterministic code, not by a language model.
 
-| Framework | Full Name | Status |
-|-----------|-----------|--------|
-| **CSRD** | Corporate Sustainability Reporting Directive | Active |
-| **CSDDD** | Corporate Sustainability Due Diligence Directive | Active |
-| **AI Act** | EU Artificial Intelligence Act | Active |
-| **DORA** | Digital Operational Resilience Act | Active |
-| **NIS2** | Network and Information Security Directive | Active |
-| **EU Taxonomy** | Sustainable Finance Taxonomy Regulation | Active |
-| **GDPR** | General Data Protection Regulation | Active |
+## Try the document check (no account, no infrastructure)
 
-### Core Capabilities
+You need Python 3.11 or 3.12, the backend dependencies (`poetry install`) and network access
+to EUR-Lex and Normattiva. No database, no API key, no `.env`.
 
-- **Regulatory Q&A** - Ask questions about EU regulations, get cited answers grounded in official texts
-- **Gap Analysis** - Compliance assessment with per-requirement scoring and remediation plans
-- **Impact Monitor** - Real-time analysis of regulatory changes on your company
-- **EUR-Lex Crawler** - Automated ingestion from the official EU legislative database (SPARQL discovery + CELLAR full text)
-- **Normattiva Crawler** - Italian implementing legislation via Open Data API (D.Lgs., Leggi)
-- **CoVe Anti-Hallucination** - 5-phase Chain-of-Verification pipeline for citation accuracy
-- **SSE Streaming** - Real-time streamed responses with verification progress events
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        FastAPI Gateway                       │
-│          JWT Auth · Rate Limiting · Request Tracking          │
-├──────────┬──────────┬──────────┬───────────────────────────┤
-│   Q&A    │   Gap    │ Monitor  │     EUR-Lex Crawler        │
-│  Agent   │ Analyst  │  Agent   │     (SPARQL Client)        │
-├──────────┴──────────┴──────────┴───────────────────────────┤
-│                    LangGraph Orchestrator                     │
-│        Router → Retrieve → Agent → Confidence Check          │
-├─────────────────────────────────────────────────────────────┤
-│  Qdrant (Hybrid Search)  │  PostgreSQL  │  Redis (Cache)    │
-│  mpnet-ML + BM25 + RRF   │  SQLAlchemy  │                   │
-├─────────────────────────────────────────────────────────────┤
-│              Document Processing Pipeline                    │
-│        Docling · BeautifulSoup · dots.ocr (optional)         │
-└─────────────────────────────────────────────────────────────┘
+```bash
+git clone https://github.com/Dan23RR/NormaAI.git && cd NormaAI
+poetry install
+cat > nota.txt <<'EOF'
+Ai sensi dell'articolo 33, paragrafo 1, del regolamento (UE) 2016/679, il titolare notifica la violazione «senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza».
+L'informativa segue l'art. 13 del GDPR, l'art. 100 del GDPR e l'art. 2-ter del d.lgs. 196/2003.
+EOF
+poetry run python scripts/check_document.py nota.txt
 ```
 
-## Quick Start
+What it printed on 2026-11-11 (about 12 seconds with an empty cache):
+
+```
+Controllo di nota.txt (11/11/2026): 4 disposizioni citate.
+2 da correggere, 0 da controllare, 2 a posto, 0 fuori copertura.
+- riga 1, GDPR, art. 33, par. 1: Citazione diversa dal testo ufficiale
+- riga 2, GDPR, art. 100: Non esiste nel testo vigente
+Report: nota.controllo.html
+Disposizioni citate: nota.norma-lock.json
+```
+
+The HTML report (in Italian) shows each finding with the official wording and a link to the
+text in force; for article 33 it says that the document has "48" where the official text has
+"72". The lock file lists the provisions found in force (here GDPR art. 33 and 13, d.lgs.
+196/2003 art. 2-ter) with a SHA-256 of their text. Later:
+
+```bash
+poetry run python scripts/check_document.py --ricontrolla nota.norma-lock.json   # what changed since
+poetry run python scripts/check_document.py policy.docx --data 2026-03-15        # what changed after the document's date
+```
+
+Formats: `.docx`, `.pdf` (text layer only, no OCR), `.html`, `.txt`, `.md`. Every outcome,
+the citation forms recognised, the cache and the measured run times are in
+[docs/DOCUMENT_CHECK.md](docs/DOCUMENT_CHECK.md).
+
+**Where the texts come from.** EU acts from CELLAR, the repository behind EUR-Lex, by CELEX
+number: any EU act the document cites, not only the 18 of the Q&A corpus, in the latest
+consolidated version CELLAR gives as text, with the earlier versions for outdated quotes.
+Italian state acts from the [Normattiva open data API](https://dati.normattiva.it/), article
+by article, as in force on a given day. Neither is the official text: EUR-Lex consolidated
+texts are documentation (the Official Journal is authentic), and Normattiva's texts are not
+official (the Gazzetta Ufficiale prevails). Normattiva data are licensed CC BY 4.0, and the
+report says so.
+
+## How verification works
+
+The same rule serves the document check and the Q&A answers
+(`src/agents/citation_verifier.py`, pure functions, no network, no language model):
+
+1. Quote and official text are normalised (Unicode form, case, typographic quotes and
+   dashes, spaces, soft hyphens).
+2. A quote shorter than 20 characters or 4 words is never verified: too generic.
+3. The quote must appear as a substring of the official text. A quote with omissions
+   (`[...]`) is split there, and each segment of at least 12 characters must appear, in order.
+4. Failing that, a span with a similarity ratio of at least 0.92 is accepted only when the
+   words agree: every number, every number word and every word under five letters ("non",
+   "o", "e", "may", "not") must be identical. What is forgiven: punctuation, accents, a word
+   split or joined at a line break, one wrong, missing or extra letter inside a longer word.
+5. A close span that differs in a word that matters is **not** a verification. The result
+   stays unverified and carries `near_quote` (the official wording), `near_article` (where it
+   is) and `differences`.
+6. Text uploaded by a tenant never counts as official text.
+
+Example of a near match that is refused: the document quotes article 33(1) GDPR as "entro 48
+ore dal momento in cui ne è venuto a conoscenza"; the official text says "entro 72 ore". The
+two strings are almost identical, but the numbers differ, so the quote is reported as
+"Citazione diversa dal testo ufficiale" with `differences: [{"quoted": "48", "official": "72"}]`.
+
+A literal quote can still leave out context that changes its meaning (a "non" just before
+it): the interface and the report show the official passage in place.
+
+## What is and is not covered
+
+| Capability | Status | Where |
+|---|---|---|
+| Document check, EU law (any act by CELEX, consolidated versions) | wired | `src/document_check/official.py`, `check.py` |
+| Document check, Italian state law (Normattiva, article by article) | wired | `src/document_check/normattiva.py` |
+| Regional laws, ministerial decrees, circulars, annexes of Italian acts | not built: listed as "fuori copertura" | `src/document_check/extract.py` |
+| Case law, authority guidance | not built | |
+| Lock file and re-check from the command line | wired | `scripts/check_document.py` |
+| Documents HTTP API: check, storage, re-check, HTML report, alerts | wired | `src/api/routers/documents.py`, `src/document_check/service.py` |
+| Weekly surveillance of watched documents, digest email | wired, runs as a cron job on the server | `src/document_check/surveillance.py`, `src/email_client.py` |
+| Web screen for the document check | not built in this branch | |
+| Q&A on 18 EU acts, IT and EN, with word-for-word citation check | wired | `src/agents/nodes.py`, `src/agents/citation_verifier.py` |
+| Abstention when retrieval finds nothing (decided in code, no model call) | wired | `_abstain_without_sources` in `src/agents/nodes.py` |
+| Italian law in the Q&A corpus | not built | old client in `src/crawler/normattiva/` (see below) |
+| Citation check on gap-analysis and monitor answers | not built: only Q&A answers are checked | `src/agents/nodes.py` |
+| Chain-of-Verification (CoVe) | partial: only when a request sets `enable_cove`; no live EUR-Lex lookup | `src/agents/cove/` |
+| Multi-sampling trust layer (SNC) | wired, off by default (`SNC_ENABLED=false`) | `src/agents/snc_layer.py` |
+| Cross-encoder reranker | wired, off by default (no model directory set) | `src/nlp/embedding/reranker.py` |
+| Streaming of answers | partial: the answer is sent in 80-character slices after it is generated, not token by token | `src/api/streaming/generators.py` |
+| Corpus freshness check against CELLAR | wired, nightly cron; reports, does not reseed | `src/pipeline.py`, `GET /api/v1/stats` |
+| Corpus update | partial: by hand (`--action update`); the in-process scheduler is off | `src/pipeline.py`, `src/crawler/scheduler.py` |
+| Scope rules (CSRD, CSDDD, AI Act art. 50) and deadline calendar | partial: written by hand in the frontend | `frontend/src/lib/scope`, `frontend/src/lib/obligations` |
+| Gap analysis | partial: a requirements checklist written by the model from the retrieved passages and the profile you type, not an assessment of your documents | `src/agents/nodes.py`, `prompts/` |
+| PDF reports, GDPR export and erasure (admin) | wired | `src/api/routers/reports.py`, `src/api/routers/gdpr.py` |
+| Password reset, multi-factor authentication, single sign-on | not built | |
+
+Each scope rule and calendar date names the source it comes from, with the day it was last
+checked (`VERIFIED_ON` in `frontend/src/lib/scope/sources.ts`); in this branch that check was
+made against the repository's own pages, not yet against the official texts.
+
+## The Q&A corpus
+
+`TRACKED_ACTS` in `src/crawler/eurlex/client.py` lists 18 EU acts, seeded in English and
+Italian (`CORPUS_LANGUAGES=EN,IT`), from the latest CELLAR consolidated text when one exists
+(`EURLEX_PREFER_CONSOLIDATED=true`) and from the original publication otherwise (the amending
+acts):
+
+| Framework | Acts (CELEX) |
+|---|---|
+| CSRD | 32022L2464 (CSRD), 32013L0034 (Accounting Directive), 32023R2772 (ESRS Set 1), 32025L0794 (Stop-the-Clock, amending), 32026L0470 (Omnibus I, amending) |
+| CSDDD | 32024L1760 |
+| AI Act | 32024R1689, 32026R1744 (Digital Omnibus on AI, amending) |
+| DORA | 32022R2554, 32024R1773, 32024R1774, 32024R2956 |
+| NIS2 | 32022L2555 |
+| Taxonomy | 32020R0852, 32023R2486 |
+| GDPR | 32016R0679 |
+| CRA | 32024R2847, 32025R2392 |
+
+**No Italian law in the Q&A corpus.** The seed still calls the old client in
+`src/crawler/normattiva/` when `DATA_SOURCE` is `both` (the default) or `normattiva`. The
+endpoints it calls (`https://www.normattiva.it/opendata/api/...`) answered on 2026-11-11 with
+HTTP 409 and a page of the Poligrafico's protection systems, so no Italian passage is indexed.
+The document check uses the newer open data API instead (`src/document_check/normattiva.py`).
+Set `DATA_SOURCE=eurlex` to skip the attempt.
+
+Measured quality is in [docs/MODELS.md](docs/MODELS.md). Golden v2 (101 questions) end to end
+on 2026-11-09: 96 / 101 passed, 99.79 % of citations verified word for word, with
+multilingual-e5-large embeddings and Claude Haiku 5.5. That is **not** the default
+configuration: the code defaults to the mpnet embedding model (`EMBEDDING_MODEL`) and to
+Google Gemini (`LLM_PROVIDER=gemini`), which docs/MODELS.md does not report a golden-set run
+for.
+
+## Running the full stack
 
 ### Prerequisites
 
-- Python 3.11+
-- Docker & Docker Compose
-- A Google (Gemini) or Anthropic API key
+- Python 3.11 or 3.12 (`pyproject.toml`), Poetry
+- Docker with Compose
+- An API key of one language-model provider: Google Gemini (default), Anthropic, OpenRouter or
+  Mistral (`LLM_PROVIDER`)
+- Node.js for the frontend
 
-### 1. Clone & Configure
+### 1. Configure
 
 ```bash
-git clone https://github.com/Dan23RR/NormaAI.git
-cd NormaAI
 cp .env.example .env
-# Edit .env with your API keys and settings
+# set at least POSTGRES_PASSWORD, APP_SECRET_KEY and the key of your provider
+python -c "import secrets; print(secrets.token_urlsafe(64))"   # a value for APP_SECRET_KEY
 ```
 
-### 2. Generate JWT Keys
-
-NormaAI uses RSA key pairs for JWT token signing. Generate them before starting:
+JWT signing uses an RSA key pair. Generate it once (the files are git-ignored):
 
 ```bash
 openssl genrsa -out jwt_private.pem 2048
 openssl rsa -in jwt_private.pem -pubout -out jwt_public.pem
 ```
 
-These files are git-ignored and must be generated locally by each developer.
+Without the pair the API falls back to HS256 in development and refuses to start with
+`APP_ENV=production`.
 
-### 3. Generate App Secret Key
-
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(64))"
-# Copy the output into APP_SECRET_KEY in your .env file
-```
-
-### 4. Start Infrastructure
+### 2. Infrastructure, schema, corpus
 
 ```bash
 docker compose up -d postgres qdrant redis
-```
-
-### 5. Install Dependencies
-
-```bash
-# Using Poetry (recommended)
-poetry install
-
-# With observability extras
-poetry install -E observability
-```
-
-### 6. Initialize Database
-
-```bash
-# Alembic owns the schema (src/db/models.py is the source of truth; the
-# docker-entrypoint script only creates the PostgreSQL extensions):
-alembic upgrade head
-```
-
-### 7. Seed Regulatory Data
-
-```bash
-python -m src.pipeline --action seed                       # every tracked act, EN + IT
+poetry install                           # extras: -E observability, -E openrouter (also Mistral), -E local-llm
+alembic upgrade head                     # 9 migrations in alembic/versions/
+python -m src.pipeline --action seed     # the 18 acts, EN + IT
 python -m src.pipeline --action seed --acts AI_ACT --lang IT   # a subset (CELEX ids or framework names)
-python -m src.pipeline --action seed --recreate            # drop + rebuild the Qdrant collection
+python -m src.pipeline --action seed --recreate                # drop and rebuild the Qdrant collection
 ```
 
-**What the corpus contains.** The seed iterates the act registry in
-`src/crawler/eurlex/client.py` (`TRACKED_ACTS`, 17 acts): the basic acts of
-the 8 frameworks (CSRD, CSDDD, AI Act, DORA, NIS2, Taxonomy, GDPR, CRA), the
-amending acts that change their timelines (Stop-the-Clock Directive (EU)
-2025/794, Omnibus I Directive (EU) 2026/470, Digital Omnibus on AI Regulation
-(EU) 2026/1744) and the delegated/implementing acts cited in the product
-(ESRS Set 1 2023/2772, DORA RTS 2024/1773 and 2024/1774, DORA ITS 2024/2956,
-Taxonomy Environmental Delegated Act 2023/2486, CRA Implementing Regulation
-2025/2392). For each act the pipeline:
+Locally `docker compose` also reads `docker-compose.override.yml`, which publishes Postgres on
+5433, Redis on 6380 and Qdrant on 6335: point `DATABASE_URL`, `REDIS_URL` and `QDRANT_PORT` in
+`.env` at those ports, or start with `docker compose -f docker-compose.yml`. The seed downloads
+from CELLAR and embeds every passage on the CPU: count on a long first run.
 
-- downloads the **latest CELLAR consolidated text** when one exists (the law
-  as amended; `EURLEX_PREFER_CONSOLIDATED=true`), falling back to the original
-  OJ publication offline or for acts that have none (amending acts);
-- downloads **English and Italian** (`CORPUS_LANGUAGES=EN,IT`) and tags every
-  chunk with `lang`;
-- chunks per legal unit (preamble, `Recital N`, `Art. N` with its title and
-  chapter, `Annex I` sections) keeping paragraph/point numbers glued to their
-  text, with `celex`, `source_celex`, `eli`, `url`, `consolidated_as_of`,
-  `paragraph` and `chunk_index` on every chunk;
-- re-indexes each (act, language) in place: point ids are deterministic
-  (`UUID5(celex|lang|article|chunk_index|sha1(text))`), so re-running the
-  seed never duplicates chunks;
-- writes a corpus metadata point (`corpus_as_of`, acts, embedding model) that
-  `HybridIndexer.get_corpus_info()` exposes.
-
-Normattiva (Italian implementing acts) is seeded in the same run when
-`DATA_SOURCE=both`. The sparse vectors use Qdrant's IDF modifier: a collection
-created before this change logs a warning at startup and must be rebuilt with
-`--recreate`.
-
-### 8. Run the Server
+### 3. API and frontend
 
 ```bash
-uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.api.main:app --reload --port 8000    # Swagger UI at http://localhost:8000/docs
+cd frontend && npm ci && NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
-Visit http://localhost:8000 for the landing page, http://localhost:8000/docs for Swagger UI.
+`docker compose up -d` builds and starts the app container as well, with Prometheus, Grafana
+and Jaeger.
 
-### Docker Deployment
+### Scheduled jobs
+
+On the server these run from cron, not from the API process
+([docs/RUNBOOK.md](docs/RUNBOOK.md), section 10):
 
 ```bash
-# Full stack (app + infrastructure)
-docker compose up -d
-
-# Build only
-docker compose build app
+python -m src.pipeline --action check-freshness     # nightly: indexed versions against CELLAR
+python -m src.pipeline --action recheck-documents   # weekly: watched documents, alerts, digest email
+python -m src.pipeline --action update --days-back 7   # by hand: new EUR-Lex content
 ```
 
-## API Reference
+The digest email needs a Resend key and the public address of the API (`API_PUBLIC_URL` or
+`API_DOMAIN`): with neither address no digest is sent.
 
-### Authentication
+## API overview
 
-All intelligence endpoints require JWT authentication.
-
-Registration is **invite-only by default** (`REGISTRATION_MODE=invite`; also
-`open` for self-service sign-up or `closed`). Bootstrap the very first admin
-from the server, then let admins invite people from the API:
+Registration is invite-only by default (`REGISTRATION_MODE=invite`; also `open` or
+`closed`). The first invite is minted on the server:
 
 ```bash
-# 1. First admin: mint an org-less invite (the invitee founds a new organization)
 python scripts/create_invite.py --email founder@example.com
+```
 
-# 2. Register with the code (joins the invite's organization, or founds a new one)
-curl -X POST http://localhost:8000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "founder@example.com", "password": "securepassword", "name": "Founder",
-       "organization_name": "Acme Srl", "invite_code": "<code>"}'
+| Area | Routes | Notes |
+|---|---|---|
+| Auth (`/api/v1/auth`) | `POST /register`, `/login`, `/refresh`, `/logout`, `/verify-email`, `/resend-verification`, `POST`/`GET /invites`, `GET /me` | per-IP limits on register, login, refresh, verification |
+| Documents (`/api/v1/documents`) | `POST /check`, `GET /checks`, `GET`/`DELETE /checks/{id}`, `POST /checks/{id}/recheck`, `GET /checks/{id}/report`, `GET`/`PATCH /preferences`, `GET`/`POST /unsubscribe` | no language model; own hourly limit (`DOCUMENT_CHECK_RATE_LIMIT`, 30/hour) |
+| Intelligence (`/api/v1`) | `POST /qa`, `/gap-analysis`, `/monitor`, each with `/stream` | count against the daily LLM quota per organisation (`LLM_DAILY_QUOTA_PER_ORG`, 200) |
+| Conversations, clients, alerts, reports (`/api/v1`) | `/conversations`, `/clients`, `/alerts`, `/reports/*` | |
+| Data (`/api/v1`) | `POST /crawl` (staff only, `STAFF_EMAILS`), `POST /documents/upload`, `GET /processors` | an uploaded document is indexed for its organisation and never verifies a citation |
+| GDPR (`/api/v1/gdpr`) | `GET /export`, `POST /erase` | admin only |
+| System | `GET /health`, `/readyz`, `/api/v1/stats` (with corpus `freshness`), `/api/v1/system/quota`, `/api/v1/metrics` (admin), `/api/v1/metrics/prometheus` (scrape token) | |
 
-# 3. Admins invite colleagues into their organization (code is returned once)
-curl -X POST http://localhost:8000/api/v1/auth/invites \
+`POST /api/v1/documents/check` takes a file (multipart, field `file`, at most 10 MB) or a text:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/check \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"email": "cfo@example.com", "role": "member"}'
-
-# Login
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "founder@example.com", "password": "securepassword"}'
+  -d '{"text": "Ai sensi dell articolo 13 del GDPR ...", "filename": "nota.txt", "document_date": "2026-03-15"}'
 ```
 
-Guard rails on the auth surface (see [SECURITY.md](SECURITY.md)): per-IP rate
-limits on register/login/refresh, email verification (`POST /api/v1/auth/verify-email`,
-`POST /api/v1/auth/resend-verification`; enforced on the intelligence endpoints
-when `REQUIRE_EMAIL_VERIFICATION=true`), a daily LLM quota per organization
-(`LLM_DAILY_QUOTA_PER_ORG`, remaining units in `X-Quota-Remaining` and
-`GET /api/v1/system/quota`), and a staff-only corpus crawl (`STAFF_EMAILS`).
+The file is read in memory and not kept. What is stored: its name, its SHA-256, the dates,
+the findings (the reference, at most 160 characters around it, the quotes, the outcome) and
+the official text of each provision it cites. Checking, re-checking and deleting are refused
+to the `viewer` role. The full request and response shapes are in the router's docstrings and
+at `/docs`.
 
-### Intelligence Endpoints
-
-| Endpoint | Method | Auth | Rate Limit | Description |
-|----------|--------|------|------------|-------------|
-| `/api/v1/qa` | POST | Required | 10/min | Regulatory Q&A with citations |
-| `/api/v1/qa/stream` | POST | Required | 10/min | Streaming Q&A with SSE events |
-| `/api/v1/gap-analysis` | POST | Required | 5/min | Compliance gap analysis |
-| `/api/v1/gap-analysis/stream` | POST | Required | 5/min | Streaming gap analysis |
-| `/api/v1/monitor` | POST | Required | 10/min | Regulatory change impact |
-| `/api/v1/monitor/stream` | POST | Required | 10/min | Streaming monitor analysis |
-| `/api/v1/crawl` | POST | Staff | 2/min | Trigger EUR-Lex crawl (re-indexes the shared corpus) |
-
-Intelligence endpoints also consume the organization's daily LLM quota
-(default 200 requests/day, `429` once exhausted).
-
-### System Endpoints
-
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/health` | GET | Public | Liveness probe (process up) |
-| `/readyz` | GET | Public | Readiness probe (503 when Qdrant/LLM unavailable) |
-| `/api/v1/stats` | GET | Public | System health and statistics |
-| `/api/v1/processors` | GET | Public | Document processing engine status |
-| `/api/v1/metrics` | GET | Admin | Detailed request metrics |
-| `/api/v1/system/quota` | GET | Required | Today's LLM quota usage for the caller's organization |
-| `/api/v1/metrics/prometheus` | GET | Scrape token / Admin | Prometheus exposition format |
-
-### Example: Q&A
+## Tests and CI
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/qa \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "Does a company with 800 employees need to report under CSRD after the Omnibus changes?",
-    "company_profile": {
-      "name": "TechCorp Srl",
-      "sector": "Technology",
-      "employee_count": 800,
-      "revenue_eur": 50000000,
-      "jurisdictions": ["IT"]
-    }
-  }'
+python -m pytest tests/test_document_check.py tests/test_citation_verifier.py -q   # targeted
+python -m pytest --collect-only -q | tail -1                                     # the live count
+ruff check src/ tests/ && ruff format --check src/ tests/
+cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
-## Project Structure
-
-```
-normaai/
-├── src/
-│   ├── api/                       # FastAPI app, routers, middleware
-│   ├── agents/                    # LangGraph orchestration & LLM nodes
-│   ├── auth/                      # JWT, RBAC, brute-force protection
-│   ├── crawler/eurlex/            # EUR-Lex SPARQL client
-│   ├── db/                        # SQLAlchemy models & async engine
-│   ├── nlp/
-│   │   ├── chunking/              # Legal-aware document chunking
-│   │   ├── embedding/             # Qdrant hybrid indexer (dense + sparse)
-│   │   └── processing/            # OCR & document processors
-│   ├── config.py                  # Pydantic settings
-│   ├── cache.py                   # Redis response cache (org-scoped)
-│   ├── pipeline.py                # Ingestion orchestrator
-│   └── resilience.py              # Circuit breaker & concurrency limiter
-├── frontend/                      # Next.js 14 dashboard (TypeScript)
-├── prompts/                       # LLM prompt templates
-├── tests/                         # pytest + validation framework
-├── alembic/                       # Database migrations
-├── infra/                         # Prometheus, Grafana, Jaeger configs
-├── scripts/                       # Database init scripts
-├── .github/workflows/ci.yml       # CI/CD pipeline
-├── Dockerfile                     # Multi-stage production build
-├── docker-compose.yml             # Full stack orchestration
-└── pyproject.toml                 # Dependencies & tooling config
-```
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| **API Framework** | FastAPI 0.115+ with async/await |
-| **Agent Orchestration** | LangGraph (StateGraph) |
-| **LLM Providers** | Google Gemini 2.5 Flash / Anthropic Claude Sonnet 4.5 |
-| **Vector Database** | Qdrant 1.20 (hybrid: multilingual-mpnet dense + BM25 sparse + RRF) |
-| **Relational Database** | PostgreSQL 16 with SQLAlchemy 2.0 async |
-| **Cache** | Redis 7 |
-| **Authentication** | JWT RS256 + bcrypt password hashing |
-| **Document Processing** | IBM Docling + BeautifulSoup (dots.ocr optional) |
-| **Embedding Model** | paraphrase-multilingual-mpnet-base-v2 (768d) |
-| **Regulatory Data** | EUR-Lex (SPARQL + CELLAR) + Normattiva Open Data |
-| **Frontend** | Next.js 14, TypeScript, Tailwind CSS, Recharts |
-| **Observability** | OpenTelemetry + Sentry (optional) |
-| **CI/CD** | GitHub Actions |
-| **Containerization** | Docker multi-stage builds |
-
-## Configuration
-
-All configuration is managed through environment variables (loaded from `.env`).
-See [`.env.example`](.env.example) for the complete list with documentation.
-
-Key variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LLM_PROVIDER` | `gemini` | LLM provider: `gemini` or `anthropic` |
-| `GOOGLE_API_KEY` | - | Google Gemini API key |
-| `ANTHROPIC_API_KEY` | - | Anthropic API key |
-| `DATABASE_URL` | `postgresql+asyncpg://...` | PostgreSQL connection string |
-| `QDRANT_HOST` | `localhost` | Qdrant hostname |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
-| `APP_SECRET_KEY` | - | Application secret (min 64 chars) |
-| `APP_ENV` | `development` | Environment: development/staging/production |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated CORS origins |
-
-## Development
-
-```bash
-# One-time: install pre-commit hooks (gitleaks + ruff before every commit)
-pip install pre-commit && pre-commit install
-
-# Run tests
-pytest tests/ -v --cov=src
-
-# Lint
-ruff check src/ tests/
-
-# Type check
-mypy src/
-
-# Format
-ruff format src/ tests/
-```
-
-CI (GitHub Actions): lint+types, backend tests (Postgres/Qdrant/Redis services),
-frontend tests+build, Docker build+health, Gitleaks (full history), Bandit, Trivy
-(fs+image), CodeQL, CycloneDX SBOM. Releases (`v*.*.*` tags) publish a scanned
-image to GHCR with attached SBOM (`.github/workflows/release.yml`).
+The full backend suite takes a long time on a laptop; `run_tests.ps1` runs it tier by tier.
+CI (`.github/workflows/ci.yml`) runs on every push: ruff, mypy (a strict gate on ten modules),
+the backend suite on Postgres, Qdrant and Redis with a coverage floor of 84 %, a schema-drift
+gate (`alembic upgrade head` then `alembic check`), frontend type check, tests and build, a
+Docker build with a health check, Gitleaks, Bandit, Trivy (report-only), CodeQL
+(`codeql.yml`) and a CycloneDX SBOM. `release.yml` publishes an image to GHCR on a `v*.*.*`
+tag and fails on fixable critical or high findings. `validation.yml` is a self-test of the
+evaluation harness on canned outputs, not a measurement; `uptime.yml` checks the public site
+and, once configured, the API every 30 minutes.
 
 ## Operations
 
-- [docs/RUNBOOK.md](docs/RUNBOOK.md) - incident response, deploy/rollback, maintenance cadence
-- [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md) - RPO 24h / RTO 1h, daily `pg_dump`, monthly restore test
-- Observability: Prometheus alert rules ([infra/prometheus.rules.yml](infra/prometheus.rules.yml)) +
-  provisioned Grafana dashboard "NormaAI - Health" (auto-loaded at `localhost:3001`)
+- [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md): putting a new server in production.
+- [docs/RUNBOOK.md](docs/RUNBOOK.md): incidents, deploy and rollback, recurring jobs.
+- [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md): nightly encrypted off-site copies with
+  restic. Data loss (RPO) up to 24 hours with a working nightly job; time to be back (RTO) not
+  measured. As of 2026-11-11 no backup has been sent to a real repository and no restore has
+  been done.
+
+## Limits and known gaps
+
+- **No production backend today.** The server was lost in September 2026 and is being
+  rebuilt; accounts are suspended. The public site, the two static scope checkers
+  (`frontend/public/scope-csrd.html`, `scope-aiact.html`) and a demo mode with declared sample
+  data work. No customer is claimed.
+- **Sessions.** Access and refresh tokens are kept in the browser's `localStorage`
+  (`frontend/src/lib/auth.ts`). There is no password reset, no multi-factor authentication
+  and no single sign-on.
+- **Roles.** `viewer` is enforced only on the documents routes; elsewhere a viewer can do what
+  a member can.
+- **Audit trail.** Audit events are log lines (logger `normaai.audit`), not rows of a table,
+  and are lost when the container is recreated.
+- **Tenant isolation in the database** needs the overlay `docker-compose.rls.yml`: without it
+  the app connects as the database superuser, which bypasses row-level security, and isolation
+  rests on the queries' `org_id` filters alone.
+- **Verifier.** The literal-wording rule (from 2026-11-11) has not been measured on the golden
+  set yet; it can only lower the share of verified citations. Gap-analysis and monitor answers
+  are not checked.
+- **Models.** The EU-hosted option (`LLM_PROVIDER=mistral`) has never been called with a real
+  key and is not measured. The measured configuration is not the default (see "The Q&A
+  corpus").
+- **Freshness.** A Q&A citation is checked against the corpus as seeded; the nightly
+  freshness job reports a newer consolidated version, it does not reseed.
+- **Monitoring.** No Alertmanager is connected: the Prometheus rules are seen only by opening
+  Prometheus. `uptime.yml` is the only check that warns anyone.
+- **Old wording in code.** The OpenAPI description in `src/api/main.py` and the page served at
+  `/` by the API (`src/api/landing.py`) still describe the product of spring 2026.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy and key rotation schedule.
+See [SECURITY.md](SECURITY.md) for how to report a vulnerability, the controls in place, key
+rotation and the known gaps, and [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
 
-- JWT authentication (RS256) with organization-scoped tokens and RBAC
-- Row-Level Security (RLS) in PostgreSQL for multi-tenant data isolation
-- Input sanitization against prompt injection attacks
-- Rate limiting on all intelligence endpoints
-- Brute-force protection with Redis-backed lockout
-- Non-root Docker containers with read-only filesystem
-- Secret detection: gitleaks pre-commit hook + full-history scan in CI, Trivy, Bandit, CodeQL
+## Contributing and licence
 
-## Regulatory Context
-
-NormaAI is built with deep understanding of the EU regulatory landscape post-Omnibus I (Directive (EU) 2026/470, published OJ 26 February 2026, in force 18 March 2026):
-
-- **CSRD scope narrowed** to 1,000+ employees (raised from 250)
-- **ESRS data points reduced** by 61% from original Set 1
-- **CSDDD transposition** deadline: 26 July 2028, first compliance: 26 July 2029
-- **VSME Standard** voluntary - flagged for early adoption when beneficial
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and how to submit changes.
-
-## License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
-## Project Status
-
-**Current release:** MVP / Pre-Production (v0.3.0 - see `pyproject.toml`)
-**Last verified end-to-end:** 2026-06-12 - **full suite green in CI** (CI runs every test on every push; run `pytest --collect-only` for the live count). 3 network-dependent tests are skipped offline.
-
-### Shipped (verified empirically, G1)
-
-| Component | Status | Evidence |
-|-----------|--------|----------|
-| Backend API | ✅ Feature-complete (MVP) | 8 routers, 33+ endpoints across `src/api/routers/` + `src/auth/router.py` |
-| LangGraph Orchestration | ✅ Complete | `src/agents/graph.py`, `nodes.py`, `router.py` |
-| Hybrid Search (RRF) | ✅ Complete | `tests/test_hybrid_search.py` (13 tests, 100% pass) |
-| JWT Auth + RLS | ✅ Complete | `alembic/versions/002_enable_rls_policies.py` |
-| CoVe Anti-Hallucination | ✅ Integrated | `src/agents/cove/` + 4 prompt templates |
-| SSE Streaming | ✅ Connected | `src/api/streaming/sse.py` |
-| EUR-Lex Crawler | ✅ Complete | `src/crawler/eurlex/client.py` (18 tests) |
-| Normattiva Crawler | ✅ Integrated | `src/crawler/normattiva/` (15 tests) |
-| Frontend Dashboard (Next.js 14) | ✅ Complete | 17 pages under `frontend/src/app/dashboard/` |
-| **Public Landing Page (IT)** | ✅ Complete (G2) | `frontend/src/app/page.tsx` |
-| Alembic Migrations | ✅ Complete | 4 revisions: 001 schema, 002 RLS, 003 temporal, 004 normattiva+CoVe |
-| Test suite | ✅ **Full suite green** | 21 files; CI-enforced (`run_tests.ps1` for local tier-by-tier) |
-
-### Test pass rate per tier - dated baseline 2026-04-28 (the per-tier counts below are a historical snapshot; the live suite has since grown - CI runs the authoritative current suite on every push)
-
-```
-TIER 1 - Pure unit (no infra)    38/38   100%
-TIER 2 - DB/Auth (sqlite)        57/57   100%
-TIER 3 - Cache (Redis mock)      30/30   100%
-TIER 4 - Hybrid Search (Qdrant)  13/13   100%
-TIER 5 - LLM/Agents              60/60   100%
-TIER 6 - External APIs           30/30   100% (+3 skipped network tests)
-TIER 7 - API integration         36/36   100%
-TIER 8 - Monte Carlo             48/48   100%
-                                 ─────  ────
-                                312/312  100%
-```
-
-> Note: TIER 8 (Monte Carlo) is a standalone regulatory-risk **validation/research
-> harness** under `tests/validation/` (Weibull-based methodology check, run
-> offline). It is **not** a runtime API capability and is not wired into `src/` -
-> it is listed here only because it ships with its own test set.
-
----
-
-Built with LangGraph + Qdrant Hybrid Search + EUR-Lex SPARQL + Normattiva Open Data
+See [CONTRIBUTING.md](CONTRIBUTING.md). MIT licence, see [LICENSE](LICENSE).

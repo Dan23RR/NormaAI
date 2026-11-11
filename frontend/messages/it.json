@@ -1,12 +1,12 @@
 {
   "site": {
     "meta": {
-      "title": "NormaAI: risposte sul diritto UE con la fonte esatta",
-      "description": "Domande su CSRD, CSDDD, AI Act, NIS2, DORA, GDPR e Tassonomia UE con l’articolo citato e il passaggio di legge verificabile su EUR-Lex e Normattiva.",
-      "ogDescription": "Ogni risposta cita l’atto, l’articolo e il passaggio di legge, con il link al testo ufficiale. Se il testo non basta, il sistema lo dice.",
-      "orgDescription": "Risposte sul diritto UE (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia, GDPR) con la fonte esatta su EUR-Lex e Normattiva.",
-      "appDescription": "Domande e risposte sul diritto UE con citazione dell’atto, dell’articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze.",
-      "offer": "Accesso su invito. Codex Post-Omnibus 2025-2029 gratuito."
+      "title": "NormaAI: ogni riferimento di legge, verificato sul testo ufficiale",
+      "description": "Risposte sul diritto dell’Unione (CSRD, CSDDD, AI Act, NIS2, DORA, GDPR, Tassonomia) con l’atto, l’articolo e il passaggio di legge citato. Ogni citazione è confrontata, parola per parola, con il testo ufficiale pubblicato su EUR-Lex.",
+      "ogDescription": "Ogni risposta cita l’atto, l’articolo e il passaggio di legge, confrontato parola per parola con il testo ufficiale. Se il testo non basta, il sistema lo dice.",
+      "ogImageAlt": "NormaAI. Ogni riferimento di legge, verificato sul testo ufficiale.",
+      "orgDescription": "NormaAI verifica i riferimenti di legge sul testo ufficiale dell’Unione europea pubblicato su EUR-Lex e risponde alle domande citando atto, articolo e passaggio.",
+      "appDescription": "Domande e risposte sul diritto UE con citazione dell’atto, dell’articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze."
     },
     "header": {
       "nav": "Principale",
@@ -37,12 +37,24 @@
       "cookie": "Cookie",
       "terms": "Termini",
       "security": "Sicurezza",
-      "credits": "NormaAI è un progetto di Daniel Culotta, Inverigo (CO), Italia. © {year}",
+      "credits": "© {year} Daniel Culotta",
       "aiNotice": "Le risposte sono generate da un sistema di intelligenza artificiale e non sostituiscono la consulenza di un professionista."
+    },
+    "imprint": {
+      "title": "Chi gestisce NormaAI",
+      "identity": "NormaAI è un progetto di Daniel Culotta, persona fisica, Inverigo (CO), Italia, non ancora costituito in società.",
+      "contact": "Contatti: <mail>info@normaai.org</mail>",
+      "vat": "Partita IVA: {vat}"
+    },
+    "notFound": {
+      "title": "Pagina non trovata",
+      "body": "L’indirizzo che hai aperto non corrisponde a nessuna pagina: può essere stato scritto male, oppure la pagina è stata spostata.",
+      "home": "Vai alla pagina principale",
+      "elsewhere": "Oppure apri"
     },
     "codexForm": {
       "invalidEmail": "Inserisci un indirizzo email valido.",
-      "successDefault": "Richiesta registrata. Riceverai il Codex entro 24 ore.",
+      "successDefault": "Richiesta registrata.",
       "tooMany": "Troppe richieste recenti dallo stesso indirizzo. Riprova tra un’ora.",
       "invalidData": "Dati non validi. Controlla email e nome organizzazione.",
       "unexpected": "Errore inatteso ({status}). Riprova o scrivi a info@normaai.org.",
@@ -212,6 +224,8 @@
     }
   },
   "login": {
+    "metaTitle": "Accedi",
+    "metaDescription": "Accedi a NormaAI con il tuo account, oppure apri la demo con dati di esempio.",
     "titleLogin": "Accedi a NormaAI",
     "titleRegister": "Crea il tuo account",
     "leadLogin": "Usa l’email e la password del tuo account.",
@@ -233,7 +247,7 @@
     "terms": "Accedendo accetti i <terms>Termini di servizio</terms> e la <privacy>Privacy</privacy>.",
     "claim": "Ogni risposta mostra il passaggio di legge che la sostiene.",
     "article": "art. 50, par. 1",
-    "asideNote": "Codice aperto su GitHub. Dati in Europa.",
+    "asideNote": "Codice aperto su GitHub. Database e indice di ricerca in Germania; la domanda va al fornitore del modello linguistico configurato.",
     "verifyEmail": {
       "title": "Conferma dell’email",
       "verifying": "Sto confermando il tuo indirizzo.",
@@ -248,8 +262,8 @@
       "goToApp": "Vai all’applicazione",
       "goToLogin": "Accedi"
     },
-    "unavailableTitle": "L’accesso agli account è sospeso per qualche giorno",
-    "unavailableBody": "Stiamo spostando il server che ospita gli account. Nel frattempo puoi usare la demo con dati di esempio; per i pilot in corso scrivi a <mail>info@normaai.org</mail>."
+    "unavailableTitle": "Accesso agli account sospeso",
+    "unavailableBody": "Stiamo spostando il server che ospita gli account: finché non torna in linea non si può accedere né creare un account. Puoi usare la demo con dati di esempio; per i pilot in corso scrivi a <mail>info@normaai.org</mail>. Ultimo aggiornamento di questo stato: {date}."
   },
   "app": {
     "nav": {
@@ -1340,6 +1354,7 @@
   "legal": {
     "lastUpdated": "Ultimo aggiornamento: {date}",
     "inCode": "Nel codice: ",
+    "status": "Gli account sono sospesi mentre il server dell’applicazione viene spostato. Il sito pubblico, le due verifiche gratuite e la demo con dati di esempio funzionano. Ultimo aggiornamento di questo stato: {date}.",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "Come NormaAI tratta i dati personali di chi usa l’applicazione, di chi visita il sito e di chi ci scrive, ai sensi del Regolamento (UE) 2016/679 (GDPR).",
@@ -1359,14 +1374,15 @@
           "2": "Organizzazione: nome, identificativo, piano.",
           "3": "Clienti, cioè le aziende analizzate: nome, settore, numero di dipendenti, fatturato, giurisdizioni, normative applicabili.",
           "4": "Conversazioni: domande e risposte con i relativi metadati (per esempio le fonti citate), collegate all’utente e, se indicato, al cliente.",
-          "5": "Documenti caricati: il file viene elaborato e cancellato; resta il testo estratto, in frammenti indicizzati con l’identificativo dell’organizzazione.",
-          "6": "Valutazioni (gap analysis) e avvisi generati per ciascun cliente.",
-          "7": "Registro degli eventi: azione, esito, utente, organizzazione, indirizzo IP, data e ora.",
-          "8": "Il profilo aziendale compilato nei moduli è conservato nel browser (sessionStorage) e inviato all’API insieme alla domanda."
+          "5": "Documenti caricati per le risposte: il file viene elaborato e cancellato; resta il testo estratto, in frammenti indicizzati con l’identificativo dell’organizzazione.",
+          "6": "Documenti controllati: il file che carichi per controllarne i riferimenti di legge viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende.",
+          "7": "Valutazioni (gap analysis) e avvisi generati per ciascun cliente.",
+          "8": "Registro degli eventi: azione, esito, utente, organizzazione, indirizzo IP, data e ora.",
+          "9": "Il profilo aziendale compilato nei moduli è conservato nel browser (sessionStorage) e inviato all’API insieme alla domanda."
         },
         "intro2": "Sul sito pubblico:",
         "site": {
-          "1": "Richiesta del Codex o di una demo: email, nome dell’organizzazione, ruolo e modulo di provenienza. Quando la richiesta passa dall’API, vengono salvati anche indirizzo IP, user agent e pagina di provenienza (per limitare lo spam), oltre alla data e al numero di download. Quando passa dalla funzione serverless su Vercel, i dati sono scritti nei log della funzione e inviati via email a info@normaai.org.",
+          "1": "Richiesta del Codex, di una demo o dell’analisi dopo una verifica gratuita: email, nome dell’organizzazione, ruolo e modulo di provenienza (per le verifiche anche l’esito e, per l’AI Act, le situazioni spuntate). La richiesta è ricevuta da una funzione serverless su Vercel: i dati sono scritti nei log della funzione e, quando l’invio delle email è configurato, inviati a info@normaai.org tramite Resend. Non sono salvati in un database dell’applicazione.",
           "2": "Email: i dati contenuti nei messaggi inviati a info@normaai.org.",
           "3": "Statistiche di visita: Vercel Web Analytics, senza cookie e senza identificare il visitatore."
         }
@@ -1384,11 +1400,11 @@
       "processors": {
         "title": "4. Sub-responsabili e fornitori",
         "items": {
-          "1": "<strong>Hetzner Online GmbH</strong> (Germania): server su cui girano l’API e i database. I dati dell’applicazione restano nell’Unione europea.",
-          "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, nella regione di Francoforte, e funzione serverless che riceve le richieste del Codex. Statistiche di visita senza cookie.",
-          "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito; il codice permette di configurare in alternativa Anthropic o OpenRouter.",
+          "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione conserva i dati; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
+          "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, con le funzioni lato server nella regione di Francoforte, compresa la funzione che riceve le richieste del Codex e delle verifiche gratuite. Statistiche di visita senza cookie.",
+          "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito oggi: la scelta è una configurazione, e il codice supporta in alternativa Anthropic e OpenRouter.",
           "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali (consegna del Codex, notifica delle nuove richieste).",
-          "5": "<strong>Cloudflare, Inc.</strong>: solo gestione DNS del dominio normaai.org, senza proxy del traffico. Tratta le interrogazioni DNS, non i contenuti."
+          "5": "<strong>Cloudflare, Inc.</strong> (USA): DNS del dominio normaai.org e instradamento della posta in arrivo: i messaggi scritti a info@normaai.org passano dai server di posta di Cloudflare prima di arrivare alla casella di destinazione. Il traffico del sito non passa dal proxy di Cloudflare."
         },
         "p": "Per i fornitori con sede negli Stati Uniti i trasferimenti si basano sulle clausole contrattuali standard previste dai loro accordi sul trattamento dei dati."
       },
@@ -1396,8 +1412,8 @@
         "title": "5. Conservazione",
         "items": {
           "1": "Dati dell’applicazione: per tutta la durata del rapporto. Non esiste una cancellazione automatica a scadenza. L’amministratore dell’organizzazione può in qualsiasi momento esportare i dati e cancellare clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati dall’applicazione; ogni utente può cancellare le proprie conversazioni. Per chiudere gli account e l’organizzazione scrivi a info@normaai.org.",
-          "2": "Copie di backup: il database è copiato ogni notte e le copie sono conservate 30 giorni sul server. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
-          "3": "Richieste del Codex: conservate nel database finché non ne viene chiesta la cancellazione. Il link di download scade dopo 30 giorni.",
+          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni sul server. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
+          "3": "Richieste del Codex e delle verifiche gratuite: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
           "4": "Registro degli eventi: nei log del server, con la loro rotazione.",
           "5": "Dati nel browser: vedi la <cookie>cookie policy</cookie>."
         }
@@ -1413,7 +1429,7 @@
       "ai": {
         "title": "7. Trasparenza AI (art. 50 AI Act)",
         "p": {
-          "1": "NormaAI usa un modello linguistico generativo (Google Gemini per impostazione predefinita) per scrivere le risposte a partire dai passaggi normativi recuperati dal corpus, costruito da EUR-Lex e Normattiva (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Tutti gli output sono generati da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report.",
+          "1": "NormaAI usa un modello linguistico generativo di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) per scrivere le risposte a partire dai passaggi recuperati dal corpus: testi ufficiali di atti dell’Unione pubblicati su EUR-Lex (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Tutti gli output sono generati da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report.",
           "2": "NormaAI non prende decisioni automatizzate con effetti giuridici sulle persone: produce analisi che un professionista valuta."
         }
       },
@@ -1432,9 +1448,8 @@
       "nature": {
         "title": "1. Natura del servizio",
         "p": {
-          "1": "NormaAI è un servizio gestito da Daniel Culotta, persona fisica, Inverigo (CO), Italia, nell’ambito di un progetto non ancora costituito in società. Contatti: <mail>info@normaai.org</mail>.",
-          "2": "NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo esclusivamente informativo e di supporto decisionale in materia di conformità normativa europea. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
-          "3": "La modalità \"Demo con dati di esempio\" usa dati fittizi, non interroga il corpus reale ed è segnalata in ogni pagina dell’applicazione."
+          "1": "NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo esclusivamente informativo e di supporto decisionale in materia di conformità normativa europea. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
+          "2": "La modalità \"Demo con dati di esempio\" usa dati fittizi, non interroga il corpus reale ed è segnalata in ogni pagina dell’applicazione."
         }
       },
       "ai": {
@@ -1442,8 +1457,8 @@
         "intro": "Ai sensi dell’art. 50 del Regolamento (UE) 2024/1689 (AI Act) ti informiamo che:",
         "items": {
           "1": "usando NormaAI interagisci con un sistema di intelligenza artificiale, non con una persona;",
-          "2": "le risposte, le verifiche di ambito, le gap analysis, gli avvisi e i report sono generati automaticamente da un modello linguistico (Google Gemini per impostazione predefinita) a partire dai testi normativi recuperati dal corpus. Nessuno li scrive o li rivede prima che ti vengano mostrati;",
-          "3": "ogni risposta indica le fonti citate (atto, articolo, passaggio) e un livello di affidabilità. Quando il sistema non trova sostegno sufficiente nel corpus, lo dichiara e segnala la necessità di una revisione esperta invece di rispondere;",
+          "2": "le risposte, le gap analysis, gli avvisi e i report sono generati automaticamente da un modello linguistico di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) a partire dai testi normativi recuperati dal corpus; le verifiche di ambito applicano regole scritte a mano ai dati che inserisci. Nessuno scrive o rivede questi risultati prima che ti vengano mostrati;",
+          "3": "ogni risposta indica le fonti citate (atto, articolo, passaggio), per ciascuna se il passaggio è stato ritrovato alla lettera nel testo ufficiale, e un livello di affidabilità. Quando il sistema non trova sostegno sufficiente nel corpus, lo dichiara e segnala la necessità di una revisione esperta invece di rispondere;",
           "4": "le risposte possono contenere errori, omissioni o citazioni imprecise. Verifica sempre il testo ufficiale su EUR-Lex o Normattiva e consulta un professionista prima di prendere decisioni."
         },
         "p": "Lo stesso avviso è riportato nell’applicazione e nei report generati."
@@ -1515,10 +1530,6 @@
           "purpose": "Stato (aperta o compressa) della barra laterale.",
           "duration": "Finché non la cancelli."
         },
-        "alertPrefs": {
-          "purpose": "Filtri scelti nella pagina degli avvisi (gravità, normativa, letti o non letti).",
-          "duration": "Finché non la cancelli."
-        },
         "qaLanguage": {
           "purpose": "Lingua delle risposte scelta nella pagina Chiedi, quando diversa da quella dell’interfaccia.",
           "duration": "Finché non la cancelli o non cambi la lingua dell’interfaccia."
@@ -1531,16 +1542,8 @@
           "purpose": "Conversazione corrente della pagina Chiedi.",
           "duration": "Chiusura della scheda."
         },
-        "gapResult": {
-          "purpose": "Ultimo risultato di gap analysis.",
-          "duration": "Chiusura della scheda."
-        },
-        "gapScores": {
-          "purpose": "Punteggi per framework usati nei grafici di analisi.",
-          "duration": "Chiusura della scheda."
-        },
-        "workflowItems": {
-          "purpose": "Attività della pagina di workflow.",
+        "clientGap": {
+          "purpose": "Ultima analisi di conformità calcolata per un cliente (una chiave per ciascun cliente).",
           "duration": "Chiusura della scheda."
         },
         "demoReports": {
@@ -1553,6 +1556,10 @@
         },
         "demoClientsDeleted": {
           "purpose": "Clienti rimossi nella demo con dati di esempio.",
+          "duration": "Chiusura della scheda."
+        },
+        "demoInvites": {
+          "purpose": "Inviti creati nella demo con dati di esempio.",
           "duration": "Chiusura della scheda."
         }
       },
@@ -1594,12 +1601,12 @@
       "intro": "Le misure di sicurezza presenti nel codice di NormaAI e quelle che ancora mancano. Il codice è pubblico: ogni sezione indica i file da cui è presa, così chi deve valutarci può controllare invece di fidarsi.",
       "hosting": {
         "title": "1. Dove girano il sito, l’API e i dati",
-        "p1": "Il sito pubblico e l’interfaccia dell’applicazione sono ospitati su Vercel, nella regione fra1 (Francoforte). L’API e i database (PostgreSQL per i dati, Qdrant per la ricerca, Redis per cache e sessioni) girano su un server Hetzner in Germania.",
-        "p2": "In produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e senza capability Linux aggiuntive."
+        "p1": "Il sito pubblico e l’interfaccia dell’applicazione sono ospitati su Vercel; le funzioni lato server girano nella regione fra1 (Francoforte). L’API e i database (PostgreSQL per i dati, Qdrant per l’indice di ricerca, Redis per cache e sessioni) sono progettati per girare su un server Hetzner in Germania.",
+        "p2": "Nella configurazione di produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e senza capability Linux aggiuntive."
       },
       "model": {
         "title": "2. Il modello linguistico",
-        "p1": "Le risposte sono scritte da un modello linguistico di terze parti. Per impostazione predefinita è Google Gemini (impostazione <code>llm_provider</code> uguale a <code>gemini</code>, modello della famiglia Gemini 2.5 Flash). Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi.",
+        "p1": "Le risposte sono scritte da un modello linguistico di un fornitore esterno, scelto in configurazione (impostazione <code>llm_provider</code>). Oggi il valore predefinito è <code>gemini</code>: Google Gemini, di una società statunitense. Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi.",
         "p2": "Il fornitore si può cambiare in configurazione: il codice supporta anche Anthropic e OpenRouter. Oggi non esiste una modalità in cui le risposte sono generate interamente sui nostri server."
       },
       "access": {
@@ -1618,9 +1625,9 @@
       },
       "isolation": {
         "title": "4. Separazione tra organizzazioni",
-        "p": "Ogni organizzazione vede solo i propri dati, e la separazione è applicata dal database, non solo dall’applicazione.",
+        "p": "Ogni organizzazione vede solo i propri dati. Per le tabelle dei dati delle organizzazioni la separazione è applicata dal database, non solo dall’applicazione.",
         "items": {
-          "1": "PostgreSQL ha policy di Row Level Security su utenti, clienti, conversazioni, valutazioni e avvisi: ogni riga è visibile solo nella sessione dell’organizzazione a cui appartiene.",
+          "1": "PostgreSQL applica policy di Row Level Security alle tabelle dei dati delle organizzazioni (clienti, conversazioni, valutazioni, avvisi e inviti): ogni riga è visibile solo nella sessione dell’organizzazione a cui appartiene. Le tabelle degli utenti e delle organizzazioni non hanno queste policy, per scelta: l’accesso, il rinnovo dei token e la registrazione cercano l’utente prima che esista un contesto di organizzazione. Per queste due tabelle la separazione è applicata dalle query dell’applicazione.",
           "2": "L’applicazione si collega con un ruolo dedicato non superuser (<code>normaai_app</code>), perché PostgreSQL ignora le policy per i superuser e per i proprietari delle tabelle. In produzione, se il ruolo connesso è superuser, l’applicazione si rifiuta di partire.",
           "3": "Il contesto dell’organizzazione viene impostato a ogni transazione e azzerato quando la connessione torna nel pool: non può passare da una richiesta a quella successiva.",
           "4": "La cache delle risposte usa chiavi che includono l’organizzazione: una risposta calcolata per un cliente non viene mai servita a un altro.",
@@ -1631,7 +1638,8 @@
       "documents": {
         "title": "5. Documenti caricati",
         "p1": "Un documento caricato (PDF, HTML o immagine, fino a 50 MB) viene scritto in un file temporaneo, elaborato e cancellato alla fine dell’elaborazione, anche se questa fallisce. Resta il testo estratto, suddiviso in frammenti e indicizzato nel motore di ricerca con l’identificativo dell’organizzazione.",
-        "p2": "L’amministratore dell’organizzazione può esportare in JSON tutti i dati dell’organizzazione e cancellare in blocco clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati. La cancellazione richiede una conferma esplicita ed è registrata nel registro degli eventi."
+        "p2": "L’amministratore dell’organizzazione può esportare in JSON tutti i dati dell’organizzazione e cancellare in blocco clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati. La cancellazione richiede una conferma esplicita ed è registrata nel registro degli eventi.",
+        "p3": "Un documento caricato per il controllo dei riferimenti di legge segue un’altra strada: il file viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende."
       },
       "headers": {
         "title": "6. Intestazioni HTTP, CORS e indirizzi IP",
@@ -1642,8 +1650,8 @@
         }
       },
       "links": {
-        "title": "7. Link di download firmati",
-        "p": "Chi richiede il Codex riceve un link firmato con HMAC-SHA256 e valido 30 giorni. La firma è verificata con un confronto in tempo costante; un link scaduto o modificato viene rifiutato. Il modulo pubblico è limitato in frequenza per indirizzo IP."
+        "title": "7. Download del Codex",
+        "p": "Il Codex è un file PDF pubblico del sito: chi lo richiede dal modulo riceve il suo indirizzo, che non è firmato e non scade. Le richieste passano da una funzione serverless sullo stesso dominio, con un campo esca che scarta in silenzio i moduli compilati da programmi automatici. L’API contiene anche un percorso con link firmati HMAC-SHA256 e validi 30 giorni, ma il sito oggi non lo usa."
       },
       "audit": {
         "title": "8. Registro degli eventi",
@@ -1652,7 +1660,7 @@
       },
       "backup": {
         "title": "9. Backup",
-        "p1": "Uno script avviato da cron ogni notte alle 02:00 esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l’archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> dello stesso server.",
+        "p1": "Il repository contiene lo script di backup, pensato per essere avviato da cron ogni notte alle 02:00: esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l’archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> dello stesso server.",
         "p2": "Lo script non cifra il file e non lo copia su un altro sistema: la copia settimanale su uno storage esterno è una procedura manuale documentata, non automatica. Qdrant e Redis non vengono salvati: l’indice si ricostruisce con una nuova indicizzazione, la cache è effimera per costruzione. La procedura di ripristino è documentata nel repository."
       },
       "supplyChain": {
@@ -1661,7 +1669,7 @@
           "1": "Il codice è pubblico su <github>GitHub</github> con licenza MIT.",
           "2": "A ogni push e pull request la CI esegue ruff (lint e formato), mypy (bloccante sui moduli di autenticazione, database e audit), i test del backend su PostgreSQL, Qdrant e Redis reali, type-check, test e build del frontend, la build dell’immagine Docker con scansione Trivy, Gitleaks sull’intera cronologia git, Bandit e la generazione di una SBOM CycloneDX.",
           "3": "CodeQL analizza Python e JavaScript/TypeScript con le query security-extended a ogni push sul ramo principale e ogni settimana.",
-          "4": "A ogni release l’immagine è bloccata se Trivy trova vulnerabilità critiche o alte, e la SBOM è allegata alla release. Dependabot propone gli aggiornamenti delle dipendenze.",
+          "4": "Non esiste ancora una release pubblicata. Il workflow di release parte da un tag di versione: costruisce l’immagine, la blocca se Trivy trova vulnerabilità critiche o alte per le quali esiste una correzione, e allega la SBOM alla release. Dependabot propone gli aggiornamenti delle dipendenze.",
           "5": "I file <code>.env</code> e le chiavi <code>.pem</code> sono esclusi dal repository; la CI fallisce se trova chiavi API o chiavi private nei file tracciati."
         }
       },
@@ -1685,35 +1693,35 @@
           "3": "Correzione o mitigazione delle segnalazioni critiche e alte entro 30 giorni.",
           "4": "Nessuna ricompensa economica; riconoscimento nelle note di rilascio, se gradito."
         },
-        "p2": "Ricevono correzioni di sicurezza solo il ramo principale e l’ultima release pubblicata.",
+        "p2": "Riceve correzioni di sicurezza il ramo principale. Non esiste ancora una release pubblicata.",
         "p3": "Per questionari di sicurezza o per il modello di accordo sul trattamento dei dati (art. 28 GDPR, nella cartella <code>docs/legal/</code> del repository) scrivi allo stesso indirizzo."
       }
     },
     "metodo": {
       "metaTitle": "Metodo e trasparenza",
-      "metaDescription": "Come nasce una risposta di NormaAI: corpus EUR-Lex e Normattiva con data dichiarata, ricerca ibrida, controlli di aderenza alle fonti, astensione quando il testo non basta. Ogni affermazione rimanda al file del codice pubblico che la realizza.",
+      "metaDescription": "Come nasce una risposta di NormaAI: corpus di atti dell’Unione scaricati da EUR-Lex con data dichiarata, ricerca ibrida, verifica letterale delle citazioni, astensione quando il testo non basta. Ogni affermazione rimanda al file del codice pubblico che la realizza.",
       "title": "Come nasce una risposta, e quando non arriva.",
       "intro": "Pubblichiamo il metodo e il codice. Questa pagina descrive la pipeline così com’è oggi, senza contatori e senza promesse: ogni sezione rimanda ai file del repository pubblico che la realizzano, così si può verificare invece di credere.",
       "corpus": {
         "title": "Il corpus: testi ufficiali, con data",
-        "p1": "Le fonti sono due: EUR-Lex, interrogato tramite l’endpoint SPARQL dell’Ufficio delle pubblicazioni dell’Unione, e gli Open Data di Normattiva per il recepimento italiano. I testi vengono suddivisi per articolo e indicizzati; ogni frammento conserva atto (CELEX o URN), articolo, titolo della sezione e data.",
-        "p2": "Gli atti nell’elenco di acquisizione:",
+        "p1": "Il corpus delle risposte contiene 18 atti dell’Unione, in italiano e in inglese, scaricati da CELLAR, l’archivio dell’Ufficio delle pubblicazioni dell’Unione da cui attinge EUR-Lex. Quando esiste viene indicizzato il testo consolidato più recente, cioè l’atto con le modifiche successive già inserite. Oggi il corpus non contiene leggi nazionali italiane. I testi sono suddivisi per articolo; ogni frammento conserva atto (CELEX), articolo, titolo della sezione, lingua e data.",
+        "p2": "I 18 atti nell’elenco di acquisizione:",
         "frameworks": {
           "1": {
             "name": "CSRD",
-            "acts": "Dir. (UE) 2022/2464, ESRS (Reg. delegato (UE) 2023/2772), direttiva stop-the-clock (Dir. (UE) 2025/794) e Omnibus I (Dir. (UE) 2026/470)"
+            "acts": "Dir. (UE) 2022/2464, direttiva contabile 2013/34/UE, ESRS (Reg. delegato (UE) 2023/2772), direttiva stop-the-clock (Dir. (UE) 2025/794) e Omnibus I (Dir. (UE) 2026/470)"
           },
           "2": {
             "name": "CSDDD",
-            "acts": "Dir. (UE) 2024/1760 e Omnibus I (Dir. (UE) 2026/470)"
+            "acts": "Dir. (UE) 2024/1760, con le due direttive modificative già contate sopra"
           },
           "3": {
             "name": "AI Act",
-            "acts": "Reg. (UE) 2024/1689"
+            "acts": "Reg. (UE) 2024/1689 e Reg. (UE) 2026/1744 (Omnibus digitale sull’IA)"
           },
           "4": {
             "name": "DORA",
-            "acts": "Reg. (UE) 2022/2554"
+            "acts": "Reg. (UE) 2022/2554, Reg. delegati (UE) 2024/1773 e 2024/1774, Reg. di esecuzione (UE) 2024/2956"
           },
           "5": {
             "name": "NIS2",
@@ -1721,7 +1729,7 @@
           },
           "6": {
             "name": "Tassonomia UE",
-            "acts": "Reg. (UE) 2020/852"
+            "acts": "Reg. (UE) 2020/852 e Reg. delegato (UE) 2023/2486"
           },
           "7": {
             "name": "GDPR",
@@ -1729,7 +1737,7 @@
           },
           "8": {
             "name": "CRA",
-            "acts": "Reg. (UE) 2024/2847 e Reg. di esecuzione (UE) 2025/2392, aggiunto per ultimo all’elenco"
+            "acts": "Reg. (UE) 2024/2847 e Reg. di esecuzione (UE) 2025/2392"
           }
         },
         "p3": "Il corpus non si aggiorna da solo. Il ciclo periodico di acquisizione esiste nel codice ma è spento per impostazione predefinita: il corpus viene reindicizzato con operazioni esplicite, e la data di riferimento (<code>corpus_as_of</code>) viene impostata al momento del deploy, restituita nei metadati di ogni risposta dell’API e stampata a piè di pagina dei report. I testi superati da atti successivi sono esclusi dalla ricerca per impostazione predefinita."
@@ -1740,27 +1748,27 @@
         "steps": {
           "1": {
             "title": "Recupero ibrido",
-            "body": "La domanda viene cercata in due modi insieme: per significato, con vettori densi del modello multilingue paraphrase-multilingual-mpnet-base-v2 (768 dimensioni, scelto perché il corpus mescola l’inglese di EUR-Lex e l’italiano di Normattiva), e per termini esatti, con vettori sparsi in stile BM25 che catturano «articolo 29» o un numero CELEX. Le due classifiche sono fuse con Reciprocal Rank Fusion, senza pesi da tarare. I filtri escludono i testi superati e limitano la ricerca al corpus condiviso più i documenti dell’organizzazione."
+            "body": "La domanda viene cercata in due modi insieme: per significato, con vettori densi del modello multilingue paraphrase-multilingual-mpnet-base-v2 (768 dimensioni, scelto perché il corpus è in italiano e in inglese e le domande arrivano per lo più in italiano), e per termini esatti, con vettori sparsi in stile BM25 che catturano «articolo 29» o un numero CELEX. Le due classifiche sono fuse con Reciprocal Rank Fusion, senza pesi da tarare. I filtri escludono i testi superati e limitano la ricerca al corpus condiviso più i documenti dell’organizzazione. Un modello di riordino dei risultati esiste nel codice ed è spento per impostazione predefinita."
           },
           "2": {
             "title": "Redazione dal testo recuperato",
-            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello predefinito è Google Gemini, configurabile."
+            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello è quello del fornitore esterno scelto in configurazione: oggi, per impostazione predefinita, Google Gemini."
           },
           "3": {
-            "title": "Più campioni, una decisione",
-            "body": "Per calibrare la fiducia, il sistema genera più risposte indipendenti (3 per impostazione predefinita) e le raggruppa per comportamento. Ne deriva un punteggio di fiducia calcolato, non autodichiarato dal modello: sopra 0,85 la risposta passa; sotto 0,50, o se nemmeno due campioni concordano, il sistema si astiene e lo scrive, chiedendo una revisione esperta. Se la migliore evidenza recuperata è debole (similarità densa sotto 0,25), la risposta viene comunque segnalata per revisione e la fiducia è limitata."
+            "title": "Controllo di aderenza alle fonti",
+            "body": "Ogni citazione della risposta è confrontata con i passaggi recuperati: la normativa, i numeri CELEX nel testo, il numero di articolo e la frase citata devono esistere nell’evidenza. Una citazione non supportata non blocca la risposta, ma la marca come «revisione esperta necessaria» e ne limita il livello di affidabilità."
           },
           "4": {
-            "title": "Controllo di aderenza alle fonti",
-            "body": "Ogni citazione della risposta è confrontata con i passaggi recuperati: la normativa, i numeri CELEX nel testo, il numero di articolo e la frase citata devono esistere nell’evidenza. Una citazione non supportata non blocca la risposta, ma la marca come «revisione esperta necessaria» e abbassa la fiducia. Il controllo gira sulla bozza e di nuovo sulla risposta effettivamente servita."
+            "title": "Verifica letterale delle citazioni",
+            "body": "È un controllo deterministico, che non dipende da un modello: il passaggio che la risposta cita viene cercato nel testo ufficiale recuperato. Da novembre 2026 una citazione conta come verificata solo se è letterale: numeri, parole brevi e negazioni devono coincidere esattamente; sono tollerati soltanto la punteggiatura, gli accenti, la sillabazione a fine riga e l’errore di una lettera dentro una parola lunga. Il testo dei documenti caricati da un’organizzazione non vale mai come testo ufficiale. Se una risposta ha citazioni e nessuna risulta verificata, viene servita con un avviso e con il segnale di revisione esperta; in configurazione si può scegliere di sostituirla con un’astensione."
           },
           "5": {
-            "title": "Chain-of-Verification, su richiesta",
-            "body": "Esiste una verifica a cinque fasi (estrazione delle affermazioni, domande di verifica, revisione, validazione dei riferimenti CELEX e URN contro EUR-Lex e Normattiva), ma è spenta per impostazione predefinita e si attiva per singola richiesta, solo per le risposte con fiducia sotto 0,85. Non è applicata a ogni risposta."
+            "title": "Campionamento multiplo, spento per impostazione predefinita",
+            "body": "Il sistema può generare più risposte indipendenti (3 nella configurazione di partenza) e raggrupparle per comportamento, per ricavare un punteggio di fiducia calcolato invece che dichiarato dal modello: sopra 0,85 la risposta passa; sotto 0,50, o se nemmeno due campioni concordano, il sistema si astiene e lo scrive. Nello stesso passaggio, se la migliore evidenza recuperata è debole (similarità densa sotto 0,25), la risposta viene segnalata per revisione. Questo strato moltiplica le chiamate al modello ed è spento per impostazione predefinita: finché resta spento, il livello di affidabilità parte dalla stima che il modello dà di sé ed è limitato dai due controlli precedenti."
           },
           "6": {
-            "title": "In lavorazione: verifica deterministica",
-            "body": "Stiamo introducendo un controllo deterministico delle citazioni, cioè un confronto esatto del passaggio citato con il testo ufficiale indicizzato, che non dipende da un modello. Finché non è in produzione, in questa pagina resta un lavoro in corso, non un fatto."
+            "title": "Chain-of-Verification, su richiesta",
+            "body": "Esiste una verifica a cinque fasi (estrazione delle affermazioni, domande di verifica, risposte alle domande, revisione, validazione dei riferimenti CELEX e URN), ma è spenta per impostazione predefinita e si attiva per singola richiesta, solo per le risposte con fiducia sotto 0,85. Non è applicata a ogni risposta."
           }
         }
       },
@@ -1768,14 +1776,15 @@
         "title": "Cosa vede chi legge",
         "items": {
           "1": "L’atto e l’articolo citati, il passaggio riportato e il link al testo ufficiale.",
-          "2": "Un livello di affidabilità espresso a parole, non una percentuale.",
-          "3": "Il segnale «revisione esperta necessaria» quando il sistema si astiene, trova evidenza debole o una citazione non supportata.",
-          "4": "L’avviso che le risposte sono generate da un sistema di intelligenza artificiale (Reg. (UE) 2024/1689, art. 50): nel piè di pagina dell’applicazione, nella pagina Chiedi e nei report."
+          "2": "Per ogni citazione, lo stato: «Verificata» quando il passaggio è stato ritrovato alla lettera nel testo ufficiale, «Da verificare» quando non lo è.",
+          "3": "Un livello di affidabilità espresso a parole, non una percentuale.",
+          "4": "Il segnale «revisione esperta necessaria» quando il sistema si astiene, quando una citazione non è supportata o quando nessuna citazione è verificata.",
+          "5": "L’avviso che le risposte sono generate da un sistema di intelligenza artificiale (Reg. (UE) 2024/1689, art. 50): nel piè di pagina dell’applicazione, nella pagina Chiedi e nei report."
         }
       },
       "data": {
         "title": "Dati e separazione tra organizzazioni",
-        "p1": "Il sito è su Vercel (regione di Francoforte); l’API e i database su un server Hetzner in Germania. Ogni organizzazione vede solo i propri dati: Row Level Security in PostgreSQL con un ruolo non superuser, chiavi di cache per organizzazione, filtro per organizzazione nel motore di ricerca. L’amministratore può esportare e cancellare i dati dell’organizzazione dall’applicazione.",
+        "p1": "Il sito è su Vercel; l’API, il database e l’indice di ricerca sono progettati per girare su un server Hetzner in Germania. La domanda, con i passaggi recuperati, viene inviata al fornitore del modello linguistico configurato. Ogni organizzazione vede solo i propri dati: Row Level Security in PostgreSQL sulle tabelle dei dati delle organizzazioni, con un ruolo non superuser; chiavi di cache per organizzazione; filtro per organizzazione nel motore di ricerca. L’amministratore può esportare e cancellare i dati dell’organizzazione dall’applicazione.",
         "p2": "I dettagli, e ciò che manca ancora (SSO, certificazioni, penetration test), sono nella pagina <securityPage>Sicurezza</securityPage>."
       },
       "ci": {
@@ -1801,7 +1810,7 @@
           },
           "4": {
             "title": "Chain-of-Verification opzionale",
-            "body": "La verifica a cinque fasi aggiunge altre chiamate al modello per ogni risposta. È disponibile su richiesta, non promessa su tutto: i controlli sempre attivi sono il campionamento multiplo e l’aderenza alle fonti."
+            "body": "La verifica a cinque fasi aggiunge altre chiamate al modello per ogni risposta. È disponibile su richiesta, non promessa su tutto. Lo stesso vale per il campionamento multiplo, spento per impostazione predefinita: i controlli sempre attivi sono l’aderenza alle fonti e la verifica letterale delle citazioni."
           },
           "5": {
             "title": "Cyber Resilience Act nell’elenco",
@@ -1951,7 +1960,7 @@
     },
     "cookieBanner": {
       "label": "Informativa cookie",
-      "text": "Usiamo solo cookie tecnici necessari al funzionamento del sito (sessione, lingua, preferenze). Nessun cookie di profilazione o di terze parti. Dettagli nella <link>cookie policy</link>.",
+      "text": "Questo sito usa un solo cookie tecnico, per la lingua, e l’archiviazione locale del browser per l’accesso e le preferenze. Nessun cookie di profilazione o di terze parti. Dettagli nella <link>cookie policy</link>.",
       "ok": "Ho capito"
     },
     "actRegulation": "Regolamento (UE) {year}/{number}",

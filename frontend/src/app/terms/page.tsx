@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getFormatter, getTranslations } from 'next-intl/server'
 import { LEGAL_TAGS, LegalLayout, LegalSection, itemKeys } from '@/components/LegalLayout'
+import { Imprint } from '@/components/site/Imprint'
 import { LONG_DATE } from '@/i18n/format'
 import { LEGAL_UPDATED_ON } from '@/lib/legal-dates'
 
@@ -11,12 +12,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TermsPage() {
   const t = await getTranslations('legal.terms')
+  const ti = await getTranslations('site.imprint')
   const format = await getFormatter()
   const rich = (key: string) => t.rich(key, LEGAL_TAGS)
 
   return (
     <LegalLayout title={t('title')} intro={t('intro')} lastUpdated={format.dateTime(LEGAL_UPDATED_ON, LONG_DATE)}>
       <LegalSection title={t('nature.title')}>
+        {/* The imprint: who runs the service, how to reach them and, when one
+            is configured for the build, the VAT number. */}
+        <div className="rounded-md border border-rule bg-surface-2 px-4 py-3">
+          <h3 className="font-sans text-small font-semibold text-ink">{ti('title')}</h3>
+          <Imprint className="mt-1 space-y-1 text-body text-ink-2" />
+        </div>
         {itemKeys(t.raw('nature.p')).map((k) => (
           <p key={k}>{rich(`nature.p.${k}`)}</p>
         ))}

@@ -9,11 +9,14 @@ import {
 } from 'react'
 import { cn } from '@/lib/cn'
 
+// Focus is the ring of the design system: 2 px of solid union, 2 px away from
+// the control (red on an invalid one). The previous union/20 halo was too
+// faint to count as a visible focus indicator.
 const controlClasses =
   'w-full rounded-md border border-rule-2 bg-surface px-3 text-body text-ink placeholder:text-ink-3 transition-colors ' +
-  'focus:border-union focus:outline-none focus:ring-2 focus:ring-union/20 ' +
+  'focus:border-union focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-union ' +
   'disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 ' +
-  'aria-[invalid=true]:border-bad aria-[invalid=true]:focus:ring-bad/20'
+  'aria-[invalid=true]:border-bad aria-[invalid=true]:focus:outline-bad'
 
 /**
  * Label, control, help and error in one block. Pass `htmlFor` matching the
@@ -100,7 +103,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       className={cn('h-10 appearance-none bg-no-repeat pr-9', controlClasses, className)}
       style={{
         backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7788' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235C6879' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
         backgroundPosition: 'right 0.75rem center',
       }}
       aria-invalid={invalid || undefined}

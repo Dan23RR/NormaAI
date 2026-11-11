@@ -3,6 +3,7 @@ import { getFormatter, getTranslations } from 'next-intl/server'
 import { LEGAL_TAGS, LegalLayout, LegalSection, itemKeys } from '@/components/LegalLayout'
 import { LONG_DATE } from '@/i18n/format'
 import { LEGAL_UPDATED_ON } from '@/lib/legal-dates'
+import { BACKEND_CONFIGURED, SERVICE_STATUS_ON } from '@/lib/service-status'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('legal.security')
@@ -32,6 +33,7 @@ async function InCode({ paths }: { paths: string[] }) {
 
 export default async function SecurityPage() {
   const t = await getTranslations('legal.security')
+  const tl = await getTranslations('legal')
   const format = await getFormatter()
   const rich = (key: string) => t.rich(key, LEGAL_TAGS)
   const list = (key: string) => (
@@ -46,6 +48,13 @@ export default async function SecurityPage() {
     <LegalLayout title={t('title')} intro={t('intro')} lastUpdated={format.dateTime(LEGAL_UPDATED_ON, LONG_DATE)}>
       <LegalSection title={t('hosting.title')}>
         <p>{t('hosting.p1')}</p>
+        {/* The dated status line: shown while this build has no backend, so it
+            goes away by itself when the server is back. */}
+        {!BACKEND_CONFIGURED && (
+          <p className="rounded-md border border-warn/40 bg-warn/5 px-4 py-3 text-ink">
+            {tl('status', { date: format.dateTime(SERVICE_STATUS_ON, LONG_DATE) })}
+          </p>
+        )}
         <p>{t('hosting.p2')}</p>
         <InCode
           paths={[
@@ -82,7 +91,8 @@ export default async function SecurityPage() {
         {list('isolation.items')}
         <InCode
           paths={[
-            'alembic/versions/002_enable_rls_policies.py',
+            'alembic/versions/007_reconcile_schema.py',
+            'alembic/versions/008_invites.py',
             'scripts/setup_app_role.sql',
             'src/db/engine.py',
             'src/api/lifespan.py',
@@ -96,7 +106,8 @@ export default async function SecurityPage() {
       <LegalSection title={t('documents.title')}>
         <p>{t('documents.p1')}</p>
         <p>{t('documents.p2')}</p>
-        <InCode paths={['src/api/routers/data.py', 'src/api/routers/gdpr.py']} />
+        <p>{t('documents.p3')}</p>
+        <InCode paths={['src/api/routers/data.py', 'src/api/routers/gdpr.py', 'src/document_check/check.py']} />
       </LegalSection>
 
       <LegalSection title={t('headers.title')}>
@@ -114,7 +125,7 @@ export default async function SecurityPage() {
 
       <LegalSection title={t('links.title')}>
         <p>{t('links.p')}</p>
-        <InCode paths={['src/api/routers/leads.py']} />
+        <InCode paths={['frontend/src/app/api/leads/route.ts', 'src/api/routers/leads.py']} />
       </LegalSection>
 
       <LegalSection title={t('audit.title')}>

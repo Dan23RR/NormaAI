@@ -113,6 +113,10 @@
       "colScope": "Ambito",
       "colActs": "Atti",
       "colCovers": "Cosa copre",
+      "kinds": {
+        "delegated": "Regolamento delegato (UE) {year}/{number}",
+        "implementing": "Regolamento di esecuzione (UE) {year}/{number}"
+      },
       "rows": {
         "CSRD": {
           "act": "Direttiva (UE) 2022/2464, modificata dalla Direttiva (UE) 2026/470 (Omnibus I); D.Lgs. 125/2024",

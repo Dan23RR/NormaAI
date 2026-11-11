@@ -113,6 +113,10 @@
       "colScope": "Area",
       "colActs": "Acts",
       "colCovers": "What it covers",
+      "kinds": {
+        "delegated": "Delegated Regulation (EU) {year}/{number}",
+        "implementing": "Implementing Regulation (EU) {year}/{number}"
+      },
       "rows": {
         "CSRD": {
           "act": "Directive (EU) 2022/2464, as amended by Directive (EU) 2026/470 (Omnibus I); Italian Legislative Decree 125/2024",

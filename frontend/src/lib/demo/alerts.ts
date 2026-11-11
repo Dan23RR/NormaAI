@@ -134,15 +134,15 @@ const ALERTS: AlertRecord[] = [
       it: {
         title: 'CSRD: i principi ESRS rivisti sono in vigore dal 10 novembre 2026',
         description:
-          "Il Regolamento delegato (UE) 2026/1563 sostituisce gli allegati del Regolamento delegato (UE) 2023/2772 e si applica agli esercizi che iniziano dal 1° gennaio 2027. Per l'esercizio 2026 chi già rendiconta può scegliere tra la versione precedente e quella nuova, indicando quale applica. Riguarda Zeta Componenti, unico cliente sopra entrambe le soglie.",
-        actions_required: ["Decidere con il cliente quale versione applicare per l'esercizio 2026"],
+          "Il Regolamento delegato (UE) 2026/1563 sostituisce gli allegati del Regolamento delegato (UE) 2023/2772 e si applica agli esercizi che iniziano dal 1° gennaio 2027. Per l'esercizio 2026 le imprese che già rendicontano possono scegliere tra la versione precedente e quella nuova, indicando quale applicano. Riguarda Zeta Componenti, unico cliente sopra entrambe le soglie: la sua prima rendicontazione, sull'esercizio 2027, segue i principi rivisti.",
+        actions_required: ["Impostare con il cliente la rendicontazione dell'esercizio 2027 sui principi rivisti"],
         source: 'Regolamento delegato (UE) 2026/1563, art. 2 e art. 3',
       },
       en: {
         title: 'CSRD: the revised ESRS are in force since 10 November 2026',
         description:
-          'Delegated Regulation (EU) 2026/1563 replaces the annexes of Delegated Regulation (EU) 2023/2772 and applies to financial years starting on or after 1 January 2027. For financial year 2026 undertakings that already report may choose between the previous version and the new one, stating which one they apply. This concerns Zeta Componenti, the only client above both thresholds.',
-        actions_required: ['Decide with the client which version to apply for financial year 2026'],
+          'Delegated Regulation (EU) 2026/1563 replaces the annexes of Delegated Regulation (EU) 2023/2772 and applies to financial years starting on or after 1 January 2027. For financial year 2026 undertakings that already report may choose between the previous version and the new one, stating which one they apply. This concerns Zeta Componenti, the only client above both thresholds: its first report, on financial year 2027, follows the revised standards.',
+        actions_required: ['Set up with the client the report on financial year 2027 on the revised standards'],
         source: 'Delegated Regulation (EU) 2026/1563, Art. 2 and Art. 3',
       },
     },

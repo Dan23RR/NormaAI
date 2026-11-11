@@ -763,13 +763,13 @@ const csrd: Builder = (profile) => {
         'Parti dalla valutazione della doppia rilevanza: decide quali informazioni comunicare (ESRS 1, capitolo 3).',
         "Rivedi i questionari ai fornitori: alle imprese fino a 1.000 dipendenti chiedi solo ciò che rientra nei principi volontari (art. 19 bis, par. 3).",
         "Stima le emissioni di ambito 3 e calcola le quote della Tassonomia per l'esercizio 2027.",
-        "Scegli con il cliente quale versione degli ESRS applicare per l'esercizio 2026 (reg. delegato (UE) 2026/1563, art. 2).",
+        "Se l'impresa rendiconta già dall'esercizio 2024, scegli con il cliente quale versione degli ESRS applicare per l'esercizio 2026 (reg. delegato (UE) 2026/1563, art. 2).",
       ],
       en: [
         'Start from the double materiality assessment: it decides which information to report (ESRS 1, chapter 3).',
         'Revise the supplier questionnaires: ask undertakings with up to 1,000 employees only for what falls within the voluntary standards (Art. 19a(3)).',
         'Estimate Scope 3 emissions and calculate the Taxonomy shares for financial year 2027.',
-        'Choose with the client which version of the ESRS to apply for financial year 2026 (Delegated Regulation (EU) 2026/1563, Art. 2).',
+        'If the company already reports from financial year 2024, choose with the client which version of the ESRS to apply for financial year 2026 (Delegated Regulation (EU) 2026/1563, Art. 2).',
       ],
     },
   }

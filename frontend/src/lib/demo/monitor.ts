@@ -99,13 +99,13 @@ function csrd({ profile, who }: Context): Scenario {
       actions: {
         it: [
           "Confermare le due soglie sull'ultimo bilancio approvato",
-          "Scegliere quale versione degli ESRS applicare per l'esercizio 2026",
+          "Se l'impresa rendiconta già dall'esercizio 2024, scegliere quale versione degli ESRS applicare per l'esercizio 2026",
           'Rivedere i questionari ai fornitori entro il limite dei principi volontari',
           'Seguire il recepimento italiano delle modifiche, dovuto entro il 19 marzo 2027',
         ],
         en: [
           'Confirm both thresholds on the last approved financial statements',
-          'Choose which version of the ESRS to apply for financial year 2026',
+          'If the company already reports from financial year 2024, choose which version of the ESRS to apply for financial year 2026',
           'Revise the supplier questionnaires within the limit of the voluntary standards',
           'Follow the Italian transposition of the amendments, due by 19 March 2027',
         ],

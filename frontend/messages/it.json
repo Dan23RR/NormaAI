@@ -947,7 +947,7 @@
   },
   "monitoraggio": {
     "title": "Monitoraggio",
-    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l’analisi di una novità normativa.",
+    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi sui documenti che tieni sotto controllo e l’analisi di una novità normativa.",
     "meta": {
       "manual": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il server non riporta un controllo automatico delle versioni consolidate.",
       "neverRan": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il controllo automatico delle versioni consolidate non è ancora stato eseguito.",
@@ -1139,6 +1139,7 @@
       "deadline": "Scadenza: ",
       "deadlineMissing": "non indicata",
       "deadlinePast": "Scadenza superata",
+      "openCheck": "Apri il controllo del documento",
       "markRead": "Segna come letto",
       "dismiss": "Archivia l’avviso",
       "filterSeverity": "Gravità",
@@ -1153,10 +1154,11 @@
       "dismissError": "L’avviso non è stato archiviato. Riprova.",
       "emptyFilteredTitle": "Nessun avviso con questi filtri",
       "emptyFilteredDescription": "Cambia gravità o stato per vedere gli altri avvisi.",
-      "emptyTitle": "Nessun avviso per la vostra organizzazione",
-      "emptyDescription": "Gli avvisi vengono creati dalle analisi e dal monitoraggio dei clienti; quando ci saranno, compariranno qui.",
+      "emptyTitle": "Nessun avviso per la tua organizzazione",
+      "emptyDescription": "Un avviso compare qui quando il ricontrollo settimanale trova cambiata o soppressa una disposizione citata in un documento che tieni sotto controllo.",
       "clearFilters": "Togli i filtri",
-      "aiNotice": "Gli avvisi sono generati da un sistema di IA (Regolamento (UE) 2024/1689, art. 50). Verifica sul testo ufficiale prima di decisioni vincolanti."
+      "origin": "Chi crea gli avvisi: il ricontrollo settimanale dei documenti che tieni sotto controllo. Ogni settimana le disposizioni citate in ciascun documento vengono confrontate con il testo ufficiale in vigore; se una è cambiata o è stata soppressa, qui compare un avviso con il collegamento al controllo del documento.",
+      "aiNotice": "Gli avvisi senza un documento collegato possono essere generati da un sistema di IA (Regolamento (UE) 2024/1689, art. 50). Verifica sul testo ufficiale prima di decisioni vincolanti."
     },
     "analyze": {
       "urgency": {

@@ -75,6 +75,16 @@ describe('landing page', () => {
     for (const link of pilot) expect(link.getAttribute('href')).toMatch(/^mailto:info@normaai\.org\?subject=/)
   })
 
+  it('opens the demo from the header too', () => {
+    renderLanding()
+    // Desktop bar and mobile menu: both render in the test, where no stylesheet hides either.
+    const header = within(screen.getByRole('banner'))
+    const demo = header.getAllByRole('link', { name: 'Prova la demo' })
+    expect(demo.length).toBeGreaterThan(0)
+    for (const link of demo) expect(link).toHaveAttribute('href', '/demo')
+    expect(header.queryByRole('link', { name: /Richiedi/ })).not.toBeInTheDocument()
+  })
+
   it('promises no sign-up and keeps the scope checks as links of their own section', () => {
     renderLanding()
     const main = within(screen.getByRole('main'))

@@ -673,6 +673,49 @@ def _wording_before(italian: ItalianTextSource, article: ItalianArticle) -> Ital
     return earlier if earlier.state == IN_FORCE else None
 
 
+def _last_wording(italian: ItalianTextSource, repealed: ItalianArticle) -> ItalianArticle | None:
+    """The last wording a repealed article had.
+
+    A repeal by decree-law and its confirmation by the converting law are two
+    entries on Normattiva: the walk back goes past them.
+    """
+    current = repealed
+    for _ in range(3):
+        if not current.start:
+            return None
+        try:
+            earlier = italian.article(current.urn, current.key, _day_before(current.start))
+        except (LookupError, TextUnavailableError):
+            return None
+        if earlier.state == IN_FORCE:
+            return earlier
+        if earlier.state != REPEALED:
+            return None
+        current = earlier
+    return None
+
+
+def _changed_commi(
+    cited: tuple[str, ...], before: ItalianArticle, after: ItalianArticle
+) -> tuple[list[str], list[str]]:
+    """Of the cited commi, those that differ between two wordings and those not read.
+
+    A comma differs when its words changed or when only one wording has it. A
+    comma of a long article given in part is in neither wording: nothing can be
+    said of it.
+    """
+    changed: list[str] = []
+    unread: list[str] = []
+    for comma in cited:
+        old, new = before.comma_texts.get(comma), after.comma_texts.get(comma)
+        if old is None and new is None:
+            if after.partial or before.partial:
+                unread.append(comma)
+        elif old is None or new is None or normalize(old) != normalize(new):
+            changed.append(comma)
+    return changed, unread
+
+
 def _earlier_wordings(
     italian: ItalianTextSource, now: ItalianArticle, document_date: str | None
 ) -> list[ItalianArticle]:
@@ -749,18 +792,28 @@ def _note_scheduled(
     """A wording whose last day is set: a repeal or an amendment already published."""
     if not now.end:
         return
-    name = _capitalized(Provision(provision.key).label)
+    label = Provision(provision.key).label
     start = _day_after(now.end)
     try:
         coming: ItalianArticle | None = italian.article(now.urn, now.key, start)
     except (LookupError, TextUnavailableError):
         coming = None
     if coming is not None and coming.state == REPEALED:
-        what = f"{name} risulta abrogato. Normattiva riporta: «{coming.repeal_note}»"
-    elif coming is not None and normalize(coming.text) == normalize(now.text):
+        what = f"l'{label} risulta abrogato. Normattiva riporta: «{coming.repeal_note}»"
+    elif coming is None or coming.state != IN_FORCE:
+        what = f"l'{label} ha un testo diverso, già pubblicato"
+    elif normalize(coming.text) == normalize(now.text):
         return  # the same words: only Normattiva's notes change
     else:
-        what = f"vale un testo diverso di {name}, già pubblicato"
+        changed, unread = _changed_commi(provision.paragraphs, now, coming)
+        if provision.paragraphs and not changed:
+            rest = "; i commi non letti restano da controllare" if unread else ""
+            finding.messages.append(
+                f"Dal {_italian_date(start)} l'{label} ha un testo diverso, già pubblicato, ma "
+                f"non nei commi citati{rest}."
+            )
+            return
+        what = f"l'{label} ha un testo diverso, già pubblicato"
     finding.status = _worse(finding.status, SCHEDULED)
     finding.messages.append(f"Dal {_italian_date(start)} {what}.")
 
@@ -790,20 +843,15 @@ def _compare_italian_with_date(
     if normalize(then.text) == normalize(now.text):
         if normalize(then.notes) != normalize(now.notes):
             finding.messages.append(
-                f"Dopo la data del documento ({day}) Normattiva ha cambiato le note di "
-                f"aggiornamento di {name}; il testo è lo stesso."
+                f"Dopo la data del documento ({day}) Normattiva ha cambiato le note sotto "
+                f"l'{Provision(provision.key).label}; il testo è lo stesso."
             )
         return
-    cited = list(provision.paragraphs)
-    same = [
-        p
-        for p in cited
-        if p in now.comma_texts
-        and normalize(then.comma_texts.get(p, "")) == normalize(now.comma_texts[p])
-    ]
-    if cited and len(same) == len(cited):
+    changed, unread = _changed_commi(provision.paragraphs, then, now)
+    if provision.paragraphs and not changed:
+        rest = "; i commi non letti restano da controllare" if unread else ""
         finding.messages.append(
-            f"{name} è cambiato dopo la data del documento ({day}), ma non nei commi citati."
+            f"{name} è cambiato dopo la data del documento ({day}), ma non nei commi citati{rest}."
         )
         return
     finding.status = _worse(finding.status, CHANGED)
@@ -844,8 +892,8 @@ def _read_italian(
     except ArticleNotFoundError:
         finding.status = MISSING
         finding.messages.append(
-            f"{name} non esiste in {act.label} (Normattiva, testo vigente al "
-            f"{_italian_date(today)})."
+            f"{name} non esiste: {act.label} non ha questo articolo su Normattiva (testo "
+            f"vigente al {_italian_date(today)})."
         )
         return None
     except TextUnavailableError as e:
@@ -869,10 +917,10 @@ def _read_italian(
         since = f" dal {_italian_date(now.start)}" if now.start else ""
         finding.status = MISSING
         finding.messages.append(
-            f"{name} di {act.label} risulta abrogato{since}. Normattiva riporta: "
+            f"{name}, {act.label}, risulta abrogato{since}. Normattiva riporta: "
             f"«{now.repeal_note}»."
         )
-        last = _wording_before(italian, now)
+        last = _last_wording(italian, now)
         if last is not None:
             finding.before, finding.before_version = last.text, last.version()
         return last
@@ -880,7 +928,7 @@ def _read_italian(
         when = f": entra in vigore il {_italian_date(_day_after(now.end))}" if now.end else ""
         finding.status = MISSING
         finding.messages.append(
-            f"{name} di {act.label} non è in vigore al {_italian_date(today)}{when}."
+            f"{name}, {act.label}, non è in vigore al {_italian_date(today)}{when}."
         )
         return None
 
@@ -896,8 +944,6 @@ def _read_italian(
     _note_rulings(finding, provision, now)
     if document_date:
         _compare_italian_with_date(finding, provision, now, italian, document_date)
-    if now.act_title:
-        finding.messages.append(f"Atto letto su Normattiva: {now.act_title}.")
     return now
 
 
@@ -1011,8 +1057,10 @@ def _check_italian(
         findings.append(finding)
     findings[0].shows_quotes = True
     _check_italian_quotes(ref, findings, readings, act, italian, document_date)
-    if ref.act_inferred:
-        for finding in findings:
+    for finding, reading in zip(findings, readings, strict=True):
+        if reading is not None and reading.act_title:
+            finding.messages.append(f"Atto letto su Normattiva: {reading.act_title}.")
+        if ref.act_inferred:
             finding.messages.append(f"Atto dedotto dal contesto: {act.label}.")
     return findings
 

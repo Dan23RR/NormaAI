@@ -387,16 +387,22 @@ def _label_parts(label: str) -> tuple[str, str] | None:
     return m.group(1), re.sub(r"\s+", "", (m.group(2) or "").lower())
 
 
+def _same_parts(a: tuple[str, str] | None, b: tuple[str, str] | None) -> bool:
+    """Two (number, suffix) pairs for one article: "quindecies" is "quinquiesdecies"."""
+    if a is None or b is None or int(a[0]) != int(b[0]):
+        return False
+    if a[1] == b[1]:
+        return True
+    first, second = latin_ordinal(a[1]), latin_ordinal(b[1])
+    return bool(a[1] and b[1]) and first is not None and first == second
+
+
 def same_article_number(key: str, label: str) -> bool:
     """True when ``label`` ("Art. 2-quindecies") names the article of ``key``."""
     asked = _ARTICLE_KEY_RE.match(key)
-    got = _label_parts(label)
-    if not asked or got is None or int(asked.group(1)) != int(got[0]):
+    if asked is None:
         return False
-    a, b = asked.group(2), got[1]
-    if a == b:
-        return True
-    return bool(a and b) and latin_ordinal(a) is not None and latin_ordinal(a) == latin_ordinal(b)
+    return _same_parts((asked.group(1), asked.group(2)), _label_parts(label))
 
 
 @dataclass
@@ -459,7 +465,7 @@ def parse_article_html(html: str) -> ParsedArticle:
         # The article's own number inside the text: what precedes it is the
         # preamble of the act, given as plain text with some first articles
         # (a repealed article just repeats its number there).
-        own = [i for i, line in enumerate(lines) if _label_parts(line) == parts]
+        own = [i for i, line in enumerate(lines) if _same_parts(_label_parts(line), parts)]
         if own:
             lines = lines[own[-1] + 1 :]
 

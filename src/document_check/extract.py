@@ -859,7 +859,9 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         ref.raw = re.sub(r"\s+", " ", ref.raw).strip()
 
 
-def _link_quotes(text: str, refs: list[Reference]) -> None:
+def _link_quotes(text: str, refs: list[Reference]) -> list[tuple[int, int]]:
+    """Give each quote to the nearest reference of its line; the spans of the quotes given."""
+    given: list[tuple[int, int]] = []
     for q in _QUOTE_RE.finditer(text):
         quote = next(g for g in q.groups() if g)
         line = _line_bounds(text, q.start())
@@ -877,14 +879,29 @@ def _link_quotes(text: str, refs: list[Reference]) -> None:
                 best = (distance, ref)
         if best:
             best[1].quotes.append(quote.strip())
+            given.append((q.start(), q.end()))
+    return given
+
+
+def _within(position: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= position < end for start, end in spans)
 
 
 def extract_references(text: str) -> list[Reference]:
-    """Every reference to a provision in ``text``, with its act and quotes."""
+    """Every reference to a provision in ``text``, with its act and quotes.
+
+    What stands inside a quoted passage of law is the law's own wording: an
+    article it refers to ("a norma dell'articolo 55") is not a reference of the
+    document, and an act it names is not the act of the references around it.
+    A quote that no reference outside it claims is read as the document's text.
+    """
     mentions = _act_mentions(text)
     refs = [r for r in _references(text) if not any(m.start <= r.start < m.end for m in mentions)]
-    _link_acts(text, refs, mentions)
-    _link_quotes(text, refs)
+    quotes = [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
+    outside = [r for r in refs if not _within(r.start, quotes)]
+    given = _link_quotes(text, outside)
+    refs = [r for r in refs if not _within(r.start, given)]
+    _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)])
     for ref in refs:
         ref.line = text.count("\n", 0, ref.start) + 1
         ref.context = _context(text, ref.start, ref.end)

@@ -17,7 +17,12 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
+  # Node 20 reached end of life in April 2026. Keep it equal to the Node.js
+  # version of the Vercel project (Settings, Build and Deployment).
+  NODE_VERSION: "22"
+  # The Poetry that wrote poetry.lock; the Dockerfile builds with the same
+  # (ARG POETRY_VERSION there, keep them equal).
+  POETRY_VERSION: "2.5.1"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
   # Trivy for the report-only scans in the docker and security jobs, pinned by
   # digest: a tag can be repointed, and in March 2026 a malicious Trivy 0.69.4
@@ -45,7 +50,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Ruff lint
         run: poetry run ruff check src/ tests/ --output-format=github
@@ -124,7 +129,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Wait for Qdrant to be ready
         run: |
@@ -229,7 +234,7 @@ jobs:
           key: venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
         run: |
-          pip install poetry
+          pip install "poetry==${POETRY_VERSION}"
           poetry install --no-interaction
       - name: Fresh database - alembic upgrade head, then alembic check
         env:
@@ -290,7 +295,9 @@ jobs:
         run: npm ci
       - name: TypeScript type check
         working-directory: frontend
-        run: npx tsc --noEmit
+        # next-env.d.ts and the route types are generated, not tracked:
+        # typegen writes them so tsc also checks the typed routes.
+        run: npx next typegen && npx tsc --noEmit
       - name: Run tests
         working-directory: frontend
         run: npx vitest run --reporter=verbose

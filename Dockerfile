@@ -5,17 +5,24 @@
 # Stage 1: Build dependencies
 FROM python:3.11-slim AS builder
 
-RUN pip install --no-cache-dir poetry==1.8.5
+# The Poetry of the CI (POETRY_VERSION in .github/workflows/ci.yml, keep them
+# equal) with its export plugin, which Poetry 2 no longer bundles.
+ARG POETRY_VERSION=2.5.1
+RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}" poetry-plugin-export==1.10.1
 
 WORKDIR /app
-COPY pyproject.toml poetry.lock* ./
+COPY pyproject.toml poetry.lock ./
 
-# Generate lock file if missing, then export to requirements.txt.
+# Export exactly the locked versions the CI tested. No `poetry lock` first: it
+# used to rewrite, silently, a lock it did not accept, so the image could get
+# other versions than the CI. The export fails by itself when poetry.lock does
+# not match pyproject.toml ("pyproject.toml changed significantly since
+# poetry.lock was last generated"). (`poetry check --lock` would also stop on the
+# README, which .dockerignore keeps out of the context.)
 # Include the `openrouter` extra so langchain-openai (the OpenRouter/OpenAI-
 # compatible provider, imported lazily in src/agents/llm.py) ships in the image
 # - without it the openrouter path fails at runtime with ModuleNotFoundError.
-RUN poetry lock --no-update --no-interaction 2>/dev/null || true && \
-    poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter > requirements.txt
+RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter -o requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
@@ -37,9 +44,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2 libxslt1.1 curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies. torch and torchvision come from the CPU-only
+# index of download.pytorch.org: the server has no GPU, and the PyPI wheels pull
+# about 2.7 GB of CUDA libraries that nothing loads. Their versions are the ones
+# requirements.txt exports from poetry.lock, with +cpu. Everything only the CUDA
+# build of torch needs stays out of the second install: triton, nvidia-* and
+# cuda-* (cuda-toolkit[...] would bring every nvidia-* package back).
 COPY --from=builder /app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN set -e; \
+    pins="$(grep -E '^(torch|torchvision)==' requirements.txt | cut -d' ' -f1 | sed 's/$/+cpu/')"; \
+    if [ -n "$pins" ]; then \
+        pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu $pins; \
+    fi; \
+    grep -vE '^(torch|torchvision|triton|nvidia-[a-z0-9-]+|cuda-[a-z0-9-]+)(\[[^]]*\])?==' \
+        requirements.txt > requirements-cpu.txt; \
+    pip install --no-cache-dir -r requirements-cpu.txt; \
+    if [ -n "$pins" ]; then \
+        python -c "import sys, torch; sys.exit(None if torch.__version__.endswith('+cpu') else 'not the CPU build: ' + torch.__version__)"; \
+    fi; \
+    if pip freeze | grep -iE '^(triton|nvidia-|cuda-)'; then \
+        echo "CUDA packages in the image" >&2; exit 1; \
+    fi
 
 # Bake the embedding model into the image BEFORE copying the app code, so that
 # source changes don't invalidate this ~1.1 GB download layer (fast rebuilds).
@@ -55,29 +80,32 @@ RUN python -c "from fastembed import TextEmbedding; \
     TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/app/models')"
 
 # Copy application code (changes here no longer trigger a model re-download)
-COPY src/ src/
-COPY prompts/ prompts/
-COPY scripts/ scripts/
+COPY --chown=normaai:normaai src/ src/
+COPY --chown=normaai:normaai prompts/ prompts/
+COPY --chown=normaai:normaai scripts/ scripts/
 # Migrations: needed so `docker compose run app alembic upgrade head` works in the
 # container (without these, alembic loads an empty config -> "No script_location").
-COPY alembic/ alembic/
-COPY alembic.ini ./
+COPY --chown=normaai:normaai alembic/ alembic/
+COPY --chown=normaai:normaai alembic.ini ./
 # Public Codex PDF served by GET /api/v1/codex/download (src/api/routers/leads.py).
 # The historical marketing/ render is gitignored and never reached the image,
 # so the endpoint answered 503 in production; the tracked copy under
 # frontend/public/ is baked in here and CODEX_PDF_PATH points the router at it.
-COPY frontend/public/codex-post-omnibus-2025-2029.pdf assets/codex-post-omnibus-2025-2029.pdf
+COPY --chown=normaai:normaai frontend/public/codex-post-omnibus-2025-2029.pdf assets/codex-post-omnibus-2025-2029.pdf
 ENV CODEX_PDF_PATH=/app/assets/codex-post-omnibus-2025-2029.pdf
 
-# Set ownership (covers the baked model cache too)
-RUN chown -R normaai:normaai /app
+# The code is normaai's through COPY --chown. No recursive chown: it would copy every
+# file already in /app, the baked model included (1.1 GB with mpnet, 2.1 GB with e5),
+# into one more layer. The model is only read, and the runtime root is read-only.
+RUN chown normaai:normaai /app
 
 USER normaai
 
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
 # network/lock writes - it loads the baked model purely from the local cache.
 # WEB_CONCURRENCY = uvicorn worker processes; each loads its own copy of the
-# models (2.1 GB per process with mpnet, 2.8 GB with multilingual-e5-large).
+# models: in this image 1.6 GiB per worker with multilingual-e5-large and 1.8 GiB
+# with mpnet (docker stats, dress rehearsal of 2026-11-09).
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -86,7 +114,12 @@ ENV PYTHONPATH=/app \
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+# start-period: the API listens only after loading the dense model (docker-compose.yml).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# With more than one worker, uvicorn kills a worker that does not answer its ping
+# within --timeout-worker-healthcheck (5 s by default), and a worker loading the
+# dense model does not answer for longer than that: with the default, two workers
+# were killed and restarted in a loop. 300 s, as the healthcheck start period.
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-worker-healthcheck", "300"]

@@ -111,7 +111,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      # The API listens only after loading the dense model: 90 s for e5 on 4 CPUs
+      # in the dress rehearsal of 2026-11-09. Failures in this window do not count,
+      # and the first success ends it, so a fast start is not delayed; with 30 s the
+      # app turned unhealthy and Caddy, which waits for it, never started.
+      start_period: 300s
     restart: unless-stopped
     deploy:
       resources:

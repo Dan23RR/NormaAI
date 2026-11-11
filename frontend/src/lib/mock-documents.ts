@@ -711,34 +711,21 @@ export const DEMO_UPLOAD_RESULT_ID = 'demo-doc-gdpr'
 // ─── Demo answers of the documents API ──────────────────────
 
 const BASE = '/api/v1/documents'
-const DELETED_KEY = 'normaai_demo_documents_deleted'
-const PREFERENCES_KEY = 'normaai_demo_documents_preferences'
 
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const stored = sessionStorage.getItem(key)
-    return stored ? (JSON.parse(stored) as T) : fallback
-  } catch {
-    return fallback
-  }
-}
+// What the visitor does to the examples (a deletion, the email preference)
+// lives in memory only: nothing is written to the browser storage, and a
+// reload of the page brings the examples back.
+const deleted = new Set<string>()
+let preferences: DocumentPreferences = { email_digest: true }
 
-function writeJson(key: string, value: unknown): void {
-  try {
-    sessionStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    /* the change lasts for this page only */
-  }
-}
-
-function deletedIds(): string[] {
-  const ids = readJson<unknown>(DELETED_KEY, [])
-  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
+/** Back to the examples as shipped (used by the tests). */
+export function resetDemoDocuments(): void {
+  deleted.clear()
+  preferences = { email_digest: true }
 }
 
 /** The demo checks still in the list, newest first. */
 export function demoDocuments(): DocumentCheck[] {
-  const deleted = new Set(deletedIds())
   return DEMO_DOCUMENTS.filter((doc) => !deleted.has(doc.id)).sort((a, b) => b.checked_at.localeCompare(a.checked_at))
 }
 
@@ -791,8 +778,8 @@ export function demoDocumentsRoute(method: string, path: string, body?: unknown)
 
   if (route === `${BASE}/check`) {
     if (verb !== 'POST') return NOT_HANDLED
-    // The example comes back to the list if it was deleted earlier in the session.
-    writeJson(DELETED_KEY, deletedIds().filter((id) => id !== DEMO_UPLOAD_RESULT_ID))
+    // The example comes back to the list if it was deleted earlier.
+    deleted.delete(DEMO_UPLOAD_RESULT_ID)
     return handled(find(DEMO_UPLOAD_RESULT_ID))
   }
 
@@ -801,14 +788,11 @@ export function demoDocumentsRoute(method: string, path: string, body?: unknown)
   }
 
   if (route === `${BASE}/preferences`) {
-    const stored = readJson<Partial<DocumentPreferences>>(PREFERENCES_KEY, {})
-    const current: DocumentPreferences = { email_digest: stored.email_digest !== false }
-    if (verb === 'GET') return handled(current)
+    if (verb === 'GET') return handled({ ...preferences })
     if (verb !== 'PATCH') return NOT_HANDLED
     const wanted = (body as Partial<DocumentPreferences> | null)?.email_digest
-    const next: DocumentPreferences = { email_digest: typeof wanted === 'boolean' ? wanted : current.email_digest }
-    writeJson(PREFERENCES_KEY, next)
-    return handled(next)
+    if (typeof wanted === 'boolean') preferences = { email_digest: wanted }
+    return handled({ ...preferences })
   }
 
   const match = /^\/api\/v1\/documents\/checks\/([^/]+)(\/recheck|\/report)?$/.exec(route)
@@ -821,7 +805,7 @@ export function demoDocumentsRoute(method: string, path: string, body?: unknown)
   if (verb === 'GET') return handled(find(id))
   if (verb === 'DELETE') {
     find(id)
-    writeJson(DELETED_KEY, [...deletedIds(), id])
+    deleted.add(id)
     return handled(undefined)
   }
   return NOT_HANDLED

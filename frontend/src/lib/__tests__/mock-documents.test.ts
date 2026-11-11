@@ -20,29 +20,7 @@ vi.mock('@/lib/mock-data', async (original) => ({
 import { api } from '../api'
 import { ApiError } from '../api-error'
 import { DEMO_CLIENTS } from '../mock-data'
-import { DEMO_DOCUMENTS, DEMO_UPLOAD_RESULT_ID, demoDocumentsRoute, demoReportHtml } from '../mock-documents'
-
-// happy-dom does not expose the storages as globals.
-function memoryStorage(): Storage {
-  const store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => (key in store ? store[key] : null),
-    setItem: (key: string, value: string) => {
-      store[key] = String(value)
-    },
-    removeItem: (key: string) => {
-      delete store[key]
-    },
-    clear: () => {
-      for (const k of Object.keys(store)) delete store[k]
-    },
-    key: (i: number) => Object.keys(store)[i] ?? null,
-    get length() {
-      return Object.keys(store).length
-    },
-  }
-}
-vi.stubGlobal('sessionStorage', memoryStorage())
+import { DEMO_DOCUMENTS, DEMO_UPLOAD_RESULT_ID, demoDocumentsRoute, demoReportHtml, resetDemoDocuments } from '../mock-documents'
 
 const byId = (id: string): DocumentCheck => {
   const doc = DEMO_DOCUMENTS.find((d) => d.id === id)
@@ -156,7 +134,7 @@ describe('DEMO_DOCUMENTS', () => {
 
 describe('demo interception of the documents API', () => {
   beforeEach(() => {
-    sessionStorage.clear()
+    resetDemoDocuments()
   })
 
   it('lists the checks newest first, without findings', async () => {
@@ -219,7 +197,7 @@ describe('demo interception of the documents API', () => {
     expect(after).toEqual(before)
   })
 
-  it('deletes a check for the session, and brings the example back when it is asked for again', async () => {
+  it('deletes a check until the page is reloaded, and brings the example back when it is asked for again', async () => {
     await api.del('/api/v1/documents/checks/demo-doc-gdpr')
     const left = asList(await api.get('/api/v1/documents/checks'))
     expect(left.items.map((i) => i.id)).not.toContain('demo-doc-gdpr')
@@ -231,10 +209,16 @@ describe('demo interception of the documents API', () => {
     expect(asList(await api.get('/api/v1/documents/checks')).total).toBe(DEMO_DOCUMENTS.length)
   })
 
-  it('keeps the email preference for the session', async () => {
+  it('keeps the email preference in memory, never in the browser storage', async () => {
+    const storage = { setItem: vi.fn(), getItem: vi.fn(() => null), removeItem: vi.fn(), clear: vi.fn() }
+    vi.stubGlobal('sessionStorage', storage)
+    vi.stubGlobal('localStorage', storage)
     expect(await api.get('/api/v1/documents/preferences')).toEqual({ email_digest: true })
     expect(await api.patch('/api/v1/documents/preferences', { email_digest: false })).toEqual({ email_digest: false })
     expect(await api.get('/api/v1/documents/preferences')).toEqual({ email_digest: false })
+    await api.del('/api/v1/documents/checks/demo-doc-ai')
+    expect(storage.setItem).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
   })
 
   it('serves the report of a check as an HTML page that says it is an example', async () => {

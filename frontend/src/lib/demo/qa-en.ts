@@ -45,6 +45,14 @@ const DORA_ART28_QUOTE =
 const NIS2_ART23_4A_QUOTE =
   'without undue delay and in any event within 24 hours of becoming aware of the significant incident, an early warning'
 
+/**
+ * Not literal on purpose ("sending" for "submission"): the demo's example of a
+ * citation that is not verified. Its name does not end in _QUOTE, so that
+ * scripts/check_demo_quotes.py does not take it for an official passage.
+ */
+const NIS2_ART23_4D_PARAPHRASED =
+  'a final report not later than one month after the sending of the incident notification under point (b)'
+
 const GDPR_ART37_QUOTE =
   'The controller and the processor shall designate a data protection officer in any case where'
 
@@ -727,9 +735,14 @@ export const QA_EN: Record<DemoQAScenario, DemoQAResponse> = {
       {
         framework: 'NIS2',
         reference: 'Art. 23(4), point (d)',
-        quote_snippet: 'a final report not later than one month after the submission of the incident notification under point (b)',
+        // The answer paraphrased one word: not verified, with the official wording the
+        // verifier found (src/agents/citation_verifier.py on the cached CELLAR text).
+        quote_snippet: NIS2_ART23_4D_PARAPHRASED,
         celex: '32022L2555',
-        verified: true,
+        verified: false,
+        near_quote: 'a final report not later than one month after the submission of the incident notification under point (b)',
+        near_article: 'Art. 23',
+        differences: [{ quoted: 'sending', official: 'submission' }],
       },
       {
         framework: 'NIS2',

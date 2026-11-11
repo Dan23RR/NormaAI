@@ -425,6 +425,15 @@ describe('getMockQAResponse', () => {
           if (c.verified) {
             expect(c.quote_snippet.length, key).toBeGreaterThan(20)
             expect(c.celex, key).toMatch(/^3\d{4}[RL]\d{4}$/)
+          } else if (c.near_quote) {
+            // Close to the official text but not literal: the official wording and what differs.
+            expect(c.quote_snippet, key).not.toBe(c.near_quote)
+            expect(c.near_article, key).toBeTruthy()
+            expect(c.differences?.length, key).toBeGreaterThan(0)
+            for (const d of c.differences ?? []) {
+              expect(c.quote_snippet, key).toContain(d.quoted)
+              expect(c.near_quote, key).toContain(d.official)
+            }
           } else {
             // Not in the corpus: shown as "to be checked", with no quotation.
             expect(c.quote_snippet, key).toBe('')
@@ -432,6 +441,13 @@ describe('getMockQAResponse', () => {
         }
       }
     }
+  })
+
+  it('has one citation that differs from the official text, in the same place in both languages', () => {
+    const near = (set: typeof QA_IT) =>
+      scenarios.flatMap((key) => set[key].citations.map((c, i) => (c.near_quote ? `${key}:${i}` : null)).filter(Boolean))
+    expect(near(QA_IT)).toEqual(['nis2:3'])
+    expect(near(QA_EN)).toEqual(['nis2:3'])
   })
 
   it('answers the suggested questions with the right example, in each language', () => {

@@ -50,6 +50,14 @@ const DORA_ART28_QUOTE =
 const NIS2_ART23_4A_QUOTE =
   "senza indebito ritardo, e comunque entro 24 ore da quando sono venuti a conoscenza dell'incidente significativo, un preallarme"
 
+/**
+ * Not literal on purpose ("presentazione" for "trasmissione"): the demo's example of a
+ * citation that is not verified. Its name does not end in _QUOTE, so that
+ * scripts/check_demo_quotes.py does not take it for an official passage.
+ */
+const NIS2_ART23_4D_PARAPHRASED =
+  "una relazione finale entro un mese dalla presentazione della notifica dell'incidente di cui alla lettera b)"
+
 const GDPR_ART37_QUOTE =
   'Il titolare del trattamento e il responsabile del trattamento designano sistematicamente un responsabile della protezione dei dati ogniqualvolta'
 
@@ -734,9 +742,14 @@ export const QA_IT: Record<DemoQAScenario, DemoQAResponse> = {
       {
         framework: 'NIS2',
         reference: 'art. 23, par. 4, lett. d)',
-        quote_snippet: "una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)",
+        // The answer paraphrased one word: not verified, with the official wording the
+        // verifier found (src/agents/citation_verifier.py on the cached CELLAR text).
+        quote_snippet: NIS2_ART23_4D_PARAPHRASED,
         celex: '32022L2555',
-        verified: true,
+        verified: false,
+        near_quote: "una relazione finale entro un mese dalla trasmissione della notifica dell'incidente di cui alla lettera b)",
+        near_article: 'Art. 23',
+        differences: [{ quoted: 'presentazione', official: 'trasmissione' }],
       },
       {
         framework: 'NIS2',

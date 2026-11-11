@@ -14,6 +14,10 @@ export type DemoCitation = QAResponse['citations'][number] & {
   title?: string
   /** Date of the consolidated text the passage was read in (see acts.ts). */
   consolidated_as_of?: string
+  /** A near match of a citation that is not verified (brief 6.1): the official wording, where, what differs. */
+  near_quote?: string
+  near_article?: string
+  differences?: Array<{ quoted: string; official: string }>
 }
 
 export type DemoQAResponse = Omit<QAResponse, 'citations'> & {

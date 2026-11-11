@@ -482,7 +482,7 @@
       "examples": "Try an example:",
       "example": "{employees} employees, {millions} million",
       "listed": "Listed on an EU regulated market",
-      "listedHelp": "Under the thresholds in force what counts is size, not listing: below the thresholds it remains a case to confirm.",
+      "listedHelp": "Under the thresholds in force what counts is size, not listing: below the thresholds a listed company is to be checked case by case.",
       "wave1": "Already reports on sustainability since financial year 2024",
       "wave1Help": "Large public-interest entities with more than 500 employees (Directive (EU) 2022/2464, Art. 5(2)).",
       "nonEu": "Based outside the European Union",
@@ -722,7 +722,7 @@
         "outReason": "You do not exceed the cumulative thresholds of Art. 19a of Directive 2013/34/EU (net turnover above 450 million euro and more than 1,000 employees): the direct obligation is not triggered.",
         "noteWave1": "You indicated reporting already under way: if you do not exceed the thresholds, for the financial years starting between 1 January 2026 and 31 December 2027 the exclusion of Art. 17(3-bis) of Legislative Decree 125/2024 applies; Directive (EU) 2022/2464 leaves Member States the option to exempt financial years 2025 and 2026 (Art. 5(2)).",
         "noteParent": "Parent company: the thresholds are read on a consolidated basis (Directive 2013/34/EU, Art. 29a(1)).",
-        "noteSubsidiary": "Subsidiary: scope may depend on the consolidation perimeter and on the parent company’s reporting. A precise check at group level is needed."
+        "noteSubsidiary": "Subsidiary: scope may depend on the consolidation perimeter and on the parent company's reporting. A precise check at group level is needed."
       },
       "csddd": {
         "nonEuMissing": "Enter the net turnover generated in the Union to assess the CSDDD as a third-country company.",
@@ -1029,7 +1029,7 @@
       "eudr-application": {
         "title": "Deforestation Regulation: application of the obligations",
         "who": "Whoever places or makes available on the Union market, or exports, the products of Annex I linked to cattle, cocoa, coffee, oil palm, rubber, soya and wood",
-        "what": "Articles 3 to 13, 16 to 24 and Articles 26, 31 and 32 apply from this date (Art. 38(2)). For micro and small enterprises the date is 30 June 2027."
+        "what": "Articles 3 to 13, 16 to 24 and Articles 26, 31 and 32 apply from this date (Art. 38(2)). For operators that are micro or small undertakings the date is 30 June 2027 (Art. 38(3))."
       },
       "csrd-first-year": {
         "title": "CSRD: first financial year for the companies of the new scope",

@@ -455,7 +455,7 @@
       "ok": "Copiato",
       "failed": "Copia non riuscita",
       "resultFailed": "Seleziona il testo del risultato e copialo a mano.",
-      "linkFailed": "Copia l’indirizzo dalla barra del browser."
+      "linkFailed": "Copia l'indirizzo dalla barra del browser."
     },
     "empty": {
       "title": "Compila il profilo e premi Verifica l'ambito",
@@ -466,11 +466,11 @@
       "loadClientHelp": "Compila dipendenti, ricavi, settore e Paese dal profilo del cliente. Puoi poi modificarli.",
       "loadingClients": "Caricamento dei clienti",
       "chooseClient": "Scegli un cliente",
-      "name": "Nome dell’impresa",
+      "name": "Nome dell'impresa",
       "nameHelp": "Facoltativo: compare nel risultato copiato.",
       "namePlaceholder": "Per esempio Acme Srl",
       "employees": "Dipendenti",
-      "employeesHelp": "Numero medio annuo, a livello dell’entità o del gruppo consolidato.",
+      "employeesHelp": "Numero medio annuo, a livello dell'entità o del gruppo consolidato.",
       "employeesPlaceholder": "Es. 850",
       "employeesSuffix": "dipendenti",
       "turnover": "Ricavi netti annui",
@@ -482,12 +482,12 @@
       "examples": "Prova con un esempio:",
       "example": "{employees} dipendenti, {millions} milioni",
       "listed": "Quotata in un mercato regolamentato UE",
-      "listedHelp": "Con le soglie in vigore conta la dimensione, non la quotazione: sotto le soglie resta un caso da confermare.",
+      "listedHelp": "Con le soglie in vigore conta la dimensione, non la quotazione: sotto le soglie una quotata va verificata caso per caso.",
       "wave1": "Rendiconta già la sostenibilità dall'esercizio 2024",
       "wave1Help": "Grandi enti di interesse pubblico con più di 500 dipendenti (direttiva (UE) 2022/2464, art. 5, par. 2).",
-      "nonEu": "Sede fuori dall’Unione europea",
-      "nonEuHelp": "Per le imprese di Paesi terzi conta il fatturato realizzato nell’Unione.",
-      "euTurnover": "Ricavi netti realizzati nell’Unione",
+      "nonEu": "Sede fuori dall'Unione europea",
+      "nonEuHelp": "Per le imprese di Paesi terzi conta il fatturato realizzato nell'Unione.",
+      "euTurnover": "Ricavi netti realizzati nell'Unione",
       "euTurnoverHelp": "Soglie per le imprese di Paesi terzi: 450 milioni di euro per la CSRD, 1,5 miliardi di euro per la CSDDD.",
       "euTurnoverPlaceholder": "Es. 500.000.000",
       "groupRole": "Ruolo nel gruppo",
@@ -517,10 +517,10 @@
         },
         "deep": {
           "label": "L'impresa pubblica deepfake o testi generati dall'IA per informare il pubblico",
-          "description": "Immagini, audio o video generati o manipolati, o testi generati dall’IA su temi di interesse pubblico."
+          "description": "Immagini, audio o video generati o manipolati, o testi generati dall'IA su temi di interesse pubblico."
         },
         "none": "Nessuna delle quattro situazioni riguarda l'impresa",
-        "noneHelp": "Senza una risposta, l’AI Act resta non valutato."
+        "noneHelp": "Senza una risposta, l'AI Act resta non valutato."
       },
       "work": {
         "legend": "IA nei rapporti di lavoro (D.Lgs. 179/2026, legge 132/2025, AI Act)",
@@ -588,7 +588,7 @@
         "legend": "CSRD e CSDDD: casi particolari",
         "intro": "Le soglie si leggono su dipendenti e ricavi indicati sopra; qui i casi che cambiano la lettura."
       },
-      "submit": "Verifica l’ambito",
+      "submit": "Verifica l'ambito",
       "reset": "Azzera il modulo",
       "numberError": "Inserisci un numero, per esempio 1.200."
     },
@@ -649,7 +649,7 @@
       },
       "who": {
         "provider": "Obbligo del fornitore",
-        "deployer": "Obbligo dell’utilizzatore",
+        "deployer": "Obbligo dell'utilizzatore",
         "employer": "Obbligo del datore di lavoro",
         "professional": "Obbligo del professionista",
         "nisEntity": "Obbligo del soggetto NIS",
@@ -669,8 +669,8 @@
       "employees": "{count} dipendenti",
       "turnover": "ricavi netti {amount}",
       "balanceSheet": "totale di bilancio {amount}",
-      "nonEu": "sede fuori dall’UE",
-      "euTurnover": "ricavi netti nell’UE {amount}",
+      "nonEu": "sede fuori dall'UE",
+      "euTurnover": "ricavi netti nell'UE {amount}",
       "listed": "quotata in un mercato regolamentato UE",
       "notListed": "non quotata",
       "wave1": "già in rendicontazione di sostenibilità",
@@ -696,7 +696,7 @@
       },
       "csrd": {
         "fromLabel": "Nuovo perimetro: esercizi che iniziano dal {date} (direttiva (UE) 2022/2464, art. 5, par. 2)",
-        "nonEuMissing": "Indica i ricavi netti realizzati nell’Unione per valutare la CSRD come impresa di un Paese terzo.",
+        "nonEuMissing": "Indica i ricavi netti realizzati nell'Unione per valutare la CSRD come impresa di un Paese terzo.",
         "nonEuOverHeadline": "Può applicarsi la rendicontazione prevista per le imprese di Paesi terzi.",
         "nonEuOverReason1": "Ricavi netti nell'Unione: {amount}, oltre la soglia di {threshold} che la direttiva 2013/34/UE fissa per le imprese di Paesi terzi, per ciascuno degli ultimi due esercizi consecutivi (art. 40 bis, par. 1).",
         "nonEuOverReason2": "L'obbligo ricade sull'impresa figlia stabilita nell'Unione che ha generato ricavi netti superiori a {threshold} nell'esercizio precedente (art. 40 bis, par. 1): servono il bilancio del gruppo e i ricavi delle società nell'Unione.",
@@ -706,23 +706,23 @@
         "missing": "Indica il numero medio di dipendenti e i ricavi netti annui per valutare la CSRD.",
         "axisEmployees": "Dipendenti: {count} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
         "axisTurnover": "Ricavi netti: {amount} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
-        "inHeadline": "L’impresa è quasi certamente in ambito di rendicontazione CSRD.",
+        "inHeadline": "L'impresa è quasi certamente in ambito di rendicontazione CSRD.",
         "inReason": "Superi entrambe le soglie cumulative: ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media (direttiva 2013/34/UE, art. 19 bis, par. 1). La relazione sulla gestione deve includere le informazioni di sostenibilità.",
         "inNote1": "In Italia il D.Lgs. 125/2024 si applica dagli esercizi che iniziano dal {date} alle imprese di grandi dimensioni che non rendicontavano già (art. 17, comma 1, lett. b)).",
-        "borderHeadline": "Oggi fuori dall’obbligo CSRD, ma sul filo della soglia.",
-        "borderEmployees": "Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.",
-        "borderTurnover": "Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.",
+        "borderHeadline": "Oggi fuori dall'obbligo CSRD, ma sul filo della soglia.",
+        "borderEmployees": "Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall'obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.",
+        "borderTurnover": "Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall'obbligo, ma un'assunzione netta o un consolidamento può farti entrare.",
         "borderListed": "Sei una società quotata sotto le soglie: l'art. 19 bis guarda alla dimensione, non alla quotazione, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).",
-        "borderMargin": "Oggi sei fuori dall’obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all’altro.",
+        "borderMargin": "Oggi sei fuori dall'obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all'altro.",
         "borderCheck": "È il caso in cui una verifica puntuale sui dati di bilancio vale di più.",
         "borderNote1": "Le soglie si misurano alla data di chiusura del bilancio: con acquisizioni o riassetti in corso conviene rifare il conto a fine esercizio.",
         "noteProtected": "Se sei nella catena del valore di un'impresa obbligata e non superi {threshold} dipendenti, sei un'«impresa protetta»: puoi rifiutarti di fornire informazioni oltre quelle dei principi di rendicontazione volontari (direttiva 2013/34/UE, art. 19 bis, par. 3).",
         "noteItalyExemption": "In Italia, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027, il D.Lgs. 125/2024 non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro o con non più di 1.000 dipendenti in media (art. 17, comma 3-bis).",
-        "outHeadline": "Probabilmente fuori dall’ambito di rendicontazione CSRD obbligatoria.",
+        "outHeadline": "Probabilmente fuori dall'ambito di rendicontazione CSRD obbligatoria.",
         "outReason": "Non superi le soglie cumulative dell'art. 19 bis della direttiva 2013/34/UE (ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti): l'obbligo diretto non scatta.",
         "noteWave1": "Hai indicato una rendicontazione già in corso: se non superi le soglie, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027 vale l'esclusione dell'art. 17, comma 3-bis, del D.Lgs. 125/2024; la direttiva (UE) 2022/2464 lascia agli Stati membri la facoltà di esentare gli esercizi 2025 e 2026 (art. 5, par. 2).",
         "noteParent": "Capogruppo: le soglie si leggono su base consolidata (direttiva 2013/34/UE, art. 29 bis, par. 1).",
-        "noteSubsidiary": "Società controllata: l’ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo."
+        "noteSubsidiary": "Società controllata: l'ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo."
       },
       "csddd": {
         "nonEuMissing": "Indica i ricavi netti realizzati nell'Unione per valutare la CSDDD come impresa di un Paese terzo.",
@@ -738,14 +738,14 @@
         "inNote2": "Sanzioni pecuniarie: gli Stati membri fissano il limite massimo al 3% del fatturato netto mondiale (art. 27, par. 4).",
         "inNote3": "La Commissione adotta gli orientamenti su come assolvere il dovere di diligenza entro il {date} (art. 19, par. 3).",
         "outHeadline": "Fuori dalle soglie dirette del dovere di diligenza (CSDDD).",
-        "outReasonOne": "Superi una sola delle due soglie cumulative: l’obbligo diretto oggi non scatta.",
-        "outReasonNone": "Non superi le soglie cumulative (più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro): l’obbligo diretto non scatta.",
+        "outReasonOne": "Superi una sola delle due soglie cumulative: l'obbligo diretto oggi non scatta.",
+        "outReasonNone": "Non superi le soglie cumulative (più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro): l'obbligo diretto non scatta.",
         "outNote": "Come fornitore di un gruppo obbligato puoi ricevere richieste di informazioni: se hai meno di {threshold} dipendenti la società può chiederle solo quando non le può ragionevolmente ottenere con altri mezzi (art. 8, par. 2 bis, lett. a))."
       },
       "aiAct": {
-        "notAnswered": "Rispondi alle quattro domande sull’IA per valutare gli obblighi di trasparenza dell’art. 50.",
+        "notAnswered": "Rispondi alle quattro domande sull'IA per valutare gli obblighi di trasparenza dell'art. 50.",
         "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell'art. 50 non ti toccano direttamente.",
-        "noneReason": "Nessuna delle quattro situazioni dell’art. 50 risulta applicabile. Fuori dall’art. 50 non significa fuori dall’AI Act.",
+        "noneReason": "Nessuna delle quattro situazioni dell'art. 50 risulta applicabile. Fuori dall'art. 50 non significa fuori dall'AI Act.",
         "noneNote1": "Alfabetizzazione in materia di IA (art. 4, in applicazione dal {date}): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l'alfabetizzazione del proprio personale, senza dover garantire un livello specifico.",
         "noneNote2": "Pratiche vietate (art. 5): in applicazione dal {date}, per esempio inferire le emozioni delle persone sul luogo di lavoro; dal {added} si aggiungono i divieti delle lettere b bis) e b ter) del paragrafo 1.",
         "noneNote3": "Modelli di IA per finalità generali: per chi li fornisce gli obblighi del capo V si applicano dal {date}.",
@@ -760,8 +760,8 @@
       },
       "obligations": {
         "chat": {
-          "title": "Chatbot e assistenti: la persona deve sapere che sta parlando con un’IA",
-          "requirement": "I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un’IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.",
+          "title": "Chatbot e assistenti: la persona deve sapere che sta parlando con un'IA",
+          "requirement": "I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un'IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.",
           "exception": "Eccezione: sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati. Se il chatbot lo compri da terzi, l'obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a te."
         },
         "gen": {
@@ -775,8 +775,8 @@
           "exception": "Attenzione ai divieti in applicazione dal {prohibitions}: inferire le emozioni sul luogo di lavoro e negli istituti di istruzione è vietato, salvo motivi medici o di sicurezza (art. 5, par. 1, lett. f))."
         },
         "deep": {
-          "title": "Deepfake e testi IA pubblicati: dichiararne l’origine",
-          "requirement": "Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall’IA pubblicati per informare il pubblico su questioni di interesse pubblico.",
+          "title": "Deepfake e testi IA pubblicati: dichiararne l'origine",
+          "requirement": "Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall'IA pubblicati per informare il pubblico su questioni di interesse pubblico.",
           "exception": "Eccezioni: per opere manifestamente artistiche, creative o satiriche basta rivelare l'esistenza dei contenuti generati senza ostacolare l'opera; per i testi, l'obbligo non si applica se c'è revisione umana o controllo editoriale e una persona fisica o giuridica ha la responsabilità editoriale."
         }
       },
@@ -943,7 +943,7 @@
   },
   "monitoraggio": {
     "title": "Monitoraggio",
-    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l’analisi di una novità normativa.",
+    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l'analisi di una novità normativa.",
     "meta": {
       "manual": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il server non riporta un controllo automatico delle versioni consolidate.",
       "neverRan": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il controllo automatico delle versioni consolidate non è ancora stato eseguito.",
@@ -962,7 +962,7 @@
       "emptyTitle": "Nessuna scadenza nei prossimi dodici mesi",
       "emptyDescription": "Il calendario non contiene voci in questo periodo.",
       "past": "Già in applicazione",
-      "pastLead": "Date già superate: l’obbligo continua, la voce resta per riferimento.",
+      "pastLead": "Date già superate: l'obbligo continua, la voce resta per riferimento.",
       "who": "A chi si applica: ",
       "what": "Cosa fare: ",
       "related": "Vedi anche: ",
@@ -1002,7 +1002,7 @@
         "what": "Il capo V si applica da questa data (art. 113); tra gli obblighi, la documentazione tecnica del modello (art. 53, par. 1)."
       },
       "aiact-art50": {
-        "title": "AI Act: obblighi di trasparenza dell’art. 50",
+        "title": "AI Act: obblighi di trasparenza dell'art. 50",
         "who": "Fornitori e deployer di sistemi che interagiscono con le persone, generano contenuti sintetici o deepfake",
         "what": "Informare le persone che interagiscono con un'IA, marcare i contenuti sintetici, dichiarare i deepfake (art. 50, par. 1, 2 e 4). Il regolamento si applica da questa data (art. 113)."
       },
@@ -1029,7 +1029,7 @@
       "eudr-application": {
         "title": "Regolamento deforestazione: applicazione degli obblighi",
         "who": "Chi immette o mette a disposizione sul mercato dell'Unione, o esporta, i prodotti dell'allegato I legati a bovini, cacao, caffè, palma da olio, gomma, soia e legno",
-        "what": "Gli articoli da 3 a 13, da 16 a 24 e gli articoli 26, 31 e 32 si applicano da questa data (art. 38, par. 2). Per microimprese e piccole imprese vale la data del 30 giugno 2027."
+        "what": "Gli articoli da 3 a 13, da 16 a 24 e gli articoli 26, 31 e 32 si applicano da questa data (art. 38, par. 2). Per gli operatori che sono microimprese o piccole imprese la data è il 30 giugno 2027 (art. 38, par. 3)."
       },
       "csrd-first-year": {
         "title": "CSRD: primo esercizio per le imprese del nuovo perimetro",

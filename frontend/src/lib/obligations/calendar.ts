@@ -52,7 +52,7 @@ export const OBLIGATION_DATA: ObligationData[] = [
   entry('ai-work-decree', '2026-10-23', 'AI_WORK', 'dlgs-179-2026-41-1', ['dlgs-179-2026-41-3', 'dlgs-179-2026-42-2']),
   entry('aiact-legacy-marking', '2026-12-02', 'AI_ACT', 'ai-act-111-4', ['ai-act-50-2']),
   entry('aiact-new-prohibitions', '2026-12-02', 'AI_ACT', 'ai-act-113-a', ['ai-act-5-1-bbis', 'ai-act-5-1-bter']),
-  entry('eudr-application', '2026-12-30', 'EUDR', 'eudr-38-2', ['eudr-1-1']),
+  entry('eudr-application', '2026-12-30', 'EUDR', 'eudr-38-2', ['eudr-1-1', 'eudr-38-3']),
   entry('csrd-first-year', '2027-01-01', 'CSRD', 'csrd-5-2-b', ['dlgs-125-2024-17-1-b', 'dlgs-125-2024-17-3bis']),
   entry('nis2-incidents-2026', '2027-01-01', 'NIS2', 'acn-det-127434-2026-1-2', ['dlgs-138-2024-25-5']),
   entry('machinery-application', '2027-01-20', 'MACHINERY', 'mach-54', ['mach-52-1']),

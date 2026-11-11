@@ -3,20 +3,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { ClipboardCheck } from 'lucide-react'
-import { Badge, Button, EmptyState, Field, Select, TBody, TD, TH, THead, TR, Table, frameworkLabel } from '@/components/ui'
+import { Button, EmptyState, Field, Select, frameworkLabel } from '@/components/ui'
 import { useErrorText } from '@/i18n/errors'
 import { api } from '@/lib/api'
 import type { ApiResponse, Client, CompanyProfile, GapAnalysisResponse, Requirement } from '@/lib/types'
 import { FRAMEWORK_KEYS, isFrameworkKey, type FrameworkKey } from './clients-api'
-import {
-  PRIORITY_TONE,
-  STATUS_SUMMARY_KEYS,
-  complianceAssessment,
-  confidenceAssessment,
-  effortLabel,
-  statusMeta,
-} from './compliance'
 import { formatIsoDateTime } from './format'
+import { RequirementsChecklist, checklistCounts } from './RequirementsChecklist'
 
 interface StoredAnalysis {
   framework: FrameworkKey
@@ -62,9 +55,10 @@ function defaultFramework(client: Client): FrameworkKey {
 }
 
 /**
- * Gap analysis for one client and one framework. The overall result is a
- * qualitative label (never the numeric score), each requirement a row with
- * its status, gap, effort and priority.
+ * The requirements of one framework for one client. No document of the
+ * client is sent to the gap-analysis endpoint, so its verdicts and score
+ * would rest on missing evidence: the tab shows the list of requirements
+ * with their articles, each to be checked (see RequirementsChecklist).
  */
 export function ComplianceTab({ client }: { client: Client }) {
   const t = useTranslations('clienti.compliance')
@@ -103,10 +97,8 @@ export function ComplianceTab({ client }: { client: Client }) {
   }
 
   const result = analysis?.result
-  const overall = result ? complianceAssessment(result.overall_score ?? 0, tRoot) : null
-  const confidence = result ? confidenceAssessment(result.confidence_score ?? 0, tRoot) : null
   const requirements: Requirement[] = result?.requirements ?? []
-  const summary = (result?.status_summary ?? {}) as Record<string, number | undefined>
+  const counts = checklistCounts(requirements)
 
   return (
     <div className="space-y-6">
@@ -151,114 +143,31 @@ export function ComplianceTab({ client }: { client: Client }) {
         />
       )}
 
-      {result && overall && confidence && analysis && (
-        <div className="space-y-6">
-          <section className="rounded-lg border border-rule bg-surface p-5" aria-labelledby="gap-result-title">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 id="gap-result-title" className="text-h3">
-                  {t('resultTitle', { framework: frameworkLabel(analysis.framework, tRoot) })}
-                </h3>
-                <p className="mt-1 text-caption text-ink-3 tabular">
-                  {t('analysedOn', { date: formatIsoDateTime(analysis.analysedAt) ?? '' })}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge tone={overall.tone} title={overall.sublabel}>
-                  {overall.label}
-                </Badge>
-                <Badge tone={confidence.tone} title={confidence.sublabel}>
-                  {confidence.label}
-                </Badge>
-                {result.requires_expert_review && <Badge tone="warn">{t('expertReview')}</Badge>}
-              </div>
-            </div>
-            <p className="mt-3 max-w-prose text-body text-ink-2">{overall.sublabel}.</p>
+      {result && analysis && (
+        <section className="space-y-4" aria-labelledby="gap-result-title">
+          <div>
+            <h3 id="gap-result-title" className="text-h3">
+              {t('resultTitle', { framework: frameworkLabel(analysis.framework, tRoot) })}
+            </h3>
+            <p className="mt-1 text-caption text-ink-3 tabular">
+              {t('analysedOn', { date: formatIsoDateTime(analysis.analysedAt) ?? '' })}
+            </p>
+            <p className="mt-3 max-w-prose text-body text-ink-2">{t('explain')}</p>
+            {requirements.length > 0 && (
+              <p className="mt-2 text-small text-ink-2">
+                {t('counts', { toVerify: counts.toVerify, notApplicable: counts.notApplicable })}
+              </p>
+            )}
+          </div>
 
-            <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
-              {STATUS_SUMMARY_KEYS.map(({ key, status }) => {
-                const count = summary[key]
-                if (typeof count !== 'number') return null
-                const meta = statusMeta(status, tRoot)
-                return (
-                  <div key={key} className="flex items-center gap-2">
-                    <dt>
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
-                    </dt>
-                    <dd className="text-body font-medium tabular text-ink">{count}</dd>
-                  </div>
-                )
-              })}
-            </dl>
-
-            <p className="mt-4 max-w-prose text-caption text-ink-3">{t('aiNotice')}</p>
-          </section>
-
-          {requirements.length > 0 && (
-            <section aria-labelledby="gap-requirements-title">
-              <h3 id="gap-requirements-title" className="mb-3 text-h4">
-                {t('requirements', { count: requirements.length })}
-              </h3>
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>{t('colRequirement')}</TH>
-                    <TH>{t('colStatus')}</TH>
-                    <TH className="hidden md:table-cell">{t('colGap')}</TH>
-                    <TH className="hidden sm:table-cell">{t('colEffort')}</TH>
-                    <TH>{t('colPriority')}</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {requirements.map((req, i) => {
-                    const status = statusMeta(req.status, tRoot)
-                    const effort = effortLabel(req.remediation_effort, tRoot)
-                    return (
-                      <TR key={req.requirement_id || i}>
-                        <TD>
-                          <p className="text-body text-ink">{req.description}</p>
-                          {req.article_reference && (
-                            <p className="mt-0.5 text-caption text-ink-3">{req.article_reference}</p>
-                          )}
-                          {req.gap_description && (
-                            <p className="mt-1 text-small text-ink-2 md:hidden">{req.gap_description}</p>
-                          )}
-                        </TD>
-                        <TD>
-                          <Badge tone={status.tone}>{status.label}</Badge>
-                        </TD>
-                        <TD className="hidden max-w-md text-small text-ink-2 md:table-cell">
-                          {req.gap_description || <span className="text-ink-3">{t('noGap')}</span>}
-                        </TD>
-                        <TD className="hidden text-small text-ink-2 sm:table-cell">{effort}</TD>
-                        <TD>
-                          {req.priority ? (
-                            <Badge tone={PRIORITY_TONE[req.priority] ?? 'neutral'}>{req.priority}</Badge>
-                          ) : (
-                            <span className="text-ink-3">{tRoot('ui.notAvailable')}</span>
-                          )}
-                        </TD>
-                      </TR>
-                    )
-                  })}
-                </TBody>
-              </Table>
-            </section>
+          {requirements.length > 0 ? (
+            <RequirementsChecklist requirements={requirements} labelledBy="gap-result-title" />
+          ) : (
+            <p className="text-body text-ink-2">{t('noRequirements')}</p>
           )}
 
-          {result.top_recommendations?.length > 0 && (
-            <section aria-labelledby="gap-recommendations-title" className="rounded-lg border border-rule bg-surface p-5">
-              <h3 id="gap-recommendations-title" className="text-h4">
-                {t('recommendations')}
-              </h3>
-              <ol className="mt-3 max-w-prose list-decimal space-y-2 pl-5 text-body text-ink">
-                {result.top_recommendations.map((rec, i) => (
-                  <li key={i}>{rec}</li>
-                ))}
-              </ol>
-            </section>
-          )}
-        </div>
+          <p className="max-w-prose text-caption text-ink-3">{t('aiNotice')}</p>
+        </section>
       )}
     </div>
   )

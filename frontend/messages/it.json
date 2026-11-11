@@ -1556,7 +1556,7 @@
   },
   "clienti": {
     "title": "Clienti",
-    "description": "Le aziende che segui: il profilo, le analisi di conformità e i documenti di ciascuna.",
+    "description": "Le aziende che segui: il profilo, i requisiti da verificare e i documenti di ciascuna.",
     "newClient": "Nuovo cliente",
     "search": "Cerca tra i clienti",
     "searchPlaceholder": "Cerca per nome o settore",
@@ -1592,7 +1592,7 @@
       "tabsLabel": "Sezioni del cliente",
       "tabs": {
         "profilo": "Profilo",
-        "conformita": "Analisi di conformità",
+        "conformita": "Requisiti da verificare",
         "documenti": "Documenti"
       }
     },
@@ -1614,7 +1614,7 @@
       "titleEdit": "Modifica il cliente",
       "titleNew": "Nuovo cliente",
       "descriptionEdit": "Le modifiche aggiornano il profilo usato dalle analisi.",
-      "descriptionNew": "Il profilo serve per le analisi di conformità e i report.",
+      "descriptionNew": "Il profilo serve per gli elenchi dei requisiti e per i report.",
       "cancel": "Annulla",
       "save": "Salva le modifiche",
       "create": "Crea il cliente",
@@ -1652,26 +1652,29 @@
     },
     "compliance": {
       "framework": "Framework",
-      "running": "Analisi in corso",
-      "rerun": "Ripeti l’analisi",
-      "run": "Avvia l’analisi",
-      "progress": "Confronto del profilo di {name} con i requisiti {framework}. Può richiedere fino a un minuto.",
-      "failedTitle": "L’analisi non è riuscita",
-      "failed": "Analisi non riuscita. Riprova.",
-      "emptyTitle": "Nessuna analisi per questo cliente",
-      "emptyDescription": "Scegli un framework e avvia l’analisi: il profilo viene confrontato con i requisiti dell’atto, articolo per articolo.",
-      "resultTitle": "Valutazione {framework}",
-      "analysedOn": "Analisi del {date}",
-      "expertReview": "Revisione di un esperto consigliata",
-      "aiNotice": "Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): è una stima preliminare basata sul profilo inserito, non una certificazione di conformità né una consulenza legale.",
-      "requirements": "Requisiti ({count})",
+      "running": "Elenco in preparazione",
+      "rerun": "Prepara di nuovo l'elenco",
+      "run": "Elenca i requisiti",
+      "progress": "Ricerca dei requisiti {framework} per il profilo di {name}. Può richiedere fino a un minuto.",
+      "failedTitle": "L'elenco non è stato preparato",
+      "failed": "Elenco non preparato. Riprova.",
+      "emptyTitle": "Nessun elenco di requisiti per questo cliente",
+      "emptyDescription": "Scegli un framework: ottieni i suoi requisiti con gli articoli, da verificare sui documenti del cliente.",
+      "resultTitle": "Requisiti {framework} da verificare",
+      "analysedOn": "Elenco del {date}",
+      "explain": "Qui non viene esaminato nessun documento del cliente: è l'elenco dei requisiti dell'atto con i loro articoli, ciascuno da verificare, senza punteggio né giudizio di conformità.",
+      "counts": "{toVerify, plural, =1 {# requisito da verificare} other {# requisiti da verificare}}, {notApplicable, plural, =0 {nessuno non applicabile al profilo} =1 {# non applicabile al profilo} other {# non applicabili al profilo}}.",
+      "noRequirements": "L'analisi non ha restituito requisiti per questo framework.",
+      "aiNotice": "Elenco generato da un sistema di IA (Regolamento (UE) 2024/1689, art. 50) a partire dal profilo inserito: non è una valutazione di conformità né una consulenza legale."
+    },
+    "checklist": {
       "colRequirement": "Requisito",
-      "colStatus": "Stato",
-      "colGap": "Gap",
-      "colEffort": "Impegno",
-      "colPriority": "Priorità",
-      "noGap": "Nessun gap rilevato",
-      "recommendations": "Raccomandazioni principali"
+      "colArticle": "Articolo",
+      "colState": "Stato",
+      "state": {
+        "toVerify": "Da verificare",
+        "notApplicable": "Non applicabile al profilo"
+      }
     },
     "documents": {
       "title": "Documenti controllati",
@@ -1725,16 +1728,15 @@
       "pdfBody": "<strong>{filename}</strong>, generato il <num>{date}</num>. Lo trovi nella cartella dei download del browser: conservalo, perché il server non permette ancora di riscaricarlo.",
       "previewTitle": "Anteprima del report per {name}",
       "previewMeta": "Demo con dati di esempio, generata il {date}",
-      "aiNotice": "Analisi generata da un sistema di IA (Regolamento (UE) 2024/1689, art. 50): stima preliminare, non una certificazione né una consulenza legale."
+      "previewExplain": "Nessun documento del cliente è stato esaminato: per ogni framework, i requisiti con i loro articoli, ciascuno da verificare. Il PDF prodotto dal server contiene ancora lo stato, i gap e il punteggio stimati dal modello.",
+      "aiNotice": "Elenco generato da un sistema di IA (Regolamento (UE) 2024/1689, art. 50) a partire dal profilo del cliente: non è una valutazione di conformità né una consulenza legale."
     },
     "table": {
       "date": "Data",
       "client": "Cliente",
       "framework": "Framework",
-      "assessment": "Valutazione",
       "type": "Tipo",
       "actions": "Azioni",
-      "notRecorded": "Non registrata",
       "regenerate": "Genera di nuovo"
     }
   },
@@ -2105,7 +2107,7 @@
           "duration": "Chiusura della scheda."
         },
         "clientGap": {
-          "purpose": "Ultima analisi di conformità calcolata per un cliente (una chiave per ciascun cliente).",
+          "purpose": "Ultimo elenco dei requisiti preparato per un cliente (una chiave per ciascun cliente).",
           "duration": "Chiusura della scheda."
         },
         "demoReports": {

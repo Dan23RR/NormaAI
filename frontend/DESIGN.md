@@ -90,7 +90,7 @@ Le superfici dell'applicazione sono sette, in quest'ordine nella barra laterale 
 | Chiedi | `/app/chiedi` | Una domanda, una risposta con il passaggio di legge che la sostiene |
 | Ambito | `/app/ambito` | Quali obblighi si applicano a un'impresa, e da quando |
 | Monitoraggio | `/app/monitoraggio` | Scadenze dei prossimi mesi, avvisi, analisi di una novità normativa |
-| Clienti | `/app/clienti`, `/app/clienti/[id]` | Profilo, analisi di conformità e documenti controllati di ogni cliente |
+| Clienti | `/app/clienti`, `/app/clienti/[id]` | Profilo, requisiti da verificare e documenti controllati di ogni cliente |
 | Report | `/app/report` | Gap analysis di un cliente o sintesi direzionale, in PDF |
 | Impostazioni | `/app/impostazioni` | Account, lingua, tema, dati |
 

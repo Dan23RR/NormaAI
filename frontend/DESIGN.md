@@ -79,21 +79,56 @@ Pagine pubbliche: colonna massima 1120 px, gutter 24 px, sezioni separate da un 
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Applicazione: barra laterale di 232 px (64 px compressa) con il marchio in alto e l'organizzazione in basso; intestazione di pagina con titolo e azioni; contenuto con larghezza massima 1200 px. La pagina Chiedi ha due colonne: la conversazione (massimo 72 caratteri) e il margine delle fonti, fisso durante lo scorrimento.
+Applicazione: barra laterale di 232 px (64 px compressa) con il marchio in alto e l'organizzazione in basso; intestazione di pagina con titolo e azioni; contenuto con larghezza massima 1200 px.
+
+Le superfici dell'applicazione sono sette, in quest'ordine nella barra laterale (l'Amministrazione compare in più solo a chi ha quel ruolo):
+
+| Superficie | Percorso | Cosa fa |
+|---|---|---|
+| Controlla | `/app/controlla`, `/app/controlla/[id]` | Controlla i riferimenti di legge di un documento sul testo vigente e sorveglia le norme che cita |
+| Chiedi | `/app/chiedi` | Una domanda, una risposta con il passaggio di legge che la sostiene |
+| Ambito | `/app/ambito` | Quali obblighi si applicano a un'impresa, e da quando |
+| Monitoraggio | `/app/monitoraggio` | Scadenze dei prossimi mesi, avvisi, analisi di una novità normativa |
+| Clienti | `/app/clienti`, `/app/clienti/[id]` | Profilo, analisi di conformità e documenti controllati di ogni cliente |
+| Report | `/app/report` | Gap analysis di un cliente o sintesi direzionale, in PDF |
+| Impostazioni | `/app/impostazioni` | Account, lingua, tema, dati |
+
+Chiedi e Controlla hanno due colonne: il testo al centro (massimo 72 caratteri) e il margine a destra, fisso durante lo scorrimento. In Chiedi il centro è la conversazione e il margine sono le fonti.
 
 ```
 ┌──────┬───────────────────────────────┬──────────────────────┐
 │ Marc.│ Chiedi                        │ Fonti                │
 │      │                               │                      │
-│ Chie.│ Domanda                       │ 1 Reg. (UE) 2024/1689│
-│ Ambi.│ Risposta con rimandi [1] [2]  │   art. 50, par. 1    │
-│ Moni.│                               │   ┃«testo evidenz.»  │
-│ Clie.│                               │   ✓ verificata       │
-│ Repo.│                               │   EUR-Lex ↗          │
-│      │                               │                      │
+│ Cont.│ Domanda                       │ 1 Reg. (UE) 2024/1689│
+│ Chie.│ Risposta con rimandi [1] [2]  │   art. 50, par. 1    │
+│ Ambi.│                               │   ┃«testo evidenz.»  │
+│ Moni.│                               │   ✓ verificata       │
+│ Clie.│                               │   EUR-Lex ↗          │
+│ Repo.│                               │                      │
 │ Org. │ [Scrivi la domanda      ][Inv]│ corpus al 2026-10-01 │
 └──────┴───────────────────────────────┴──────────────────────┘
 ```
+
+In Controlla il centro sono i riferimenti trovati nel documento, raggruppati per cosa fare (da correggere, da controllare, a posto, non coperto), e il margine dice cosa resta del documento e le norme da cui dipende. I primi due gruppi si leggono per intero; gli altri due sono una riga per riferimento, che si apre.
+
+```
+┌──────┬───────────────────────────────┬──────────────────────┐
+│ Marc.│ nota.docx        [Ricontrolla]│ Documento            │
+│      │ 2 da correggere  1 da contr.  │ controllato il ...   │
+│ Cont.│ 4 a posto        0 non coperto│ sorveglianza attiva  │
+│ Chie.│                               │                      │
+│ Ambi.│ GDPR, art. 33, par. 1  [esito]│ Norme da cui dipende │
+│ Moni.│ Nel documento, riga 8: «...»  │ GDPR, Art. 33        │
+│ Clie.│ Parole diverse: «48» / «72»   │   ✓ invariata        │
+│ Repo.│ ┃ ... entro [72] ore ...      │ AI Act, Art. 4       │
+│ Org. │   Reg. (UE) 2016/679 ✓ EUR-Lex│   ! cambiata         │
+└──────┴───────────────────────────────┴──────────────────────┘
+```
+
+Tre regole valgono per Controlla e per ogni confronto tra due testi:
+- L'evidenziatore va solo sul testo ufficiale: mai sulla citazione scritta nel documento, che può essere sbagliata. In una citazione alterata evidenzia le parole ufficiali che il documento ha cambiato.
+- Una differenza non si affida al colore: le parole tolte sono barrate, quelle aggiunte sottolineate, e un lettore di schermo sente «tolto» e «aggiunto». Ogni esito ha un'icona e le sue parole, non solo una tinta.
+- Vicino al caricamento si dice che il documento non viene conservato e si elenca cosa resta sul server.
 
 Tabelle: filetti orizzontali, niente zebra, intestazione in `ink-2` a 13 px. Card solo per entità discrete (un cliente, un report), mai per spezzettare un testo.
 

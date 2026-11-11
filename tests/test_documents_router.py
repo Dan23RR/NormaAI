@@ -83,6 +83,23 @@ def source():
     return FakeSource()
 
 
+def _forget_stale_route_limits() -> None:
+    """Drop the limits a previous import of the router left on the shared limiter.
+
+    slowapi keeps each route's limits on the limiter singleton, by function
+    name, and adds to them at every decoration. The test modules evict and
+    import the routers again, so without this a route could carry its limit
+    several times and count each request more than once.
+    """
+    if "src.api.routers.documents" in sys.modules:
+        return  # imported and not evicted: its limits are the live ones
+    from src.api.rate_limit import limiter
+
+    for registry in (limiter._dynamic_route_limits, limiter._route_limits):
+        for name in [n for n in registry if n.startswith("src.api.routers.documents.")]:
+            del registry[name]
+
+
 @pytest.fixture
 def app_objects(db, source):
     with (
@@ -98,6 +115,7 @@ def app_objects(db, source):
     ):
         mock_settings.return_value = get_settings()
 
+        _forget_stale_route_limits()
         from src.api.main import app, limiter
         from src.api.routers import documents
 

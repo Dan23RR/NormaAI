@@ -46,17 +46,23 @@ const DEMO_NOTE: Texts<string> = {
 
 interface Context {
   profile: DemoProfile | undefined
-  /** "Alfa S.r.l. (con 85 dipendenti e ...)" or the bare name when the profile has no size. */
+  /** "Alfa S.r.l. (con 85 dipendenti e ...)" or the bare name when the profile has no size: opens a sentence. */
   who: Texts<string>
+  /** The same subject for the inside of a sentence ("l'impresa", not "L'impresa"). */
+  whoInside: Texts<string>
 }
 
 function contextOf(profile: DemoProfile | undefined): Context {
-  const named = (language: Language) => {
-    const name = companyName(profile, language)
+  const named = (language: Language, position: 'start' | 'inside') => {
+    const name = companyName(profile, language, position)
     const size = describeSize(profile, language)
     return size ? `${name} (${size})` : name
   }
-  return { profile, who: { it: named('it'), en: named('en') } }
+  return {
+    profile,
+    who: { it: named('it', 'start'), en: named('en', 'start') },
+    whoInside: { it: named('it', 'inside'), en: named('en', 'inside') },
+  }
 }
 
 // ─── CSRD ───────────────────────────────────────────────────
@@ -369,7 +375,7 @@ function taxonomy({ profile, who }: Context): Scenario {
 
 // ─── AI Act ─────────────────────────────────────────────────
 
-function aiAct({ who }: Context): Scenario {
+function aiAct({ whoInside: who }: Context): Scenario {
   return {
     applicability: 'CONDITIONAL',
     urgency: 'MEDIUM',
@@ -412,7 +418,7 @@ function aiAct({ who }: Context): Scenario {
 
 // ─── GDPR ───────────────────────────────────────────────────
 
-function gdpr({ who }: Context): Scenario {
+function gdpr({ whoInside: who }: Context): Scenario {
   return {
     applicability: 'YES',
     urgency: 'MEDIUM',
@@ -609,7 +615,7 @@ function dora({ profile, who }: Context): Scenario {
 
 // ─── CRA ────────────────────────────────────────────────────
 
-function cra({ who }: Context): Scenario {
+function cra({ whoInside: who }: Context): Scenario {
   return {
     applicability: 'CONDITIONAL',
     urgency: 'MEDIUM',

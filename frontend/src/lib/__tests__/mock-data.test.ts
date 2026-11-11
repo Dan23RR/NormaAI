@@ -363,6 +363,21 @@ describe('getMockMonitorResponse', () => {
     }
   })
 
+  it('writes a correct sentence also when the profile has no name', () => {
+    const anonymous = { sector: 'Servizi', employee_count: 85, revenue_eur: 14_000_000 }
+    const outputs = [undefined, anonymous].flatMap((profile) =>
+      LANGUAGES.flatMap((language) => [
+        ...['csrd', 'csddd', 'tassonomia', 'ai act', 'gdpr', 'nis2', 'dora', 'cra'].map((t) => getMockMonitorResponse(t, profile, language)),
+        ...BACKEND_FRAMEWORKS.map((fw) => getMockGapAnalysis(fw, profile, language)),
+      ]),
+    )
+    const text = JSON.stringify(outputs)
+    // The neutral subject is capitalised only where a sentence starts.
+    expect(text).not.toMatch(/[a-zàèéìòù,:;] (L'impresa|The company)\b/)
+    expect(text).not.toMatch(/"(l'impresa|the company)\b/)
+    expect(text).not.toMatch(/undefined|NaN/)
+  })
+
   it('says so when it does not recognise the act', () => {
     const result = getMockMonitorResponse('Una novità che non nomina alcun atto conosciuto', SME, 'it')
     expect(result.applicability).toBe('CONDITIONAL')

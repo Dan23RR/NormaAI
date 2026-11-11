@@ -90,9 +90,13 @@ export function describeSize(profile: DemoProfile | undefined, language: Languag
     : `con ${employees} dipendenti e ${turnover} di ricavi netti`
 }
 
-/** The name to use in a sentence, or a neutral subject when the profile has none. */
-export function companyName(profile: DemoProfile | undefined, language: Language): string {
+/**
+ * The name to use in a sentence, or a neutral subject when the profile has
+ * none: capitalised at the start of a sentence, lower case inside one.
+ */
+export function companyName(profile: DemoProfile | undefined, language: Language, position: 'start' | 'inside' = 'start'): string {
   const name = profile?.name?.trim()
   if (name) return name
+  if (position === 'inside') return language === 'en' ? 'the company' : "l'impresa"
   return language === 'en' ? 'The company' : "L'impresa"
 }

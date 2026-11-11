@@ -1121,7 +1121,7 @@ const taxonomy: Builder = (profile) => {
 const dora: Builder = (profile) => {
   const scope = doraScope(profile)
   if (scope === 'below') {
-    const who = { it: companyName(profile, 'it'), en: companyName(profile, 'en') }
+    const who = { it: companyName(profile, 'it', 'inside'), en: companyName(profile, 'en', 'inside') }
     return {
       score: 65,
       rows: [

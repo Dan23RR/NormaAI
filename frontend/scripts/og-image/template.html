@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>NormaAI share image (1200 x 630)</title>
+<!--
+  Source of frontend/public/og-image.png. Regenerate with:
+      python frontend/scripts/og-image/render.py
+  Tokens from frontend/DESIGN.md: the desk (canvas), the document (surface),
+  ink for the text, the highlighter only behind the quoted passage of law.
+  The passage is literal: Regulation (EU) 2024/1689, art. 50(1), Italian
+  consolidated text of 27 July 2026; "[...]" marks what is left out.
+-->
+<style>
+  :root{
+    --canvas:#F1F2F4; --surface:#FFFFFF; --ink:#0C1B33; --ink-2:#3D4B61;
+    --rule:#D8DCE3; --mark:#FFEA7A; --mark-deep:#F5C400;
+    --font-serif:Literata,Georgia,"Times New Roman",serif;
+    --font-sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; width:1200px; height:630px; }
+  body{ background:var(--canvas); color:var(--ink); font-family:var(--font-sans); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  .doc{
+    position:absolute; left:56px; top:48px; width:1088px; height:534px;
+    background:var(--surface); border:1px solid var(--rule); border-radius:14px;
+    box-shadow:0 1px 2px rgba(12,27,51,0.06), 0 12px 32px -12px rgba(12,27,51,0.18);
+    padding:48px 64px 44px; display:flex; flex-direction:column;
+  }
+  .brand{ display:flex; align-items:center; gap:14px; }
+  .brand svg{ display:block; flex:none; }
+  .wordmark{ font-family:var(--font-serif); font-weight:600; font-size:34px; line-height:1; letter-spacing:-0.01em; }
+  .wordmark .hl{ position:relative; isolation:isolate; }
+  .wordmark .hl::before{ content:""; position:absolute; left:-0.05em; right:-0.05em; bottom:0.02em; height:0.42em; background:var(--mark); border-radius:2px; transform:rotate(-1deg); z-index:-1; }
+  h1{ margin:44px 0 0; max-width:940px; font-family:var(--font-serif); font-weight:500; font-size:60px; line-height:1.1; letter-spacing:-0.015em; text-wrap:balance; }
+  figure{ margin:36px 0 0; padding-left:20px; border-left:3px solid var(--mark-deep); max-width:900px; }
+  blockquote{ margin:0; font-family:var(--font-serif); font-size:23px; line-height:1.55; color:var(--ink-2); }
+  mark{ background:var(--mark); color:var(--ink); padding:0.05em 0.15em; border-radius:2px; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+  figcaption{ margin-top:8px; font-size:18px; line-height:1.4; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .site{ margin-top:auto; font-size:24px; line-height:1.2; font-weight:500; color:var(--ink); }
+</style>
+</head>
+<body>
+  <div class="doc">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" width="46" height="46" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#0C1B33"/>
+        <rect x="9" y="34" width="46" height="11" rx="3" fill="#F5C400" transform="rotate(-3 32 39.5)"/>
+        <path d="M20 47V17l24 30V17" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="wordmark"><span class="hl">Norma</span>AI</span>
+    </div>
+    <h1>Ogni riferimento di legge, verificato sul testo ufficiale.</h1>
+    <figure>
+      <blockquote lang="it">[...] le persone fisiche interessate <mark>siano informate del fatto di stare interagendo con un sistema di IA</mark> [...]</blockquote>
+      <figcaption>Regolamento (UE) 2024/1689, art. 50, par. 1</figcaption>
+    </figure>
+    <div class="site">normaai.org</div>
+  </div>
+</body>
+</html>

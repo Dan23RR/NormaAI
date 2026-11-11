@@ -8,6 +8,7 @@ as an argument; GitHub's REST API is played by the same local server.
 
 import importlib.util
 import json
+import socket
 import ssl
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -311,9 +312,36 @@ def test_dns_with_a_malformed_expectation_fails():
     assert "API_EXPECTED_IP" in result.detail
 
 
-def test_resolve_returns_canonical_addresses_for_localhost():
-    assert uptime.resolve("localhost") & {"127.0.0.1", "::1"}
-    assert uptime.resolve("name-that-does-not-exist.invalid") == set()
+def test_resolve_collects_a_and_aaaa_records_in_canonical_form(monkeypatch):
+    asked = []
+
+    def getaddrinfo(host, port, family=0, type=0):
+        asked.append((host, family))
+        if family == socket.AF_INET:
+            return [(family, type, 6, "", (EXPECTED_V4, 0))] * 2  # one address, listed twice
+        return [(family, type, 6, "", ("2001:DB8:0:0:0:0:0:1", 0, 0, 0))]
+
+    monkeypatch.setattr(uptime.socket, "getaddrinfo", getaddrinfo)
+    assert uptime.resolve("api.normaai.org") == {EXPECTED_V4, "2001:db8::1"}
+    assert asked == [("api.normaai.org", socket.AF_INET), ("api.normaai.org", socket.AF_INET6)]
+
+
+def test_resolve_of_a_name_with_an_a_record_only(monkeypatch):
+    def getaddrinfo(host, port, family=0, type=0):
+        if family == socket.AF_INET6:
+            raise socket.gaierror(socket.EAI_NONAME, "no AAAA record")
+        return [(family, type, 6, "", (EXPECTED_V4, 0))]
+
+    monkeypatch.setattr(uptime.socket, "getaddrinfo", getaddrinfo)
+    assert uptime.resolve("api.normaai.org") == {EXPECTED_V4}
+
+
+def test_resolve_of_a_name_without_records_is_empty(monkeypatch):
+    def getaddrinfo(host, port, family=0, type=0):
+        raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+
+    monkeypatch.setattr(uptime.socket, "getaddrinfo", getaddrinfo)
+    assert uptime.resolve("gone.normaai.org") == set()
 
 
 def test_api_checks_add_dns_only_when_an_address_is_expected(server):

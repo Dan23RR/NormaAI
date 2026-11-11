@@ -1,4 +1,28 @@
-name: NormaAI Validation Suite
+name: Validation harness self-test
+
+# WHAT THIS IS. A self-test of the validation harness (tests/validation) on
+# canned outputs. With --demo, tests/validation/runner.py builds each "answer"
+# from the expected findings of the test case itself (_generate_demo_output: a
+# fixed share of them, and nothing else); the harness then loads, matches,
+# scores and reports as it would on real answers. A green run says that the
+# loader, the matcher, the metrics and the report writer work.
+#
+# WHAT THIS IS NOT. A measurement of NormaAI. No model, no retrieval and no API
+# take part, so no figure printed here says how good the product's answers
+# are. The measured results (golden v2 through the real API, run by hand
+# because they need a running backend and a provider key) are in
+# docs/MODELS.md.
+#
+# Until November 2026 this workflow compared the figures of the canned outputs
+# with recall, precision and F1 targets, as if they were measurements: the
+# weekly run failed every Sunday for that reason alone. It now checks only
+# what canned outputs can show.
+#
+# Not run here: the adversarial suite (tests/validation/promptfoo_config.yaml).
+# It calls a backend on localhost:8000 with an access token, and no job of
+# this workflow starts one; its job could never run and was removed. Run it by
+# hand against a running backend:
+#   npx promptfoo eval -c tests/validation/promptfoo_config.yaml
 
 on:
   pull_request:
@@ -8,97 +32,33 @@ on:
       - 'prompts/**'
       - 'tests/**'
   schedule:
-    # Weekly full regression on Sundays at 02:00 UTC. (Not run per-push:
-    # the suite needs real LLM/services to produce meaningful metrics, so
-    # running it on every commit only produced noise. Use workflow_dispatch
-    # for on-demand runs.)
+    # Weekly, Sundays at 02:00 UTC: every suite, with the generated cases.
     - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
       suite:
-        description: 'Test suite to run'
+        description: 'Canned cases to run the harness on'
         required: false
         default: 'golden_set'
         type: choice
         options:
           - golden_set
-          - sanctions
-          - synthetic
           - all
-      framework:
-        description: 'Framework filter (optional)'
-        required: false
-        default: ''
-        type: string
+
+permissions:
+  contents: read
 
 env:
   PYTHON_VERSION: '3.11'
   NORMAAI_TEST_MODE: 'true'
 
 jobs:
-  # ─── Fast Check: Golden Set (runs on every PR) ──────────────
-  golden-set:
-    name: "Golden Set (~50 cases)"
+  harness-selftest:
+    name: "Harness self-test on canned outputs (no model, no API)"
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]" 2>/dev/null || pip install pydantic pydantic-settings
-          pip install pytest pytest-asyncio
-
-      - name: Run Golden Set (Demo Mode)
-        run: |
-          python -m tests.validation.runner \
-            --suite golden_set \
-            --demo \
-            --verbose
-        continue-on-error: false
-
-      - name: Upload Results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: golden-set-results
-          path: tests/validation/reports/
-          retention-days: 30
-
-  # ─── Full Regression: All Suites (runs on merge to main) ────
-  full-regression:
-    name: "Full Regression (~500 cases)"
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.suite == 'all')
-    
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: normaai
-          POSTGRES_PASSWORD: test_ci_password
-          POSTGRES_DB: normaai
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      qdrant:
-        # Same server as ci.yml and the compose files: qdrant-client and the
-        # server move together (docs/RUNBOOK.md, "Aggiornare Qdrant").
-        image: qdrant/qdrant:v1.20.0
-        ports:
-          - 6333:6333
+    env:
+      # Pull requests: the golden set. Weekly: every suite. On demand: as asked.
+      SUITE: ${{ (github.event_name == 'schedule' || github.event.inputs.suite == 'all') && 'all' || 'golden_set' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -114,14 +74,18 @@ jobs:
           pip install -e ".[dev]" 2>/dev/null || pip install pydantic pydantic-settings
           pip install pytest pytest-asyncio httpx
 
-      - name: Generate Test Cases (if needed)
+      - name: Start from an empty reports directory
+        # The repository keeps reports of earlier runs there: the check and the
+        # artifact below must see this run only.
+        run: find tests/validation/reports -type f -delete
+
+      - name: Generate the extra test cases
+        if: env.SUITE == 'all'
         run: |
-          # Generate sanctions-based test cases
           python -m tests.validation.sanctions_harvester \
             --difficulty 1 2 3 \
             --output sanctions_generated.json
 
-          # Generate synthetic test cases
           python -m tests.validation.synthetic_generator \
             --framework GDPR \
             --level 1 2 3 5 \
@@ -137,18 +101,17 @@ jobs:
             --level 1 2 \
             --output synthetic_nis2.json
 
-      - name: Run Full Regression (Demo Mode)
+      - name: Run the harness on canned outputs
+        # Fails only when the harness itself raises an error: in --demo the
+        # runner does not apply its metric targets.
         run: |
           python -m tests.validation.runner \
-            --suite all \
+            --suite "$SUITE" \
             --demo \
             --verbose
-        env:
-          DATABASE_URL: postgresql+asyncpg://normaai:test_ci_password@localhost:5432/normaai
-          QDRANT_HOST: localhost
-          QDRANT_PORT: 6333
 
-      - name: Run Monte Carlo Demo
+      - name: Run the risk report generator on demo inputs
+        if: env.SUITE == 'all'
         run: |
           python -m tests.validation.monte_carlo --demo \
             --company "Test Company" \
@@ -157,70 +120,79 @@ jobs:
             --country IT \
             --iterations 5000
 
-      - name: Upload Results
+      - name: Check what the harness computed from the canned outputs
+        run: |
+          python - <<'PY'
+          import glob
+          import json
+          import os
+          import sys
+
+          suite = os.environ["SUITE"]
+
+
+          def fail(message):
+              print(f"::error title=Harness self-test::{message}")
+              sys.exit(1)
+
+
+          # A --demo report is <suite>_<timestamp>.json.
+          reports = sorted(glob.glob(f"tests/validation/reports/{suite}_2*.json"))
+          if not reports:
+              fail("the harness wrote no report")
+          with open(reports[-1], encoding="utf-8") as handle:
+              data = json.load(handle)
+
+          total = data["total_cases"]
+          errors = data["error_cases"]
+          found_share = data["avg_recall"]
+          lowest_share = data["min_recall"]
+          spurious_free = data["avg_precision"]
+
+          if total <= 0:
+              fail("the harness loaded no test case")
+          if errors:
+              fail(f"{errors} of {total} cases raised an error inside the harness")
+          # A canned output holds at least half of its case's expected findings and
+          # nothing else. A harness that works therefore counts no finding that was
+          # not expected, and loses no case entirely.
+          if spurious_free < 0.999:
+              fail(
+                  "the matcher counted findings the canned outputs do not contain "
+                  f"(precision {spurious_free:.3f}, 1.000 by construction)"
+              )
+          if lowest_share < 0.5:
+              fail(
+                  "the matcher lost findings the canned outputs contain "
+                  f"(lowest recall {lowest_share:.3f}, at least 0.500 by construction)"
+              )
+
+          lines = [
+              f"### Validation harness self-test, suite `{suite}`",
+              "",
+              f"The harness ran {total} canned cases without an error.",
+              "",
+              "The outputs are built from the expected findings of each case: these",
+              "figures describe the harness, **not NormaAI**. No model, no retrieval",
+              "and no API took part. Measured results: `docs/MODELS.md`.",
+              "",
+              "| What the harness computed | Value | Expected by construction |",
+              "|---|---|---|",
+              f"| Cases | {total} | more than 0 |",
+              f"| Cases with a harness error | {errors} | 0 |",
+              f"| Matched findings that were expected | {spurious_free:.3f} | 1.000 |",
+              f"| Lowest share of expected findings in a canned output | {lowest_share:.3f} | 0.500 or more |",
+              f"| Mean share of expected findings in the canned outputs | {found_share:.3f} | not a target |",
+          ]
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+              handle.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload the harness reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: full-regression-results
+          name: harness-selftest-${{ env.SUITE }}
           path: tests/validation/reports/
-          retention-days: 90
-
-      - name: Check Thresholds
-        run: |
-          # Parse latest result and check thresholds
-          python -c "
-          import json, glob, sys
-          files = sorted(glob.glob('tests/validation/reports/*.json'))
-          if not files:
-              print('No results found')
-              sys.exit(1)
-          
-          data = json.load(open(files[-1]))
-          recall = data.get('avg_recall', 0)
-          precision = data.get('avg_precision', 0)
-          f1 = data.get('avg_f1', 0)
-          
-          print(f'Recall: {recall:.4f} (target: ≥0.95)')
-          print(f'Precision: {precision:.4f} (target: ≥0.80)')
-          print(f'F1: {f1:.4f} (target: ≥0.87)')
-          
-          if recall < 0.95 or precision < 0.80 or f1 < 0.87:
-              print('❌ THRESHOLDS NOT MET')
-              sys.exit(1)
-          else:
-              print('✅ ALL THRESHOLDS PASSED')
-          "
-
-  # ─── Adversarial Red Team (weekly) ──────────────────────────
-  red-team:
-    name: "Adversarial Red Team"
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    needs: full-regression
-    
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-
-      - name: Install Promptfoo
-        run: npm install -g promptfoo
-
-      - name: Run Red Team Suite
-        run: |
-          cd tests/validation
-          promptfoo eval -c promptfoo_config.yaml --output report.json
-        env:
-          NORMAAI_TOKEN: ${{ secrets.NORMAAI_TEST_TOKEN }}
-        continue-on-error: true
-
-      - name: Upload Red Team Results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: red-team-results
-          path: tests/validation/report.json
-          retention-days: 90
+          retention-days: 30

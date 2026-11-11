@@ -939,6 +939,9 @@ class HybridIndexer:
             "part": payload.get("part"),  # "2" for the second part of a split unit
             "quoted_article": payload.get("quoted_article"),
             "amended_celex": payload.get("amended_celex"),
+            # Set on a tenant's uploaded document, empty on the official corpus:
+            # the citation verifier never treats an upload as official text.
+            "org_id": payload.get("org_id"),
             # Additive: raw per-retriever cosine/BM25 score.
             # None = the chunk was not returned by that retriever.
             "dense_score": dense_score,

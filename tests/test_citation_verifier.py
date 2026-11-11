@@ -36,6 +36,7 @@ from src.agents.citation_verifier import (
     unverified_policy_applies,
     verify_citation,
     verify_citations,
+    wording_differences,
 )
 
 RSQUO = "\N{RIGHT SINGLE QUOTATION MARK}"
@@ -620,7 +621,191 @@ class TestVerifyCitations:
             "official_quote",
             "amending_celex",
             "amending_article",
+            "near_quote",
+            "near_article",
+            "differences",
         }
+
+
+# ─── The words must agree ────────────────────────────────────────────
+
+GDPR_33_IT = (
+    "Articolo 33\n"
+    "Notifica di una violazione dei dati personali all'autorità di controllo\n"
+    "1. In caso di violazione dei dati personali, il titolare del trattamento notifica la "
+    "violazione all'autorità di controllo competente a norma dell'articolo 55 senza "
+    "ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a "
+    "conoscenza, a meno che sia improbabile che la violazione dei dati personali presenti un "
+    "rischio per i diritti e le libertà delle persone fisiche.\n"
+    "2. Il responsabile del trattamento informa il titolare del trattamento senza "
+    "ingiustificato ritardo dopo essere venuto a conoscenza della violazione."
+)
+DEADLINE_EN = (
+    "Article 9\n"
+    "Time limits\n"
+    "1. The operator shall not place the product on the market and shall notify the authority "
+    "within eighty days of the decision, unless the authority decides otherwise."
+)
+
+
+def _gdpr_33():
+    return [
+        _chunk(
+            GDPR_33_IT,
+            chunk_id="pt-gdpr-33",
+            article="Art. 33",
+            framework="GDPR",
+            celex="32016R0679",
+            source_celex="02016R0679-20160504",
+            consolidated_as_of="2016-05-04",
+        )
+    ]
+
+
+def _deadline_en():
+    return [_chunk(DEADLINE_EN, chunk_id="pt-en-9", article="Art. 9", lang="EN")]
+
+
+def _cite_33(quote):
+    return _cite(quote, framework="GDPR", reference="Art. 33")
+
+
+class TestWordsMustAgree:
+    """A close match is a verification only when the words are the same."""
+
+    def test_a_changed_number_is_not_verified(self):
+        quote = (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente a norma dell'articolo 55 senza ingiustificato ritardo e, ove possibile, "
+            "entro 48 ore dal momento in cui ne è venuto a conoscenza"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert out.match is None and out.official_quote is None and out.celex is None
+        assert out.differences == [{"quoted": "48", "official": "72"}]
+        assert out.near_article == "Art. 33"
+        assert "entro 72 ore dal momento" in out.near_quote
+
+    def test_a_dropped_negation_is_not_verified(self):
+        quote = (
+            "The operator shall place the product on the market and shall notify the authority "
+            "within eighty days of the decision"
+        )
+        out = verify_citation(_cite(quote, reference="Art. 9"), _deadline_en())
+        assert out.verified is False
+        assert {"quoted": "", "official": "not"} in out.differences
+
+    def test_an_added_negation_is_not_verified(self):
+        quote = (
+            "a meno che non sia improbabile che la violazione dei dati personali presenti un "
+            "rischio per i diritti e le libertà delle persone fisiche"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert {"quoted": "non", "official": ""} in out.differences
+
+    def test_and_for_or_is_not_verified(self):
+        quote = (
+            "senza ingiustificato ritardo o, ove possibile, entro 72 ore dal momento in cui ne "
+            "è venuto a conoscenza"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "o", "official": "e"}]
+
+    def test_a_number_word_one_letter_apart_is_not_verified(self):
+        quote = (
+            "shall notify the authority within eight days of the decision, unless the authority "
+            "decides otherwise"
+        )
+        out = verify_citation(_cite(quote, reference="Art. 9"), _deadline_en())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "eight", "official": "eighty"}]
+
+    def test_a_different_long_word_is_not_verified(self):
+        quote = (
+            "Il responsabile del trattamento informa il contitolare del trattamento senza "
+            "ingiustificato ritardo dopo essere venuto a conoscenza della violazione"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "contitolare", "official": "titolare"}]
+
+    def test_a_changed_first_letter_is_not_a_slip(self):
+        # "lecito" for "recito": the first letter makes another word.
+        assert wording_differences("il trattamento lecito", "il trattamento recito") == [
+            ("lecito", "recito")
+        ]
+
+    def test_accents_and_apostrophes_do_not_count(self):
+        quote = (
+            "all'autorita' di controllo competente a norma dell'articolo 55 senza ingiustificato "
+            "ritardo e, ove possibile, entro 72 ore dal momento in cui ne e' venuto a conoscenza"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified and out.match == "fuzzy"
+        assert out.differences is None and out.near_quote is None
+        assert "entro 72 ore" in out.official_quote
+
+    def test_a_word_split_at_a_line_break_does_not_count(self):
+        quote = (
+            "Il responsabile del trattamento informa il titolare del tratta- mento senza "
+            "ingiustificato ritardo dopo essere venuto a conoscenza della violazione"
+        )
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified and out.match == "fuzzy"
+
+    def test_grouped_digits_are_the_same_number(self):
+        assert wording_differences("fino a 15000000 eur", "fino a 15 000 000 eur") == []
+        assert wording_differences("fino a 15 000 000 eur", "fino a 35 000 000 eur") == [
+            ("15", "35")
+        ]
+
+    def test_the_literal_wording_elsewhere_beats_a_near_match(self):
+        # Art. 9 says "eighty"; another provision has the quoted words exactly.
+        other = _chunk(
+            "Article 12\nReview\n1. The operator shall notify the authority within eight days "
+            "of the decision.",
+            chunk_id="pt-en-12",
+            article="Art. 12",
+            lang="EN",
+        )
+        quote = "shall notify the authority within eight days of the decision"
+        out = verify_citation(_cite(quote, reference="Art. 9"), [*_deadline_en(), other])
+        assert out.verified and out.match == "exact" and out.article == "Art. 12"
+
+    def test_wording_differences_is_empty_for_punctuation(self):
+        assert (
+            wording_differences(
+                "contenuti audio immagine video o testuali",
+                "contenuti audio, immagine, video o testuali",
+            )
+            == []
+        )
+
+
+class TestTenantUploadsAreNotOfficial:
+    def test_a_quote_found_only_in_an_upload_is_not_verified(self):
+        upload = _chunk(
+            "Policy interna. Il fornitore garantisce un tempo di risposta di cinque giorni "
+            "lavorativi per ogni richiesta del cliente.",
+            chunk_id="upload-1",
+            article="",
+            org_id="org-1",
+        )
+        quote = "Il fornitore garantisce un tempo di risposta di cinque giorni lavorativi"
+        assert verify_citation(_cite(quote), [upload]).verified is False
+        assert verify_citation(_cite(quote), [*_corpus(), upload]).verified is False
+
+    def test_the_official_corpus_still_verifies_next_to_an_upload(self):
+        upload = _chunk(
+            "Appunti del cliente sull'articolo 50.", chunk_id="upload-2", org_id="org-1"
+        )
+        out = verify_citation(
+            _cite("siano informate del fatto di stare interagendo con un sistema di IA"),
+            [upload, *_corpus()],
+        )
+        assert out.verified and out.chunk_id == "pt-ai-50"
 
 
 # ─── Real EUR-Lex passages (golden set v2) ───────────────────────────

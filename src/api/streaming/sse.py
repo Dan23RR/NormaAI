@@ -57,6 +57,15 @@ CitationMatch = Literal["exact", "fuzzy"]
 CitationLevel = Literal["article", "framework", "any"]
 
 
+class CitationDifference(BaseModel):
+    """Words of a quote that differ from the official wording it almost matched."""
+
+    quoted: str = Field(..., description="The words as quoted (empty when the quote lacks them)")
+    official: str = Field(
+        ..., description="The words of the official text (empty when it has none)"
+    )
+
+
 class CitationEvent(BaseModel):
     """Regulatory document reference with metadata and verification status.
 
@@ -64,7 +73,10 @@ class CitationEvent(BaseModel):
     (src.agents.citation_verifier): ``verified`` is True only when the quote was
     found word for word in a retrieved official text, and then ``celex``,
     ``article``, ``paragraph``, ``url``, ``chunk_id``, ``lang`` and ``quote``
-    describe that text. Fields that are None are omitted from the wire format.
+    describe that text. When a quote is NOT verified but a passage almost
+    matched, ``near_quote``, ``near_article`` and ``differences`` say what the
+    official text says instead. Fields that are None are omitted from the wire
+    format.
     """
 
     type: str = Field(default=EventType.CITATION, frozen=True)
@@ -114,6 +126,17 @@ class CitationEvent(BaseModel):
     )
     amending_article: str | None = Field(
         default=None, description="Article of the amending act that quotes the cited one"
+    )
+    near_quote: str | None = Field(
+        default=None,
+        description="Official wording that almost matched a quote that is not verified",
+    )
+    near_article: str | None = Field(
+        default=None, description="Where that wording is (e.g. 'Art. 33'), when not verified"
+    )
+    differences: list[CitationDifference] | None = Field(
+        default=None,
+        description="The words that differ between the quote and the wording it almost matched",
     )
     grounded: bool | None = Field(
         default=None,

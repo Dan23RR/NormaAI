@@ -31,9 +31,23 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
 4. Within a level the quote must be a substring of one chunk (``"exact"``). A
    quote with omissions (``[...]``, ``...``, ``…``) is split there and every
    segment of at least 12 characters must appear in the same chunk, in order.
-   Failing that, a tolerant comparison accepts a span of the chunk whose
-   difflib ratio with the quote is at least 0.92 (``"fuzzy"``: punctuation or
-   OCR differences).
+   Failing that, a tolerant comparison looks for a span of the chunk whose
+   difflib ratio with the quote is at least 0.92 and accepts it (``"fuzzy"``)
+   only when the WORDS agree (``wording_differences``): every number, every
+   number word and every word under five letters ("non", "o", "e", "may",
+   "not") must be identical. The differences forgiven are punctuation,
+   accents, a word split or joined at a line break, and one wrong, missing or
+   extra letter inside a longer ordinary word.
+5. A span that is close but differs in a word that matters ("48 ore" where the
+   law says "72 ore") is not a verification. The result stays unverified and
+   says what was almost matched: ``near_quote`` (the official wording),
+   ``near_article`` (where it is) and ``differences`` (the words that differ).
+6. A chunk that carries an ``org_id`` is a document uploaded by a tenant, not
+   an official text: it never verifies a quote.
+
+A literal quote can still leave out context that changes its meaning (the
+"non" just before it, an exception in the next sentence): the interface shows
+the official passage so the reader sees it in place.
 
 ``annotate_citations`` writes the result on COPIES of the citations and adds
 the ``verified_citations`` / ``citations_total`` counters;
@@ -58,6 +72,9 @@ MIN_QUOTE_CHARS = 20
 MIN_QUOTE_WORDS = 4
 MIN_SEGMENT_CHARS = 12
 FUZZY_MIN_RATIO = 0.92
+# A one-letter slip is forgiven only in words at least this long: shorter words
+# ("non", "o", "e", "deve", "may", "not", "June") carry too much meaning per letter.
+MIN_SLIP_WORD_CHARS = 5
 
 MATCH_EXACT = "exact"
 MATCH_FUZZY = "fuzzy"
@@ -394,6 +411,11 @@ class VerificationResult:
     # src/agents/quoted_articles.py): that act and its article; ``url`` is its page.
     amending_celex: str | None = None
     amending_article: str | None = None
+    # Set only when NOT verified and a passage almost matched: the official
+    # wording, where it is, and the words that differ ({"quoted", "official"}).
+    near_quote: str | None = None
+    near_article: str | None = None
+    differences: list[dict[str, str]] | None = None
 
     def as_fields(self) -> dict[str, Any]:
         """The fields written on the citation dict (all keys, None included)."""
@@ -422,6 +444,9 @@ def _prepare(chunks: Any) -> list[_Chunk]:
     prepared: list[_Chunk] = []
     for chunk in chunks or []:
         data = chunk if isinstance(chunk, dict) else {"text": str(chunk)}
+        if data.get("org_id") not in (None, ""):
+            # A tenant's own upload: retrievable for the answer, never official text.
+            continue
         text = str(data.get("text") or "")
         norm, starts, ends = _normalize_with_map(text)
         if not norm:
@@ -562,9 +587,104 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
     return best
 
 
-def _find_tolerant(segments: list[str], text: str) -> tuple[list[tuple[int, int]], float] | None:
-    """Like _find_in_order, but a segment may also match fuzzily (lowest ratio returned)."""
+# ─── Do the words agree? ─────────────────────────────────────────────
+
+# A word of a normalized text: a run of digits or a run of letters.
+_WORD_RE = re.compile(r"\d+|[^\W\d_]+")
+# Words that state a number, in Italian and English. "eight" and "eighty" are one
+# letter apart: a number word is compared like a number, never forgiven a slip.
+_NUMBER_WORDS = frozenset(
+    "zero uno una due tre quattro cinque sei sette otto nove dieci undici dodici tredici "
+    "quattordici quindici sedici diciassette diciotto diciannove venti trenta quaranta "
+    "cinquanta sessanta settanta ottanta novanta cento mille mila milione milioni miliardo "
+    "miliardi one two three four five six seven eight nine ten eleven twelve thirteen "
+    "fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty "
+    "seventy eighty ninety hundred thousand million billion".split()
+)
+# Italian compounds: "ventuno", "trentasei", "duecento", "tremila".
+_NUMBER_COMPOUND_RE = re.compile(
+    r"^(?:vent|trent|quarant|cinquant|sessant|settant|ottant|novant)\w+$|^\w+(?:cento|mila)$"
+)
+
+
+def _without_marks(word: str) -> str:
+    """The word without accents: "perché" and "perche'" are the same word."""
+    decomposed = unicodedata.normalize("NFD", word)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
+def _is_number_word(word: str) -> bool:
+    return word in _NUMBER_WORDS or bool(_NUMBER_COMPOUND_RE.match(word))
+
+
+def _one_letter_slip(a: str, b: str) -> bool:
+    """One wrong, missing or extra letter, not the first, inside a longer ordinary word."""
+    if min(len(a), len(b)) < MIN_SLIP_WORD_CHARS or a[0] != b[0]:
+        return False
+    if a.isdigit() or b.isdigit() or _is_number_word(a) or _is_number_word(b):
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b, strict=True)) == 1
+    if abs(len(a) - len(b)) != 1:
+        return False
+    short, long = (a, b) if len(a) < len(b) else (b, a)
+    return any(long[:i] + long[i + 1 :] == short for i in range(1, len(long)))
+
+
+def _same_word(a: str, b: str) -> bool:
+    a, b = _without_marks(a), _without_marks(b)
+    return a == b or _one_letter_slip(a, b)
+
+
+def wording_differences(quote: str, official: str) -> list[tuple[str, str]]:
+    """The words of ``quote`` that the official wording does not have, and vice versa.
+
+    Both texts are in normalized form. Punctuation and spacing never count.
+    Words are aligned in order; a stretch that differs is forgiven when it is
+    the same letters split differently ("infor- mazioni", "15 000"), or when
+    each word has its counterpart and the two differ only by accents or by a
+    one-letter slip (see ``_one_letter_slip``). Anything else is returned as
+    ``(quoted words, official words)``: a changed number, a changed, added or
+    dropped short word, a different word. An empty list means the wording is
+    the same.
+    """
+    quoted = _WORD_RE.findall(quote)
+    official_words = _WORD_RE.findall(official)
+    differences: list[tuple[str, str]] = []
+    matcher = SequenceMatcher(None, quoted, official_words, autojunk=False)
+    for op, i1, i2, j1, j2 in matcher.get_opcodes():
+        if op == "equal":
+            continue
+        ours, theirs = quoted[i1:i2], official_words[j1:j2]
+        if "".join(map(_without_marks, ours)) == "".join(map(_without_marks, theirs)):
+            continue
+        if len(ours) == len(theirs) and all(
+            _same_word(a, b) for a, b in zip(ours, theirs, strict=True)
+        ):
+            continue
+        differences.append((" ".join(ours), " ".join(theirs)))
+    return differences
+
+
+def _whole_words(text: str, start: int, end: int) -> tuple[int, int]:
+    """Widen a span so that it does not begin or end in the middle of a word."""
+    while 0 < start < len(text) and text[start - 1].isalnum() and text[start].isalnum():
+        start -= 1
+    while 0 < end < len(text) and text[end - 1].isalnum() and text[end].isalnum():
+        end += 1
+    return start, end
+
+
+def _find_tolerant(
+    segments: list[str], text: str
+) -> tuple[list[tuple[int, int]], float, list[tuple[str, str]]] | None:
+    """Like _find_in_order, but a segment may also match fuzzily.
+
+    Returns the spans, the lowest ratio and the words that differ in the
+    segments matched fuzzily (empty when the wording is the same).
+    """
     spans: list[tuple[int, int]] = []
+    differences: list[tuple[str, str]] = []
     pos = 0
     worst = 1.0
     for seg in segments:
@@ -577,27 +697,46 @@ def _find_tolerant(segments: list[str], text: str) -> tuple[list[tuple[int, int]
         if found is None:
             return None
         s, e, ratio = found
+        s, e = _whole_words(text, s, e)
+        differences.extend(wording_differences(seg, text[s:e]))
         spans.append((s, e))
         pos = e
         worst = min(worst, ratio)
-    return spans, worst
+    return spans, worst, differences
 
 
-def _search(
-    segments: list[str], candidates: list[_Chunk]
-) -> tuple[_Chunk, list[tuple[int, int]], str] | None:
+@dataclass
+class _Found:
+    """Where a quote was found; ``differences`` is non-empty for a near match only."""
+
+    chunk: _Chunk
+    spans: list[tuple[int, int]]
+    match: str
+    differences: list[tuple[str, str]]
+
+
+def _search(segments: list[str], candidates: list[_Chunk]) -> _Found | None:
+    """An exact match, else the best literal fuzzy match, else the best near match."""
     for chunk in candidates:
         spans = _find_in_order(segments, chunk.norm)
         if spans:
-            return chunk, spans, MATCH_EXACT
-    best: tuple[_Chunk, list[tuple[int, int]], float] | None = None
+            return _Found(chunk, spans, MATCH_EXACT, [])
+    literal: tuple[_Found, float] | None = None
+    near: tuple[_Found, float] | None = None
     for chunk in candidates:
         found = _find_tolerant(segments, chunk.norm)
-        if found and (best is None or found[1] > best[2]):
-            best = (chunk, found[0], found[1])
-    if best is not None:
-        return best[0], best[1], MATCH_FUZZY
-    return None
+        if found is None:
+            continue
+        spans, ratio, differences = found
+        candidate = _Found(chunk, spans, MATCH_FUZZY, differences)
+        if differences:
+            if near is None or ratio > near[1]:
+                near = (candidate, ratio)
+        elif literal is None or ratio > literal[1]:
+            literal = (candidate, ratio)
+    if literal is not None:
+        return literal[0]
+    return near[0] if near is not None else None
 
 
 def _paragraph_at(chunk: _Chunk, position: int) -> str | None:
@@ -679,16 +818,35 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
     levels.append((LEVEL_ANY, chunks))
 
     searched: set[int] = set()
+    near: _Found | None = None
     for level, candidates in levels:
         fresh = [c for c in candidates if id(c) not in searched]
         searched.update(id(c) for c in fresh)
         if not fresh:
             continue
         found = _search(segments, fresh)
-        if found is not None:
-            chunk, spans, match = found
-            return _result(chunk, spans, match, level)
-    return _UNVERIFIED
+        if found is None:
+            continue
+        if not found.differences:
+            return _result(found.chunk, found.spans, found.match, level)
+        # Close, but a word that matters differs: keep the nearest one (the
+        # cited article is searched first) and go on, the literal wording may
+        # be in another provision.
+        if near is None:
+            near = found
+    return _near_result(near) if near is not None else _UNVERIFIED
+
+
+def _near_result(found: _Found) -> VerificationResult:
+    """Not verified, with the official wording that almost matched and what differs."""
+    chunk = found.chunk
+    pieces = [chunk.text[chunk.starts[a] : chunk.ends[b - 1]].strip() for a, b in found.spans]
+    raw_article = str(chunk.data.get("article") or chunk.data.get("article_number") or "").strip()
+    return VerificationResult(
+        near_quote=" [...] ".join(pieces),
+        near_article=article_label(chunk.article_key) or raw_article or None,
+        differences=[{"quoted": ours, "official": theirs} for ours, theirs in found.differences],
+    )
 
 
 def verify_citation(citation: dict[str, Any], chunks: list[dict[str, Any]]) -> VerificationResult:

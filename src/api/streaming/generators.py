@@ -40,6 +40,7 @@ from src.agents.citation_verifier import (
 )
 from src.api.errors import ResultFailure, classify_result
 from src.api.streaming.sse import (
+    CitationDifference,
     CitationEvent,
     CitationLevel,
     CitationMatch,
@@ -127,14 +128,27 @@ def _str_list(value: Any) -> list[str]:
     return [item for item in value if isinstance(item, str) and item.strip()]
 
 
+def _differences(value: Any) -> list[CitationDifference] | None:
+    """The verifier's ``differences`` as wire models; None when there are none."""
+    if not isinstance(value, list):
+        return None
+    items = [
+        CitationDifference(quoted=str(d.get("quoted") or ""), official=str(d.get("official") or ""))
+        for d in value
+        if isinstance(d, dict)
+    ]
+    return items or None
+
+
 def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
     """Map a result citation dict to a CitationEvent without inventing fields.
 
     A citation the verifier confirmed (``verified`` True) is described by the
     official text it was found in: its article, paragraph, wording
     (``official_quote``), chunk, language and server-built URL. Otherwise the
-    event carries the model's reference and quote, and the link falls back to
-    the primary act of the cited framework.
+    event carries the model's reference and quote, the link falls back to the
+    primary act of the cited framework, and a passage that almost matched is
+    reported with the words that differ.
     """
     framework = str(cit.get("framework") or "")
     verified = cit.get("verified")
@@ -171,6 +185,9 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
         consolidated_as_of=_text_or_none(cit.get("consolidated_as_of")) if official else None,
         amending_celex=_text_or_none(cit.get("amending_celex")) if official else None,
         amending_article=_text_or_none(cit.get("amending_article")) if official else None,
+        near_quote=None if official else _text_or_none(cit.get("near_quote")),
+        near_article=None if official else _text_or_none(cit.get("near_article")),
+        differences=None if official else _differences(cit.get("differences")),
         grounded=grounded if isinstance(grounded, bool) else None,
     )
 

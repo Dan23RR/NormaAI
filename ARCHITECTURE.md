@@ -200,7 +200,23 @@ chunk (`"any"`). Within a level the quote must be a substring of one chunk
 (`"exact"`); a quote with omissions (`[...]`, `...`, `…`) is split there and
 every segment of at least 12 characters must appear in the same chunk, in
 order. Failing that, a span of the chunk whose difflib ratio with the quote is
-at least 0.92 is accepted (`"fuzzy"`: punctuation or OCR differences).
+at least 0.92 is accepted (`"fuzzy"`) only when the words agree
+(`wording_differences`): every number, every number word and every word under
+five letters ("non", "o", "e", "may", "not") must be identical. What is
+forgiven: punctuation, accents, a word split or joined at a line break, and one
+wrong, missing or extra letter (not the first) inside a longer ordinary word.
+
+**A close match is not a verification** (2026-11-11). A quote that says "entro
+48 ore" where the article says "entro 72 ore" has a ratio above 0.99 and used to
+be shown as verified. It now stays unverified and carries what was almost
+matched: `near_quote` (the official wording), `near_article` (where it is) and
+`differences` (`[{"quoted": "48", "official": "72"}]`). The search goes on
+after a near match: the literal wording may be in another provision. A chunk
+that carries an `org_id` is a document uploaded by a tenant and never verifies
+a quote. A literal quote can still leave out context that changes its meaning
+(the "non" just before it): the interface shows the official passage in place.
+The effect of the stricter rule on the golden-set share of verified citations
+has not been measured yet (it needs a live run); it can only lower it.
 
 **Fields.** Every citation gets, on a copy (the model's dicts are never
 modified, and anything the model put in these keys is overwritten):
@@ -217,6 +233,7 @@ modified, and anything the model put in these keys is overwritten):
 | `url` | `https://eur-lex.europa.eu/legal-content/{IT\|EN}/TXT/?uri=CELEX:{celex}`, built server-side in the chunk's language | `null` |
 | `official_quote` | the exact span of the official text that matched | `null` |
 | `amending_celex`, `amending_article` | only for an article verified in the text of the act that amends it (below): that act and article; `url` is its page | `null` |
+| `near_quote`, `near_article`, `differences` | `null` | set when a passage almost matched: its official wording, where it is, the words that differ |
 
 The answer carries `verified_citations` and `citations_total`.
 

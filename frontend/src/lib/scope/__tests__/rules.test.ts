@@ -686,9 +686,9 @@ describe('every result', () => {
 describe('what is shown about verification', () => {
   it('puts the Italian article before the date and elides it before 1, 8 and 11', () => {
     expect(dateWithArticle('2026-12-02', it_)).toBe('il 2 dicembre 2026')
-    expect(dateWithArticle('2026-11-11', it_)).toBe("l'11 novembre 2026")
-    expect(dateWithArticle('2027-01-01', it_)).toBe("l'1 gennaio 2027")
-    expect(dateWithArticle('2027-03-08', it_)).toBe("l'8 marzo 2027")
+    expect(dateWithArticle('2026-11-11', it_)).toBe('l’11 novembre 2026')
+    expect(dateWithArticle('2027-01-01', it_)).toBe('l’1 gennaio 2027')
+    expect(dateWithArticle('2027-03-08', it_)).toBe('l’8 marzo 2027')
     expect(dateWithArticle('2026-11-11', en)).toBe('11 November 2026')
   })
 

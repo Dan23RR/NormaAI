@@ -509,7 +509,7 @@
         },
         "gen": {
           "label": "A system generates synthetic content: text, images, audio or video",
-          "description": "Generative AI tools offered to users or built into the company's products."
+          "description": "Generative AI tools offered to users or built into the company’s products."
         },
         "emo": {
           "label": "Emotion recognition or biometric categorisation is in use",
@@ -564,7 +564,7 @@
       },
       "machinery": {
         "legend": "Machinery: Regulation (EU) 2023/1230",
-        "intro": "Tick the company's roles with regard to machinery, related products (for example safety components and lifting accessories) and partly completed machinery.",
+        "intro": "Tick the company’s roles with regard to machinery, related products (for example safety components and lifting accessories) and partly completed machinery.",
         "fab": {
           "label": "Manufacturer",
           "description": "It manufactures these products, or has them designed or manufactured and markets them under its own name or trademark, or manufactures them and puts them into service for its own use."
@@ -651,7 +651,7 @@
         "provider": "Provider obligation",
         "deployer": "Deployer obligation",
         "employer": "Employer obligation",
-        "professional": "Professional's obligation",
+        "professional": "Professional’s obligation",
         "nisEntity": "NIS entity obligation",
         "governingBodies": "Management and governing bodies",
         "manufacturer": "Manufacturer obligation",
@@ -722,7 +722,7 @@
         "outReason": "You do not exceed the cumulative thresholds of Art. 19a of Directive 2013/34/EU (net turnover above 450 million euro and more than 1,000 employees): the direct obligation is not triggered.",
         "noteWave1": "You indicated reporting already under way: if you do not exceed the thresholds, for the financial years starting between 1 January 2026 and 31 December 2027 the exclusion of Art. 17(3-bis) of Legislative Decree 125/2024 applies; Directive (EU) 2022/2464 leaves Member States the option to exempt financial years 2025 and 2026 (Art. 5(2)).",
         "noteParent": "Parent company: the thresholds are read on a consolidated basis (Directive 2013/34/EU, Art. 29a(1)).",
-        "noteSubsidiary": "Subsidiary: scope may depend on the consolidation perimeter and on the parent company's reporting. A precise check at group level is needed."
+        "noteSubsidiary": "Subsidiary: scope may depend on the consolidation perimeter and on the parent company’s reporting. A precise check at group level is needed."
       },
       "csddd": {
         "nonEuMissing": "Enter the net turnover generated in the Union to assess the CSDDD as a third-country company.",
@@ -747,7 +747,7 @@
         "noneHeadline": "From your answers, the transparency obligations of Art. 50 do not concern you directly.",
         "noneReason": "None of the four situations of Art. 50 applies. Outside Art. 50 does not mean outside the AI Act.",
         "noneNote1": "AI literacy (Art. 4, applicable from {date}): anyone who provides or uses AI systems takes measures to support the AI literacy of their staff, without having to guarantee a specific level.",
-        "noneNote2": "Prohibited practices (Art. 5): applicable from {date}, for example inferring people's emotions in the workplace; from {added} the prohibitions of points (ba) and (bb) of paragraph 1 are added.",
+        "noneNote2": "Prohibited practices (Art. 5): applicable from {date}, for example inferring people’s emotions in the workplace; from {added} the prohibitions of points (ba) and (bb) of paragraph 1 are added.",
         "noneNote3": "General-purpose AI models: for those who provide them the obligations of Chapter V apply from {date}.",
         "noneNote4": "High-risk systems: the rules apply from {annexIII} for the systems of Annex III and from {annexI} for those of Annex I (Art. 113).",
         "inHeadline": "Art. 50, applicable from {date}, covers the situations you indicated.",
@@ -762,7 +762,7 @@
         "chat": {
           "title": "Chatbots and assistants: the person must know they are talking to an AI",
           "requirement": "AI systems meant to interact directly with people must be designed and developed so that the person is informed they are interacting with an AI, unless this is obvious to a reasonably informed and attentive person.",
-          "exception": "Exception: systems authorised by law to detect, prevent, investigate or prosecute criminal offences. If you buy the chatbot from a third party, the design obligation is the provider's, but checking that it complies is in your interest."
+          "exception": "Exception: systems authorised by law to detect, prevent, investigate or prosecute criminal offences. If you buy the chatbot from a third party, the design obligation is the provider’s, but checking that it complies is in your interest."
         },
         "gen": {
           "title": "Generated content: machine-readable marking",
@@ -806,7 +806,7 @@
           "decisions": {
             "title": "Decisions on the employment relationship: never automatic only",
             "requirement": "Final decisions on the establishment, modification or termination of the relationship, including disciplinary measures and performance evaluations, may not be taken solely on the basis of automated processing: the final decision is reserved to a natural person with effective and autonomous power.",
-            "exception": "The worker's consent is not an exception. Dismissals and decisions in breach are null and void (Art. 41(4)). The search for and selection of applications are not final decisions on the establishment of the relationship."
+            "exception": "The worker’s consent is not an exception. Dismissals and decisions in breach are null and void (Art. 41(4)). The search for and selection of applications are not final decisions on the establishment of the relationship."
           },
           "information": {
             "title": "Information before starting and reasons on request",
@@ -815,7 +815,7 @@
           },
           "highRisk": {
             "title": "High-risk systems in the workplace: inform workers and their representatives",
-            "requirement": "AI systems for recruitment or selection and those for decisions on the terms, promotion or termination of the relationship are listed in Annex III, point 4, of the AI Act. Before putting them into service or using them in the workplace, the employer informs the workers' representatives and the workers concerned.",
+            "requirement": "AI systems for recruitment or selection and those for decisions on the terms, promotion or termination of the relationship are listed in Annex III, point 4, of the AI Act. Before putting them into service or using them in the workplace, the employer informs the workers’ representatives and the workers concerned.",
             "exception": "Obligation of the deployers of high-risk systems: it applies from {date} (Art. 113)."
           },
           "riskAssessment": {
@@ -898,7 +898,7 @@
         }
       },
       "machinery": {
-        "notAnswered": "Indicate the company's roles with regard to machinery (or \"None of these roles\") to assess the Machinery Regulation.",
+        "notAnswered": "Indicate the company’s roles with regard to machinery (or \"None of these roles\") to assess the Machinery Regulation.",
         "noneHeadline": "From your answers, the Machinery Regulation places no direct obligations on the company.",
         "noneReason": "The company is not a manufacturer, importer or distributor of machinery, related products or partly completed machinery, and does not modify them.",
         "noneNote": "Whoever carries out a substantial modification of machinery already in service is considered a manufacturer (Art. 18): if that happens, run the check again.",
@@ -923,7 +923,7 @@
             "requirement": "For partly completed machinery the manufacturer draws up the technical documentation of Annex IV, Part B, and the EU declaration of incorporation."
           },
           "importer": {
-            "title": "Import only compliant products and check the manufacturer's work",
+            "title": "Import only compliant products and check the manufacturer’s work",
             "requirement": "Place on the market only compliant machinery or related products; before placing them, ensure that the manufacturer has carried out the conformity assessment procedure (Art. 13(1) and (2)).",
             "exception": "A copy of the EU declaration of conformity stays at the disposal of the authorities for at least 10 years (Art. 13(8))."
           },
@@ -934,10 +934,10 @@
           },
           "ownBrand": {
             "title": "Under your own name or trademark you become the manufacturer",
-            "requirement": "An importer or distributor that places a product on the market under its own name or trademark, or modifies a product already placed on the market in a way that may affect compliance, is considered a manufacturer and takes on the manufacturer's obligations."
+            "requirement": "An importer or distributor that places a product on the market under its own name or trademark, or modifies a product already placed on the market in a way that may affect compliance, is considered a manufacturer and takes on the manufacturer’s obligations."
           },
           "modification": {
-            "title": "Substantial modification: whoever makes it takes on the manufacturer's obligations",
+            "title": "Substantial modification: whoever makes it takes on the manufacturer’s obligations",
             "requirement": "Whoever carries out a substantial modification of machinery or of a related product is considered a manufacturer and is subject to the related obligations.",
             "exception": "A modification is substantial when, by physical or digital means and not foreseen by the manufacturer, it creates a new hazard or increases an existing risk and requires new guards or protective devices with a change to the safety control system, or additional measures for stability or mechanical strength (Art. 3, point (16))."
           }
@@ -1103,7 +1103,7 @@
       "aiact-high-risk-annex-iii": {
         "title": "AI Act: high-risk systems of Annex III",
         "who": "Providers and deployers of high-risk AI systems of Annex III",
-        "what": "Sections 1, 2 and 3 of Chapter III apply from this date to the systems of Annex III (Art. 113). Among the deployers' obligations: informing workers and their representatives before using a high-risk system in the workplace (Art. 26(7))."
+        "what": "Sections 1, 2 and 3 of Chapter III apply from this date to the systems of Annex III (Art. 113). Among the deployers’ obligations: informing workers and their representatives before using a high-risk system in the workplace (Art. 26(7))."
       },
       "cra-full-application": {
         "title": "CRA: application of the Regulation",

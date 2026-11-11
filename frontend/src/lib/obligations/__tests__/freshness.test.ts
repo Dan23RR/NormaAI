@@ -49,7 +49,7 @@ describe('freshnessLine', () => {
   it('says when the check last ran and how many indexed acts have a newer consolidated version', () => {
     const at = '2026-11-11T02:10:00Z'
     expect(freshnessLine({ checkedAt: at, outdated: [] }, it_)).toBe(
-      "Calendario curato a mano. Controllo automatico delle versioni consolidate eseguito l'11 novembre 2026: nessun atto indicizzato ha una versione consolidata più recente.",
+      "Calendario curato a mano. Controllo automatico delle versioni consolidate eseguito l’11 novembre 2026: nessun atto indicizzato ha una versione consolidata più recente.",
     )
     expect(freshnessLine({ checkedAt: at, outdated: [OUTDATED] }, it_)).toContain(
       '1 atto indicizzato ha una versione consolidata più recente',

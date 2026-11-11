@@ -43,7 +43,7 @@ describe('ScopeForm', () => {
 
   it('lists every sector of the annexes of the NIS decree, in both languages', () => {
     renderForm()
-    const select = screen.getByLabelText("Settore dell'allegato") as HTMLSelectElement
+    const select = screen.getByLabelText('Settore dell’allegato') as HTMLSelectElement
     const values = Array.from(select.options).map((o) => o.value)
     expect(values).toEqual(['', ...NIS_SECTORS])
     expect(screen.getByRole('option', { name: 'Infrastrutture digitali' })).toBeInTheDocument()
@@ -52,26 +52,26 @@ describe('ScopeForm', () => {
 
   it('keeps a group unanswered until the person answers it', () => {
     const { onChange } = renderForm()
-    expect((screen.getByLabelText(/Nessuna di queste situazioni riguarda l'impresa/) as HTMLInputElement).checked).toBe(false)
+    expect((screen.getByLabelText(/Nessuna di queste situazioni riguarda l’impresa/) as HTMLInputElement).checked).toBe(false)
 
     fireEvent.click(screen.getByLabelText(/Un sistema di IA contribuisce a decisioni sul personale/))
     expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_INPUT, work: keysToWork(['dec']) })
 
-    fireEvent.click(screen.getByLabelText(/Nessuno di questi ruoli riguarda l'impresa/))
+    fireEvent.click(screen.getByLabelText(/Nessuno di questi ruoli riguarda l’impresa/))
     expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_INPUT, machinery: NO_MACHINERY })
 
-    fireEvent.change(screen.getByLabelText("Settore dell'allegato"), { target: { value: 'fabbricazione' } })
+    fireEvent.change(screen.getByLabelText('Settore dell’allegato'), { target: { value: 'fabbricazione' } })
     expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_INPUT, nis: { ...NO_NIS, sector: 'fabbricazione' } })
 
-    fireEvent.click(screen.getByLabelText(/È un'impresa collegata a un soggetto NIS/))
+    fireEvent.click(screen.getByLabelText(/È un’impresa collegata a un soggetto NIS/))
     expect(onChange).toHaveBeenLastCalledWith({ ...EMPTY_INPUT, nis: { ...NO_NIS, linked: true } })
   })
 
   it('withdraws an answer when "none" is unticked or the sector goes back to unanswered', () => {
     const { onChange } = renderForm({ ...EMPTY_INPUT, machinery: NO_MACHINERY, nis: { ...NO_NIS, sector: 'energia' } })
-    fireEvent.click(screen.getByLabelText(/Nessuno di questi ruoli riguarda l'impresa/))
+    fireEvent.click(screen.getByLabelText(/Nessuno di questi ruoli riguarda l’impresa/))
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ machinery: null }))
-    fireEvent.change(screen.getByLabelText("Settore dell'allegato"), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Settore dell’allegato'), { target: { value: '' } })
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ nis: null }))
   })
 

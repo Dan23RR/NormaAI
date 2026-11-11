@@ -80,18 +80,18 @@ export function withIndex<T extends Source>(sources: T[]): T[] {
 }
 
 /**
- * "il 2 dicembre 2026", "l'11 novembre 2026": Italian puts the article
+ * "il 2 dicembre 2026", "l’11 novembre 2026": Italian puts the article
  * before a date and elides it before 1, 8 and 11. English takes the date alone.
  */
 export function dateWithArticle(iso: string, ctx: TextContext): string {
   const text = formatDate(iso, ctx)
   if (languageOf(ctx.locale) !== 'it') return text
   const day = Number(iso.slice(8, 10))
-  return day === 1 || day === 8 || day === 11 ? `l'${text}` : `il ${text}`
+  return day === 1 || day === 8 || day === 11 ? `l’${text}` : `il ${text}`
 }
 
 /**
- * What the last check says about a source: "Verificata l'11 novembre 2026"
+ * What the last check says about a source: "Verificata l’11 novembre 2026"
  * with the text it was found in, or "Fonte indicata, non ancora verificata".
  */
 export function verificationLabel(source: Source, ctx: TextContext): string {

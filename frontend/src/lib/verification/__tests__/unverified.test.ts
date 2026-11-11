@@ -44,7 +44,7 @@ describe('a source the check did not verify', () => {
     const source = scopeSource('mach-10-1', it_)
     expect(source.status).toBe('verified')
     expect(source.verifiedAt).toBe(verifiedOn('mach-10-1'))
-    expect(verificationLabel(source, it_)).toMatch(/^Verificata (il |l')\d{1,2} \p{L}+ \d{4} sul testo consolidato al /u)
+    expect(verificationLabel(source, it_)).toMatch(/^Verificata (il |l’)\d{1,2} \p{L}+ \d{4} sul testo consolidato al /u)
   })
 
   it('takes its calendar entry out of the calendar', async () => {

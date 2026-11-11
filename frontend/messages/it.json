@@ -447,30 +447,30 @@
   },
   "ambito": {
     "title": "Ambito",
-    "description": "Quali obblighi si applicano a un'impresa, e da quando, con il passaggio di legge che lo stabilisce.",
+    "description": "Quali obblighi si applicano a un’impresa, e da quando, con il passaggio di legge che lo stabilisce.",
     "meta": "Ogni fonte dice se e quando il passaggio è stato ritrovato nel testo ufficiale (ultimo controllo: {date}). Primo filtro indicativo, non un parere legale.",
     "loading": "Caricamento della pagina Ambito",
-    "formError": "Indica dipendenti e ricavi netti, oppure rispondi ad almeno una sezione (IA e lavoro, NIS, macchine, AI Act), poi premi di nuovo Verifica l'ambito.",
+    "formError": "Indica dipendenti e ricavi netti, oppure rispondi ad almeno una sezione (IA e lavoro, NIS, macchine, AI Act), poi premi di nuovo Verifica l’ambito.",
     "copy": {
       "ok": "Copiato",
       "failed": "Copia non riuscita",
       "resultFailed": "Seleziona il testo del risultato e copialo a mano.",
-      "linkFailed": "Copia l'indirizzo dalla barra del browser."
+      "linkFailed": "Copia l’indirizzo dalla barra del browser."
     },
     "empty": {
-      "title": "Compila il profilo e premi Verifica l'ambito",
-      "description": "Il risultato dice, per IA nei rapporti di lavoro, NIS, regolamento macchine, AI Act (art. 50), CSRD e CSDDD, se l'obbligo si applica, da quando e su quale passaggio di legge si fonda."
+      "title": "Compila il profilo e premi Verifica l’ambito",
+      "description": "Il risultato dice, per IA nei rapporti di lavoro, NIS, regolamento macchine, AI Act (art. 50), CSRD e CSDDD, se l’obbligo si applica, da quando e su quale passaggio di legge si fonda."
     },
     "form": {
       "loadClient": "Carica da un cliente",
       "loadClientHelp": "Compila dipendenti, ricavi, settore e Paese dal profilo del cliente. Puoi poi modificarli.",
       "loadingClients": "Caricamento dei clienti",
       "chooseClient": "Scegli un cliente",
-      "name": "Nome dell'impresa",
+      "name": "Nome dell’impresa",
       "nameHelp": "Facoltativo: compare nel risultato copiato.",
       "namePlaceholder": "Per esempio Acme Srl",
       "employees": "Dipendenti",
-      "employeesHelp": "Numero medio annuo, a livello dell'entità o del gruppo consolidato.",
+      "employeesHelp": "Numero medio annuo, a livello dell’entità o del gruppo consolidato.",
       "employeesPlaceholder": "Es. 850",
       "employeesSuffix": "dipendenti",
       "turnover": "Ricavi netti annui",
@@ -483,11 +483,11 @@
       "example": "{employees} dipendenti, {millions} milioni",
       "listed": "Quotata in un mercato regolamentato UE",
       "listedHelp": "Con le soglie in vigore conta la dimensione, non la quotazione: sotto le soglie una quotata va verificata caso per caso.",
-      "wave1": "Rendiconta già la sostenibilità dall'esercizio 2024",
+      "wave1": "Rendiconta già la sostenibilità dall’esercizio 2024",
       "wave1Help": "Grandi enti di interesse pubblico con più di 500 dipendenti (direttiva (UE) 2022/2464, art. 5, par. 2).",
-      "nonEu": "Sede fuori dall'Unione europea",
-      "nonEuHelp": "Per le imprese di Paesi terzi conta il fatturato realizzato nell'Unione.",
-      "euTurnover": "Ricavi netti realizzati nell'Unione",
+      "nonEu": "Sede fuori dall’Unione europea",
+      "nonEuHelp": "Per le imprese di Paesi terzi conta il fatturato realizzato nell’Unione.",
+      "euTurnover": "Ricavi netti realizzati nell’Unione",
       "euTurnoverHelp": "Soglie per le imprese di Paesi terzi: 450 milioni di euro per la CSRD, 1,5 miliardi di euro per la CSDDD.",
       "euTurnoverPlaceholder": "Es. 500.000.000",
       "groupRole": "Ruolo nel gruppo",
@@ -502,35 +502,35 @@
       "sectorPlaceholder": "Per esempio manifattura, servizi finanziari",
       "ai": {
         "legend": "Intelligenza artificiale: trasparenza (AI Act, art. 50)",
-        "intro": "Spunta ciò che vale per l'impresa, sia che offra il sistema (fornitore) sia che lo usi da terzi (utilizzatore): il risultato distingue i due casi.",
+        "intro": "Spunta ciò che vale per l’impresa, sia che offra il sistema (fornitore) sia che lo usi da terzi (utilizzatore): il risultato distingue i due casi.",
         "chat": {
           "label": "Un sistema di IA interagisce direttamente con persone",
           "description": "Chatbot, assistenti virtuali, voicebot rivolti a clienti, utenti o dipendenti."
         },
         "gen": {
           "label": "Un sistema genera contenuti sintetici: testo, immagini, audio o video",
-          "description": "Strumenti di IA generativa offerti agli utenti o integrati nei prodotti dell'impresa."
+          "description": "Strumenti di IA generativa offerti agli utenti o integrati nei prodotti dell’impresa."
         },
         "emo": {
           "label": "È in uso il riconoscimento delle emozioni o la categorizzazione biometrica",
           "description": "Per esempio su clienti o utenti (analisi del tono, del volto, del comportamento)."
         },
         "deep": {
-          "label": "L'impresa pubblica deepfake o testi generati dall'IA per informare il pubblico",
-          "description": "Immagini, audio o video generati o manipolati, o testi generati dall'IA su temi di interesse pubblico."
+          "label": "L’impresa pubblica deepfake o testi generati dall’IA per informare il pubblico",
+          "description": "Immagini, audio o video generati o manipolati, o testi generati dall’IA su temi di interesse pubblico."
         },
-        "none": "Nessuna delle quattro situazioni riguarda l'impresa",
-        "noneHelp": "Senza una risposta, l'AI Act resta non valutato."
+        "none": "Nessuna delle quattro situazioni riguarda l’impresa",
+        "noneHelp": "Senza una risposta, l’AI Act resta non valutato."
       },
       "work": {
         "legend": "IA nei rapporti di lavoro (D.Lgs. 179/2026, legge 132/2025, AI Act)",
-        "intro": "Spunta ciò che vale per l'impresa come datore di lavoro o come studio professionale.",
+        "intro": "Spunta ciò che vale per l’impresa come datore di lavoro o come studio professionale.",
         "dec": {
           "label": "Un sistema di IA contribuisce a decisioni sul personale",
           "description": "Assunzione, modifiche o cessazione del rapporto, provvedimenti disciplinari, valutazione delle prestazioni."
         },
         "org": {
-          "label": "Un sistema di IA incide sull'organizzazione del lavoro o sulla sicurezza",
+          "label": "Un sistema di IA incide sull’organizzazione del lavoro o sulla sicurezza",
           "description": "Organizzazione, ritmi produttivi, modalità di esecuzione della prestazione, decisioni rilevanti per la sicurezza."
         },
         "uso": {
@@ -538,20 +538,20 @@
           "description": "Per esempio assistenti generativi per testi, analisi, codice o immagini."
         },
         "prof": {
-          "label": "È uno studio professionale che usa l'IA nel lavoro per i clienti",
+          "label": "È uno studio professionale che usa l’IA nel lavoro per i clienti",
           "description": "Professioni intellettuali: la legge chiede di informare il destinatario della prestazione."
         },
         "emo": {
           "label": "Un sistema inferisce le emozioni dei lavoratori",
           "description": "Analisi del volto, della voce o del comportamento sul luogo di lavoro."
         },
-        "none": "Nessuna di queste situazioni riguarda l'impresa",
+        "none": "Nessuna di queste situazioni riguarda l’impresa",
         "noneHelp": "Senza una risposta, questa sezione resta non valutata."
       },
       "nis": {
         "legend": "Cybersicurezza: decreto NIS (D.Lgs. 138/2024)",
-        "intro": "Scegli il settore in cui l'impresa opera tra quelli degli allegati del decreto. Le soglie usano dipendenti, ricavi e totale di bilancio indicati sopra.",
-        "sector": "Settore dell'allegato",
+        "intro": "Scegli il settore in cui l’impresa opera tra quelli degli allegati del decreto. Le soglie usano dipendenti, ricavi e totale di bilancio indicati sopra.",
+        "sector": "Settore dell’allegato",
         "sectorHelp": "Allegati I e II: settori; allegato III: pubbliche amministrazioni; allegato IV: altre tipologie di soggetti.",
         "choose": "Non risposto",
         "groupAnnexI": "Allegato I: settori ad alta criticità",
@@ -559,19 +559,19 @@
         "groupOther": "Altri casi",
         "anySize": "È un fornitore che il decreto considera a prescindere dalle dimensioni",
         "anySizeHelp": "Reti pubbliche o servizi di comunicazione elettronica accessibili al pubblico, servizi fiduciari, registri dei nomi di dominio di primo livello, servizi DNS, registrazione dei nomi di dominio (art. 3, comma 5).",
-        "linked": "È un'impresa collegata a un soggetto NIS e ne gestisce sistemi, sicurezza o servizi TIC",
+        "linked": "È un’impresa collegata a un soggetto NIS e ne gestisce sistemi, sicurezza o servizi TIC",
         "linkedHelp": "Per esempio la società del gruppo che gestisce i sistemi informativi e di rete o la sicurezza informatica di un soggetto essenziale o importante (art. 3, comma 10)."
       },
       "machinery": {
         "legend": "Macchine: regolamento (UE) 2023/1230",
-        "intro": "Spunta i ruoli dell'impresa rispetto a macchine, prodotti correlati (per esempio componenti di sicurezza e accessori di sollevamento) e quasi-macchine.",
+        "intro": "Spunta i ruoli dell’impresa rispetto a macchine, prodotti correlati (per esempio componenti di sicurezza e accessori di sollevamento) e quasi-macchine.",
         "fab": {
           "label": "Fabbricante",
           "description": "Fabbrica questi prodotti, o li fa progettare o fabbricare e li commercializza con il proprio nome o marchio, oppure li fabbrica e li mette in servizio per uso proprio."
         },
         "imp": {
           "label": "Importatore",
-          "description": "Immette sul mercato dell'Unione prodotti originari di un paese terzo."
+          "description": "Immette sul mercato dell’Unione prodotti originari di un paese terzo."
         },
         "dis": {
           "label": "Distributore",
@@ -581,14 +581,14 @@
           "label": "Modifica macchine già immesse sul mercato o in servizio",
           "description": "Interventi fisici o digitali non previsti dal fabbricante, che incidono sulla sicurezza."
         },
-        "none": "Nessuno di questi ruoli riguarda l'impresa",
+        "none": "Nessuno di questi ruoli riguarda l’impresa",
         "noneHelp": "Senza una risposta, questa sezione resta non valutata."
       },
       "csrd": {
         "legend": "CSRD e CSDDD: casi particolari",
         "intro": "Le soglie si leggono su dipendenti e ricavi indicati sopra; qui i casi che cambiano la lettura."
       },
-      "submit": "Verifica l'ambito",
+      "submit": "Verifica l’ambito",
       "reset": "Azzera il modulo",
       "numberError": "Inserisci un numero, per esempio 1.200."
     },
@@ -649,13 +649,13 @@
       },
       "who": {
         "provider": "Obbligo del fornitore",
-        "deployer": "Obbligo dell'utilizzatore",
+        "deployer": "Obbligo dell’utilizzatore",
         "employer": "Obbligo del datore di lavoro",
         "professional": "Obbligo del professionista",
         "nisEntity": "Obbligo del soggetto NIS",
         "governingBodies": "Organi di amministrazione e direttivi",
         "manufacturer": "Obbligo del fabbricante",
-        "importer": "Obbligo dell'importatore",
+        "importer": "Obbligo dell’importatore",
         "distributor": "Obbligo del distributore",
         "modifier": "Chi modifica la macchina"
       }
@@ -669,8 +669,8 @@
       "employees": "{count} dipendenti",
       "turnover": "ricavi netti {amount}",
       "balanceSheet": "totale di bilancio {amount}",
-      "nonEu": "sede fuori dall'UE",
-      "euTurnover": "ricavi netti nell'UE {amount}",
+      "nonEu": "sede fuori dall’UE",
+      "euTurnover": "ricavi netti nell’UE {amount}",
       "listed": "quotata in un mercato regolamentato UE",
       "notListed": "non quotata",
       "wave1": "già in rendicontazione di sostenibilità",
@@ -696,39 +696,39 @@
       },
       "csrd": {
         "fromLabel": "Nuovo perimetro: esercizi che iniziano dal {date} (direttiva (UE) 2022/2464, art. 5, par. 2)",
-        "nonEuMissing": "Indica i ricavi netti realizzati nell'Unione per valutare la CSRD come impresa di un Paese terzo.",
+        "nonEuMissing": "Indica i ricavi netti realizzati nell’Unione per valutare la CSRD come impresa di un Paese terzo.",
         "nonEuOverHeadline": "Può applicarsi la rendicontazione prevista per le imprese di Paesi terzi.",
-        "nonEuOverReason1": "Ricavi netti nell'Unione: {amount}, oltre la soglia di {threshold} che la direttiva 2013/34/UE fissa per le imprese di Paesi terzi, per ciascuno degli ultimi due esercizi consecutivi (art. 40 bis, par. 1).",
-        "nonEuOverReason2": "L'obbligo ricade sull'impresa figlia stabilita nell'Unione che ha generato ricavi netti superiori a {threshold} nell'esercizio precedente (art. 40 bis, par. 1): servono il bilancio del gruppo e i ricavi delle società nell'Unione.",
+        "nonEuOverReason1": "Ricavi netti nell’Unione: {amount}, oltre la soglia di {threshold} che la direttiva 2013/34/UE fissa per le imprese di Paesi terzi, per ciascuno degli ultimi due esercizi consecutivi (art. 40 bis, par. 1).",
+        "nonEuOverReason2": "L’obbligo ricade sull’impresa figlia stabilita nell’Unione che ha generato ricavi netti superiori a {threshold} nell’esercizio precedente (art. 40 bis, par. 1): servono il bilancio del gruppo e i ricavi delle società nell’Unione.",
         "nonEuUnderHeadline": "Sotto la soglia di ricavi UE per le imprese di Paesi terzi.",
-        "nonEuUnderReason1": "Ricavi netti nell'Unione: {amount}, non oltre la soglia di {threshold} (direttiva 2013/34/UE, art. 40 bis, par. 1).",
-        "nonEuUnderReason2": "Una società di diritto italiano controllata dal gruppo può comunque rientrare per conto proprio: in quel caso valuta la controllata con le soglie dell'art. 19 bis.",
+        "nonEuUnderReason1": "Ricavi netti nell’Unione: {amount}, non oltre la soglia di {threshold} (direttiva 2013/34/UE, art. 40 bis, par. 1).",
+        "nonEuUnderReason2": "Una società di diritto italiano controllata dal gruppo può comunque rientrare per conto proprio: in quel caso valuta la controllata con le soglie dell’art. 19 bis.",
         "missing": "Indica il numero medio di dipendenti e i ricavi netti annui per valutare la CSRD.",
         "axisEmployees": "Dipendenti: {count} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
         "axisTurnover": "Ricavi netti: {amount} ({over, select, yes {oltre} other {non oltre}} {threshold}).",
-        "inHeadline": "L'impresa è quasi certamente in ambito di rendicontazione CSRD.",
+        "inHeadline": "L’impresa è quasi certamente in ambito di rendicontazione CSRD.",
         "inReason": "Superi entrambe le soglie cumulative: ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media (direttiva 2013/34/UE, art. 19 bis, par. 1). La relazione sulla gestione deve includere le informazioni di sostenibilità.",
         "inNote1": "In Italia il D.Lgs. 125/2024 si applica dagli esercizi che iniziano dal {date} alle imprese di grandi dimensioni che non rendicontavano già (art. 17, comma 1, lett. b)).",
-        "borderHeadline": "Oggi fuori dall'obbligo CSRD, ma sul filo della soglia.",
-        "borderEmployees": "Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall'obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.",
-        "borderTurnover": "Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall'obbligo, ma un'assunzione netta o un consolidamento può farti entrare.",
-        "borderListed": "Sei una società quotata sotto le soglie: l'art. 19 bis guarda alla dimensione, non alla quotazione, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).",
-        "borderMargin": "Oggi sei fuori dall'obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all'altro.",
+        "borderHeadline": "Oggi fuori dall’obbligo CSRD, ma sul filo della soglia.",
+        "borderEmployees": "Superi la soglia dei dipendenti ma non quella dei ricavi: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.",
+        "borderTurnover": "Superi la soglia dei ricavi ma non quella dei dipendenti: poiché la regola è cumulativa, oggi sei fuori dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.",
+        "borderListed": "Sei una società quotata sotto le soglie: l’art. 19 bis guarda alla dimensione, non alla quotazione, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).",
+        "borderMargin": "Oggi sei fuori dall’obbligo, ma sei a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro e fuori da un esercizio all’altro.",
         "borderCheck": "È il caso in cui una verifica puntuale sui dati di bilancio vale di più.",
         "borderNote1": "Le soglie si misurano alla data di chiusura del bilancio: con acquisizioni o riassetti in corso conviene rifare il conto a fine esercizio.",
-        "noteProtected": "Se sei nella catena del valore di un'impresa obbligata e non superi {threshold} dipendenti, sei un'«impresa protetta»: puoi rifiutarti di fornire informazioni oltre quelle dei principi di rendicontazione volontari (direttiva 2013/34/UE, art. 19 bis, par. 3).",
+        "noteProtected": "Se sei nella catena del valore di un’impresa obbligata e non superi {threshold} dipendenti, sei un’«impresa protetta»: puoi rifiutarti di fornire informazioni oltre quelle dei principi di rendicontazione volontari (direttiva 2013/34/UE, art. 19 bis, par. 3).",
         "noteItalyExemption": "In Italia, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027, il D.Lgs. 125/2024 non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro o con non più di 1.000 dipendenti in media (art. 17, comma 3-bis).",
-        "outHeadline": "Probabilmente fuori dall'ambito di rendicontazione CSRD obbligatoria.",
-        "outReason": "Non superi le soglie cumulative dell'art. 19 bis della direttiva 2013/34/UE (ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti): l'obbligo diretto non scatta.",
-        "noteWave1": "Hai indicato una rendicontazione già in corso: se non superi le soglie, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027 vale l'esclusione dell'art. 17, comma 3-bis, del D.Lgs. 125/2024; la direttiva (UE) 2022/2464 lascia agli Stati membri la facoltà di esentare gli esercizi 2025 e 2026 (art. 5, par. 2).",
+        "outHeadline": "Probabilmente fuori dall’ambito di rendicontazione CSRD obbligatoria.",
+        "outReason": "Non superi le soglie cumulative dell’art. 19 bis della direttiva 2013/34/UE (ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti): l’obbligo diretto non scatta.",
+        "noteWave1": "Hai indicato una rendicontazione già in corso: se non superi le soglie, per gli esercizi che iniziano tra il 1 gennaio 2026 e il 31 dicembre 2027 vale l’esclusione dell’art. 17, comma 3-bis, del D.Lgs. 125/2024; la direttiva (UE) 2022/2464 lascia agli Stati membri la facoltà di esentare gli esercizi 2025 e 2026 (art. 5, par. 2).",
         "noteParent": "Capogruppo: le soglie si leggono su base consolidata (direttiva 2013/34/UE, art. 29 bis, par. 1).",
-        "noteSubsidiary": "Società controllata: l'ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo."
+        "noteSubsidiary": "Società controllata: l’ambito può dipendere dal perimetro di consolidamento e dalla rendicontazione della capogruppo. Serve una verifica puntuale sul gruppo."
       },
       "csddd": {
-        "nonEuMissing": "Indica i ricavi netti realizzati nell'Unione per valutare la CSDDD come impresa di un Paese terzo.",
+        "nonEuMissing": "Indica i ricavi netti realizzati nell’Unione per valutare la CSDDD come impresa di un Paese terzo.",
         "nonEuInHeadline": "Come impresa di un Paese terzo superi la soglia del dovere di diligenza (CSDDD).",
-        "nonEuInReason": "Ricavi netti nell'Unione: {amount}, oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
-        "nonEuOutReason": "Ricavi netti nell'Unione: {amount}, non oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
+        "nonEuInReason": "Ricavi netti nell’Unione: {amount}, oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
+        "nonEuOutReason": "Ricavi netti nell’Unione: {amount}, non oltre la soglia di {threshold} (direttiva (UE) 2024/1760, art. 2, par. 2, lett. a)).",
         "missing": "Indica dipendenti e ricavi netti per valutare la CSDDD.",
         "calendar": "Recepimento negli Stati membri entro il {transposition}, applicazione dal {firstCompliance} (direttiva (UE) 2024/1760, art. 37, par. 1).",
         "inHeadline": "Superi anche le soglie dirette del dovere di diligenza (CSDDD).",
@@ -738,36 +738,36 @@
         "inNote2": "Sanzioni pecuniarie: gli Stati membri fissano il limite massimo al 3% del fatturato netto mondiale (art. 27, par. 4).",
         "inNote3": "La Commissione adotta gli orientamenti su come assolvere il dovere di diligenza entro il {date} (art. 19, par. 3).",
         "outHeadline": "Fuori dalle soglie dirette del dovere di diligenza (CSDDD).",
-        "outReasonOne": "Superi una sola delle due soglie cumulative: l'obbligo diretto oggi non scatta.",
-        "outReasonNone": "Non superi le soglie cumulative (più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro): l'obbligo diretto non scatta.",
+        "outReasonOne": "Superi una sola delle due soglie cumulative: l’obbligo diretto oggi non scatta.",
+        "outReasonNone": "Non superi le soglie cumulative (più di 5.000 dipendenti e fatturato netto mondiale superiore a 1,5 miliardi di euro): l’obbligo diretto non scatta.",
         "outNote": "Come fornitore di un gruppo obbligato puoi ricevere richieste di informazioni: se hai meno di {threshold} dipendenti la società può chiederle solo quando non le può ragionevolmente ottenere con altri mezzi (art. 8, par. 2 bis, lett. a))."
       },
       "aiAct": {
-        "notAnswered": "Rispondi alle quattro domande sull'IA per valutare gli obblighi di trasparenza dell'art. 50.",
-        "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell'art. 50 non ti toccano direttamente.",
-        "noneReason": "Nessuna delle quattro situazioni dell'art. 50 risulta applicabile. Fuori dall'art. 50 non significa fuori dall'AI Act.",
-        "noneNote1": "Alfabetizzazione in materia di IA (art. 4, in applicazione dal {date}): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l'alfabetizzazione del proprio personale, senza dover garantire un livello specifico.",
+        "notAnswered": "Rispondi alle quattro domande sull’IA per valutare gli obblighi di trasparenza dell’art. 50.",
+        "noneHeadline": "Dalle risposte, gli obblighi di trasparenza dell’art. 50 non ti toccano direttamente.",
+        "noneReason": "Nessuna delle quattro situazioni dell’art. 50 risulta applicabile. Fuori dall’art. 50 non significa fuori dall’AI Act.",
+        "noneNote1": "Alfabetizzazione in materia di IA (art. 4, in applicazione dal {date}): chi fornisce o utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione del proprio personale, senza dover garantire un livello specifico.",
         "noneNote2": "Pratiche vietate (art. 5): in applicazione dal {date}, per esempio inferire le emozioni delle persone sul luogo di lavoro; dal {added} si aggiungono i divieti delle lettere b bis) e b ter) del paragrafo 1.",
         "noneNote3": "Modelli di IA per finalità generali: per chi li fornisce gli obblighi del capo V si applicano dal {date}.",
-        "noneNote4": "Sistemi ad alto rischio: le regole si applicano dal {annexIII} per i sistemi dell'allegato III e dal {annexI} per quelli dell'allegato I (art. 113).",
-        "inHeadline": "L'art. 50, in applicazione dal {date}, riguarda le situazioni che hai indicato.",
+        "noneNote4": "Sistemi ad alto rischio: le regole si applicano dal {annexIII} per i sistemi dell’allegato III e dal {annexI} per quelli dell’allegato I (art. 113).",
+        "inHeadline": "L’art. 50, in applicazione dal {date}, riguarda le situazioni che hai indicato.",
         "inFromLabel": "In applicazione dal {date} (art. 113)",
         "inReason1": "Attenzione a chi è il destinatario: alcuni obblighi gravano su chi fornisce il sistema, altri su chi lo utilizza. Se il tuo ruolo è solo di utilizzatore, gli obblighi del fornitore gravano sul tuo fornitore, e viceversa.",
         "inReason2": "Le informazioni vanno date in maniera chiara e distinguibile, al più tardi al momento della prima interazione o esposizione (art. 50, par. 5).",
-        "inNote1": "Sanzioni: fino a 15 milioni di euro o, per un'impresa, fino al 3% del fatturato mondiale totale annuo, se superiore; per le PMI, start-up comprese, vale l'importo inferiore tra i due (art. 99, par. 4 e 6).",
-        "inNote2": "In Italia la legge 132/2025 designa AgID e ACN quali Autorità nazionali per l'intelligenza artificiale (art. 20, comma 1).",
-        "inNote3": "Le regole sui sistemi ad alto rischio dell'allegato III si applicano dal {date} (art. 113)."
+        "inNote1": "Sanzioni: fino a 15 milioni di euro o, per un’impresa, fino al 3% del fatturato mondiale totale annuo, se superiore; per le PMI, start-up comprese, vale l’importo inferiore tra i due (art. 99, par. 4 e 6).",
+        "inNote2": "In Italia la legge 132/2025 designa AgID e ACN quali Autorità nazionali per l’intelligenza artificiale (art. 20, comma 1).",
+        "inNote3": "Le regole sui sistemi ad alto rischio dell’allegato III si applicano dal {date} (art. 113)."
       },
       "obligations": {
         "chat": {
-          "title": "Chatbot e assistenti: la persona deve sapere che sta parlando con un'IA",
-          "requirement": "I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un'IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.",
-          "exception": "Eccezione: sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati. Se il chatbot lo compri da terzi, l'obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a te."
+          "title": "Chatbot e assistenti: la persona deve sapere che sta parlando con un’IA",
+          "requirement": "I sistemi di IA destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un’IA, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.",
+          "exception": "Eccezione: sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati. Se il chatbot lo compri da terzi, l’obbligo di progettazione è del fornitore, ma verificare che lo rispetti conviene a te."
         },
         "gen": {
           "title": "Contenuti generati: marcatura leggibile dalle macchine",
           "requirement": "I fornitori di sistemi che generano contenuti sintetici (audio, immagini, video o testo) devono garantire che gli output siano marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente.",
-          "exception": "Eccezioni: funzioni di assistenza per l'editing standard o che non modificano in modo sostanziale i dati di input. Per i sistemi immessi sul mercato prima del {applies} il termine per conformarsi è il {legacy} (art. 111, par. 4)."
+          "exception": "Eccezioni: funzioni di assistenza per l’editing standard o che non modificano in modo sostanziale i dati di input. Per i sistemi immessi sul mercato prima del {applies} il termine per conformarsi è il {legacy} (art. 111, par. 4)."
         },
         "emo": {
           "title": "Riconoscimento delle emozioni e categorizzazione biometrica: informare le persone esposte",
@@ -775,32 +775,32 @@
           "exception": "Attenzione ai divieti in applicazione dal {prohibitions}: inferire le emozioni sul luogo di lavoro e negli istituti di istruzione è vietato, salvo motivi medici o di sicurezza (art. 5, par. 1, lett. f))."
         },
         "deep": {
-          "title": "Deepfake e testi IA pubblicati: dichiararne l'origine",
-          "requirement": "Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall'IA pubblicati per informare il pubblico su questioni di interesse pubblico.",
-          "exception": "Eccezioni: per opere manifestamente artistiche, creative o satiriche basta rivelare l'esistenza dei contenuti generati senza ostacolare l'opera; per i testi, l'obbligo non si applica se c'è revisione umana o controllo editoriale e una persona fisica o giuridica ha la responsabilità editoriale."
+          "title": "Deepfake e testi IA pubblicati: dichiararne l’origine",
+          "requirement": "Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall’IA pubblicati per informare il pubblico su questioni di interesse pubblico.",
+          "exception": "Eccezioni: per opere manifestamente artistiche, creative o satiriche basta rivelare l’esistenza dei contenuti generati senza ostacolare l’opera; per i testi, l’obbligo non si applica se c’è revisione umana o controllo editoriale e una persona fisica o giuridica ha la responsabilità editoriale."
         }
       },
       "work": {
-        "notAnswered": "Rispondi alle domande sull'IA nei rapporti di lavoro per valutare questa sezione.",
-        "noneHeadline": "Dalle risposte, le norme sull'IA nei rapporti di lavoro oggi non ti toccano.",
-        "noneReason": "Nessuna delle situazioni indicate riguarda l'impresa.",
-        "noneNote": "Se introduci strumenti di IA che incidono su decisioni, organizzazione del lavoro o sicurezza, rifai la verifica: valgono il D.Lgs. 179/2026 (articoli 41 e 42) e l'art. 4 dell'AI Act.",
-        "inHeadline": "Le norme sull'IA nei rapporti di lavoro riguardano le situazioni che hai indicato.",
-        "inHeadlineProhibited": "Una delle situazioni indicate è una pratica vietata dall'AI Act; le altre comportano obblighi.",
+        "notAnswered": "Rispondi alle domande sull’IA nei rapporti di lavoro per valutare questa sezione.",
+        "noneHeadline": "Dalle risposte, le norme sull’IA nei rapporti di lavoro oggi non ti toccano.",
+        "noneReason": "Nessuna delle situazioni indicate riguarda l’impresa.",
+        "noneNote": "Se introduci strumenti di IA che incidono su decisioni, organizzazione del lavoro o sicurezza, rifai la verifica: valgono il D.Lgs. 179/2026 (articoli 41 e 42) e l’art. 4 dell’AI Act.",
+        "inHeadline": "Le norme sull’IA nei rapporti di lavoro riguardano le situazioni che hai indicato.",
+        "inHeadlineProhibited": "Una delle situazioni indicate è una pratica vietata dall’AI Act; le altre comportano obblighi.",
         "inFromLabel": "D.Lgs. 179/2026, articoli 41 e 42, in vigore dal {date}",
         "reasons": {
-          "dec": "Un sistema di IA contribuisce a decisioni sul rapporto di lavoro: vale l'art. 41 del D.Lgs. 179/2026.",
-          "org": "Un sistema di IA incide su organizzazione, ritmi, esecuzione della prestazione o sicurezza: vale l'art. 42 del D.Lgs. 179/2026.",
-          "uso": "Il personale usa strumenti di IA: valgono l'art. 4 dell'AI Act e l'art. 42, comma 3, del D.Lgs. 179/2026.",
-          "prof": "Professione intellettuale che usa l'IA: vale l'art. 13 della legge 132/2025.",
-          "emo": "Inferire le emozioni dei lavoratori rientra nelle pratiche vietate dall'art. 5 dell'AI Act."
+          "dec": "Un sistema di IA contribuisce a decisioni sul rapporto di lavoro: vale l’art. 41 del D.Lgs. 179/2026.",
+          "org": "Un sistema di IA incide su organizzazione, ritmi, esecuzione della prestazione o sicurezza: vale l’art. 42 del D.Lgs. 179/2026.",
+          "uso": "Il personale usa strumenti di IA: valgono l’art. 4 dell’AI Act e l’art. 42, comma 3, del D.Lgs. 179/2026.",
+          "prof": "Professione intellettuale che usa l’IA: vale l’art. 13 della legge 132/2025.",
+          "emo": "Inferire le emozioni dei lavoratori rientra nelle pratiche vietate dall’art. 5 dell’AI Act."
         },
-        "inNote1": "L'art. 41 non considera decisioni finali sulla costituzione del rapporto la ricerca e la selezione delle candidature; i sistemi di IA per l'assunzione o la selezione sono comunque elencati nell'allegato III, punto 4, dell'AI Act.",
-        "inNote2": "La legge 132/2025 richiama gli stessi obblighi informativi: il datore di lavoro informa il lavoratore dell'uso dell'IA nei casi e con le modalità dell'art. 1-bis del D.Lgs. 152/1997 (art. 11, comma 2).",
+        "inNote1": "L’art. 41 non considera decisioni finali sulla costituzione del rapporto la ricerca e la selezione delle candidature; i sistemi di IA per l’assunzione o la selezione sono comunque elencati nell’allegato III, punto 4, dell’AI Act.",
+        "inNote2": "La legge 132/2025 richiama gli stessi obblighi informativi: il datore di lavoro informa il lavoratore dell’uso dell’IA nei casi e con le modalità dell’art. 1-bis del D.Lgs. 152/1997 (art. 11, comma 2).",
         "duties": {
           "emotions": {
             "title": "Inferire le emozioni dei lavoratori: pratica vietata",
-            "requirement": "È vietato l'uso di sistemi di IA per inferire le emozioni di una persona nell'ambito del luogo di lavoro, tranne quando il sistema è destinato a essere usato per motivi medici o di sicurezza.",
+            "requirement": "È vietato l’uso di sistemi di IA per inferire le emozioni di una persona nell’ambito del luogo di lavoro, tranne quando il sistema è destinato a essere usato per motivi medici o di sicurezza.",
             "exception": "Divieto in applicazione dal {date} (art. 113, terzo comma, lett. a))."
           },
           "decisions": {
@@ -809,104 +809,104 @@
             "exception": "Il consenso del lavoratore non fa eccezione. Il licenziamento e le decisioni in violazione sono nulli (art. 41, comma 4). Ricerca e selezione delle candidature non sono decisioni finali sulla costituzione del rapporto."
           },
           "information": {
-            "title": "Informativa prima dell'avvio e motivazione su richiesta",
-            "requirement": "Prima dell'avvio del trattamento il datore di lavoro assolve agli obblighi di informativa dell'art. 1-bis del D.Lgs. 152/1997. Il lavoratore può ottenere, a richiesta e con l'intervento di una persona fisica, una motivazione intelligibile della decisione che lo riguarda.",
-            "exception": "L'art. 1-bis riguarda i sistemi decisionali o di monitoraggio integralmente automatizzati; la comunicazione va fatta anche alle rappresentanze sindacali (art. 1-bis, commi 1 e 6)."
+            "title": "Informativa prima dell’avvio e motivazione su richiesta",
+            "requirement": "Prima dell’avvio del trattamento il datore di lavoro assolve agli obblighi di informativa dell’art. 1-bis del D.Lgs. 152/1997. Il lavoratore può ottenere, a richiesta e con l’intervento di una persona fisica, una motivazione intelligibile della decisione che lo riguarda.",
+            "exception": "L’art. 1-bis riguarda i sistemi decisionali o di monitoraggio integralmente automatizzati; la comunicazione va fatta anche alle rappresentanze sindacali (art. 1-bis, commi 1 e 6)."
           },
           "highRisk": {
             "title": "Sistemi ad alto rischio sul luogo di lavoro: informare lavoratori e rappresentanti",
-            "requirement": "I sistemi di IA per l'assunzione o la selezione e quelli per decisioni su condizioni, promozione o cessazione del rapporto sono elencati nell'allegato III, punto 4, dell'AI Act. Prima di metterli in servizio o usarli sul luogo di lavoro, il datore di lavoro informa i rappresentanti dei lavoratori e i lavoratori interessati.",
+            "requirement": "I sistemi di IA per l’assunzione o la selezione e quelli per decisioni su condizioni, promozione o cessazione del rapporto sono elencati nell’allegato III, punto 4, dell’AI Act. Prima di metterli in servizio o usarli sul luogo di lavoro, il datore di lavoro informa i rappresentanti dei lavoratori e i lavoratori interessati.",
             "exception": "Obbligo dei deployer di sistemi ad alto rischio: si applica dal {date} (art. 113)."
           },
           "riskAssessment": {
-            "title": "Valutazione dei rischi: l'IA entra nel documento",
-            "requirement": "L'uso di sistemi di IA che incidono su organizzazione del lavoro, ritmi produttivi, modalità di esecuzione della prestazione o processi decisionali rilevanti per la sicurezza è valutato nella valutazione dei rischi dell'art. 28 del D.Lgs. 81/2008."
+            "title": "Valutazione dei rischi: l’IA entra nel documento",
+            "requirement": "L’uso di sistemi di IA che incidono su organizzazione del lavoro, ritmi produttivi, modalità di esecuzione della prestazione o processi decisionali rilevanti per la sicurezza è valutato nella valutazione dei rischi dell’art. 28 del D.Lgs. 81/2008."
           },
           "training": {
-            "title": "Informazione e formazione dei lavoratori sui rischi dell'IA",
-            "requirement": "I datori di lavoro assicurano un'adeguata informazione e formazione dei lavoratori sui rischi specifici connessi all'uso dei sistemi di IA e sulle misure di prevenzione e protezione adottate."
+            "title": "Informazione e formazione dei lavoratori sui rischi dell’IA",
+            "requirement": "I datori di lavoro assicurano un’adeguata informazione e formazione dei lavoratori sui rischi specifici connessi all’uso dei sistemi di IA e sulle misure di prevenzione e protezione adottate."
           },
           "literacy": {
             "title": "Alfabetizzazione in materia di IA del personale",
-            "requirement": "Chi utilizza sistemi di IA adotta misure per sostenere l'alfabetizzazione in materia di IA del proprio personale e di chi li usa per suo conto.",
-            "exception": "L'obbligo non impone di garantire un livello specifico di alfabetizzazione. In applicazione dal {date} (art. 113)."
+            "requirement": "Chi utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione in materia di IA del proprio personale e di chi li usa per suo conto.",
+            "exception": "L’obbligo non impone di garantire un livello specifico di alfabetizzazione. In applicazione dal {date} (art. 113)."
           },
           "clients": {
             "title": "Professioni intellettuali: informare il cliente",
             "requirement": "Le informazioni sui sistemi di IA utilizzati dal professionista sono comunicate al destinatario della prestazione con linguaggio chiaro, semplice ed esaustivo.",
-            "exception": "L'IA è ammessa per le sole attività strumentali e di supporto, con prevalenza del lavoro intellettuale oggetto della prestazione (art. 13, comma 1)."
+            "exception": "L’IA è ammessa per le sole attività strumentali e di supporto, con prevalenza del lavoro intellettuale oggetto della prestazione (art. 13, comma 1)."
           }
         }
       },
       "nis": {
         "notAnswered": "Scegli il settore (o «Nessuno di questi settori») per valutare il decreto NIS.",
-        "inHeadline": "L'impresa rientra nell'ambito del decreto NIS.",
+        "inHeadline": "L’impresa rientra nell’ambito del decreto NIS.",
         "financialHeadline": "Settore bancario o dei mercati finanziari: per i capi IV e V del decreto NIS vale DORA.",
-        "noSectorHeadline": "Dalle risposte, l'impresa è fuori dall'ambito del decreto NIS.",
-        "smallHeadline": "Settore NIS, ma sotto i massimali delle piccole imprese: fuori dall'ambito.",
-        "sizeDependsHeadline": "Settore NIS: l'ambito dipende dalla classe dimensionale.",
-        "annexIVHeadline": "Tipologia dell'allegato IV: il decreto si applica solo se ACN individua il soggetto.",
-        "reasonAnnexI": "Settore dell'allegato I (alta criticità): {sector}.",
-        "reasonAnnexII": "Settore dell'allegato II (altri settori critici): {sector}.",
+        "noSectorHeadline": "Dalle risposte, l’impresa è fuori dall’ambito del decreto NIS.",
+        "smallHeadline": "Settore NIS, ma sotto i massimali delle piccole imprese: fuori dall’ambito.",
+        "sizeDependsHeadline": "Settore NIS: l’ambito dipende dalla classe dimensionale.",
+        "annexIVHeadline": "Tipologia dell’allegato IV: il decreto si applica solo se ACN individua il soggetto.",
+        "reasonAnnexI": "Settore dell’allegato I (alta criticità): {sector}.",
+        "reasonAnnexII": "Settore dell’allegato II (altri settori critici): {sector}.",
         "reasonNotSmall": "Superi i massimali delle piccole imprese (meno di {employees} persone e fatturato o totale di bilancio non superiori a {amount}): il decreto si applica (art. 3, comma 2).",
         "reasonSmall": "Sei entro i massimali delle piccole imprese (meno di {employees} persone e fatturato o totale di bilancio non superiori a {amount}): il decreto non si applica per dimensione (art. 3, comma 2).",
         "reasonLinked": "Impresa collegata a un soggetto essenziale o importante con un ruolo sui suoi sistemi, sulla sua sicurezza o sui suoi servizi TIC: il decreto si applica a prescindere dalle dimensioni (art. 3, comma 10).",
         "reasonAnySize": "Fornitore che il decreto considera a prescindere dalle dimensioni (art. 3, comma 5).",
-        "reasonPublic": "Pubblica amministrazione delle categorie dell'allegato III: il decreto si applica a prescindere dalle dimensioni (art. 3, comma 6).",
-        "annexIVReason": "Per le tipologie dell'allegato IV il decreto si applica, a prescindere dalle dimensioni, ai soggetti individuati dall'Autorità nazionale competente NIS (art. 3, comma 8).",
+        "reasonPublic": "Pubblica amministrazione delle categorie dell’allegato III: il decreto si applica a prescindere dalle dimensioni (art. 3, comma 6).",
+        "annexIVReason": "Per le tipologie dell’allegato IV il decreto si applica, a prescindere dalle dimensioni, ai soggetti individuati dall’Autorità nazionale competente NIS (art. 3, comma 8).",
         "annexIVNote": "ACN notifica al soggetto la sua individuazione ai fini della registrazione sulla piattaforma (art. 3, comma 13).",
-        "noSectorReason": "Il decreto riguarda i settori degli allegati I e II, le pubbliche amministrazioni dell'allegato III e le tipologie dell'allegato IV: nessuno è stato indicato.",
+        "noSectorReason": "Il decreto riguarda i settori degli allegati I e II, le pubbliche amministrazioni dell’allegato III e le tipologie dell’allegato IV: nessuno è stato indicato.",
         "missingEmployees": "Indica il numero di dipendenti per valutare la classe dimensionale ai fini NIS.",
-        "missingFinancials": "Con meno di {employees} dipendenti servono ricavi netti o totale di bilancio: sotto {amount} per uno dei due l'impresa è piccola e fuori ambito.",
-        "missingBalance": "Meno di {employees} dipendenti e ricavi oltre {amount}: l'impresa supera i massimali solo se anche il totale di bilancio supera {amount}. Indica il totale di bilancio.",
-        "missingTurnover": "Meno di {employees} dipendenti e totale di bilancio oltre {amount}: l'impresa supera i massimali solo se anche i ricavi superano {amount}. Indica i ricavi netti.",
+        "missingFinancials": "Con meno di {employees} dipendenti servono ricavi netti o totale di bilancio: sotto {amount} per uno dei due l’impresa è piccola e fuori ambito.",
+        "missingBalance": "Meno di {employees} dipendenti e ricavi oltre {amount}: l’impresa supera i massimali solo se anche il totale di bilancio supera {amount}. Indica il totale di bilancio.",
+        "missingTurnover": "Meno di {employees} dipendenti e totale di bilancio oltre {amount}: l’impresa supera i massimali solo se anche i ricavi superano {amount}. Indica i ricavi netti.",
         "category": {
-          "essential": "Categoria probabile: soggetto essenziale, perché settore dell'allegato I sopra i massimali delle medie imprese (art. 6, comma 1, lett. a)). La categoria è comunicata da ACN con l'inserimento nell'elenco.",
-          "important": "Categoria probabile: soggetto importante (art. 6, comma 3). La categoria è comunicata da ACN con l'inserimento nell'elenco.",
-          "depends": "Essenziale se l'impresa supera i massimali delle medie imprese (250 persone, oppure fatturato oltre 50 milioni di euro e totale di bilancio oltre 43 milioni), altrimenti importante (art. 6): indica il totale di bilancio per distinguere.",
-          "byAuthority": "La categoria (essenziale o importante) è comunicata da ACN con l'inserimento nell'elenco (art. 7, comma 3)."
+          "essential": "Categoria probabile: soggetto essenziale, perché settore dell’allegato I sopra i massimali delle medie imprese (art. 6, comma 1, lett. a)). La categoria è comunicata da ACN con l’inserimento nell’elenco.",
+          "important": "Categoria probabile: soggetto importante (art. 6, comma 3). La categoria è comunicata da ACN con l’inserimento nell’elenco.",
+          "depends": "Essenziale se l’impresa supera i massimali delle medie imprese (250 persone, oppure fatturato oltre 50 milioni di euro e totale di bilancio oltre 43 milioni), altrimenti importante (art. 6): indica il totale di bilancio per distinguere.",
+          "byAuthority": "La categoria (essenziale o importante) è comunicata da ACN con l’inserimento nell’elenco (art. 7, comma 3)."
         },
-        "noteFinancial": "Per banche e infrastrutture dei mercati finanziari (settori 3 e 4 dell'allegato I) l'art. 17 e i capi IV e V del decreto non si applicano: vale la disciplina del regolamento (UE) 2022/2554, DORA (art. 3, comma 14).",
-        "notePenalties": "Sanzioni: fino a 10 milioni di euro o al 2% del fatturato annuo mondiale per i soggetti essenziali, fino a 7 milioni di euro o all'1,4% per i soggetti importanti (art. 38, comma 9).",
-        "noteGroup": "Gruppi: per la classe dimensionale ai dati dell'impresa si aggiungono quelli delle imprese collegate (raccomandazione 2003/361/CE, allegato, art. 6, par. 2), salvo che ciò non sia proporzionato (D.Lgs. 138/2024, art. 3, comma 4).",
+        "noteFinancial": "Per banche e infrastrutture dei mercati finanziari (settori 3 e 4 dell’allegato I) l’art. 17 e i capi IV e V del decreto non si applicano: vale la disciplina del regolamento (UE) 2022/2554, DORA (art. 3, comma 14).",
+        "notePenalties": "Sanzioni: fino a 10 milioni di euro o al 2% del fatturato annuo mondiale per i soggetti essenziali, fino a 7 milioni di euro o all’1,4% per i soggetti importanti (art. 38, comma 9).",
+        "noteGroup": "Gruppi: per la classe dimensionale ai dati dell’impresa si aggiungono quelli delle imprese collegate (raccomandazione 2003/361/CE, allegato, art. 6, par. 2), salvo che ciò non sia proporzionato (D.Lgs. 138/2024, art. 3, comma 4).",
         "outNoteDesignated": "ACN può comunque individuare un soggetto di questi settori a prescindere dalle dimensioni (art. 3, comma 9).",
         "outNoteSupplyChain": "I soggetti NIS devono curare la sicurezza della catena di approvvigionamento, compresi i rapporti con i fornitori diretti (art. 24, comma 2, lett. d)): come fornitore puoi ricevere richieste di sicurezza.",
         "duties": {
           "register": {
             "title": "Registrazione sulla piattaforma di ACN",
-            "requirement": "Dal 1 gennaio al 28 febbraio di ogni anno i soggetti che rientrano nel decreto si registrano, o aggiornano la registrazione, sulla piattaforma digitale dell'Autorità nazionale competente NIS.",
-            "exception": "ACN comunica l'inserimento nell'elenco dei soggetti essenziali o importanti (art. 7, comma 3); dal 15 aprile al 31 maggio di ogni anno chi ha ricevuto la comunicazione fornisce o aggiorna le ulteriori informazioni (art. 7, comma 4)."
+            "requirement": "Dal 1 gennaio al 28 febbraio di ogni anno i soggetti che rientrano nel decreto si registrano, o aggiornano la registrazione, sulla piattaforma digitale dell’Autorità nazionale competente NIS.",
+            "exception": "ACN comunica l’inserimento nell’elenco dei soggetti essenziali o importanti (art. 7, comma 3); dal 15 aprile al 31 maggio di ogni anno chi ha ricevuto la comunicazione fornisce o aggiorna le ulteriori informazioni (art. 7, comma 4)."
           },
           "governance": {
             "title": "Organi di amministrazione e direttivi: approvare e sovrintendere",
-            "requirement": "Approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica, sovrintendono all'implementazione degli obblighi e sono responsabili delle violazioni."
+            "requirement": "Approvano le modalità di implementazione delle misure di gestione dei rischi per la sicurezza informatica, sovrintendono all’implementazione degli obblighi e sono responsabili delle violazioni."
           },
           "measures": {
             "title": "Misure di gestione dei rischi per la sicurezza informatica",
-            "requirement": "Adottare misure tecniche, operative e organizzative adeguate e proporzionate; tra gli elementi minimi c'è la sicurezza della catena di approvvigionamento (art. 24, comma 2, lett. d)).",
-            "exception": "Termini: per i soggetti inseriti nell'elenco nel 2026 le misure di sicurezza di base vanno adottate entro il {measures2026} (determinazione ACN n. 127434/2026, art. 1, comma 1); per quelli inseriti nel 2025 il termine è di diciotto mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 1)."
+            "requirement": "Adottare misure tecniche, operative e organizzative adeguate e proporzionate; tra gli elementi minimi c’è la sicurezza della catena di approvvigionamento (art. 24, comma 2, lett. d)).",
+            "exception": "Termini: per i soggetti inseriti nell’elenco nel 2026 le misure di sicurezza di base vanno adottate entro il {measures2026} (determinazione ACN n. 127434/2026, art. 1, comma 1); per quelli inseriti nel 2025 il termine è di diciotto mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 1)."
           },
           "incidents": {
             "title": "Notifica degli incidenti significativi al CSIRT Italia",
-            "requirement": "Pre-notifica entro 24 ore da quando si viene a conoscenza dell'incidente significativo, notifica entro 72 ore, relazione finale entro un mese dalla notifica.",
-            "exception": "Termini: per i soggetti inseriti nell'elenco nel 2026 l'obbligo decorre dal {incidents2026} (determinazione ACN n. 127434/2026, art. 1, comma 2) e il referente CSIRT va designato entro il 31 dicembre dell'anno di inserimento (determinazione ACN n. 314287/2026, art. 7, comma 1); per quelli inseriti nel 2025 il termine è di nove mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 2)."
+            "requirement": "Pre-notifica entro 24 ore da quando si viene a conoscenza dell’incidente significativo, notifica entro 72 ore, relazione finale entro un mese dalla notifica.",
+            "exception": "Termini: per i soggetti inseriti nell’elenco nel 2026 l’obbligo decorre dal {incidents2026} (determinazione ACN n. 127434/2026, art. 1, comma 2) e il referente CSIRT va designato entro il 31 dicembre dell’anno di inserimento (determinazione ACN n. 314287/2026, art. 7, comma 1); per quelli inseriti nel 2025 il termine è di nove mesi dalla ricezione della comunicazione di inserimento (determinazione ACN n. 379907 del 19 dicembre 2025, art. 3, comma 2)."
           },
           "activities": {
             "title": "Elenco delle attività e dei servizi",
-            "requirement": "Dal 1 maggio al 30 giugno di ogni anno, a partire dalla prima comunicazione di inserimento nell'elenco, i soggetti comunicano e aggiornano sulla piattaforma l'elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza di ciascuno."
+            "requirement": "Dal 1 maggio al 30 giugno di ogni anno, a partire dalla prima comunicazione di inserimento nell’elenco, i soggetti comunicano e aggiornano sulla piattaforma l’elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza di ciascuno."
           }
         }
       },
       "machinery": {
-        "notAnswered": "Indica i ruoli dell'impresa rispetto alle macchine (o «Nessuno di questi ruoli») per valutare il regolamento macchine.",
-        "noneHeadline": "Dalle risposte, il regolamento macchine non pone obblighi diretti all'impresa.",
-        "noneReason": "L'impresa non è fabbricante, importatore o distributore di macchine, prodotti correlati o quasi-macchine, e non le modifica.",
+        "notAnswered": "Indica i ruoli dell’impresa rispetto alle macchine (o «Nessuno di questi ruoli») per valutare il regolamento macchine.",
+        "noneHeadline": "Dalle risposte, il regolamento macchine non pone obblighi diretti all’impresa.",
+        "noneReason": "L’impresa non è fabbricante, importatore o distributore di macchine, prodotti correlati o quasi-macchine, e non le modifica.",
         "noneNote": "Chi apporta una modifica sostanziale a una macchina già in servizio è considerato fabbricante (art. 18): se succede, rifai la verifica.",
         "inHeadline": "Il regolamento macchine si applica dal {date} ai ruoli che hai indicato.",
         "inFromLabel": "Si applica dal {date} (art. 54)",
         "reasons": {
           "fab": "Fabbricante: fabbrica i prodotti, o li fa fabbricare e li commercializza con il proprio nome o marchio, oppure li mette in servizio per uso proprio (art. 3, punto 18)).",
-          "imp": "Importatore: immette sul mercato dell'Unione un prodotto originario di un paese terzo (art. 3, punto 20)).",
+          "imp": "Importatore: immette sul mercato dell’Unione un prodotto originario di un paese terzo (art. 3, punto 20)).",
           "dis": "Distributore: mette a disposizione il prodotto sul mercato senza esserne fabbricante o importatore (art. 3, punto 21)).",
           "mod": "Modifica di macchine già immesse sul mercato o messe in servizio: se è sostanziale, comporta gli obblighi del fabbricante (art. 18)."
         },
@@ -915,26 +915,26 @@
         "duties": {
           "conformity": {
             "title": "Requisiti essenziali, documentazione tecnica, valutazione della conformità, marcatura CE",
-            "requirement": "Progettare e fabbricare secondo i requisiti essenziali di sicurezza e di tutela della salute dell'allegato III; redigere la documentazione tecnica (allegato IV, parte A), eseguire la procedura di valutazione della conformità dell'art. 25, redigere la dichiarazione di conformità UE e apporre la marcatura CE (art. 10, par. 1 e 2).",
-            "exception": "Documentazione tecnica e dichiarazione di conformità UE restano a disposizione delle autorità per almeno 10 anni (art. 10, par. 3). Le istruzioni per l'uso accompagnano la macchina e possono essere fornite in formato digitale (art. 10, par. 7)."
+            "requirement": "Progettare e fabbricare secondo i requisiti essenziali di sicurezza e di tutela della salute dell’allegato III; redigere la documentazione tecnica (allegato IV, parte A), eseguire la procedura di valutazione della conformità dell’art. 25, redigere la dichiarazione di conformità UE e apporre la marcatura CE (art. 10, par. 1 e 2).",
+            "exception": "Documentazione tecnica e dichiarazione di conformità UE restano a disposizione delle autorità per almeno 10 anni (art. 10, par. 3). Le istruzioni per l’uso accompagnano la macchina e possono essere fornite in formato digitale (art. 10, par. 7)."
           },
           "partlyCompleted": {
             "title": "Quasi-macchine: documentazione tecnica e dichiarazione di incorporazione",
-            "requirement": "Per le quasi-macchine il fabbricante redige la documentazione tecnica dell'allegato IV, parte B, e la dichiarazione di incorporazione UE."
+            "requirement": "Per le quasi-macchine il fabbricante redige la documentazione tecnica dell’allegato IV, parte B, e la dichiarazione di incorporazione UE."
           },
           "importer": {
             "title": "Importare solo prodotti conformi e verificare il lavoro del fabbricante",
-            "requirement": "Immettere sul mercato soltanto macchine o prodotti correlati conformi; prima dell'immissione, assicurarsi che il fabbricante abbia svolto la procedura di valutazione della conformità (art. 13, par. 1 e 2).",
+            "requirement": "Immettere sul mercato soltanto macchine o prodotti correlati conformi; prima dell’immissione, assicurarsi che il fabbricante abbia svolto la procedura di valutazione della conformità (art. 13, par. 1 e 2).",
             "exception": "Una copia della dichiarazione di conformità UE resta a disposizione delle autorità per almeno 10 anni (art. 13, par. 8)."
           },
           "distributor": {
             "title": "Prima di vendere: marcatura CE, dichiarazione di conformità, istruzioni",
-            "requirement": "Prima di mettere il prodotto a disposizione sul mercato, verificare che rechi la marcatura CE e sia accompagnato dalla dichiarazione di conformità UE e dalle istruzioni per l'uso.",
+            "requirement": "Prima di mettere il prodotto a disposizione sul mercato, verificare che rechi la marcatura CE e sia accompagnato dalla dichiarazione di conformità UE e dalle istruzioni per l’uso.",
             "exception": "I distributori esercitano la dovuta diligenza per rispettare le prescrizioni del regolamento (art. 15, par. 1)."
           },
           "ownBrand": {
             "title": "Con il proprio nome o marchio si diventa fabbricanti",
-            "requirement": "L'importatore o il distributore che immette sul mercato un prodotto con il proprio nome o marchio commerciale, o che modifica un prodotto già immesso sul mercato in modo da incidere sulla conformità, è considerato fabbricante e ne assume gli obblighi."
+            "requirement": "L’importatore o il distributore che immette sul mercato un prodotto con il proprio nome o marchio commerciale, o che modifica un prodotto già immesso sul mercato in modo da incidere sulla conformità, è considerato fabbricante e ne assume gli obblighi."
           },
           "modification": {
             "title": "Modifica sostanziale: chi la fa assume gli obblighi del fabbricante",
@@ -947,7 +947,7 @@
   },
   "monitoraggio": {
     "title": "Monitoraggio",
-    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l'analisi di una novità normativa.",
+    "description": "Le scadenze dei prossimi dodici mesi, gli avvisi per i vostri clienti e l’analisi di una novità normativa.",
     "meta": {
       "manual": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il server non riporta un controllo automatico delle versioni consolidate.",
       "neverRan": "Calendario curato a mano: ogni voce indica la fonte e la data in cui il passaggio è stato ritrovato nel testo ufficiale. Il controllo automatico delle versioni consolidate non è ancora stato eseguito.",
@@ -966,7 +966,7 @@
       "emptyTitle": "Nessuna scadenza nei prossimi dodici mesi",
       "emptyDescription": "Il calendario non contiene voci in questo periodo.",
       "past": "Già in applicazione",
-      "pastLead": "Date già superate: l'obbligo continua, la voce resta per riferimento.",
+      "pastLead": "Date già superate: l’obbligo continua, la voce resta per riferimento.",
       "who": "A chi si applica: ",
       "what": "Cosa fare: ",
       "related": "Vedi anche: ",
@@ -992,13 +992,13 @@
       },
       "dora-application": {
         "title": "DORA in applicazione",
-        "who": "Entità finanziarie (enti creditizi, istituti di pagamento, imprese di investimento, imprese di assicurazione e le altre dell'art. 2, par. 1) e fornitori terzi di servizi TIC",
+        "who": "Entità finanziarie (enti creditizi, istituti di pagamento, imprese di investimento, imprese di assicurazione e le altre dell’art. 2, par. 1) e fornitori terzi di servizi TIC",
         "what": "Il regolamento sulla resilienza operativa digitale si applica da questa data (art. 64)."
       },
       "aiact-art4-art5": {
         "title": "AI Act: alfabetizzazione (art. 4) e pratiche vietate (art. 5)",
         "who": "Fornitori e deployer di sistemi di IA",
-        "what": "Misure per sostenere l'alfabetizzazione in materia di IA del personale, senza un livello specifico da garantire (art. 4); divieti dell'art. 5, per esempio inferire le emozioni sul luogo di lavoro. I capi I e II si applicano da questa data (art. 113)."
+        "what": "Misure per sostenere l’alfabetizzazione in materia di IA del personale, senza un livello specifico da garantire (art. 4); divieti dell’art. 5, per esempio inferire le emozioni sul luogo di lavoro. I capi I e II si applicano da questa data (art. 113)."
       },
       "aiact-gpai": {
         "title": "AI Act: obblighi per i modelli di IA per finalità generali (capo V)",
@@ -1006,49 +1006,49 @@
         "what": "Il capo V si applica da questa data (art. 113); tra gli obblighi, la documentazione tecnica del modello (art. 53, par. 1)."
       },
       "aiact-art50": {
-        "title": "AI Act: obblighi di trasparenza dell'art. 50",
+        "title": "AI Act: obblighi di trasparenza dell’art. 50",
         "who": "Fornitori e deployer di sistemi che interagiscono con le persone, generano contenuti sintetici o deepfake",
-        "what": "Informare le persone che interagiscono con un'IA, marcare i contenuti sintetici, dichiarare i deepfake (art. 50, par. 1, 2 e 4). Il regolamento si applica da questa data (art. 113)."
+        "what": "Informare le persone che interagiscono con un’IA, marcare i contenuti sintetici, dichiarare i deepfake (art. 50, par. 1, 2 e 4). Il regolamento si applica da questa data (art. 113)."
       },
       "cra-reporting": {
         "title": "CRA: segnalazione delle vulnerabilità attivamente sfruttate",
         "who": "Fabbricanti di prodotti con elementi digitali",
-        "what": "Notifica di preallarme entro 24 ore e notifica entro 72 ore al CSIRT coordinatore e all'ENISA (art. 14, par. 1 e 2). L'art. 14 si applica da questa data (art. 71, par. 2)."
+        "what": "Notifica di preallarme entro 24 ore e notifica entro 72 ore al CSIRT coordinatore e all’ENISA (art. 14, par. 1 e 2). L’art. 14 si applica da questa data (art. 71, par. 2)."
       },
       "ai-work-decree": {
         "title": "IA nei rapporti di lavoro: D.Lgs. 179/2026 in vigore",
-        "who": "Datori di lavoro che usano sistemi di IA nelle decisioni sul rapporto di lavoro o nell'organizzazione del lavoro",
-        "what": "Decisioni finali mai solo automatizzate e riservate a una persona fisica, informativa prima dell'avvio (art. 41); IA nella valutazione dei rischi (art. 42). La data è quella da cui gli articoli sono vigenti secondo Normattiva."
+        "who": "Datori di lavoro che usano sistemi di IA nelle decisioni sul rapporto di lavoro o nell’organizzazione del lavoro",
+        "what": "Decisioni finali mai solo automatizzate e riservate a una persona fisica, informativa prima dell’avvio (art. 41); IA nella valutazione dei rischi (art. 42). La data è quella da cui gli articoli sono vigenti secondo Normattiva."
       },
       "aiact-legacy-marking": {
         "title": "AI Act: marcatura dei contenuti per i sistemi generativi già sul mercato",
         "who": "Fornitori di sistemi di IA che generano contenuti sintetici, immessi sul mercato prima del 2 agosto 2026",
-        "what": "Entro questa data adottano le misure per conformarsi all'art. 50, par. 2: output marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente (art. 111, par. 4)."
+        "what": "Entro questa data adottano le misure per conformarsi all’art. 50, par. 2: output marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente (art. 111, par. 4)."
       },
       "aiact-new-prohibitions": {
-        "title": "AI Act: si applicano i nuovi divieti dell'art. 5, par. 1, lettere b bis) e b ter)",
+        "title": "AI Act: si applicano i nuovi divieti dell’art. 5, par. 1, lettere b bis) e b ter)",
         "who": "Chi immette sul mercato, mette in servizio o usa sistemi di IA",
-        "what": "Vietati, alle condizioni dei paragrafi 1 bis e 1 ter, i sistemi di IA che generano o manipolano immagini, video e audio realistici delle parti intime di una persona riconoscibile, o che la mostrano in atti sessualmente espliciti, senza il suo consenso, e quelli che generano o manipolano il materiale dell'art. 2, lettere c) ed e), della direttiva 2011/93/UE (art. 113)."
+        "what": "Vietati, alle condizioni dei paragrafi 1 bis e 1 ter, i sistemi di IA che generano o manipolano immagini, video e audio realistici delle parti intime di una persona riconoscibile, o che la mostrano in atti sessualmente espliciti, senza il suo consenso, e quelli che generano o manipolano il materiale dell’art. 2, lettere c) ed e), della direttiva 2011/93/UE (art. 113)."
       },
       "eudr-application": {
         "title": "Regolamento deforestazione: applicazione degli obblighi",
-        "who": "Chi immette o mette a disposizione sul mercato dell'Unione, o esporta, i prodotti dell'allegato I legati a bovini, cacao, caffè, palma da olio, gomma, soia e legno",
+        "who": "Chi immette o mette a disposizione sul mercato dell’Unione, o esporta, i prodotti dell’allegato I legati a bovini, cacao, caffè, palma da olio, gomma, soia e legno",
         "what": "Gli articoli da 3 a 13, da 16 a 24 e gli articoli 26, 31 e 32 si applicano da questa data (art. 38, par. 2). Per gli operatori che sono microimprese o piccole imprese la data è il 30 giugno 2027 (art. 38, par. 3)."
       },
       "nis2-csirt-contact-2026": {
-        "title": "NIS: referente CSIRT per i soggetti inseriti nell'elenco nel 2026",
-        "who": "Soggetti inseriti nell'elenco dei soggetti NIS nel corso del 2026",
-        "what": "Entro il 31 dicembre dell'anno di inserimento il punto di contatto designa il referente CSIRT (determinazione ACN n. 314287/2026, art. 7, comma 1). Per questi soggetti l'obbligo di notifica degli incidenti decorre dal 1 gennaio 2027."
+        "title": "NIS: referente CSIRT per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Entro il 31 dicembre dell’anno di inserimento il punto di contatto designa il referente CSIRT (determinazione ACN n. 314287/2026, art. 7, comma 1). Per questi soggetti l’obbligo di notifica degli incidenti decorre dal 1 gennaio 2027."
       },
       "csrd-first-year": {
         "title": "CSRD: primo esercizio per le imprese del nuovo perimetro",
         "who": "Imprese con ricavi netti superiori a 450 milioni di euro e più di 1.000 dipendenti in media, che non rendicontavano già",
-        "what": "La rendicontazione di sostenibilità si applica agli esercizi che iniziano da questa data (direttiva (UE) 2022/2464, art. 5, par. 2). In Italia: D.Lgs. 125/2024, art. 17, comma 1, lett. b), con l'esclusione del comma 3-bis per chi resta sotto le soglie."
+        "what": "La rendicontazione di sostenibilità si applica agli esercizi che iniziano da questa data (direttiva (UE) 2022/2464, art. 5, par. 2). In Italia: D.Lgs. 125/2024, art. 17, comma 1, lett. b), con l’esclusione del comma 3-bis per chi resta sotto le soglie."
       },
       "nis2-incidents-2026": {
-        "title": "NIS: notifica degli incidenti per i soggetti inseriti nell'elenco nel 2026",
-        "who": "Soggetti inseriti nell'elenco dei soggetti NIS nel corso del 2026",
-        "what": "Da questa data decorre l'obbligo di notifica degli incidenti significativi (determinazione ACN n. 127434/2026, art. 1, comma 2): pre-notifica entro 24 ore e notifica entro 72 ore al CSIRT Italia (D.Lgs. 138/2024, art. 25, comma 5)."
+        "title": "NIS: notifica degli incidenti per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Da questa data decorre l’obbligo di notifica degli incidenti significativi (determinazione ACN n. 127434/2026, art. 1, comma 2): pre-notifica entro 24 ore e notifica entro 72 ore al CSIRT Italia (D.Lgs. 138/2024, art. 25, comma 5)."
       },
       "machinery-application": {
         "title": "Regolamento macchine: applicazione",
@@ -1057,7 +1057,7 @@
       },
       "nis2-registration": {
         "title": "NIS: chiusura della finestra annuale di registrazione",
-        "who": "Soggetti che rientrano nell'ambito del D.Lgs. 138/2024",
+        "who": "Soggetti che rientrano nell’ambito del D.Lgs. 138/2024",
         "what": "Dal 1 gennaio al 28 febbraio di ogni anno i soggetti si registrano, o aggiornano la registrazione, sulla piattaforma di ACN (art. 7, comma 1)."
       },
       "omnibus-transposition": {
@@ -1066,34 +1066,34 @@
         "what": "Entro questa data gli Stati membri mettono in vigore le disposizioni per conformarsi agli articoli 1, 2 e 3 della direttiva (UE) 2026/470 (art. 5, par. 1)."
       },
       "nis2-annual-update": {
-        "title": "NIS: chiusura dell'aggiornamento annuale delle informazioni",
-        "who": "Soggetti che hanno ricevuto da ACN la comunicazione di inserimento o di permanenza nell'elenco",
+        "title": "NIS: chiusura dell’aggiornamento annuale delle informazioni",
+        "who": "Soggetti che hanno ricevuto da ACN la comunicazione di inserimento o di permanenza nell’elenco",
         "what": "Dal 15 aprile al 31 maggio di ogni anno forniscono o aggiornano le ulteriori informazioni sulla piattaforma di ACN (art. 7, comma 4)."
       },
       "pay-gap-first-data": {
         "title": "Parità retributiva: primi dati sul divario retributivo di genere",
         "who": "Datori di lavoro con almeno 150 dipendenti",
-        "what": "I dati sul divario retributivo di genere sono raccolti entro questa data, poi ogni anno da 250 dipendenti e ogni tre anni tra 150 e 249 (D.Lgs. 96/2026, art. 9, comma 9), e comunicati all'organismo di monitoraggio (art. 9, comma 5)."
+        "what": "I dati sul divario retributivo di genere sono raccolti entro questa data, poi ogni anno da 250 dipendenti e ogni tre anni tra 150 e 249 (D.Lgs. 96/2026, art. 9, comma 9), e comunicati all’organismo di monitoraggio (art. 9, comma 5)."
       },
       "eudr-small-operators": {
         "title": "Regolamento deforestazione: applicazione per microimprese e piccole imprese",
         "who": "Operatori che sono persone fisiche, microimprese o piccole imprese, costituiti come tali al 31 dicembre 2024",
-        "what": "Gli obblighi si applicano da questa data (art. 38, par. 3), tranne che per i prodotti dell'allegato del regolamento (UE) n. 995/2010."
+        "what": "Gli obblighi si applicano da questa data (art. 38, par. 3), tranne che per i prodotti dell’allegato del regolamento (UE) n. 995/2010."
       },
       "nis2-activities-list": {
-        "title": "NIS: chiusura della finestra per l'elenco delle attività e dei servizi",
-        "who": "Soggetti essenziali e importanti che hanno ricevuto la comunicazione di inserimento nell'elenco",
-        "what": "Dal 1 maggio al 30 giugno di ogni anno comunicano e aggiornano sulla piattaforma di ACN l'elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza (art. 30, comma 1)."
+        "title": "NIS: chiusura della finestra per l’elenco delle attività e dei servizi",
+        "who": "Soggetti essenziali e importanti che hanno ricevuto la comunicazione di inserimento nell’elenco",
+        "what": "Dal 1 maggio al 30 giugno di ogni anno comunicano e aggiornano sulla piattaforma di ACN l’elenco delle proprie attività e dei propri servizi, con la categoria di rilevanza (art. 30, comma 1)."
       },
       "csddd-guidelines": {
         "title": "CSDDD: orientamenti della Commissione",
         "who": "Imprese in ambito CSDDD e loro partner commerciali",
-        "what": "Entro questa data la Commissione adotta gli orientamenti dell'art. 19, par. 2, lettere a), d) ed e), tra cui quelli su come assolvere il dovere di diligenza (art. 19, par. 3)."
+        "what": "Entro questa data la Commissione adotta gli orientamenti dell’art. 19, par. 2, lettere a), d) ed e), tra cui quelli su come assolvere il dovere di diligenza (art. 19, par. 3)."
       },
       "nis2-measures-2026": {
-        "title": "NIS: misure di sicurezza di base per i soggetti inseriti nell'elenco nel 2026",
-        "who": "Soggetti inseriti nell'elenco dei soggetti NIS nel corso del 2026",
-        "what": "Scade il termine per adottare le misure di sicurezza (determinazione ACN n. 127434/2026, art. 1, comma 1), in attuazione dell'obbligo di misure di gestione dei rischi del D.Lgs. 138/2024 (art. 24)."
+        "title": "NIS: misure di sicurezza di base per i soggetti inseriti nell’elenco nel 2026",
+        "who": "Soggetti inseriti nell’elenco dei soggetti NIS nel corso del 2026",
+        "what": "Scade il termine per adottare le misure di sicurezza (determinazione ACN n. 127434/2026, art. 1, comma 1), in attuazione dell’obbligo di misure di gestione dei rischi del D.Lgs. 138/2024 (art. 24)."
       },
       "aiact-gpai-legacy": {
         "title": "AI Act: modelli di IA per finalità generali già sul mercato",
@@ -1101,9 +1101,9 @@
         "what": "Entro questa data adottano le misure necessarie per conformarsi agli obblighi del regolamento (art. 111, par. 3)."
       },
       "aiact-high-risk-annex-iii": {
-        "title": "AI Act: sistemi ad alto rischio dell'allegato III",
-        "who": "Fornitori e deployer di sistemi di IA ad alto rischio dell'allegato III",
-        "what": "Le sezioni 1, 2 e 3 del capo III si applicano da questa data ai sistemi dell'allegato III (art. 113). Tra gli obblighi dei deployer: informare lavoratori e rappresentanti prima di usare un sistema ad alto rischio sul luogo di lavoro (art. 26, par. 7)."
+        "title": "AI Act: sistemi ad alto rischio dell’allegato III",
+        "who": "Fornitori e deployer di sistemi di IA ad alto rischio dell’allegato III",
+        "what": "Le sezioni 1, 2 e 3 del capo III si applicano da questa data ai sistemi dell’allegato III (art. 113). Tra gli obblighi dei deployer: informare lavoratori e rappresentanti prima di usare un sistema ad alto rischio sul luogo di lavoro (art. 26, par. 7)."
       },
       "cra-full-application": {
         "title": "CRA: applicazione del regolamento",
@@ -1116,8 +1116,8 @@
         "what": "Entro questa data gli Stati membri adottano e pubblicano le disposizioni di recepimento (art. 37, par. 1)."
       },
       "aiact-high-risk-annex-i": {
-        "title": "AI Act: sistemi ad alto rischio dell'allegato I",
-        "who": "Fornitori e deployer di sistemi di IA classificati ad alto rischio ai sensi dell'art. 6, par. 1, e dell'allegato I",
+        "title": "AI Act: sistemi ad alto rischio dell’allegato I",
+        "who": "Fornitori e deployer di sistemi di IA classificati ad alto rischio ai sensi dell’art. 6, par. 1, e dell’allegato I",
         "what": "Le sezioni 1, 2 e 3 del capo III si applicano da questa data a questi sistemi (art. 113)."
       },
       "csddd-first-compliance": {

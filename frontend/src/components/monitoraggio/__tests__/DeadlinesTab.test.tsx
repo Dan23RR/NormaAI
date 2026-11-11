@@ -20,7 +20,7 @@ describe('DeadlinesTab', () => {
 
     expect(screen.getAllByText('2 dicembre 2026')).toHaveLength(2)
     expect(screen.getByText(/marcatura dei contenuti per i sistemi generativi/)).toBeInTheDocument()
-    expect(screen.getByText(/nuovi divieti dell'art. 5/)).toBeInTheDocument()
+    expect(screen.getByText(/nuovi divieti dell’art. 5/)).toBeInTheDocument()
     expect(screen.getByText('20 gennaio 2027')).toBeInTheDocument()
     expect(screen.getByText('Regolamento macchine: applicazione')).toBeInTheDocument()
     expect(screen.getByText('31 luglio 2027')).toBeInTheDocument()
@@ -96,7 +96,7 @@ describe('DeadlinesTab', () => {
     const rows = Array.from(container.querySelectorAll('li'))
     expect(rows.length).toBeGreaterThan(15)
     for (const row of rows) {
-      expect(row.textContent).toMatch(/Verificata (il |l')\d{1,2} \p{L}+ \d{4}/u)
+      expect(row.textContent).toMatch(/Verificata (il |l’)\d{1,2} \p{L}+ \d{4}/u)
       expect(row.textContent).not.toContain('non ancora verificata')
     }
     expect(container.textContent).not.toMatch(/feed attivo|in tempo reale|live/i)

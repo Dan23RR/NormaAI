@@ -39,6 +39,25 @@ from src.document_check.sources import default_cache_dir, default_source  # noqa
 
 LOCK_SUFFIX = ".norma-lock.json"
 
+EPILOG = """\
+esiti:
+  da correggere   Citazione superata (corrisponde solo a un testo precedente);
+                  Cambiato dopo la data del documento (con --data);
+                  Non esiste nel testo vigente (articolo, paragrafo o comma);
+                  Citazione diversa dal testo ufficiale (con le parole diverse);
+                  Citazione non trovata
+  da controllare  Citazione in un altro articolo; Testo ufficiale non raggiungibile;
+                  Versione più recente non leggibile; Estremi dell'atto da controllare;
+                  Articolo letto solo in parte; Modifica pubblicata, non ancora in vigore;
+                  Sentenza della Corte costituzionale in nota; Atto non indicato
+  a posto         Riferimento valido; Citazione verificata
+  fuori copertura Atto che il controllo non legge (leggi regionali, decreti ministeriali,
+                  circolari, allegati)
+
+I testi di EUR-Lex e di Normattiva non sono ufficiali: fanno fede la Gazzetta ufficiale
+dell'Unione europea e la Gazzetta Ufficiale. Testi italiani: Normattiva, licenza CC BY 4.0.
+"""
+
 
 def _beside(path: Path, suffix: str) -> Path:
     name = path.name[: -len(LOCK_SUFFIX)] if path.name.endswith(LOCK_SUFFIX) else path.stem
@@ -50,7 +69,9 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "Controlla i riferimenti di legge di un documento sui testi in vigore: norme UE "
             "(EUR-Lex) e norme italiane (Normattiva)."
-        )
+        ),
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("documento", nargs="?", type=Path, help="il documento da controllare")
     parser.add_argument(

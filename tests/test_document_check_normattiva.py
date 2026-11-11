@@ -1215,3 +1215,18 @@ def test_command_line_with_italian_law(tmp_path, capsys, api):
     assert (tmp_path / "nota.ricontrollo.html").exists()
     help_text = module.main.__doc__ or module.__doc__ or ""
     assert "Normattiva" in help_text
+
+
+def test_command_line_help_lists_every_outcome(capsys):
+    script = Path(__file__).resolve().parent.parent / "scripts" / "check_document.py"
+    spec = importlib.util.spec_from_file_location("check_document_help", script)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with pytest.raises(SystemExit):
+        module.main(["--help"])
+    text = " ".join(capsys.readouterr().out.split())
+    for status in (OUTDATED, CHANGED, MISSING, ALTERED, NOT_FOUND, UNAVAILABLE, ACT_UNCLEAR,
+                   PARTIAL, SCHEDULED, RULING, VALID, VERIFIED, NOT_COVERED):  # fmt: skip
+        assert status.label in text, status.label
+    assert "Versione più recente non leggibile" in text and "CC BY 4.0" in text

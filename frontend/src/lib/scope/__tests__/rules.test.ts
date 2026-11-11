@@ -610,6 +610,93 @@ describe('Regolamento macchine', () => {
   })
 })
 
+describe('the remaining branches', () => {
+  it('CSRD: listed and close to a threshold reads as close to a threshold', () => {
+    const r = result(company({ employees: 900, turnoverEur: 100 * M, listedEu: true }), 'CSRD')
+    expect(r.status).toBe('conditional')
+    expect(r.reasons[0]).toMatch(/a ridosso di una soglia/)
+  })
+  it('CSRD: close to the turnover threshold only', () => {
+    const r = result(company({ employees: 300, turnoverEur: 400 * M }), 'CSRD')
+    expect(r.status).toBe('conditional')
+    expect(r.reasons[0]).toMatch(/a ridosso di una soglia/)
+    expect(ids(r)).toContain('dir-2013-34-19bis-3-protetta')
+  })
+  it('CSRD: a third-country company under the Union threshold cites the thresholds for its Italian subsidiaries', () => {
+    const r = result(company({ nonEu: true, euTurnoverEur: 300 * M }), 'CSRD')
+    expect(r.reasons[1]).toContain('art. 19 bis')
+    expect(ids(r)).toEqual(['dir-2013-34-40bis-1-ue', 'dir-2013-34-40bis-1-figlia', 'dir-2013-34-19bis-1'])
+  })
+  it('CSRD: without the Union turnover a third-country company is not assessed, with what to enter', () => {
+    const r = result(company({ nonEu: true }), 'CSRD')
+    expect(r.headline).toMatch(/ricavi netti realizzati nell’Unione/)
+    expect(ids(r)).toEqual(['dir-2013-34-40bis-1-ue', 'dir-2013-34-40bis-1-figlia'])
+  })
+  it('CSRD: the notes on reporting and on the group follow a third-country company too', () => {
+    const r = result(company({ nonEu: true, euTurnoverEur: 500 * M, wave1Reporter: true, groupRole: 'parent' }), 'CSRD')
+    expect(r.notes).toHaveLength(2)
+    expect(ids(r)).toEqual(expect.arrayContaining(['csrd-5-2-a', 'dir-2013-34-29bis-1']))
+  })
+  it('CSDDD: without employees or turnover, not assessed on the thresholds of Art. 2(1)', () => {
+    const r = result(company({ employees: 6000 }), 'CSDDD')
+    expect(r.status).toBe('not_assessed')
+    expect(ids(r)).toEqual(['csddd-2-1-a'])
+  })
+  it('AI at work: a professional firm alone has no date of the decree', () => {
+    const r = result(company({ work: keysToWork(['prof']) }), 'AI_WORK')
+    expect(r.from).toBeUndefined()
+    expect(r.notes).toEqual([])
+    expect(ids(r)).not.toContain('legge-132-2025-11-2')
+  })
+  it('AI at work: emotions with another situation keeps the prohibition in the headline and adds the duties', () => {
+    const r = result(company({ work: keysToWork(['emo', 'org']) }), 'AI_WORK')
+    expect(r.headline).toMatch(/pratica vietata/)
+    expect(duties(r)).toEqual(['emotions', 'riskAssessment', 'training', 'literacy'])
+    expect(r.from).toBe('2026-10-23')
+  })
+  it('NIS: in scope whatever the size, the category is the one ACN communicates', () => {
+    for (const nisAnswers of [nis('digitale', { anySize: true }), { ...NO_NIS, linked: true }, nis('pa')]) {
+      const r = result(company({ nis: nisAnswers }), 'NIS2')
+      expect(r.notes.join(' ')).toContain('art. 7, comma 3')
+      expect(r.notes.join(' ')).not.toMatch(/Categoria probabile/)
+    }
+  })
+  it('NIS: a linked company is in scope even when its sector is not in the annexes', () => {
+    const r = result(company({ nis: { ...NO_NIS, linked: true, anySize: true } }), 'NIS2')
+    expect(r.reasons[0]).toContain('art. 3, comma 10')
+  })
+  it('NIS: the group note also follows a small company and an open size class', () => {
+    const small = result(company({ employees: 30, turnoverEur: 5 * M, groupRole: 'parent', nis: nis('alimenti') }), 'NIS2')
+    expect(small.notes.join(' ')).toContain('art. 3, comma 4')
+    expect(ids(small)).toContain('rec-2003-361-6-2')
+    const open = result(company({ employees: 30, turnoverEur: 15 * M, groupRole: 'parent', nis: nis('chimica') }), 'NIS2')
+    expect(open.status).toBe('conditional')
+    expect(open.notes.join(' ')).toContain('art. 3, comma 4')
+  })
+  it('NIS: without employees and with both figures over 10 million the size is settled', () => {
+    const r = result(company({ turnoverEur: 60 * M, balanceSheetEur: 44 * M, nis: nis('energia') }), 'NIS2')
+    expect(r.status).toBe('in_scope')
+    expect(r.notes.join(' ')).toContain('soggetto essenziale')
+    expect(nisCategory('energia', null, 60 * M, 44 * M)).toBe('essential')
+    expect(nisCategory('energia', null, 60 * M, 40 * M)).toBe('depends')
+  })
+  it('NIS: a bank in a group keeps the group note and has no penalties note', () => {
+    const r = result(company({ employees: 400, turnoverEur: 90 * M, groupRole: 'subsidiary', nis: nis('banche') }), 'NIS2')
+    expect(r.notes.join(' ')).toContain('art. 3, comma 4')
+    expect(r.notes.join(' ')).not.toContain('art. 38, comma 9')
+  })
+  it('NIS: a sector outside the annexes ignores the size figures', () => {
+    const r = result(company({ employees: 8, turnoverEur: 1 * M, nis: NO_NIS }), 'NIS2')
+    expect(r.status).toBe('out_of_scope')
+    expect(ids(r)).toEqual(['dlgs-138-2024-3-2', 'dlgs-138-2024-allegato-1', 'dlgs-138-2024-allegato-2', 'dlgs-138-2024-3-9', 'dlgs-138-2024-24-2-d'])
+  })
+  it('Machinery: importer and distributor together, the own-brand duty is the importer’s', () => {
+    const r = result(company({ machinery: keysToMachinery(['imp', 'dis']) }), 'MACHINERY')
+    expect(duties(r)).toEqual(['importer', 'distributor', 'ownBrand'])
+    expect(r.obligations?.[2].who).toBe('importer')
+  })
+})
+
 /** Inputs that together reach every branch of every rule set. */
 const MATRIX: ScopeInput[] = [
   company({}),

@@ -421,9 +421,9 @@ def text_from_bytes(filename: str, data: bytes, *, max_chars: int | None = None)
 # ─── The check itself (blocking: run it through ``run_job``) ─────────
 
 
-@dataclass
+@dataclass(repr=False)
 class CheckOutcome:
-    """What a check produced, ready to be stored. Nothing of it is the document's text."""
+    """What a check produced, ready to be stored: the outcome, not the document."""
 
     filename: str
     document_sha256: str
@@ -434,6 +434,10 @@ class CheckOutcome:
     counts: dict[str, int]
     findings: list[dict[str, Any]] = field(default_factory=list)
     dependencies: list[dict[str, Any]] = field(default_factory=list)
+
+    def __repr__(self) -> str:
+        # Findings quote the document: they stay out of logs and error reports.
+        return f"<check outcome: {self.status}, {len(self.findings)} findings>"
 
 
 def check_document(
@@ -629,6 +633,8 @@ class _LockedSource:
 
     def __getattr__(self, name: str) -> Any:
         # Whatever else the engine reads from a source (``stale``).
+        if name.startswith("_"):
+            raise AttributeError(name)
         return getattr(self._inner, name)
 
 
@@ -652,7 +658,11 @@ def shared_source() -> TextSource:
 
                 _SOURCE = (now, _LockedSource(default_source()))
             except Exception as e:  # noqa: BLE001 - e.g. the cache folder cannot be written
-                logger.error("document_check_source_unavailable", error=f"{type(e).__name__}: {e}")
+                logger.error(
+                    "document_check_source_unavailable",
+                    error=f"{type(e).__name__}: {e}",
+                    hint="set NORMAAI_TEXT_CACHE to a folder the API can write to",
+                )
                 raise source_unavailable() from e
         source: TextSource = _SOURCE[1]
         return source

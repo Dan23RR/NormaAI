@@ -8,6 +8,7 @@ from CELLAR and Italian acts from Normattiva, behind one object.
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,11 +26,24 @@ NORMATTIVA_FOLDER = "normattiva"
 
 
 def default_cache_dir() -> Path:
-    """Folder of the downloaded official texts: ``$NORMAAI_TEXT_CACHE`` or the user cache."""
+    """Folder of the downloaded official texts.
+
+    ``$NORMAAI_TEXT_CACHE`` when set (the production container, whose root file
+    system is read-only); otherwise the user cache, ``~/.cache/normaai/cellar``;
+    when that cannot be created (no home, or a home that is not writable), a
+    folder under the system temporary directory.
+    """
     override = os.environ.get(CACHE_ENV, "").strip()
     if override:
         return Path(override)
-    return Path.home() / ".cache" / "normaai" / "cellar"
+    try:
+        home = Path.home() / ".cache" / "normaai" / "cellar"
+        home.mkdir(parents=True, exist_ok=True)
+        if os.access(home, os.W_OK):
+            return home
+    except (OSError, RuntimeError):
+        pass
+    return Path(tempfile.gettempdir()) / "normaai" / "cellar"
 
 
 class OfficialSources:

@@ -492,6 +492,52 @@ def test_install_cron_leaves_exactly_one_backup_line(server, before, others):
     assert [line for line in lines if "backup" not in line] == others
 
 
+def _app_cron_block() -> str:
+    """The lines of step 9 of the bootstrap that install the application's jobs."""
+    text = (REPO / "scripts" / "bootstrap_hetzner.sh").read_text(encoding="utf-8")
+    start = text.index('JOBS_LOG="')
+    end = text.index('if [ "${SKIP_FIRST_BACKUP', start)
+    return text[start:end].replace("\r\n", "\n")
+
+
+def test_bootstrap_installs_the_application_jobs_once(server):
+    # The block runs as it is in the bootstrap, after the backup's own line.
+    block = server.app / "scripts" / "app_cron.sh"
+    block.write_text("set -euo pipefail\n" + _app_cron_block(), encoding="utf-8", newline="\n")
+    (server.state / "crontab").write_text(OTHER_JOB + "\n", newline="\n")
+    assert server.run("backup.sh", "--install-cron").returncode == 0
+    for _ in range(2):  # twice: running the bootstrap again changes nothing
+        result = server.run("app_cron.sh")
+        assert result.returncode == 0, result.stderr
+    assert server.run("backup.sh", "--install-cron").returncode == 0
+    lines = server.crontab()
+    jobs = [line for line in lines if "src.pipeline" in line]
+    # Brief section 6.4: nightly freshness, weekly re-check, inside the app container.
+    assert jobs == [
+        "30 3 * * * docker exec normaai-app python -m src.pipeline --action check-freshness"
+        " >> /var/log/normaai-jobs.log 2>&1",
+        "0 4 * * 1 docker exec normaai-app python -m src.pipeline --action recheck-documents"
+        " >> /var/log/normaai-jobs.log 2>&1",
+    ]
+    assert OTHER_JOB in lines
+    assert len([line for line in lines if "scripts/backup.sh" in line]) == 1
+
+
+def test_the_app_container_caches_official_texts_on_its_writable_mount():
+    yaml = pytest.importorskip("yaml")
+    app = yaml.safe_load((REPO / "docker-compose.yml").read_text(encoding="utf-8"))["services"][
+        "app"
+    ]
+    assert app["read_only"] is True
+    assert "./data:/app/data" in app["volumes"]
+    cache = app["environment"]["NORMAAI_TEXT_CACHE"]
+    assert cache.startswith("/app/data/")
+    # The bootstrap creates the folder before handing data/ to the app's user.
+    assert "mkdir -p data/texts" in (REPO / "scripts" / "bootstrap_hetzner.sh").read_text(
+        encoding="utf-8"
+    )
+
+
 # ─── restore_test.sh ─────────────────────────────────────────────────────────
 
 

@@ -95,6 +95,10 @@ services:
       QDRANT_PORT: 6333
       REDIS_URL: redis://redis:6379/0
       APP_ENV: ${APP_ENV:-development}
+      # Official texts downloaded by the document check. The root file system
+      # is read-only and ./data (mounted at /app/data) is the writable folder.
+      # A fixed container path: a value in .env (a path on a laptop) must not win.
+      NORMAAI_TEXT_CACHE: /app/data/texts
     depends_on:
       postgres:
         condition: service_healthy

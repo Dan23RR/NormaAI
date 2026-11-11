@@ -20,8 +20,10 @@
 #      (minutes); without snapshots it seeds the corpus from EUR-Lex, which
 #      with multilingual-e5-large takes hours of CPU
 #   8. Starts the app behind Caddy with the RLS overlay (TLS via Let's Encrypt)
-#   9. Nightly backup (scripts/backup.sh): cron line, a first run, and final
-#      health checks
+#   9. Cron: nightly backup (scripts/backup.sh) with a first run, and the two
+#      application jobs (nightly check-freshness, weekly recheck-documents,
+#      both `python -m src.pipeline` inside the app container); final health
+#      checks
 #
 # Backups leave the server, encrypted, only when both of these are in the
 # environment at the first run (docs/BACKUP_STRATEGY.md, docs/DEPLOY_CHECKLIST.md):
@@ -75,7 +77,8 @@ command -v python3 >/dev/null || apt-get install -y python3 >/dev/null
 log "1/9" "Docker, swap, aggiornamenti automatici, firewall"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates cron curl git ufw unattended-upgrades openssl >/dev/null
+# restic always: the restore test and a rebuild need it even before backups are configured.
+apt-get install -y -qq ca-certificates cron curl git ufw unattended-upgrades openssl restic >/dev/null
 if ! command -v docker >/dev/null; then
   curl -fsSL https://get.docker.com | sh
 fi
@@ -96,7 +99,10 @@ else
   git clone -q "$REPO_URL" "$APP_DIR"
 fi
 cd "$APP_DIR"
-mkdir -p data backups
+# data/ is the app container's only writable mount (read-only root file system):
+# data/texts holds the official texts the document check downloads
+# (NORMAAI_TEXT_CACHE=/app/data/texts in docker-compose.yml).
+mkdir -p data/texts backups
 # Baked into the image (Dockerfile ARG GIT_SHA via docker-compose.prod.yml) and
 # reported by GET /health as "version", so a deploy can be verified end to end.
 export GIT_SHA="$(git rev-parse --short=7 HEAD)"
@@ -331,7 +337,6 @@ else
   echo "   $BACKUP_ENV_FILE scritto (solo root)."
 fi
 if [ -f "$BACKUP_ENV_FILE" ]; then
-  command -v restic >/dev/null 2>&1 || apt-get install -y -qq restic >/dev/null
   echo "   Backup cifrati fuori dal server: restic $(restic version 2>/dev/null | awk '{print $2}'), impostazioni in $BACKUP_ENV_FILE."
 else
   echo "   ATTENZIONE: nessun backup fuori dal server. Il job notturno salva solo un dump di"
@@ -344,6 +349,18 @@ fi
 # (and creates the restic repository the first time) instead of waiting for 02:00.
 bash scripts/backup.sh --install-cron \
   || echo "   ATTENZIONE: riga di cron del backup NON installata (messaggi qui sopra): nessun backup notturno finche' non la installi con: bash $APP_DIR/scripts/backup.sh --install-cron"
+# The application's scheduled jobs (the in-process scheduler stays off): run
+# inside the app container, logged to $JOBS_LOG. Re-running replaces the two
+# lines and keeps every other cron line.
+JOBS_LOG="/var/log/normaai-jobs.log"
+APP_CRON_LINES="30 3 * * * docker exec normaai-app python -m src.pipeline --action check-freshness >> $JOBS_LOG 2>&1
+0 4 * * 1 docker exec normaai-app python -m src.pipeline --action recheck-documents >> $JOBS_LOG 2>&1"
+if { { crontab -l 2>/dev/null || true; } | { grep -v -E 'src\.pipeline --action (check-freshness|recheck-documents)' || true; }
+     printf '%s\n' "$APP_CRON_LINES"; } | crontab -; then
+  echo "   Cron dell'app: check-freshness ogni notte alle 03:30, recheck-documents il lunedi' alle 04:00 (log in $JOBS_LOG)."
+else
+  echo "   ATTENZIONE: righe di cron dell'app NON installate: niente controllo di aggiornamento del corpus ne' ricontrollo dei documenti."
+fi
 if [ "${SKIP_FIRST_BACKUP:-0}" = "1" ]; then
   # Rebuilding a lost server: the database is still empty here, and its backup
   # would become the newest copy (docs/BACKUP_STRATEGY.md, section 6.3).
@@ -374,7 +391,8 @@ Fatto. Prossimi passi (docs/DEPLOY_CHECKLIST.md):
   - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_BASE_URL=https://$API_DOMAIN, poi Redeploy.
   - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra.
   - Dal portatile: pwsh scripts/verify_live_site.ps1 -BaseUrl $PUBLIC_URL
-  - Salva una copia di $APP_DIR/.env e di $APP_DIR/data/jwt_private.pem fuori dal server.
+  - Salva una copia di $APP_DIR/.env fuori dal server, nel password manager, con la password
+    del repository restic. Le chiavi JWT no: un server ricostruito ne crea una coppia nuova.
   - Backup: ogni notte alle 02:00 (bash $APP_DIR/scripts/backup.sh, log in /var/log/normaai-backup.log).
     Prova subito il ripristino: bash $APP_DIR/scripts/restore_test.sh (docs/BACKUP_STRATEGY.md).
   - Gli snapshot in $SNAPSHOT_DIR sono la copia di partenza di Qdrant: tienili finche' il primo

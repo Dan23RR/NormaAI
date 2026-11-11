@@ -601,9 +601,52 @@ def gap_analyst_node(state: AgentState) -> dict:
     return _pack_llm_result(call_llm(system_prompt, user_msg), state)
 
 
+# ─── No passage, no answer ───────────────────────────────────────
+
+NO_SOURCES_ABSTENTION_REASON = "no_sources"
+NO_SOURCES_ABSTENTION_IT = (
+    "Non posso rispondere con una fonte: la ricerca nel corpus non ha trovato nessun passaggio "
+    "per questa domanda. Prova a indicare l'atto o l'articolo, oppure consulta direttamente "
+    "EUR-Lex."
+)
+NO_SOURCES_ABSTENTION_EN = (
+    "I cannot answer with a source: the search of the corpus found no passage for this "
+    "question. Try naming the act or the article, or consult EUR-Lex directly."
+)
+
+
+def _abstain_without_sources(state: AgentState) -> dict | None:
+    """The Q&A abstention when retrieval worked and found nothing.
+
+    The promise is "the exact source or no answer". With no passage there is
+    nothing to cite, so the model is not asked at all: the abstention is
+    decided here, not left to an instruction in the prompt. None when there
+    are passages to answer from.
+    """
+    if state.get("retrieved_chunks"):
+        return None
+    english = str(state.get("language") or "").strip().lower()[:2] == "en"
+    logger.info("qa_abstained_without_sources")
+    return _pack_llm_result(
+        {
+            "answer": NO_SOURCES_ABSTENTION_EN if english else NO_SOURCES_ABSTENTION_IT,
+            "citations": [],
+            "caveats": [],
+            "confidence_score": 0.0,
+            "requires_expert_review": True,
+            "abstention_reason": NO_SOURCES_ABSTENTION_REASON,
+            "verified_citations": 0,
+            "citations_total": 0,
+        }
+    )
+
+
 def qa_bot_node(state: AgentState) -> dict:
     if _retrieval_failed(state):
         return {}
+    abstention = _abstain_without_sources(state)
+    if abstention is not None:
+        return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
     return _pack_llm_result(call_llm(system_prompt, user_msg), state, verify_citations=True)
 
@@ -631,6 +674,9 @@ async def async_qa_bot_node(state: AgentState) -> dict:
     """Async QA bot: uses acall_llm() → .ainvoke() (non-blocking)."""
     if _retrieval_failed(state):
         return {}
+    abstention = _abstain_without_sources(state)
+    if abstention is not None:
+        return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
     return _pack_llm_result(await acall_llm(system_prompt, user_msg), state, verify_citations=True)
 

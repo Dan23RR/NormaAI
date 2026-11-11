@@ -27,6 +27,7 @@ import pytest
 from src.agents import nodes
 from src.agents.nodes import (
     _INJECTION_GUARD,
+    RETRIEVAL_ERROR_PREFIX,
     _apply_grounding_guard,
     _build_gap_prompt,
     _build_monitor_prompt,
@@ -48,6 +49,19 @@ from src.agents.nodes import (
 )
 
 # ─── Helpers ──────────────────────────────────────────────────────
+
+# One retrieved passage: the Q&A agent asks the model only when it has at least one.
+_A_PASSAGE = {
+    "id": "pt-gdpr-5",
+    "text": (
+        "Article 5\nPrinciples relating to processing of personal data\n1. Personal data shall "
+        "be processed lawfully, fairly and in a transparent manner in relation to the data subject."
+    ),
+    "framework": "GDPR",
+    "celex": "32016R0679",
+    "article": "Art. 5",
+    "lang": "EN",
+}
 
 
 def _indexer_returning(results):
@@ -334,8 +348,9 @@ class TestAgentsSkipOnRetrievalFailure:
         # Only a retrieval failure short-circuits; e.g. the empty-query marker
         # must not stop the agent from running.
         llm_result = {"answer": "ok", "confidence_score": 0.9, "citations": []}
+        state = {"query": "", "error": "No query provided", "retrieved_chunks": [_A_PASSAGE]}
         with patch.object(nodes, "call_llm", return_value=llm_result):
-            out = qa_bot_node({"query": "", "error": "No query provided"})
+            out = qa_bot_node(state)
         assert json.loads(out["result_json"])["answer"] == "ok"
 
     def test_pack_llm_result_mirrors_llm_error_into_state(self):
@@ -678,10 +693,11 @@ class TestSyncAgentNodes:
         assert json.loads(out["result_json"])["framework"] == "CSRD"
 
     def test_qa_node_grounding_guard_caps_ungrounded(self, sample_qa_response):
-        # sample_qa_response cites CSRD; with empty retrieved_chunks the guard
-        # treats the citation as ungrounded -> review + capped confidence.
+        # sample_qa_response cites CSRD; the only passage retrieved is from the
+        # GDPR, so the guard treats the citation as ungrounded -> review +
+        # capped confidence.
         with patch.object(nodes, "call_llm", return_value=dict(sample_qa_response)):
-            out = qa_bot_node({"query": "Who reports?", "retrieved_chunks": []})
+            out = qa_bot_node({"query": "Who reports?", "retrieved_chunks": [_A_PASSAGE]})
         assert out["requires_review"] is True
         assert out["confidence_score"] == 0.6
 
@@ -853,11 +869,46 @@ class TestAsyncAgentNodes:
     async def test_async_qa_node_passes_messages(self):
         mock = AsyncMock(return_value={"answer": "qa", "confidence_score": 0.9, "citations": []})
         with patch.object(nodes, "acall_llm", new=mock):
-            await async_qa_bot_node({"query": "Who reports?"})
+            await async_qa_bot_node({"query": "Who reports?", "retrieved_chunks": [_A_PASSAGE]})
         # system_prompt + user_message forwarded; user message == the query.
         args = mock.await_args.args
         assert args[0].startswith(_INJECTION_GUARD)
         assert args[1] == "Who reports?"
+
+
+# ─── No passage, no answer ────────────────────────────────────────
+
+
+class TestNoPassageNoAnswer:
+    """Retrieval worked and found nothing: the Q&A abstains without asking the model."""
+
+    def test_qa_abstains_without_calling_the_model(self):
+        with patch.object(nodes, "call_llm") as llm:
+            out = qa_bot_node({"query": "Qual è l'aliquota IVA sul pane?", "retrieved_chunks": []})
+        llm.assert_not_called()
+        result = json.loads(out["result_json"])
+        assert result["abstention_reason"] == nodes.NO_SOURCES_ABSTENTION_REASON == "no_sources"
+        assert result["answer"] == nodes.NO_SOURCES_ABSTENTION_IT
+        assert result["citations"] == [] and result["citations_total"] == 0
+        assert out["confidence_score"] == 0.0 and out["requires_review"] is True
+        assert "error" not in out
+
+    async def test_async_qa_abstains_in_the_language_of_the_request(self):
+        with patch.object(nodes, "acall_llm", new=AsyncMock()) as llm:
+            out = await async_qa_bot_node({"query": "VAT on bread?", "language": "en"})
+        llm.assert_not_awaited()
+        assert json.loads(out["result_json"])["answer"] == nodes.NO_SOURCES_ABSTENTION_EN
+
+    def test_a_failed_retrieval_is_still_an_error_not_an_abstention(self):
+        failed = {"query": "x", "retrieved_chunks": [], "error": f"{RETRIEVAL_ERROR_PREFIX}: down"}
+        with patch.object(nodes, "call_llm") as llm:
+            assert qa_bot_node(failed) == {}
+        llm.assert_not_called()
+
+    def test_the_other_agents_still_run_without_passages(self, sample_gap_response):
+        with patch.object(nodes, "call_llm", return_value=sample_gap_response) as llm:
+            gap_analyst_node({"query": "CSRD", "retrieved_chunks": []})
+        llm.assert_called_once()
 
 
 # ─── confidence_check_node ────────────────────────────────────────

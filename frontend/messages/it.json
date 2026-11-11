@@ -98,11 +98,11 @@
       "items": {
         "1": {
           "title": "L'articolo esiste",
-          "body": "L'articolo e ogni paragrafo citato devono esserci nel testo vigente, cioè nell'ultima versione consolidata. Se l'articolo c'era in una versione precedente, il rapporto dice che è stato abrogato o rinumerato."
+          "body": "L'articolo e ogni paragrafo citato devono esserci nel testo vigente, cioè nell'ultima versione consolidata. Se l'articolo c'era in una versione precedente, il report dice che è stato abrogato o rinumerato."
         },
         "2": {
           "title": "La citazione è parola per parola",
-          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera sbagliata in una parola lunga. Se le parole sono in un altro articolo, o solo in una versione precedente, il rapporto lo dice."
+          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera sbagliata in una parola lunga. Se le parole sono in un altro articolo, o solo in una versione precedente, il report lo dice."
         },
         "3": {
           "title": "La norma non è cambiata dopo la data del documento",
@@ -111,7 +111,7 @@
       },
       "result": {
         "title": "Cosa ricevi",
-        "body": "Un rapporto che divide i riferimenti per cosa c'è da fare: da correggere, da controllare, a posto. Per ognuno trovi la riga del documento, l'esito, il testo ufficiale e il link al testo su EUR-Lex o su Normattiva."
+        "body": "Un report che divide i riferimenti per cosa c'è da fare: da correggere, da controllare, a posto. Per ognuno trovi la riga del documento, l'esito, il testo ufficiale e il link al testo su EUR-Lex o su Normattiva."
       },
       "limits": {
         "title": "Cosa non fa",
@@ -198,7 +198,7 @@
         "title": "Per il controllo dei documenti: l'atto che citi",
         "eu": {
           "title": "Diritto dell'Unione",
-          "body": "Qualsiasi regolamento, direttiva o decisione citati con il loro numero, anche fuori dall'elenco qui sopra. NormaAI legge da EUR-Lex (CELLAR) l'ultima versione consolidata disponibile come testo, e le versioni precedenti per dirti che cosa è cambiato. Se CELLAR non dà il testo di una versione, il rapporto lo dice e segna il riferimento come da controllare."
+          "body": "Qualsiasi regolamento, direttiva o decisione citati con il loro numero, anche fuori dall'elenco qui sopra. NormaAI legge da EUR-Lex (CELLAR) l'ultima versione consolidata disponibile come testo, e le versioni precedenti per dirti che cosa è cambiato. Se CELLAR non dà il testo di una versione, il report lo dice e segna il riferimento come da controllare."
         },
         "it": {
           "title": "Diritto italiano",

@@ -23,6 +23,8 @@ interface AlertRecord {
   is_read: boolean
   created_at: string
   deadline: string | null
+  /** Set on the alert the weekly re-check writes for a watched document (mock-documents.ts). */
+  document_check_id?: string | null
   text: Record<Language, AlertText>
 }
 
@@ -194,6 +196,41 @@ const ALERTS: AlertRecord[] = [
           'Since 11 September 2026 manufacturers of products with digital elements notify actively exploited vulnerabilities and severe incidents: early warning within 24 hours, notification within 72 hours. The rest of the regulation applies from 11 December 2027. This concerns the numerical controls of Alfa Macchine Utensili.',
         actions_required: ['Define who receives the reports and who notifies', 'Plan the adaptation of the products by 2027'],
         source: 'Regulation (EU) 2024/2847, Art. 14 and Art. 71',
+      },
+    },
+  },
+  {
+    // What the re-check of the watched documents writes (src/document_check/service.py,
+    // write_review_alert) for the note to suppliers of Zeta Componenti: its three
+    // provisions changed in the consolidated text of 18 March 2026 (mock-documents.ts).
+    id: '7',
+    severity: 'HIGH',
+    framework: 'CSDDD',
+    client_id: 'demo-c6',
+    is_read: false,
+    created_at: '2026-03-23T05:00:00Z',
+    deadline: null,
+    document_check_id: 'demo-doc-csddd',
+    text: {
+      it: {
+        title: 'Documento da rivedere: Nota fornitori dovere di diligenza.docx',
+        description:
+          'Dopo il controllo sono cambiate 3 disposizioni citate nel documento: CSDDD, Art. 2 (testo consolidato al 18/03/2026); CSDDD, Art. 10 (testo consolidato al 18/03/2026); CSDDD, Art. 37 (testo consolidato al 18/03/2026).',
+        actions_required: [
+          'Apri il controllo e confronta il testo citato con quello vigente.',
+          'Aggiorna il documento e caricalo di nuovo per un controllo completo.',
+        ],
+        source: 'Direttiva (UE) 2024/1760 (CSDDD), testo consolidato al 18 marzo 2026',
+      },
+      en: {
+        title: 'Document to review: Nota fornitori dovere di diligenza.docx',
+        description:
+          'After the check 3 provisions cited in the document changed: CSDDD, Art. 2 (consolidated text of 18/03/2026); CSDDD, Art. 10 (consolidated text of 18/03/2026); CSDDD, Art. 37 (consolidated text of 18/03/2026).',
+        actions_required: [
+          'Open the check and compare the cited text with the text in force.',
+          'Update the document and upload it again for a full check.',
+        ],
+        source: 'Directive (EU) 2024/1760 (CSDDD), consolidated text of 18 March 2026',
       },
     },
   },

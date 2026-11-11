@@ -39,7 +39,8 @@ export function severityLabel(severity: string, t: Translate): string {
  */
 export type AlertView = Alert & { document_check_id?: string | null }
 
-const CHECK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// A check id is a UUID; in the demo it is one of the example checks (mock-documents.ts).
+const CHECK_ID = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|demo-doc-[a-z0-9-]+)$/i
 
 /** The page of the document check an alert is about; undefined when the alert is not about a document. */
 export function checkHref(alert: AlertView): string | undefined {

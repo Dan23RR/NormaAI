@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { api } from '../api'
-import { normaliseAlerts, normaliseSummary } from '@/components/monitoraggio/AlertsTab'
+import { checkHref, normaliseAlerts, normaliseSummary } from '@/components/monitoraggio/AlertsTab'
 import { normaliseClients } from '@/components/ambito/clients'
 import { DEMO_CORPUS_AS_OF } from '../mock-data'
 import type { ApiResponse, GapAnalysisResponse, MonitorResponse } from '../types'
@@ -54,15 +54,18 @@ describe('demo mode through the API client', () => {
 
   it('lists the alerts in the language of the interface', async () => {
     const italian = normaliseAlerts(await settled(api.get<unknown>('/api/v1/alerts?limit=50&offset=0')))
-    expect(italian).toHaveLength(6)
+    expect(italian).toHaveLength(7)
     expect(italian[0].title).toContain('marcatura')
+    // The alert of the re-check opens the check of the document to review.
+    const review = italian.find((a) => a.document_check_id)
+    expect(review && checkHref(review)).toBe('/app/controlla/demo-doc-csddd')
 
     document.cookie = 'normaai.locale=en; path=/'
     const english = normaliseAlerts(await settled(api.get<unknown>('/api/v1/alerts?limit=50&offset=0')))
     expect(english[0].title).toContain('marking')
 
     const summary = normaliseSummary(await settled(api.get<unknown>('/api/v1/alerts/summary')))
-    expect(summary).toEqual({ total: 6, unread: 4 })
+    expect(summary).toEqual({ total: 7, unread: 5 })
   })
 
   it('answers a question with sources and the demo corpus date', async () => {

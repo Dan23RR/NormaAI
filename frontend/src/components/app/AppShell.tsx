@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import {
+  FileCheck2,
   MessageSquareText,
   ListChecks,
   CalendarClock,
@@ -31,6 +32,7 @@ export const APP_NAV: Array<{
   icon: typeof MessageSquareText
   adminOnly?: boolean
 }> = [
+  { href: '/app/controlla', key: 'controlla', icon: FileCheck2 },
   { href: '/app/chiedi', key: 'chiedi', icon: MessageSquareText },
   { href: '/app/ambito', key: 'ambito', icon: ListChecks },
   { href: '/app/monitoraggio', key: 'monitoraggio', icon: CalendarClock },

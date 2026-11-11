@@ -254,6 +254,7 @@
   "app": {
     "nav": {
       "label": "Sezioni",
+      "controlla": "Controlla",
       "chiedi": "Chiedi",
       "ambito": "Ambito",
       "monitoraggio": "Monitoraggio",
@@ -368,6 +369,7 @@
       "notice": "Risposta generata da un sistema di IA (NormaAI).",
       "corpus": "Corpus al {date}.",
       "corpusDemo": "Corpus al {date} (dati di esempio).",
+      "near": "diversa dal testo ufficiale, che dice «{official}»",
       "status": {
         "verified": "verificata",
         "unverified": "da verificare",
@@ -416,7 +418,16 @@
       "waiting": "Le fonti arrivano con la risposta.",
       "abstained": "Nessuna fonte: NormaAI non ha risposto a questa domanda.",
       "none": "Nessuna fonte citata in questa risposta: trattala come un orientamento da verificare, non come un riferimento.",
-      "legend": "«Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora confermato."
+      "legend": "«Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora confermato.",
+      "near": {
+        "title": "Diversa dal testo ufficiale",
+        "quoted": "Nella risposta",
+        "both": "Nella risposta <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
+        "missing": "Nella risposta manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
+        "extra": "Nella risposta c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",
+        "official": "Testo ufficiale",
+        "officialIn": "Testo ufficiale, {article}"
+      }
     },
     "profile": {
       "title": "Profilo aziendale",
@@ -443,6 +454,278 @@
         "revenueNegative": "Il fatturato non può essere negativo",
         "frameworksRequired": "Seleziona almeno un framework"
       }
+    }
+  },
+  "controlla": {
+    "title": "Controlla",
+    "description": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente.",
+    "detailTitle": "Documento controllato",
+    "loading": "Caricamento",
+    "demo": {
+      "form": "Demo con dati di esempio: il documento che scegli non viene letto né inviato. Il controllo apre il risultato di un documento di esempio.",
+      "afterUpload": "Demo con dati di esempio: il documento che hai scelto non è stato letto né inviato. Questo è il risultato di un documento di esempio.",
+      "detail": "Demo con dati di esempio: il documento, il cliente e le date sono inventati. I passaggi di legge sono quelli ufficiali.",
+      "recheck": "Demo con dati di esempio: nessun testo ufficiale è stato riletto.",
+      "digest": "Demo con dati di esempio: non parte nessuna email."
+    },
+    "form": {
+      "title": "Nuovo controllo",
+      "lead": "NormaAI trova i riferimenti di legge nel documento, controlla che esistano nel testo ufficiale in vigore e confronta le citazioni parola per parola.",
+      "modeLabel": "Come dai il documento",
+      "modeFile": "Carica un file",
+      "modeText": "Incolla il testo",
+      "fileLabel": "Documento da controllare",
+      "drop": "Trascina qui il documento, oppure",
+      "choose": "Scegli un file",
+      "formats": "File .docx, .pdf con testo selezionabile, .html, .txt o .md, fino a 10 MB.",
+      "selected": "File scelto: {name} ({size})",
+      "remove": "Togli il file",
+      "textLabel": "Testo del documento",
+      "textPlaceholder": "Incolla il testo con i riferimenti e le citazioni, così come sono scritti nel documento.",
+      "nameLabel": "Nome del documento",
+      "namePlaceholder": "Per esempio: Informativa privacy 2026",
+      "nameHelp": "Facoltativo: serve a ritrovarlo nell'elenco.",
+      "pastedName": "Testo incollato",
+      "client": "Cliente",
+      "clientNone": "Nessun cliente",
+      "clientHelp": "Facoltativo: il controllo compare anche nella pagina del cliente.",
+      "clientsUnavailable": "L'elenco dei clienti non si è caricato: puoi fare il controllo senza collegarlo a un cliente.",
+      "date": "Data del documento",
+      "dateHelp": "Facoltativa: con la data, NormaAI ti dice anche quali norme citate sono cambiate dopo che il documento è stato scritto.",
+      "watch": "Sorveglia questo documento",
+      "watchHelp": "Le norme che cita vengono ricontrollate ogni settimana sul testo vigente. Se una cambia, il documento passa tra quelli da rivedere.",
+      "submit": "Controlla il documento",
+      "submitting": "Controllo in corso",
+      "progress": "Lettura del documento, ricerca dei riferimenti e confronto con i testi ufficiali: può richiedere fino a un minuto.",
+      "failedTitle": "Il controllo non è riuscito",
+      "errors": {
+        "chooseFile": "Scegli un file o trascinalo nel riquadro, oppure passa a «Incolla il testo».",
+        "unsupported": "Formato non supportato ({ext}). Carica un file .docx, .pdf, .html, .txt o .md, oppure incolla il testo.",
+        "noExtension": "senza estensione",
+        "emptyFile": "Il file è vuoto.",
+        "tooLarge": "Il file pesa {size}: il limite è 10 MB. Riducilo oppure incolla il testo.",
+        "textRequired": "Incolla il testo da controllare.",
+        "dateFuture": "La data del documento non può essere nel futuro."
+      }
+    },
+    "storage": {
+      "title": "Il documento non viene conservato",
+      "body": "Il file o il testo che invii viene letto in memoria per il tempo del controllo, poi scartato. Sul server restano solo:",
+      "items": {
+        "1": "il nome del file e la sua impronta SHA-256;",
+        "2": "la data del documento e quella del controllo;",
+        "3": "i riferimenti trovati: per ciascuno al massimo 160 caratteri di contesto, le citazioni e l'esito;",
+        "4": "le norme da cui il documento dipende, per poterle ricontrollare."
+      },
+      "delete": "Puoi eliminare un controllo in ogni momento dalla sua pagina.",
+      "short": "Il documento non viene conservato: restano il nome, l'impronta, le date, i riferimenti trovati e le norme citate."
+    },
+    "digest": {
+      "label": "Riepilogo via email dei documenti da rivedere",
+      "help": "Un messaggio dopo il ricontrollo settimanale, solo quando una norma citata è cambiata.",
+      "savedTitle": "Preferenza salvata",
+      "on": "Riceverai il riepilogo via email.",
+      "off": "Non riceverai il riepilogo via email.",
+      "failedTitle": "Preferenza non salvata"
+    },
+    "list": {
+      "heading": "Documenti controllati",
+      "filterLabel": "Filtra i documenti controllati",
+      "all": "Tutti",
+      "review": "Da rivedere",
+      "loading": "Caricamento dei documenti controllati",
+      "loadFailedTitle": "I documenti controllati non si sono caricati",
+      "emptyTitle": "Nessun documento controllato",
+      "emptyDescription": "Carica il primo documento qui sopra. L'esito resta in questo elenco, insieme alle norme che il documento cita.",
+      "emptyReviewTitle": "Nessun documento da rivedere",
+      "emptyReviewDescription": "Finora nessun ricontrollo ha segnalato cambiamenti nelle norme citate dai tuoi documenti.",
+      "showAll": "Mostra tutti i documenti",
+      "more": "Mostra altri documenti",
+      "shown": "{shown} di {total} documenti",
+      "colDocument": "Documento",
+      "colStatus": "Stato",
+      "colClient": "Cliente",
+      "colChecked": "Controllato il",
+      "colWatch": "Sorveglianza",
+      "watchOn": "Attiva",
+      "watchOff": "Non attiva",
+      "noClient": "Nessuno",
+      "clientGone": "Cliente non in elenco",
+      "needsReview": "Da rivedere",
+      "needsReviewHint": "una norma citata è cambiata",
+      "noReferences": "Nessun riferimento trovato",
+      "counts": {
+        "correggere": "{count} da correggere",
+        "controllare": "{count} da controllare",
+        "a_posto": "{count} a posto",
+        "non_coperto": "{count, plural, =1 {# non coperto} other {# non coperti}}"
+      }
+    },
+    "detail": {
+      "back": "Tutti i documenti",
+      "loading": "Caricamento del controllo",
+      "loadFailedTitle": "Il controllo non si è caricato",
+      "missingTitle": "Controllo non trovato",
+      "missingDescription": "Questo controllo non esiste o è stato eliminato. Torna all'elenco per aprirne un altro.",
+      "goToList": "Vai ai documenti controllati",
+      "metaWithDate": "Controllato il {checked}. Data del documento: {date}.",
+      "metaNoDate": "Controllato il {checked}. Data del documento non indicata.",
+      "recheck": "Ricontrolla le norme citate",
+      "rechecking": "Ricontrollo in corso",
+      "recheckHelp": "Confronta le norme registrate con il testo vigente oggi. Il file non serve.",
+      "report": "Apri il report",
+      "delete": "Elimina",
+      "recheckDoneTitle": "Ricontrollo completato",
+      "recheckNone": "Questo controllo non ha norme registrate da ricontrollare.",
+      "recheckUnchanged": "{count, plural, =1 {La norma citata non è cambiata.} other {Nessuna delle # norme citate è cambiata.}}",
+      "recheckChanged": "{count, plural, =1 {È cambiata una norma citata} other {Sono cambiate # norme citate}}: il documento è da rivedere.",
+      "recheckUnavailable": "{count, plural, =1 {Una norma non è stata ricontrollata} other {# norme non sono state ricontrollate}}: il testo ufficiale non era raggiungibile.",
+      "recheckFailedTitle": "Ricontrollo non riuscito",
+      "summaryLabel": "Esito per gruppo",
+      "noFindingsTitle": "Nessun riferimento di legge trovato",
+      "noFindingsDescription": "NormaAI riconosce i riferimenti scritti nei modi più comuni, per esempio «art. 13 del GDPR». Se il documento ne contiene, controlla che il testo sia selezionabile oppure incollalo.",
+      "limits": "I testi consolidati di EUR-Lex sono documentazione: fa fede solo la Gazzetta ufficiale dell'Unione europea. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. Non è un parere legale."
+    },
+    "review": {
+      "title": "Da rivedere",
+      "body": "Dopo il controllo del {date} {count, plural, =1 {è cambiata una norma citata} other {sono cambiate # norme citate}}. Gli esiti su {count, plural, =1 {quella norma} other {quelle norme}} valgono per il testo di allora.",
+      "bodyUnknown": "Dopo il controllo del {date} una norma citata è cambiata. Ricontrolla le norme citate per vedere quale.",
+      "whatToDo": "Apri il testo vigente, aggiorna il documento e caricalo di nuovo: il nuovo controllo confronta le citazioni con il testo di oggi.",
+      "newCheck": "Controlla la versione aggiornata"
+    },
+    "groups": {
+      "heading": "{label} ({count})",
+      "correggere": {
+        "label": "Da correggere",
+        "description": "Citazioni e riferimenti che non corrispondono al testo vigente."
+      },
+      "controllare": {
+        "label": "Da controllare",
+        "description": "Riferimenti che NormaAI non ha potuto confermare da solo: guardali tu."
+      },
+      "a_posto": {
+        "label": "A posto",
+        "description": "Riferimenti che esistono nel testo vigente e citazioni ritrovate parola per parola."
+      },
+      "non_coperto": {
+        "label": "Non coperto",
+        "description": "Norme che NormaAI non ha tra i suoi testi ufficiali: vanno controllate sulla fonte."
+      }
+    },
+    "status": {
+      "superata": "Citazione superata",
+      "cambiato": "Cambiato dopo la data del documento",
+      "inesistente": "Non esiste nel testo vigente",
+      "alterata": "Citazione diversa dal testo ufficiale",
+      "non_trovata": "Citazione non trovata",
+      "altro_articolo": "Citazione in un altro articolo",
+      "non_disponibile": "Testo ufficiale non raggiungibile",
+      "versione_non_letta": "Versione più recente non leggibile",
+      "atto_mancante": "Atto non indicato",
+      "valido": "Riferimento valido",
+      "verificata": "Citazione verificata",
+      "non_coperto": "Non coperto da NormaAI"
+    },
+    "finding": {
+      "noAct": "Atto non indicato",
+      "comparedWith": "Confrontato con il {version}",
+      "line": "riga {line}",
+      "inDocument": "Nel documento, riga {line}",
+      "inDocumentNoLine": "Nel documento",
+      "quote": "Citazione nel documento",
+      "quoted": "«{text}»",
+      "outcome": "Esito",
+      "differences": "Parole diverse",
+      "differenceBoth": "Nel documento <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
+      "differenceMissing": "Nel documento manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
+      "differenceExtra": "Nel documento c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",
+      "official": "Il testo ufficiale dice",
+      "change": "Che cosa è cambiato",
+      "changeFromTo": "Dal {before} al {after}.",
+      "former": "Com'era nel {version}",
+      "openOfficial": "Testo vigente su {origin}",
+      "openSource": "Apri su {origin}",
+      "openGeneric": "Apri il testo ufficiale",
+      "stale": "Dopo questo controllo la norma è cambiata. L'esito qui sotto vale per il {version}.",
+      "staleRemoved": "Dopo questo controllo la norma non è più nel testo vigente. L'esito qui sotto vale per il {version}."
+    },
+    "version": {
+      "original": "testo originale",
+      "consolidated": "testo consolidato al {date}",
+      "earlier": "testo di allora"
+    },
+    "diff": {
+      "same": "Il testo è uguale nelle due versioni.",
+      "removed": "tolto:",
+      "added": "aggiunto:",
+      "omitted": "{count, plural, =1 {una parola uguale omessa} other {# parole uguali omesse}}",
+      "legend": "<del>Barrato</del>: c'era prima, oggi non c'è. <ins>Sottolineato</ins>: c'è oggi, prima non c'era. Le parentesi quadre con tre punti segnano le parole uguali omesse."
+    },
+    "facts": {
+      "title": "Documento",
+      "checked": "Controllato il",
+      "documentDate": "Data del documento",
+      "noDate": "Non indicata",
+      "client": "Cliente",
+      "noClient": "Nessuno",
+      "clientGone": "Non in elenco",
+      "language": "Lingua",
+      "languages": {
+        "IT": "Italiano",
+        "EN": "Inglese"
+      },
+      "watch": "Sorveglianza",
+      "watchOn": "Attiva",
+      "watchOff": "Non attiva (scelta al momento del controllo)",
+      "sha": "Impronta SHA-256",
+      "notStored": "Il documento non è conservato: restano questi dati, i riferimenti trovati e le norme da cui dipende."
+    },
+    "dependencies": {
+      "title": "Norme da cui dipende ({count})",
+      "watched": "Vengono ricontrollate ogni settimana sul testo vigente.",
+      "notWatched": "Non vengono ricontrollate in automatico: puoi farlo tu con «Ricontrolla le norme citate».",
+      "none": "Nessuna norma registrata: il controllo non ha trovato riferimenti a testi che NormaAI può seguire.",
+      "checkedOn": "Controllata sul {version}",
+      "detectedOn": "rilevato il {date}",
+      "state": {
+        "current": "Invariata",
+        "changed": "Cambiata",
+        "removed": "Non più nel testo vigente",
+        "unavailable": "Non ricontrollata: testo ufficiale non raggiungibile"
+      }
+    },
+    "remove": {
+      "title": "Elimina il controllo",
+      "question": "Vuoi eliminare il controllo di <strong>{name}</strong>?",
+      "warning": "Vengono cancellati i riferimenti trovati, le citazioni e le norme registrate, e il documento non viene più sorvegliato. Il file non è mai stato conservato. L'operazione non si può annullare.",
+      "cancel": "Annulla",
+      "confirm": "Elimina il controllo",
+      "deletedTitle": "Controllo eliminato"
+    },
+    "report": {
+      "title": "Report del controllo",
+      "description": "La pagina da stampare o da mandare al cliente. È scritta in italiano.",
+      "loading": "Caricamento del report",
+      "frameTitle": "Report del controllo di {name}",
+      "download": "Scarica il report (.html)",
+      "failedTitle": "Il report non si è caricato",
+      "fileSuffix": "controllo"
+    },
+    "errors": {
+      "tooLarge": "Il documento supera il limite di 10 MB. Riducilo oppure incolla solo il testo.",
+      "unsupported": "Il server non legge questo formato. Carica un file .docx, .pdf con testo selezionabile, .html, .txt o .md, oppure incolla il testo.",
+      "unreadable": "Il server non è riuscito a leggere il documento. Succede con i PDF fatti di sole immagini e con i file danneggiati: incolla il testo oppure carica una versione con testo selezionabile.",
+      "rateLimited": "Hai fatto troppe richieste in poco tempo. Aspetta qualche minuto e riprova.",
+      "timeout": "Il controllo ha superato il tempo massimo prima di finire. Riprova tra qualche minuto; se il documento è molto lungo, controllane una parte alla volta.",
+      "notFound": "Questo controllo non esiste più: torna all'elenco dei documenti controllati.",
+      "rejected": "Il server non ha accettato la richiesta. Controlla i dati inseriti e riprova.",
+      "server": "Il server ha avuto un problema. Riprova tra qualche minuto; se continua, scrivi a info@normaai.org.",
+      "network": "Il server non risponde. Riprova tra un minuto; se il problema continua, scrivi a info@normaai.org.",
+      "session": "La sessione è scaduta. Accedi di nuovo e ripeti l'operazione.",
+      "invalid": "Il server ha risposto in un modo che questa pagina non riconosce. Riprova; se succede ancora, scrivi a info@normaai.org.",
+      "generic": "Qualcosa non ha funzionato. Riprova; se succede ancora, scrivi a info@normaai.org.",
+      "serverDetail": "Dal server: {detail}",
+      "code": "Codice {status}"
     }
   },
   "ambito": {
@@ -1080,34 +1363,14 @@
       "recommendations": "Raccomandazioni principali"
     },
     "documents": {
-      "demoTitle": "Nella demo il caricamento non è disponibile",
-      "demoBody": "L’elaborazione dei documenti (estrazione del testo, suddivisione per articoli, indicizzazione) gira sul server e non viene simulata con dati di esempio. Con un account reale puoi caricare PDF, HTML e immagini fino a 50 MB.",
-      "uploadTitle": "Carica un documento",
-      "uploadLead": "Politiche, procedure, report: il testo viene estratto, suddiviso per articoli e indicizzato per la tua organizzazione (non per il singolo cliente). PDF, HTML, PNG, JPEG, TIFF o BMP fino a 50 MB.",
-      "file": "File",
-      "framework": "Framework",
-      "frameworkHelp": "Facoltativo: aiuta l’indicizzazione.",
-      "noFramework": "Nessuno in particolare",
-      "unsupported": "Formato non supportato ({ext}). Formati accettati: PDF, HTML, PNG, JPEG, TIFF, BMP.",
-      "noExtension": "senza estensione",
-      "emptyFile": "Il file è vuoto.",
-      "tooLarge": "Il file pesa {size}: il limite è 50 MB.",
-      "chooseFile": "Scegli un file da caricare.",
-      "processedTitle": "Documento elaborato",
-      "failed": "Caricamento non riuscito. Riprova.",
-      "processing": "Elaborazione in corso",
-      "upload": "Carica il documento",
-      "progress": "Estrazione e indicizzazione di {name}: può richiedere qualche minuto per i PDF lunghi.",
-      "emptyTitle": "Nessun documento caricato in questa sessione",
-      "emptyDescription": "Il server non espone ancora l’elenco dei documenti indicizzati: qui compaiono i caricamenti fatti ora.",
-      "sessionTitle": "Caricati in questa sessione",
-      "colFile": "File",
-      "colFramework": "Framework",
-      "colChunks": "Blocchi indicizzati",
-      "colSize": "Dimensione",
-      "colUploaded": "Caricato",
-      "none": "Nessuno",
-      "deleteNote": "La cancellazione di un documento indicizzato non è ancora disponibile dal server: scrivi a info@normaai.org per farlo rimuovere."
+      "title": "Documenti controllati",
+      "lead": "I documenti di {name} di cui hai controllato i riferimenti di legge. I file non sono conservati: restano l'esito e le norme citate.",
+      "check": "Controlla un documento per questo cliente",
+      "loading": "Caricamento dei documenti controllati",
+      "loadFailedTitle": "I documenti controllati non si sono caricati",
+      "emptyTitle": "Nessun documento controllato per questo cliente",
+      "emptyDescription": "Controlla un documento e collegalo a {name}: l'esito compare qui e, se lo sorvegli, ti dice quando una norma citata cambia.",
+      "partial": "Sono mostrati i {shown} controlli più recenti su {total}."
     }
   },
   "report": {

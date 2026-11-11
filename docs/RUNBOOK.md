@@ -40,10 +40,20 @@ con il deploy: `docker compose up -d prometheus grafana jaeger`, poi tunnel SSH
 
 ## 1. Diagnosi rapida (primi 5 minuti)
 
+Chi avvisa: il controllo esterno `.github/workflows/uptime.yml`, ogni 30 minuti dai runner di
+GitHub (sito, certificati e, con la variabile `API_BASE_URL` del repository, `/readyz`, CORS
+del login e DNS dell'API). Un controllo fallito fa fallire il run e apre o aggiorna una issue
+«Uptime: <host>», che il primo run riuscito chiude. Grafana e Prometheus servono a capire il
+guasto, non ad avvisare: nessun Alertmanager è collegato, quindi le regole di
+`infra/prometheus.rules.yml` si vedono solo aprendo Prometheus, e non girano affatto se lo stack
+di osservabilità non è avviato. GitHub sospende lo schedule dopo 60 giorni senza attività nel
+repository (con una email prima): riattivalo dalla scheda Actions.
+
 1. `curl /health` → se non risponde: processo/container morto → §2.
 2. `curl /readyz` → 503: guarda `checks` nel body (qdrant/llm down) → §3/§4.
 3. Grafana → dashboard "NormaAI - Health": 5xx rate, circuit breakers, p95.
-4. Prometheus → http://localhost:9090/alerts per alert attivi.
+4. Prometheus → http://localhost:9090/alerts per le regole in stato di allarme (nessuno le
+   riceve per email: vedi sopra).
 5. `docker compose logs --tail 100 app` → cerca `circuit_open`, `*_failed`, tracebacks.
 
 ## 2. App down (health check rosso)
@@ -55,7 +65,9 @@ docker compose up -d app                # restart pulito
 ```
 
 - Crash loop all'avvio → quasi sempre config: `validate_settings_or_exit` stampa
-  il motivo (APP_SECRET_KEY corta, chiavi JWT mancanti in production, LLM key assente).
+  il motivo (APP_SECRET_KEY corta, chiavi JWT mancanti in production, `LLM_PROVIDER` sconosciuto,
+  con `LLM_PROVIDER=mistral` chiave Mistral assente o URL non https). Per Gemini, Anthropic e
+  OpenRouter la chiave assente non ferma l'avvio: `/readyz` risponde `llm: down`.
   `FATAL: the app connects to PostgreSQL as a SUPERUSER` = app avviata senza l'overlay RLS
   (per esempio `docker compose -f docker-compose.yml up -d app`): rilancia `docker compose up -d app`
   con il `COMPOSE_FILE` del `.env`.
@@ -126,18 +138,23 @@ docker compose restart qdrant
   In alternativa si ricrea la collection con il seed (`--recreate`). Un server nuovo parte vuoto e non
   ha questo problema.
 
-## 4. LLM provider down (Gemini/Anthropic)
+## 4. LLM provider down (Gemini/Anthropic/Mistral)
 
 Sintomi: alert `LLMCircuitOpen` o `LLMErrorRateHigh`, 503 sulle risposte intelligence.
 
-1. Status page provider (status.cloud.google.com / status.anthropic.com).
+1. Status page del provider (Google, Anthropic o Mistral, secondo `LLM_PROVIDER`).
 2. Quota/billing: errore `429`/`RESOURCE_EXHAUSTED` nei log = quota esaurita, non outage.
 3. Failover manuale di provider (richiede chiave dell'altro provider in `.env`):
    ```powershell
-   # in .env:  LLM_PROVIDER=anthropic   (o gemini)
+   # in .env:  LLM_PROVIDER=anthropic   (o gemini, o mistral)
    docker compose restart app
    ```
 4. Il circuito si richiude da solo (recovery 60s) quando il provider torna.
+5. Cambiare provider cambia dove vengono elaborate le domande degli utenti: Mistral, con
+   `MISTRAL_BASE_URL` predefinito, sull'endpoint regionale UE; Google e Anthropic sono
+   società statunitensi. Mistral non è ancora misurato sul golden set (docs/MODELS.md §5.1).
+   In produzione con `LLM_PROVIDER=mistral` l'app non parte senza `MISTRAL_API_KEY` o con un
+   `MISTRAL_BASE_URL` non https.
 
 ## 5. Postgres down / corrotto
 
@@ -172,13 +189,16 @@ docker compose restart redis   # recovery cache: immediato; nessun dato critico 
 - Le email transazionali (consegna del Codex ai lead) passano da Resend.
 - Bounce/spam rate su → controlla la dashboard Resend e la configurazione
   DKIM/SPF del dominio mittente.
-- Ogni email DEVE avere footer privacy + List-Unsubscribe (iniettati da
-  `email_client` - se mancano nei log, indaga prima di inviare).
+- Le email di oggi (consegna del Codex, verifica dell'indirizzo) sono transazionali: non
+  hanno un'intestazione List-Unsubscribe né un footer privacy, e `src/email_client.py` non ne
+  aggiunge. Un'email periodica (per esempio un riepilogo degli avvisi) deve dare un modo di
+  smettere di riceverla prima di partire.
 
 ## 8. Incidente di sicurezza
 
 1. **Contieni**: revoca il segreto compromesso (vedi [SECURITY.md](../SECURITY.md) § Key Rotation).
-   Per JWT: ruota la coppia RSA → tutti gli access token muoiono in ≤15 min;
+   Per JWT: ruota la coppia RSA (`data/jwt_private.pem`, `data/jwt_public.pem`) e riavvia
+   l'app → i token firmati con la vecchia chiave non sono più accettati;
    per revoca immediata di un utente: blacklist via Redis.
 2. **Valuta GDPR**: se dati personali coinvolti → valuta notifica Garante entro
    **72h** (Art. 33) e clienti entro **48h** (impegno DPA §7).
@@ -216,10 +236,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app ale
 
 | Cadenza | Azione |
 |---|---|
-| Giornaliera (auto) | Backup Postgres: sul server cron alle 02:00 (`scripts/backup_postgres.sh`, installato dal bootstrap, dump in `/opt/normaai/backups`, log in `/var/log/normaai-backup.log`); in locale `scripts/backup_postgres.ps1` con il task scheduler. I dump restano sul server: copiarli fuori |
+| Giornaliera (auto) | Backup alle 02:00 (`bash scripts/backup.sh`, cron installato dal bootstrap, log in `/var/log/normaai-backup.log`): dump Postgres, snapshot di ogni collection Qdrant e `.env`, cifrati con restic e inviati a `RESTIC_REPOSITORY`; senza restic solo un dump in chiaro sul disco del server, con un avviso a ogni run ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md)). In locale `scripts/backup_postgres.ps1` |
+| Giornaliera (auto) | 03:30, `python -m src.pipeline --action check-freshness` dentro il container dell'app (cron del bootstrap, log in `/var/log/normaai-jobs.log`): confronta la versione consolidata indicizzata di ogni atto con l'ultima di CELLAR |
+| Ogni 30 minuti (auto) | Controllo esterno `.github/workflows/uptime.yml` (§1) |
+| Settimanale (auto) | Lunedì alle 04:00, `python -m src.pipeline --action recheck-documents` dentro il container dell'app (cron del bootstrap, log in `/var/log/normaai-jobs.log`): ricontrolla le disposizioni dei documenti sorvegliati, scrive gli avvisi e invia il riepilogo |
 | Settimanale | Controlla Dependabot PR + alert CodeQL/Trivy in GitHub Security tab |
 | Settimanale (a mano) | Aggiornamento EUR-Lex: `python -m src.pipeline --action update --days-back 7` (sul server dentro `docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app`; lo scheduler interno è spento, `ACQUISITION_SCHEDULER_ENABLED=false`), poi un nuovo snapshot della collection (§3) |
-| Mensile | Test di RESTORE del backup (un backup non testato non è un backup) |
+| Mensile | Test di ripristino: `bash /opt/normaai/scripts/restore_test.sh` (carica l'ultima copia in un Postgres usa e getta; deve finire con `PASSED`), esito nel post-mortem log qui sotto |
 | Trimestrale | Rotazione chiavi (SECURITY.md § Key Rotation) + review accessi |
 
 ## Post-mortem log
@@ -227,4 +250,5 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app ale
 | Data | Incidente | Causa radice | Fix permanente |
 |---|---|---|---|
 | 2026-05-15 | Foundation deploy bloccato (domini ECONNREFUSED) | Custom domain mai puntato a Vercel | ADR-002; staging URL come fallback operativo |
+| 2026-09 | Server di produzione cancellato; per circa sette settimane nessuno se ne accorge, e i backup spariscono con il server | Nessun controllo dall'esterno del server; backup solo locali, in chiaro, senza l'indice Qdrant | Controllo esterno `uptime.yml` con issue automatica; backup cifrati fuori dal server con restic e test di ripristino mensile (BACKUP_STRATEGY.md) |
 | _(aggiungere qui)_ | | | |

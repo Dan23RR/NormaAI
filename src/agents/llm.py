@@ -123,7 +123,7 @@ def message_text(message) -> str:
 
 
 def get_llm(temperature: float | None = None):
-    """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter).
+    """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter/Mistral).
 
     temperature: override the configured default. CRITICAL for the SNC trust
     layer - without a non-zero temperature the K stochastic samples are
@@ -162,6 +162,26 @@ def get_llm(temperature: float | None = None):
                 "HTTP-Referer": settings.normaai_public_url,
                 "X-Title": "NormaAI",
             },
+        )
+    elif settings.llm_provider == "mistral":
+        # Mistral's API speaks the OpenAI chat-completions dialect, so the client
+        # is the one OpenRouter uses: no dependency of its own. One difference
+        # matters: the output limit is `max_tokens` in Mistral's API reference,
+        # and ChatOpenAI sends its `max_tokens` argument as
+        # `max_completion_tokens`, which that reference does not list. The limit
+        # therefore travels in `extra_body`, which is merged into the request as
+        # it is. The request then carries only model, messages, temperature,
+        # max_tokens and stream.
+        from langchain_openai import ChatOpenAI
+        from pydantic import SecretStr
+
+        return ChatOpenAI(
+            model=settings.mistral_model_analysis,
+            temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            api_key=SecretStr(settings.mistral_api_key),
+            base_url=settings.mistral_base_url,
+            extra_body={"max_tokens": settings.llm_max_tokens},
         )
     else:
         from langchain_anthropic import ChatAnthropic
@@ -221,9 +241,11 @@ def _make_error_response(error_msg: str) -> dict:
 
 def _missing_key_response(settings) -> dict:
     """Error dict for a provider whose API key is not configured."""
-    key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
-        settings.llm_provider, "ANTHROPIC_API_KEY"
-    )
+    key_name = {
+        "gemini": "GOOGLE_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "mistral": "MISTRAL_API_KEY",
+    }.get(settings.llm_provider, "ANTHROPIC_API_KEY")
     return {
         "error": f"{key_name} not configured. Add it to your .env file.",
         "error_code": "llm_not_configured",

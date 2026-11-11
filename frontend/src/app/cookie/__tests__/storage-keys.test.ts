@@ -61,6 +61,25 @@ describe('cookie policy storage keys', () => {
     expect(stale, 'keys in the cookie policy that no source file uses').toEqual([])
   })
 
+  it('finds the key of every storage call, so that none escapes the grep above', () => {
+    // A call whose key is neither a "normaai…" literal nor a constant holding one
+    // would set a key the two tests above cannot see.
+    const files = sourceFiles(SRC).map((file) => readFileSync(file, 'utf8'))
+    const all = files.join('\n')
+    const holdsKey = (name: string) =>
+      new RegExp(`\\b(?:const|let)\\s+${name}\\s*=\\s*(?:\\([^)]*\\)\\s*=>\\s*)?['"\`]normaai[._-]`).test(all)
+    const unknown: string[] = []
+    for (const text of files) {
+      for (const call of text.matchAll(/(?:localStorage|sessionStorage)\.(?:getItem|setItem|removeItem)\(\s*([^,)]+)/g)) {
+        const arg = call[1].trim()
+        if (/^['"`]normaai[._-]/.test(arg)) continue
+        const name = arg.match(/^([A-Za-z_$][\w$]*)/)?.[1]
+        if (!name || !holdsKey(name)) unknown.push(arg)
+      }
+    }
+    expect(unknown, 'storage calls whose key the cookie policy cannot list').toEqual([])
+  })
+
   it('lists each key once, with its words in both languages', () => {
     expect(new Set(documented.map((row) => row.key)).size).toBe(documented.length)
     expect(new Set(documented.map((row) => row.id)).size).toBe(documented.length)

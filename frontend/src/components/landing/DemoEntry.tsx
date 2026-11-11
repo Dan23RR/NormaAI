@@ -36,7 +36,9 @@ export function DemoEntry() {
   }, [loginDemo, router, destination])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas px-6 text-center">
+    // Left-aligned like every page (DESIGN.md, section 4), in a column of reading width.
+    <main className="flex min-h-screen flex-col justify-center gap-4 bg-canvas px-6">
+      <div className="mx-auto flex w-full max-w-prose flex-col gap-4">
       <p role="status" className="flex items-center gap-3 text-read text-ink">
         <Spinner className="h-5 w-5 text-union" />
         {t('opening')}
@@ -50,6 +52,7 @@ export function DemoEntry() {
           ),
         })}
       </p>
+      </div>
     </main>
   )
 }

@@ -242,6 +242,14 @@ class TestAccess:
             "/unsubscribe",
         ):
             assert f"{BASE}{path}" in paths
+        assert set(paths[f"{BASE}/unsubscribe"]) == {"get", "post"}
+        operation_ids = [
+            operation["operationId"]
+            for path, operations in paths.items()
+            if path.startswith(BASE)
+            for operation in operations.values()
+        ]
+        assert len(operation_ids) == len(set(operation_ids))
         body = paths[f"{BASE}/check"]["post"]["requestBody"]["content"]
         assert set(body) == {"multipart/form-data", "application/json"}
 

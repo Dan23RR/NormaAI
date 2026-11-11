@@ -588,7 +588,12 @@ def _unsubscribe_page(title: str, text: str, status_code: int) -> HTMLResponse:
     )
 
 
-@router.api_route("/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)
+# Two routes on one handler, each with its own OpenAPI operation id (a single
+# GET+POST route would give both methods the same one).
+@router.get("/unsubscribe", response_class=HTMLResponse, operation_id="documents_unsubscribe")
+@router.post(
+    "/unsubscribe", response_class=HTMLResponse, operation_id="documents_unsubscribe_one_click"
+)
 @limiter.limit("30/hour", key_func=client_ip_key)
 async def unsubscribe(request: Request, token: str = Query(default="", max_length=400)):
     """

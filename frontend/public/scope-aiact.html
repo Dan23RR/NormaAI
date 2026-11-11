@@ -3,183 +3,210 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Act: il 2 agosto ti riguarda? · Check gratuito Art. 50 · NormaAI</title>
-<meta name="description" content="Strumento gratuito: verifica in 20 secondi quali obblighi di trasparenza dell’AI Act (Art. 50, Reg. UE 2024/1689) scattano per la tua impresa dal 2 agosto 2026. Chatbot, contenuti generati, deepfake, riconoscimento emozioni. Con l’articolo citato.">
+<title>AI Act, articolo 50: quali obblighi di trasparenza ti riguardano | NormaAI</title>
+<meta name="description" content="Verifica gratuita: quali obblighi di trasparenza dell'articolo 50 del regolamento (UE) 2024/1689 (AI Act) riguardano la tua impresa. In applicazione dal 2 agosto 2026, prossima scadenza il 2 dicembre 2026. Con il passaggio di legge citato.">
 <meta name="robots" content="index,follow">
-<meta property="og:title" content="AI Act: il 2 agosto ti riguarda? Check gratuito Art. 50">
-<meta property="og:description" content="Il 2 agosto 2026 non scatta l’high-risk (Annex III rinviato al 2027): scattano gli obblighi di trasparenza dell’Art. 50, con sanzioni fino a €15M o al 3% del fatturato mondiale, se superiore (Art. 99(4)). Verifica la tua posizione.">
+<link rel="canonical" href="https://normaai.org/scope-aiact.html">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="NormaAI">
+<meta property="og:locale" content="it_IT">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://normaai.org/scope-aiact.html">
+<meta property="og:title" content="AI Act, articolo 50: quali obblighi di trasparenza ti riguardano">
+<meta property="og:description" content="L'articolo 50 dell'AI Act si applica dal 2 agosto 2026. Entro il 2 dicembre 2026 vanno adeguati i sistemi generativi già sul mercato. Quattro domande e, per ogni obbligo, il passaggio di legge.">
 <meta property="og:image" content="https://normaai.org/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://normaai.org/scope-aiact.html">
+<script>
+/* Same rule as the application: light by default, dark only when chosen there. */
+try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}
+</script>
 <style>
-  /* ── NormaAI "warm paper" tokens (mirror tailwind.config.js) ──────────
-     Self-contained: nessuna risorsa esterna (CSP font-src 'self'). */
+  /* NormaAI v2 tokens (frontend/DESIGN.md, mirrored from src/app/globals.css).
+     Self-contained page: no external resource, so the two families are font
+     stacks that fall back to the system serif and sans. */
   :root{
-    --paper:#FAF9F5; --paper-2:#F0EEE6; --paper-3:#E8E4D9;
-    --night:#141413; --night-2:#5E5D59; --night-3:#6B6A64;
-    --clay:#D97757; --clay-deep:#C2613F; --clay-soft:rgba(217,119,87,0.10);
-    --line:#E3DFD3; --line-2:#D2CCBC;
-    --in-bg:#FBEEE8; --in-bd:#C2613F; --in-ink:#9E4A2C;
-    --filo-bg:#FAF4E6; --filo-bd:#CBA23A; --filo-ink:#8A6A14;
-    --out-bg:#EEF3EC; --out-bd:#7C9A78; --out-ink:#4F7050;
-    --font-sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    --font-serif:'Source Serif 4','Source Serif Pro',Georgia,'Times New Roman',serif;
-    --font-mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    color-scheme:light;
+    --canvas:#F1F2F4; --surface:#FFFFFF; --surface-2:#F7F8F9; --surface-3:#ECEEF1;
+    --ink:#0C1B33; --ink-2:#3D4B61; --ink-3:#5C6879;
+    --rule:#D8DCE3; --rule-2:#C3C9D3;
+    --union:#0A3A9C; --union-deep:#072B75; --union-ink:#FFFFFF; --union-tint:rgba(10,58,156,0.10);
+    --mark:#FFEA7A; --mark-deep:#F5C400;
+    --ok:#137A4B; --ok-tint:rgba(19,122,75,0.10);
+    --warn:#9A5B00; --warn-tint:rgba(154,91,0,0.10);
+    --bad:#A3262E;
+    --font-serif:Literata,Georgia,"Times New Roman",serif;
+    --font-sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  html.dark{
+    color-scheme:dark;
+    --canvas:#0B1220; --surface:#111A2B; --surface-2:#16213A; --surface-3:#1E2B47;
+    --ink:#E8ECF3; --ink-2:#B3BCCB; --ink-3:#8B96A8;
+    --rule:#253149; --rule-2:#384663;
+    --union:#7FA3FF; --union-deep:#A0BCFF; --union-ink:#0B1220; --union-tint:rgba(127,163,255,0.14);
+    --mark:#E6C84A; --mark-deep:#F5C400;
+    --ok:#4AC486; --ok-tint:rgba(74,196,134,0.14);
+    --warn:#E6A03C; --warn-tint:rgba(230,160,60,0.14);
+    --bad:#F06E76;
   }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
   body{
-    background:
-      radial-gradient(900px 480px at 88% -8%, rgba(217,119,87,0.07), transparent 60%),
-      radial-gradient(720px 520px at -5% 108%, rgba(20,20,19,0.035), transparent 60%),
-      var(--paper);
-    color:var(--night);
-    font-family:var(--font-sans);
-    font-size:16px; line-height:1.6;
+    margin:0; background:var(--surface); color:var(--ink);
+    font-family:var(--font-sans); font-size:16px; line-height:1.55;
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    min-height:100vh;
   }
-  ::selection{ background:rgba(217,119,87,0.22); color:var(--night); }
-  a{ color:var(--clay-deep); text-decoration:none; }
+  ::selection{ background:var(--mark); color:#0C1B33; }
+  :focus-visible{ outline:2px solid var(--union); outline-offset:2px; border-radius:2px; }
+  a{ color:var(--union); text-decoration:none; text-underline-offset:4px; }
   a:hover{ text-decoration:underline; }
-  :focus-visible{ outline:2px solid var(--clay); outline-offset:2px; border-radius:2px; }
+  h1,h2,h3{ font-family:var(--font-serif); font-weight:500; color:var(--ink); margin:0; text-wrap:balance; }
+  p{ margin:0; text-wrap:pretty; }
+  strong{ font-weight:600; color:var(--ink); }
+  /* The highlighter: only behind quoted passages of law. */
+  mark{ background:var(--mark); color:#0C1B33; padding:0.05em 0.15em; border-radius:2px; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
 
-  .wrap{ max-width:760px; margin:0 auto; padding:0 22px; }
+  .site{ max-width:1120px; margin:0 auto; padding:0 24px; }
+  .col{ max-width:768px; margin:0 auto; padding:0 24px; }
 
-  header{ border-bottom:1px solid var(--line); background:rgba(250,249,245,0.85); backdrop-filter:saturate(140%) blur(6px); position:sticky; top:0; z-index:5; }
-  .bar{ display:flex; align-items:center; justify-content:space-between; height:58px; }
-  .brand{ display:flex; align-items:center; gap:10px; }
-  .mark{ width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--clay),var(--clay-deep)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
-  .brand-name{ font-weight:700; letter-spacing:-0.01em; font-size:16px; }
-  .bar .back{ font-size:14px; color:var(--night-2); font-weight:500; }
+  header.top{ position:sticky; top:0; z-index:5; background:var(--surface); border-bottom:1px solid var(--rule); }
+  .bar{ display:flex; align-items:center; justify-content:space-between; gap:24px; padding-top:14px; padding-bottom:14px; }
+  .brand{ display:inline-flex; align-items:center; gap:10px; color:var(--ink); }
+  .brand:hover{ text-decoration:none; }
+  .brand svg{ flex:none; display:block; }
+  .wordmark{ font-family:var(--font-serif); font-weight:600; font-size:20px; line-height:1.3; letter-spacing:-0.01em; color:var(--ink); }
+  .wordmark .hl{ position:relative; isolation:isolate; }
+  .wordmark .hl::before{ content:""; position:absolute; left:-0.05em; right:-0.05em; bottom:0.08em; height:0.42em; background:var(--mark); border-radius:2px; transform:rotate(-1deg); z-index:-1; }
+  .back{ font-size:15px; color:var(--ink-2); }
+  .back:hover{ color:var(--ink); }
 
-  .hero{ padding:48px 0 8px; }
-  .eyebrow{ font-family:var(--font-mono); font-size:11.5px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--clay-deep); display:inline-flex; align-items:center; gap:8px; }
-  .eyebrow::before{ content:""; width:18px; height:1.5px; background:var(--clay); display:inline-block; }
-  h1{ font-family:var(--font-serif); font-weight:600; font-size:clamp(30px,5.4vw,46px); line-height:1.06; letter-spacing:-0.02em; margin:14px 0 0; }
-  .lede{ font-size:18px; color:var(--night-2); margin:18px 0 0; max-width:62ch; }
-  .lede b{ color:var(--night); font-weight:600; }
+  .hero{ padding:56px 0 40px; }
+  h1{ font-size:32px; line-height:1.15; }
+  .lede{ margin-top:20px; color:var(--ink-2); }
+  .basis{ margin-top:16px; font-size:13px; line-height:1.45; color:var(--ink-2); }
+  @media (min-width:768px){ .hero{ padding-top:72px; } h1{ font-size:44px; line-height:1.1; letter-spacing:-0.01em; } }
 
-  .card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:26px; margin-top:30px; box-shadow:0 1px 0 #fff inset, 0 14px 40px rgba(20,20,19,0.06); }
-  .card h2{ font-family:var(--font-serif); font-weight:600; font-size:21px; letter-spacing:-0.01em; margin:0 0 4px; }
-  .card .hint{ font-size:14px; color:var(--night-3); margin:0 0 20px; }
+  .block{ border-top:1px solid var(--rule); padding:40px 0; }
+  h2{ font-size:24px; line-height:1.2; }
+  .hint{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
 
-  .checks{ margin-top:6px; display:flex; flex-direction:column; gap:14px; }
-  .chk{ display:flex; gap:12px; align-items:flex-start; font-size:15px; color:var(--night); cursor:pointer; border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--paper); transition:border-color .15s, background .15s; }
-  .chk:hover{ border-color:var(--line-2); }
-  .chk.on{ border-color:var(--clay); background:var(--clay-soft); }
-  .chk input{ margin:3px 0 0; width:17px; height:17px; accent-color:var(--clay); flex:0 0 auto; }
-  .chk span small{ display:block; color:var(--night-3); font-size:12.5px; margin-top:3px; }
+  .checks{ margin-top:24px; display:grid; gap:12px; }
+  .chk{ display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); cursor:pointer; }
+  .chk:hover{ background:var(--surface-2); }
+  .chk.on{ border-color:var(--union); background:var(--union-tint); }
+  .chk input{ flex:none; width:18px; height:18px; margin:3px 0 0; accent-color:var(--union); }
+  .chk .t{ display:block; font-size:16px; line-height:1.4; font-weight:500; color:var(--ink); }
+  .chk .d{ display:block; margin-top:4px; font-size:13px; line-height:1.45; color:var(--ink-2); }
 
-  .btn{ appearance:none; border:0; cursor:pointer; font-family:var(--font-sans); font-weight:600; font-size:16px; border-radius:11px; padding:14px 22px; transition:transform .08s, background .15s, box-shadow .15s; }
-  .btn-primary{ background:var(--clay-deep); color:#fff; box-shadow:0 6px 18px rgba(194,97,63,0.28); width:100%; margin-top:22px; }
-  .btn-primary:hover{ background:#b1572f; }
-  .btn-primary:active{ transform:translateY(1px); }
-  .chips{ margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .chips .lbl{ font-size:12.5px; color:var(--night-3); }
-  .chip{ font-family:var(--font-mono); font-size:12.5px; border:1px solid var(--line-2); background:var(--paper); color:var(--night-2); border-radius:999px; padding:5px 11px; cursor:pointer; }
-  .chip:hover{ border-color:var(--clay); color:var(--clay-deep); }
+  .btn{ appearance:none; display:inline-flex; align-items:center; justify-content:center; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:6px; font-family:var(--font-sans); font-size:16px; font-weight:500; line-height:1.2; cursor:pointer; }
+  .btn-primary{ background:var(--union); color:var(--union-ink); }
+  .btn-primary:hover{ background:var(--union-deep); }
+  .btn[disabled]{ opacity:0.5; cursor:default; }
+  .actions{ margin-top:24px; }
+  .examples{ margin-top:16px; display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; color:var(--ink-2); }
+  .chip{ appearance:none; min-height:32px; padding:0 12px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); color:var(--ink); font-family:var(--font-sans); font-size:13px; font-weight:500; cursor:pointer; }
+  .chip:hover{ background:var(--surface-2); }
+  @media (max-width:479px){ .btn{ width:100%; } }
 
-  #result{ margin-top:22px; display:none; }
-  #result.show{ display:block; animation:rise .28s ease both; }
-  @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none; } }
-  .verdict{ border:1px solid; border-radius:16px; padding:24px; }
-  .verdict.in{ background:var(--in-bg); border-color:var(--in-bd); }
-  .verdict.out{ background:var(--out-bg); border-color:var(--out-bd); }
-  .verdict.filo{ background:var(--filo-bg); border-color:var(--filo-bd); }
-  .verdict.filo .v-tag{ color:var(--filo-ink); }
-  .v-tag{ font-family:var(--font-mono); font-size:11.5px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; }
-  .verdict.in .v-tag{ color:var(--in-ink); }
-  .verdict.out .v-tag{ color:var(--out-ink); }
-  .v-title{ font-family:var(--font-serif); font-weight:600; font-size:24px; line-height:1.16; letter-spacing:-0.01em; margin:8px 0 0; }
-  .v-body{ font-size:15.5px; color:var(--night); margin:14px 0 0; }
-  .v-body b{ font-weight:600; }
+  #result{ display:none; scroll-margin-top:72px; }
+  #result.show{ display:block; border-top:1px solid var(--rule); padding:40px 0 0; }
+  .verdict{ background:var(--surface-2); border:1px solid var(--rule); border-radius:10px; padding:24px; }
+  .badge{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:12px; line-height:1.4; font-weight:500; background:var(--surface-3); color:var(--ink-2); }
+  .badge.union{ background:var(--union-tint); color:var(--union); }
+  .badge.ok{ background:var(--ok-tint); color:var(--ok); }
+  .badge.warn{ background:var(--warn-tint); color:var(--warn); }
+  .v-title{ margin-top:12px; }
+  .v-body{ margin-top:12px; color:var(--ink-2); }
 
-  .ob{ background:rgba(255,255,255,0.65); border:1px solid var(--line); border-radius:12px; padding:15px 17px; margin-top:12px; }
-  .ob .who{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; border-radius:999px; padding:3px 9px; margin-bottom:7px; }
-  .ob .who.prov{ background:var(--clay-soft); color:var(--in-ink); border:1px solid rgba(194,97,63,0.35); }
-  .ob .who.depl{ background:rgba(94,93,89,0.10); color:var(--night-2); border:1px solid var(--line-2); }
-  .ob h3{ font-family:var(--font-serif); font-weight:600; font-size:16.5px; margin:0 0 5px; }
-  .ob p{ font-size:14px; color:var(--night); margin:0 0 6px; }
-  .ob .exc{ font-size:12.5px; color:var(--night-2); }
-  .ob .ref{ font-family:var(--font-mono); font-size:11.5px; color:var(--night-2); margin-top:7px; }
+  .ob{ margin-top:16px; background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:20px; }
+  .ob h3{ margin-top:10px; font-size:20px; line-height:1.3; }
+  .ob .note{ margin-top:12px; font-size:15px; line-height:1.5; color:var(--ink-2); }
+  figure.law{ margin:16px 0 0; padding-left:16px; border-left:2px solid var(--mark-deep); }
+  figure.law blockquote{ margin:0; font-family:var(--font-serif); font-size:16px; line-height:1.6; color:var(--ink-2); }
+  figure.law figcaption{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--ink-2); }
+  figure.law figcaption b{ font-weight:500; color:var(--ink); }
 
-  .warnbox{ background:rgba(255,255,255,0.6); border:1px dashed var(--line-2); border-radius:12px; padding:14px 16px; margin-top:16px; font-size:14px; color:var(--night); }
-  .warnbox b{ font-weight:600; }
+  ul.notes{ margin:20px 0 0; padding-left:20px; color:var(--ink-2); }
+  ul.notes li{ margin-top:10px; font-size:15px; line-height:1.5; }
+  .later{ margin-top:20px; padding:14px 16px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); font-size:15px; line-height:1.5; color:var(--ink-2); }
+  .asof{ margin-top:20px; padding-top:16px; border-top:1px solid var(--rule); font-size:13px; line-height:1.45; color:var(--ink-2); }
 
-  .legal{ margin-top:18px; border-top:1px solid var(--line); padding-top:15px; font-size:13px; color:var(--night-2); }
-  .legal .cite{ font-family:var(--font-mono); font-size:12px; color:var(--night); background:rgba(255,255,255,0.55); border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin-top:7px; line-height:1.5; }
-  .legal .asof{ color:var(--night-2); margin-top:8px; font-size:12px; }
-  ul.notes{ margin:14px 0 0; padding-left:18px; }
-  ul.notes li{ margin:6px 0; font-size:14.5px; color:var(--night); }
-  ul.notes li b{ font-weight:600; }
-
-  .cta{ margin-top:18px; background:var(--night); color:var(--paper); border-radius:16px; padding:24px; }
-  .cta h3{ font-family:var(--font-serif); font-weight:600; font-size:20px; margin:0 0 6px; color:#fff; }
-  .cta p{ font-size:14.5px; color:#cfcdc6; margin:0 0 16px; }
-  .cta .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  @media (max-width:560px){ .cta .row{ grid-template-columns:1fr; } }
-  .cta input[type=email], .cta input[type=text]{ width:100%; border:1px solid #3a3a37; background:#1f1f1d; color:#fff; border-radius:10px; padding:12px 14px; font-family:var(--font-sans); font-size:15px; }
-  .cta input::placeholder{ color:#9a9991; }
-  .cta input:focus{ outline:none; border-color:var(--clay); box-shadow:0 0 0 3px rgba(217,119,87,0.25); }
-  .cta .btn-cta{ background:var(--clay); color:#fff; margin-top:12px; width:100%; }
-  .cta .btn-cta:hover{ background:var(--clay-deep); }
-  .cta .fine{ font-size:11.5px; color:#85847d; margin:12px 0 0; line-height:1.5; }
-  .cta .fine a{ color:#cfcdc6; text-decoration:underline; }
+  .lead{ margin-top:24px; border:1px solid var(--rule); border-radius:10px; padding:24px; background:var(--surface); }
+  .lead h3{ font-size:20px; line-height:1.3; }
+  .lead .why{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
+  .fields{ margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:560px){ .fields{ grid-template-columns:1fr; } .verdict,.lead{ padding:16px; } .ob{ padding:16px; } }
+  .field label{ display:block; margin-bottom:6px; font-size:13px; line-height:1.45; font-weight:500; color:var(--ink); }
+  .field input{ width:100%; height:40px; padding:0 12px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); color:var(--ink); font-family:var(--font-sans); font-size:16px; }
+  .field input::placeholder{ color:var(--ink-3); }
+  .field input:focus{ outline:2px solid var(--union); outline-offset:1px; border-color:var(--union); }
+  .lead .btn{ margin-top:16px; }
+  .fine{ margin-top:14px; font-size:12px; line-height:1.4; color:var(--ink-2); }
+  .fine.err{ color:var(--bad); }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
-  .cta-ok{ display:none; }
-  .cta.done .cta-form{ display:none; }
-  .cta.done .cta-ok{ display:block; }
-  .cta-ok .big{ font-family:var(--font-serif); font-size:19px; color:#fff; }
+  .lead-ok{ display:none; }
+  .lead.done .lead-form{ display:none; }
+  .lead.done .lead-ok{ display:block; }
+  .lead-ok p{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
 
-  .disclaimer{ font-size:12.5px; color:var(--night-2); margin:16px 2px 0; line-height:1.55; }
-  footer{ margin-top:46px; border-top:1px solid var(--line); padding:24px 0 56px; }
-  footer .frow{ display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; justify-content:space-between; }
-  footer .links a{ color:var(--night-2); font-size:13.5px; margin-right:18px; }
-  footer .meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--night-3); }
+  .disclaimer{ margin:24px 0 0; font-size:13px; line-height:1.45; color:var(--ink-2); }
+
+  footer.foot{ margin-top:64px; border-top:1px solid var(--rule); background:var(--surface-2); }
+  .foot-in{ padding-top:32px; padding-bottom:40px; }
+  .foot nav{ display:flex; flex-wrap:wrap; gap:8px 20px; }
+  .foot nav a{ font-size:13px; line-height:1.45; color:var(--ink-2); }
+  .foot nav a:hover{ color:var(--ink); }
+  .imprint{ margin-top:20px; max-width:72ch; font-size:12px; line-height:1.4; color:var(--ink-2); }
+
+  @media (prefers-reduced-motion:reduce){ *{ scroll-behavior:auto !important; transition:none !important; } }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap bar">
-    <a class="brand" href="https://normaai.org" aria-label="NormaAI, home">
-      <span class="mark" aria-hidden="true">N</span>
-      <span class="brand-name">NormaAI</span>
+<header class="top">
+  <div class="site bar">
+    <a class="brand" href="/" aria-label="NormaAI, pagina principale">
+      <svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" focusable="false">
+        <rect width="64" height="64" rx="14" fill="#0C1B33"/>
+        <rect x="9" y="34" width="46" height="11" rx="3" fill="#F5C400" transform="rotate(-3 32 39.5)"/>
+        <path d="M20 47V17l24 30V17" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="wordmark"><span class="hl">Norma</span>AI</span>
     </a>
-    <a class="back" href="https://normaai.org">← Torna al sito</a>
+    <a class="back" href="/">Torna al sito</a>
   </div>
 </header>
 
-<main class="wrap">
+<main class="col">
 
   <section class="hero">
-    <span class="eyebrow">Strumento gratuito · AI Act, scadenza 2 agosto 2026</span>
-    <h1>AI Act: il 2 agosto ti riguarda?</h1>
-    <p class="lede">Il 2 agosto 2026 <b>non</b> scatta la disciplina dei sistemi <b>high-risk</b> (Annex III, rinviata al <b>2 dicembre 2027</b> dal pacchetto Omnibus digitale). Scattano gli obblighi di <b>trasparenza dell’Art. 50</b>: chatbot che si dichiarano, contenuti sintetici marcati, deepfake dichiarati, persone informate su emotion recognition. Con sanzioni fino a <b>€15M o al 3% del fatturato mondiale, se superiore</b> (per le PMI il minore dei due). Verifica in 20 secondi quali ti riguardano.</p>
-    <p style="font-family:var(--font-mono);font-size:12px;color:var(--night-2);margin:14px 0 0;line-height:1.5">Base normativa: <b>Art. 50 Reg. (UE) 2024/1689</b> (AI Act); sanzioni <b>Art. 99(4)</b>, per PMI e startup il minore dei due importi (Art. 99(6)); applicazione dal 2 agosto 2026 (Art. 113). CELEX <b>32024R1689</b>. In Italia: <b>Legge 132/2025</b> (autorità: ACN e AgID).</p>
+    <h1>AI Act, articolo&nbsp;50: quali obblighi di trasparenza ti riguardano?</h1>
+    <p class="lede">Dal <strong>2 agosto 2026</strong> si applica l'articolo 50 del regolamento (UE) 2024/1689: chi fornisce un chatbot deve far sapere alle persone che parlano con un'IA, chi fornisce sistemi generativi deve marcarne i contenuti, chi pubblica un deep fake deve dichiararlo, chi usa il riconoscimento delle emozioni deve informare le persone esposte. La prossima data è il <strong>2 dicembre 2026</strong>: entro quel giorno i fornitori devono adeguare alla marcatura i sistemi generativi immessi sul mercato prima del 2 agosto 2026.</p>
+    <p class="basis">Base normativa: regolamento (UE) 2024/1689, art. 50 (obblighi), art. 99, par. 4 e 6 (sanzioni), art. 111, par. 4, e art. 113 (date), come modificato dal regolamento (UE) 2026/1744. Testo consolidato al 27 luglio 2026, letto su <a href="https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727" target="_blank" rel="noopener noreferrer">EUR-Lex</a> l'11 novembre 2026.</p>
   </section>
 
-  <section class="card" aria-labelledby="calc-h">
-    <h2 id="calc-h">Cosa fa la vostra AI?</h2>
-    <p class="hint">Spunta ciò che vale per la tua impresa, sia che il sistema lo <b>offriate</b> voi (fornitore) sia che lo <b>usiate</b> da terzi (utilizzatore): il verdetto distingue i due casi. Nessun dato lascia il tuo browser finché non lo invii tu.</p>
+  <section class="block" aria-labelledby="calc-h">
+    <h2 id="calc-h">Che cosa fa l'IA nella tua organizzazione?</h2>
+    <p class="hint">Spunta le situazioni che ti riguardano, sia che il sistema lo fornisca tu, sia che tu lo usi: il risultato distingue i due casi. Le risposte restano nel tuo browser finché non decidi di inviarle.</p>
 
     <form id="calc" novalidate>
       <div class="checks">
-        <label class="chk"><input type="checkbox" id="q-chat"><span><b>Un sistema AI interagisce direttamente con persone</b><small>Chatbot, assistenti virtuali, voicebot rivolti a clienti, utenti o dipendenti.</small></span></label>
-        <label class="chk"><input type="checkbox" id="q-gen"><span><b>Generate contenuti sintetici: testo, immagini, audio o video</b><small>Strumenti GenAI offerti ai vostri utenti o integrati nei vostri prodotti.</small></span></label>
-        <label class="chk"><input type="checkbox" id="q-emo"><span><b>Usate riconoscimento delle emozioni o categorizzazione biometrica</b><small>Per esempio su clienti, utenti o personale (analisi del tono, volto, comportamento).</small></span></label>
-        <label class="chk"><input type="checkbox" id="q-deep"><span><b>Pubblicate deepfake o testi AI per informare il pubblico</b><small>Immagini/audio/video generati o manipolati, o testi generati dall’AI pubblicati su temi di interesse pubblico.</small></span></label>
+        <label class="chk"><input type="checkbox" id="q-chat"><span><span class="t">Un sistema di IA interagisce direttamente con le persone</span><span class="d">Chatbot, assistenti virtuali o vocali rivolti a clienti, utenti o dipendenti.</span></span></label>
+        <label class="chk"><input type="checkbox" id="q-gen"><span><span class="t">Un sistema genera contenuti sintetici: testo, immagini, audio o video</span><span class="d">Strumenti generativi che offri ai tuoi utenti o che integri nei tuoi prodotti.</span></span></label>
+        <label class="chk"><input type="checkbox" id="q-emo"><span><span class="t">Usi il riconoscimento delle emozioni o la categorizzazione biometrica</span><span class="d">Sistemi che deducono emozioni o intenzioni dai dati biometrici (voce, volto), o che assegnano le persone a categorie in base a quei dati.</span></span></label>
+        <label class="chk"><input type="checkbox" id="q-deep"><span><span class="t">Pubblichi deep fake, o testi generati dall'IA per informare il pubblico</span><span class="d">Immagini, audio o video generati o manipolati che sembrano autentici; testi generati dall'IA pubblicati su questioni di interesse pubblico.</span></span></label>
       </div>
 
-      <button class="btn btn-primary" type="submit">Verifica gli obblighi →</button>
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Verifica gli obblighi</button>
+      </div>
 
-      <div class="chips">
-        <span class="lbl">Prova:</span>
+      <div class="examples">
+        <span>Prova con un esempio:</span>
         <button type="button" class="chip" data-set="chat">Solo un chatbot</button>
-        <button type="button" class="chip" data-set="chat,gen">Chatbot + GenAI</button>
+        <button type="button" class="chip" data-set="chat,gen">Chatbot e contenuti generati</button>
         <button type="button" class="chip" data-set="">Nessuna delle quattro</button>
       </div>
     </form>
@@ -187,19 +214,21 @@
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="disclaimer">Questo strumento è un <b>primo filtro indicativo</b>, non un parere legale. L’applicazione dell’Art. 50 dipende dal ruolo effettivo nella catena (fornitore, utilizzatore, importatore), dalle eccezioni previste (funzioni assistive, revisione editoriale, ambiti autorizzati per legge) e dal caso concreto. Per una posizione difendibile serve una verifica puntuale.</p>
+  <p class="disclaimer">Questo strumento è un primo filtro, non un parere legale. L'applicazione dell'articolo 50 dipende dal ruolo effettivo (fornitore, deployer, importatore, distributore), dalle eccezioni previste dall'articolo stesso e dal caso concreto.</p>
 
 </main>
 
-<footer>
-  <div class="wrap frow">
-    <div class="links">
-      <a href="https://normaai.org">normaai.org</a>
-      <a href="https://normaai.org/scope-csrd.html">Check CSRD</a>
-      <a href="https://normaai.org/metodo">Il metodo</a>
-      <a href="https://normaai.org/privacy">Privacy</a>
-    </div>
-    <div class="meta">NormaAI · Q&amp;A compliance EU con citazioni verificate</div>
+<footer class="foot">
+  <div class="site foot-in">
+    <nav aria-label="Altre pagine">
+      <a href="/">NormaAI</a>
+      <a href="/scope-csrd.html">Verifica ambito CSRD</a>
+      <a href="/metodo">Metodo</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/cookie">Cookie</a>
+      <a href="/terms">Termini</a>
+    </nav>
+    <p class="imprint">NormaAI è un progetto di Daniel Culotta, persona fisica, Inverigo (CO), Italia, non ancora costituito in società. Contatti: <a href="mailto:info@normaai.org">info@normaai.org</a>.</p>
   </div>
 </footer>
 
@@ -210,129 +239,169 @@
   var $ = function(id){ return document.getElementById(id); };
   var resultEl = $('result');
 
-  var CITE = 'Base normativa: Art. 50 Reg. (UE) 2024/1689 (AI Act), obblighi di trasparenza per fornitori e utilizzatori di determinati sistemi di AI; sanzioni: Art. 99(4) (fino a €15M o 3% del fatturato mondiale annuo, se superiore; per le PMI si applica il minore dei due importi, Art. 99(6)). Applicazione dal 2 agosto 2026 (Art. 113). CELEX 32024R1689. Italia: Legge 132/2025, autorità ACN e AgID.';
+  var EURLEX = 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02024R1689-20260727';
+  var ACT = 'Regolamento (UE) 2024/1689';
 
-  // Obblighi Art. 50: testo breve + eccezione + riferimento puntuale.
+  // Article 50 obligations. Every "before / mark / after" triple is a literal
+  // passage of the Italian consolidated text of 27 July 2026 (CELEX
+  // 02024R1689-20260727), checked on 2026-11-11; the notes paraphrase the rest
+  // of the same paragraph. A mark carries its trailing comma or full stop, so
+  // no gap opens between the highlight and the punctuation.
   var OBS = {
     chat: {
-      who: 'prov', whoLbl: 'Obbligo del fornitore (provider)',
-      title: 'Chatbot e assistenti: la persona deve sapere che sta parlando con un’AI',
-      req: 'I sistemi di AI destinati a interagire direttamente con le persone vanno progettati e sviluppati in modo che la persona sia informata di stare interagendo con un’AI, a meno che ciò non sia evidente per una persona ragionevolmente informata e attenta.',
-      exc: 'Eccezione: sistemi autorizzati per legge per finalità di contrasto (law enforcement), a determinate condizioni. Se il chatbot lo comprate da terzi, l’obbligo di progettazione è del fornitore: ma verificare che lo rispetti conviene a voi.',
-      ref: 'Art. 50, par. 1, Reg. (UE) 2024/1689'
+      who: "Obbligo del fornitore",
+      title: "Chatbot e assistenti: le persone devono sapere che parlano con un'IA",
+      quotes: [{
+        before: "I fornitori garantiscono che i sistemi di IA destinati a interagire direttamente con le persone fisiche sono progettati e sviluppati in modo tale che le persone fisiche interessate",
+        mark: "siano informate del fatto di stare interagendo con un sistema di IA,",
+        after: " a meno che ciò non risulti evidente dal punto di vista di una persona fisica ragionevolmente informata, attenta e avveduta, tenendo conto delle circostanze e del contesto di utilizzo.",
+        ref: "art. 50, par. 1"
+      }],
+      note: "L'obbligo non si applica ai sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati, salvo che siano a disposizione del pubblico per segnalare un reato. Se il chatbot lo acquisti da terzi, l'obbligo di progettarlo così è del fornitore: ti conviene verificare che lo rispetti."
     },
     gen: {
-      who: 'prov', whoLbl: 'Obbligo del fornitore (provider)',
-      title: 'Contenuti generati: marcatura leggibile dalle macchine',
-      req: 'I fornitori di sistemi che generano contenuti sintetici (audio, immagini, video o testo) devono garantire che gli output siano marcati in un formato leggibile dalle macchine e rilevabili come generati o manipolati artificialmente; le soluzioni tecniche devono essere efficaci, interoperabili, robuste e affidabili per quanto tecnicamente possibile.',
-      exc: 'Eccezioni: funzioni di assistenza all’editing standard o che non alterano sostanzialmente i dati di input, e ambiti autorizzati per legge. Transitorio Omnibus: per i sistemi generativi già immessi sul mercato prima del 2 agosto 2026 l’obbligo di marcatura si applica dal 2 dicembre 2026; per i sistemi nuovi vale il 2 agosto 2026. Esiste un Codice di buone pratiche UE sulla trasparenza dei contenuti AI (pubblicato il 10 giugno 2026, adesione volontaria) a supporto dell’attuazione.',
-      ref: 'Art. 50, par. 2, Reg. (UE) 2024/1689'
+      who: "Obbligo del fornitore",
+      title: "Contenuti generati: marcatura leggibile dalle macchine",
+      quotes: [{
+        before: "I fornitori di sistemi di IA, compresi i sistemi di IA per finalità generali, che generano contenuti audio, immagine, video o testuali sintetici, garantiscono che gli output del sistema di IA siano",
+        mark: "marcati in un formato leggibile meccanicamente e rilevabili come generati o manipolati artificialmente.",
+        after: "",
+        ref: "art. 50, par. 2"
+      }, {
+        before: "I fornitori di sistemi di IA, compresi i sistemi di IA per finalità generali, che generano contenuti audio, immagine, video o testuali sintetici, immessi sul mercato prima del 2 agosto 2026,",
+        mark: "adottano le misure necessarie per conformarsi all'articolo 50, paragrafo 2, entro il 2 dicembre 2026.",
+        after: "",
+        ref: "art. 111, par. 4"
+      }],
+      note: "Le soluzioni tecniche devono essere efficaci, interoperabili, solide e affidabili per quanto tecnicamente possibile. L'obbligo non si applica ai sistemi che svolgono una funzione di assistenza per l'editing standard o che non modificano in modo sostanziale i dati di input, né agli usi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati. Il 10 giugno 2026 la Commissione ha pubblicato un <a href='https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content' target='_blank' rel='noopener noreferrer'>codice di buone pratiche sulla trasparenza dei contenuti generati dall'IA</a>: aderire è volontario, rispettare l'articolo 50 no."
     },
     emo: {
-      who: 'depl', whoLbl: 'Obbligo dell’utilizzatore (deployer)',
-      title: 'Emotion recognition e categorizzazione biometrica: informare le persone esposte',
-      req: 'Chi utilizza un sistema di riconoscimento delle emozioni o di categorizzazione biometrica deve informare le persone fisiche che vi sono esposte in merito al funzionamento del sistema, e trattare i dati personali nel rispetto del GDPR.',
-      exc: 'Attenzione anche ai divieti già in vigore (Art. 5, dal 2 febbraio 2025): per esempio l’emotion recognition sul luogo di lavoro e negli istituti di istruzione è vietata, salvo motivi medici o di sicurezza.',
-      ref: 'Art. 50, par. 3, Reg. (UE) 2024/1689'
+      who: "Obbligo del deployer",
+      title: "Riconoscimento delle emozioni e categorizzazione biometrica: informare le persone esposte",
+      quotes: [{
+        before: "I deployer di un sistema di riconoscimento delle emozioni o di un sistema di categorizzazione biometrica",
+        mark: "informano le persone fisiche che vi sono esposte in merito al funzionamento del sistema",
+        after: " e trattano i dati personali in conformità dei regolamenti (UE) 2016/679 e (UE) 2018/1725 e della direttiva (UE) 2016/680, a seconda dei casi.",
+        ref: "art. 50, par. 3"
+      }],
+      note: "Attenzione al divieto dell'articolo 5, paragrafo 1, lettera f), applicabile dal 2 febbraio 2025: i sistemi che inferiscono le emozioni di una persona sul luogo di lavoro e negli istituti di istruzione sono vietati, salvo motivi medici o di sicurezza. L'obbligo di informare non si applica ai sistemi autorizzati dalla legge per accertare, prevenire o indagare reati."
     },
     deep: {
-      who: 'depl', whoLbl: 'Obbligo dell’utilizzatore (deployer)',
-      title: 'Deepfake e testi AI pubblicati: dichiararne l’origine',
-      req: 'Chi utilizza un sistema che genera o manipola immagini, audio o video costituenti deepfake deve rendere noto che il contenuto è stato generato o manipolato artificialmente. Lo stesso vale per i testi generati dall’AI pubblicati per informare il pubblico su questioni di interesse pubblico.',
-      exc: 'Eccezioni: per opere manifestamente artistiche/creative/satiriche la disclosure va data in modo appropriato senza pregiudicare l’opera; per i testi, l’obbligo non si applica se c’è revisione umana o controllo editoriale e una persona fisica o giuridica se ne assume la responsabilità editoriale.',
-      ref: 'Art. 50, par. 4, Reg. (UE) 2024/1689'
+      who: "Obbligo del deployer",
+      title: "Deep fake e testi generati dall'IA: dichiararne l'origine",
+      quotes: [{
+        before: "I deployer di un sistema di IA che genera o manipola immagini o contenuti audio o video che costituiscono un «deep fake»",
+        mark: "rendono noto che il contenuto è stato generato o manipolato artificialmente.",
+        after: "",
+        ref: "art. 50, par. 4, primo comma"
+      }, {
+        before: "I deployer di un sistema di IA che genera o manipola testo pubblicato allo scopo di informare il pubblico su questioni di interesse pubblico",
+        mark: "rendono noto che il testo è stato generato o manipolato artificialmente.",
+        after: "",
+        ref: "art. 50, par. 4, secondo comma"
+      }],
+      note: "Per le opere manifestamente artistiche, creative, satiriche o di finzione basta rivelare in modo adeguato l'esistenza dei contenuti generati, senza ostacolare la fruizione dell'opera. Per i testi, l'obbligo non si applica se il contenuto è stato sottoposto a revisione umana o a controllo editoriale e una persona fisica o giuridica ha la responsabilità editoriale della pubblicazione."
     }
   };
 
   function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }); }
 
-  function renderNeutral(){
-    resultEl.innerHTML = '<div class="verdict filo"><div class="v-tag">Nessuna risposta data</div>'
-      + '<div class="v-body">Spunta le caselle pertinenti per la tua impresa, oppure usa il chip <b>Nessuna delle quattro</b> se nessuna situazione vi riguarda: così il verdetto riflette una risposta, non un modulo vuoto.</div></div>';
+  function lawQuote(q){
+    return '<figure class="law">'
+      + '<blockquote lang="it">' + esc(q.before) + ' <mark>' + esc(q.mark) + '</mark>' + esc(q.after) + '</blockquote>'
+      + '<figcaption><b>' + ACT + '</b>, ' + esc(q.ref) + '. <a href="' + EURLEX + '" target="_blank" rel="noopener noreferrer">Testo su EUR-Lex</a></figcaption>'
+      + '</figure>';
+  }
+
+  function reveal(){
     resultEl.classList.add('show');
-    resultEl.scrollIntoView({ behavior:'smooth', block:'start' });
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultEl.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block:'start' });
+  }
+
+  function renderNeutral(){
+    resultEl.innerHTML = '<div class="verdict"><span class="badge">Nessuna risposta</span>'
+      + '<p class="v-body">Spunta le situazioni che ti riguardano, oppure scegli l\'esempio <strong>Nessuna delle quattro</strong> se nessuna si applica: così il risultato riflette una risposta, non un modulo vuoto.</p></div>';
+    reveal();
   }
 
   function render(keys){
     var band = keys.length ? 'in' : 'out';
-    var tag, title, body, cards = '', notes = '';
+    var tone, tag, title, body, cards = '', notes = '', later = '';
 
     if (band === 'in'){
-      tag = 'Obblighi dal 2 agosto 2026';
-      title = 'Dal 2 agosto l’Art. 50 tocca le situazioni che hai indicato.';
-      body = 'In base a ciò che hai indicato, questi sono gli obblighi rilevanti. Attenzione a chi ne è il <b>destinatario</b>: alcuni gravano su chi <b>fornisce</b> il sistema, altri su chi lo <b>utilizza</b>. Se il vostro ruolo è solo di utilizzatore, gli obblighi del fornitore non gravano su di voi ma sul vostro fornitore (e viceversa). Le informazioni vanno date in modo chiaro e riconoscibile, al più tardi alla prima interazione o esposizione (Art. 50, par. 5).';
+      tone = 'union';
+      tag = "Obblighi applicabili dal 2 agosto 2026";
+      title = "L'articolo 50 riguarda le situazioni che hai indicato.";
+      body = "Qui sotto trovi, per ogni situazione, l'obbligo e il passaggio di legge che lo stabilisce. Guarda a chi è rivolto: alcuni obblighi sono del <strong>fornitore</strong> del sistema, altri del <strong>deployer</strong>, cioè di chi lo usa sotto la propria autorità. Se usi un sistema fornito da terzi, gli obblighi del fornitore restano a lui. In tutti i casi le informazioni vanno date «in maniera chiara e distinguibile al più tardi al momento della prima interazione o esposizione» (art. 50, par. 5).";
       for (var i = 0; i < keys.length; i++){
         var o = OBS[keys[i]];
+        var quotes = '';
+        for (var j = 0; j < o.quotes.length; j++){ quotes += lawQuote(o.quotes[j]); }
         cards += '<div class="ob">'
-          + '<span class="who ' + o.who + '">' + esc(o.whoLbl) + '</span>'
+          + '<span class="badge">' + esc(o.who) + '</span>'
           + '<h3>' + esc(o.title) + '</h3>'
-          + '<p>' + esc(o.req) + '</p>'
-          + '<div class="exc">' + esc(o.exc) + '</div>'
-          + '<div class="ref">' + esc(o.ref) + '</div>'
+          + quotes
+          + '<p class="note">' + o.note + '</p>'
         + '</div>';
       }
       notes = '<ul class="notes">'
-        + '<li><b>Sanzioni:</b> la violazione degli obblighi dell’Art. 50 è punibile con sanzioni fino a <b>€15 milioni o al 3% del fatturato mondiale annuo</b>, se superiore (per PMI e startup: il minore dei due). Art. 99(4); per le PMI, Art. 99(6).</li>'
-        + '<li><b>In Italia:</b> la Legge 132/2025 designa <b>ACN</b> (vigilanza e sanzioni) e <b>AgID</b> come autorità nazionali per l’AI Act.</li>'
+        + "<li><strong>Sanzioni.</strong> La violazione degli obblighi di trasparenza dell'articolo 50 è punita con sanzioni amministrative pecuniarie fino a 15 milioni di euro o, per un'impresa, fino al 3% del fatturato mondiale totale annuo dell'esercizio precedente, se superiore (art. 99, par. 4, lettera g). Per le PMI, comprese le start-up, vale l'importo inferiore tra i due (art. 99, par. 6).</li>"
+        + "<li><strong>In Italia.</strong> La legge 23 settembre 2025, n. 132 (art. 20) designa AgID e ACN come autorità nazionali per l'intelligenza artificiale: l'ACN è l'autorità di vigilanza del mercato, con attività ispettive e sanzionatorie; l'AgID è l'autorità di notifica. Banca d'Italia, CONSOB e IVASS restano autorità di vigilanza del mercato nei casi dell'articolo 74, paragrafo 6, del regolamento.</li>"
         + '</ul>';
+      later = '<div class="later"><strong>Che cosa non si applica ancora:</strong> le regole sui sistemi ad alto rischio. Il regolamento (UE) 2026/1744 (Gazzetta ufficiale dell\'Unione europea del 24 luglio 2026, in vigore dal 27 luglio 2026) ne ha fissato l\'applicazione al 2 dicembre 2027 per i sistemi dell\'allegato III e al 2 agosto 2028 per quelli dell\'allegato I (art. 113, terzo comma, lettera c).</div>';
     } else {
-      tag = 'Nessun obbligo Art. 50 individuato';
-      title = 'Dalle risposte, gli obblighi di trasparenza del 2 agosto non vi toccano direttamente.';
-      body = 'Nessuna delle quattro situazioni dell’Art. 50 risulta applicabile. Ma "fuori dall’Art. 50" non significa "fuori dall’AI Act":';
+      tone = 'ok';
+      tag = "Nessun obbligo dell'articolo 50 individuato";
+      title = "Dalle risposte, gli obblighi di trasparenza dell'articolo 50 non ti riguardano direttamente.";
+      body = "Nessuna delle quattro situazioni risulta applicabile. Fuori dall'articolo 50 non significa fuori dall'AI Act:";
       notes = '<ul class="notes">'
-        + '<li><b>Alfabetizzazione AI (Art. 4):</b> chi fornisce o utilizza sistemi di AI adotta misure per sostenere l’alfabetizzazione in materia di AI del personale che li usa, tenendo conto di competenze, esperienza e contesto d’uso, senza dover garantire un livello specifico. È il testo in vigore dal 27 luglio 2026, sostituito dal Reg. (UE) 2026/1744 (Omnibus digitale); la versione applicabile dal 2 febbraio 2025 chiedeva di garantire, nella misura del possibile, un livello sufficiente.</li>'
-        + '<li><b>Pratiche vietate (Art. 5):</b> già in vigore dal 2 febbraio 2025 (es. manipolazione dannosa, social scoring, emotion recognition sul lavoro).</li>'
-        + '<li><b>Modelli GPAI:</b> se fornite modelli di AI per finalità generali, gli obblighi del Capo V si applicano dal 2 agosto 2025, con poteri di enforcement dal 2026.</li>'
-        + '<li><b>High-risk:</b> rinviato, non cancellato: la disciplina dei sistemi ad alto rischio si applica dal <b>2 dicembre 2027</b> (sistemi stand-alone, Annex III) e dal <b>2 agosto 2028</b> (AI integrata in prodotti regolamentati, Annex I); la preparazione (conformity assessment, QMS) richiede mesi.</li>'
+        + "<li><strong>Alfabetizzazione in materia di IA (art. 4).</strong> Fornitori e deployer adottano misure per sostenere l'alfabetizzazione in materia di IA del personale e di chi usa i sistemi per loro conto. Il testo in vigore dal 27 luglio 2026, sostituito dal regolamento (UE) 2026/1744, precisa: «Tale obbligo non impone ai fornitori o ai deployer di garantire un livello specifico di alfabetizzazione in materia di IA per alcuna persona.»</li>"
+        + "<li><strong>Pratiche vietate (art. 5).</strong> I divieti si applicano dal 2 febbraio 2025: per esempio le tecniche manipolative che causano un danno significativo, il punteggio sociale e l'inferenza delle emozioni sul luogo di lavoro e negli istituti di istruzione, salvo motivi medici o di sicurezza. Dal 2 dicembre 2026 si applicano anche i due divieti delle lettere b bis) e b ter), che riguardano la generazione di immagini intime o sessualmente esplicite di persone riconoscibili senza il loro consenso e il materiale o gli spettacoli di cui all'articolo 2, lettere c) ed e), della direttiva 2011/93/UE.</li>"
+        + "<li><strong>Modelli di IA per finalità generali.</strong> Se fornisci un modello di questo tipo, gli obblighi del capo V si applicano dal 2 agosto 2025 (art. 113, terzo comma, lettera b); le sanzioni della Commissione ai fornitori di modelli (art. 101) dal 2 agosto 2026.</li>"
+        + "<li><strong>Alto rischio.</strong> Le regole sui sistemi ad alto rischio si applicano dal 2 dicembre 2027 per i sistemi dell'allegato III e dal 2 agosto 2028 per quelli dell'allegato I (art. 113, terzo comma, lettera c).</li>"
         + '</ul>';
     }
-
-    var warn = '<div class="warnbox"><b>Cosa NON scatta il 2 agosto:</b> la disciplina dei sistemi <b>high-risk</b> (Annex III), rinviata al <b>2 dicembre 2027</b> dal pacchetto Omnibus digitale (via libera definitivo del Consiglio UE, 29 giugno 2026). Se qualcuno vi mette urgenza su conformity assessment "entro agosto", la data giusta è un’altra.</div>';
 
     var ctaH, ctaP;
     if (band === 'in'){
-      ctaH = 'Mappa gli obblighi sul vostro caso, prima del 2 agosto';
-      ctaP = 'Ti mando la lettura del tuo caso (chi è il destinatario di ogni obbligo, quali eccezioni valgono per voi, cosa predisporre) e, se vuoi, 20 minuti di confronto. In omaggio il Codex Post-Omnibus CSRD/CSDDD (PDF).';
+      ctaH = "Vuoi la lettura del tuo caso?";
+      ctaP = "Ti scrivo io con la lettura del tuo caso: a chi è rivolto ogni obbligo, quali eccezioni valgono per te, che cosa predisporre. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
     } else {
-      ctaH = 'Resta un passo avanti sul calendario AI Act';
-      ctaP = 'Ti mando il quadro delle date vere (cosa è in vigore, cosa arriva nel 2027 e 2028) e, se vuoi, 20 minuti di confronto sul vostro uso dell’AI. In omaggio il Codex Post-Omnibus CSRD/CSDDD (PDF).';
+      ctaH = "Vuoi le date dell'AI Act che contano per te?";
+      ctaP = "Ti scrivo io con che cosa si applica già e che cosa arriva nel 2027 e nel 2028. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
     }
 
     var html =
-      '<div class="verdict ' + band + '">'
-        + '<div class="v-tag">' + tag + '</div>'
-        + '<div class="v-title">' + title + '</div>'
-        + '<div class="v-body">' + body + '</div>'
+      '<div class="verdict">'
+        + '<span class="badge ' + tone + '">' + tag + '</span>'
+        + '<h2 class="v-title">' + title + '</h2>'
+        + '<p class="v-body">' + body + '</p>'
         + cards
         + notes
-        + warn
-        + '<div class="legal"><div>' + CITE.replace('Base normativa:','<b>Base normativa.</b>') + '</div>'
-          + '<div class="cite">CELEX 32024R1689 · Art. 50 / Art. 99(4) Reg. (UE) 2024/1689 · L. 132/2025</div>'
-          + '<div class="asof">Quadro aggiornato al 12 luglio 2026, incluso il rinvio high-risk del pacchetto Omnibus digitale.</div>'
-        + '</div>'
+        + later
+        + '<p class="asof">Aggiornato all\'11 novembre 2026. Citazioni dal testo consolidato del regolamento (UE) 2024/1689 al 27 luglio 2026 (CELEX 02024R1689-20260727), che comprende le modifiche del regolamento (UE) 2026/1744.</p>'
       + '</div>'
-      + '<div class="cta" id="cta">'
-        + '<div class="cta-form">'
-          + '<h3>' + ctaH + '</h3><p>' + ctaP + '</p>'
+      + '<div class="lead" id="cta">'
+        + '<div class="lead-form">'
+          + '<h3>' + ctaH + '</h3><p class="why">' + ctaP + '</p>'
           + '<form id="lead" novalidate>'
-            + '<div class="row">'
-              + '<input type="text" id="org" autocomplete="organization" aria-label="Nome impresa" placeholder="Nome impresa">'
-              + '<input type="email" id="email" autocomplete="email" aria-label="Email aziendale" placeholder="email@impresa.it" required>'
+            + '<div class="fields">'
+              + '<div class="field"><label for="org">Nome dell\'impresa</label><input type="text" id="org" autocomplete="organization"></div>'
+              + '<div class="field"><label for="email">Email di lavoro</label><input type="email" id="email" autocomplete="email" placeholder="nome@impresa.it" required></div>'
             + '</div>'
             + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
-            + '<button class="btn btn-cta" type="submit">Ricevi l’analisi →</button>'
-            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel (founder). Niente newsletter, niente cessione a terzi. '
-              + 'Usiamo i tuoi dati solo per inviarti l’analisi e ricontattarti su questo tema (legittimo interesse, GDPR Art. 6.1.f). <a href="https://normaai.org/privacy">privacy</a>.</p>'
+            + '<button class="btn btn-primary" type="submit">Invia la richiesta</button>'
+            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta. Niente newsletter e nessuna cessione a terzi: uso i tuoi dati solo per mandarti la lettura del caso e ricontattarti su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR). Vedi la <a href="/privacy">privacy policy</a>.</p>'
           + '</form>'
         + '</div>'
-        + '<div class="cta-ok"><div class="big">Fatto. Ti ricontatto al più presto.</div>'
-          + '<p class="fine" style="margin-top:10px">Intanto, il <b style="color:#fff">Codex Post-Omnibus CSRD/CSDDD</b> è tuo: <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricalo qui</a>.</p></div>'
+        + '<div class="lead-ok"><h3>Richiesta inviata</h3>'
+          + '<p>Ti scrivo al più presto. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus su CSRD e CSDDD (PDF)</a>.</p></div>'
       + '</div>';
 
     resultEl.innerHTML = html;
-    resultEl.classList.add('show');
     wireLead(band, keys);
-    resultEl.scrollIntoView({ behavior:'smooth', block:'start' });
+    reveal();
   }
 
   function wireLead(band, keys){
@@ -344,11 +413,11 @@
       var hp = ($('contact_time').value||'').trim();
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-      if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.style.color = '#ffb4a2'; return; }
-      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio...';
-      // Le selezioni viaggiano nel source (es. aiact_checker:in:chat+gen) cosi'
-      // la notifica al founder dice QUALI obblighi servono: la "lettura del caso"
-      // promessa dalla CTA e' evadibile senza rifare le domande al lead.
+      if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.className = 'fine err'; return; }
+      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio in corso';
+      // The selections travel in the source (e.g. aiact_checker:in:chat+gen) so
+      // the notification says WHICH obligations matter: the reading of the case
+      // promised above can be written without asking the questions again.
       var src = 'aiact_checker:' + band + ((keys && keys.length) ? ':' + keys.join('+') : '');
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -359,8 +428,8 @@
         var dl = $('dl'); if (dl && data && data.download_url){ dl.setAttribute('href', data.download_url); }
       })
       .catch(function(){
-        msg.innerHTML = 'Invio non riuscito. Scrivimi direttamente a <a href="mailto:info@normaai.org?subject=Check%20AI%20Act%20(scope-aiact)&body=Vorrei%20la%20lettura%20del%20mio%20caso%20Art.%2050%20(' + encodeURIComponent(src) + ').">info@normaai.org</a>.';
-        msg.style.color = '#ffb4a2'; btn.disabled = false; btn.textContent = 'Riprova →';
+        msg.innerHTML = 'Invio non riuscito. Scrivimi a <a href="mailto:info@normaai.org?subject=Check%20AI%20Act%20(scope-aiact)&body=Vorrei%20la%20lettura%20del%20mio%20caso%20Art.%2050%20(' + encodeURIComponent(src) + ').">info@normaai.org</a>.';
+        msg.className = 'fine err'; btn.disabled = false; btn.textContent = 'Riprova a inviare';
       });
     });
   }
@@ -382,9 +451,10 @@
     }
   }
 
-  // Anti falso-negativo: un submit a modulo MAI toccato non deve produrre il
-  // verdetto verde "fuori ambito". touched diventa true alla prima interazione
-  // (checkbox o chip, incluso "Nessuna delle quattro" che E' una risposta).
+  // No false negative: submitting a form that was NEVER touched must not give
+  // the green "outside article 50" result. touched becomes true at the first
+  // interaction (a checkbox or an example, "Nessuna delle quattro" included:
+  // that one IS an answer).
   var touched = false;
 
   function run(){

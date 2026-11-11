@@ -3,252 +3,272 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sei ancora in ambito CSRD? · Verifica gratuita post-Omnibus I · NormaAI</title>
-<meta name="description" content="Strumento gratuito: verifica in 10 secondi se la tua impresa è ancora in ambito di rendicontazione CSRD dopo l'Omnibus I (Dir. UE 2026/470). Soglie 1.000 dipendenti e €450M, logica cumulativa.">
+<title>CSRD dopo l'Omnibus I: la tua impresa è ancora in ambito? | NormaAI</title>
+<meta name="description" content="Verifica gratuita: la tua impresa rientra ancora nella rendicontazione di sostenibilità (CSRD) dopo la direttiva (UE) 2026/470? Due soglie da superare insieme: più di 1.000 dipendenti e più di 450 milioni di euro di ricavi netti. Con la norma citata.">
 <meta name="robots" content="index,follow">
-<meta property="og:title" content="Sei ancora in ambito CSRD? Verifica gratuita post-Omnibus I">
-<meta property="og:description" content="L'Omnibus I ha alzato le soglie a 1.000 dipendenti e €450M (cumulative). ~80% delle imprese prima obbligate ne è fuori, o in zona grigia. Scoprilo subito.">
+<link rel="canonical" href="https://normaai.org/scope-csrd.html">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:site_name" content="NormaAI">
+<meta property="og:locale" content="it_IT">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://normaai.org/scope-csrd.html">
+<meta property="og:title" content="CSRD dopo l'Omnibus I: la tua impresa è ancora in ambito?">
+<meta property="og:description" content="Dopo la direttiva (UE) 2026/470 l'obbligo riguarda chi supera sia i 1.000 dipendenti sia i 450 milioni di euro di ricavi netti. Inserisci due numeri e leggi dove ti trovi, con la norma che lo stabilisce.">
+<meta property="og:image" content="https://normaai.org/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+/* Same rule as the application: light by default, dark only when chosen there. */
+try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}
+</script>
 <style>
-  /* ── NormaAI "warm paper" tokens (mirror tailwind.config.js) ──────────
-     Self-contained: nessuna risorsa esterna (CSP font-src 'self'). Font di
-     sistema con fallback editoriali; rende identico ovunque. */
+  /* NormaAI v2 tokens (frontend/DESIGN.md, mirrored from src/app/globals.css).
+     Self-contained page: no external resource, so the two families are font
+     stacks that fall back to the system serif and sans. */
   :root{
-    --paper:#FAF9F5; --paper-2:#F0EEE6; --paper-3:#E8E4D9;
-    --night:#141413; --night-2:#5E5D59; --night-3:#6B6A64;
-    --clay:#D97757; --clay-deep:#C2613F; --clay-soft:rgba(217,119,87,0.10);
-    --line:#E3DFD3; --line-2:#D2CCBC;
-    --in-bg:#FBEEE8; --in-bd:#C2613F; --in-ink:#9E4A2C;
-    --filo-bg:#FAF4E6; --filo-bd:#CBA23A; --filo-ink:#8A6A14;
-    --out-bg:#EEF3EC; --out-bd:#7C9A78; --out-ink:#4F7050;
-    --font-sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    --font-serif:'Source Serif 4','Source Serif Pro',Georgia,'Times New Roman',serif;
-    --font-mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+    color-scheme:light;
+    --canvas:#F1F2F4; --surface:#FFFFFF; --surface-2:#F7F8F9; --surface-3:#ECEEF1;
+    --ink:#0C1B33; --ink-2:#3D4B61; --ink-3:#5C6879;
+    --rule:#D8DCE3; --rule-2:#C3C9D3;
+    --union:#0A3A9C; --union-deep:#072B75; --union-ink:#FFFFFF; --union-tint:rgba(10,58,156,0.10);
+    --mark:#FFEA7A; --mark-deep:#F5C400;
+    --ok:#137A4B; --ok-tint:rgba(19,122,75,0.10);
+    --warn:#9A5B00; --warn-tint:rgba(154,91,0,0.10);
+    --bad:#A3262E;
+    --font-serif:Literata,Georgia,"Times New Roman",serif;
+    --font-sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  html.dark{
+    color-scheme:dark;
+    --canvas:#0B1220; --surface:#111A2B; --surface-2:#16213A; --surface-3:#1E2B47;
+    --ink:#E8ECF3; --ink-2:#B3BCCB; --ink-3:#8B96A8;
+    --rule:#253149; --rule-2:#384663;
+    --union:#7FA3FF; --union-deep:#A0BCFF; --union-ink:#0B1220; --union-tint:rgba(127,163,255,0.14);
+    --mark:#E6C84A; --mark-deep:#F5C400;
+    --ok:#4AC486; --ok-tint:rgba(74,196,134,0.14);
+    --warn:#E6A03C; --warn-tint:rgba(230,160,60,0.14);
+    --bad:#F06E76;
   }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
   body{
-    background:
-      radial-gradient(900px 480px at 88% -8%, rgba(217,119,87,0.07), transparent 60%),
-      radial-gradient(720px 520px at -5% 108%, rgba(20,20,19,0.035), transparent 60%),
-      var(--paper);
-    color:var(--night);
-    font-family:var(--font-sans);
-    font-size:16px; line-height:1.6;
+    margin:0; background:var(--surface); color:var(--ink);
+    font-family:var(--font-sans); font-size:16px; line-height:1.55;
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    min-height:100vh;
   }
-  ::selection{ background:rgba(217,119,87,0.22); color:var(--night); }
-  a{ color:var(--clay-deep); text-decoration:none; }
+  ::selection{ background:var(--mark); color:#0C1B33; }
+  :focus-visible{ outline:2px solid var(--union); outline-offset:2px; border-radius:2px; }
+  a{ color:var(--union); text-decoration:none; text-underline-offset:4px; }
   a:hover{ text-decoration:underline; }
-  :focus-visible{ outline:2px solid var(--clay); outline-offset:2px; border-radius:2px; }
+  h1,h2,h3{ font-family:var(--font-serif); font-weight:500; color:var(--ink); margin:0; text-wrap:balance; }
+  p{ margin:0; text-wrap:pretty; }
+  strong{ font-weight:600; color:var(--ink); }
+  /* The highlighter: only behind quoted passages of law. */
+  mark{ background:var(--mark); color:#0C1B33; padding:0.05em 0.15em; border-radius:2px; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
 
-  .wrap{ max-width:760px; margin:0 auto; padding:0 22px; }
+  .site{ max-width:1120px; margin:0 auto; padding:0 24px; }
+  .col{ max-width:768px; margin:0 auto; padding:0 24px; }
 
-  /* ── Header ─────────────────────────────────────────────────────────── */
-  header{ border-bottom:1px solid var(--line); background:rgba(250,249,245,0.85); backdrop-filter:saturate(140%) blur(6px); position:sticky; top:0; z-index:5; }
-  .bar{ display:flex; align-items:center; justify-content:space-between; height:58px; }
-  .brand{ display:flex; align-items:center; gap:10px; }
-  .mark{ width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--clay),var(--clay-deep)); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
-  .brand-name{ font-weight:700; letter-spacing:-0.01em; font-size:16px; }
-  .bar .back{ font-size:14px; color:var(--night-2); font-weight:500; }
+  header.top{ position:sticky; top:0; z-index:5; background:var(--surface); border-bottom:1px solid var(--rule); }
+  .bar{ display:flex; align-items:center; justify-content:space-between; gap:24px; padding-top:14px; padding-bottom:14px; }
+  .brand{ display:inline-flex; align-items:center; gap:10px; color:var(--ink); }
+  .brand:hover{ text-decoration:none; }
+  .brand svg{ flex:none; display:block; }
+  .wordmark{ font-family:var(--font-serif); font-weight:600; font-size:20px; line-height:1.3; letter-spacing:-0.01em; color:var(--ink); }
+  .wordmark .hl{ position:relative; isolation:isolate; }
+  .wordmark .hl::before{ content:""; position:absolute; left:-0.05em; right:-0.05em; bottom:0.08em; height:0.42em; background:var(--mark); border-radius:2px; transform:rotate(-1deg); z-index:-1; }
+  .back{ font-size:15px; color:var(--ink-2); }
+  .back:hover{ color:var(--ink); }
 
-  /* ── Hero ───────────────────────────────────────────────────────────── */
-  .hero{ padding:48px 0 8px; }
-  .eyebrow{ font-family:var(--font-mono); font-size:11.5px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--clay-deep); display:inline-flex; align-items:center; gap:8px; }
-  .eyebrow::before{ content:""; width:18px; height:1.5px; background:var(--clay); display:inline-block; }
-  h1{ font-family:var(--font-serif); font-weight:600; font-size:clamp(30px,5.4vw,46px); line-height:1.06; letter-spacing:-0.02em; margin:14px 0 0; }
-  .lede{ font-size:18px; color:var(--night-2); margin:18px 0 0; max-width:60ch; }
-  .lede b{ color:var(--night); font-weight:600; }
+  .hero{ padding:56px 0 40px; }
+  h1{ font-size:32px; line-height:1.15; }
+  .lede{ margin-top:20px; color:var(--ink-2); }
+  .basis{ margin-top:16px; font-size:13px; line-height:1.45; color:var(--ink-2); }
+  @media (min-width:768px){ .hero{ padding-top:72px; } h1{ font-size:44px; line-height:1.1; letter-spacing:-0.01em; } }
 
-  /* ── Card ───────────────────────────────────────────────────────────── */
-  .card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:26px; margin-top:30px; box-shadow:0 1px 0 #fff inset, 0 14px 40px rgba(20,20,19,0.06); }
-  .card h2{ font-family:var(--font-serif); font-weight:600; font-size:21px; letter-spacing:-0.01em; margin:0 0 4px; }
-  .card .hint{ font-size:14px; color:var(--night-3); margin:0 0 20px; }
+  .block{ border-top:1px solid var(--rule); padding:40px 0; }
+  h2{ font-size:24px; line-height:1.2; }
+  .hint{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
 
-  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
-  .field label{ display:block; font-size:13.5px; font-weight:600; color:var(--night); margin-bottom:6px; }
-  .field .sub{ font-weight:400; color:var(--night-3); }
-  .inp{ display:flex; align-items:center; border:1px solid var(--line-2); border-radius:10px; background:var(--paper); transition:border-color .15s, box-shadow .15s; }
-  .inp:focus-within{ border-color:var(--clay); box-shadow:0 0 0 3px var(--clay-soft); }
-  .inp .pre{ padding:0 0 0 14px; color:var(--night-3); font-family:var(--font-mono); font-size:15px; }
-  .inp input{ width:100%; border:0; background:transparent; padding:13px 14px; font-family:var(--font-mono); font-size:16px; color:var(--night); outline:none; }
-  .inp .suf{ padding:0 14px 0 0; color:var(--night-3); font-family:var(--font-mono); font-size:13px; white-space:nowrap; }
+  .grid{ margin-top:24px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .field label{ display:block; margin-bottom:6px; font-size:13px; line-height:1.45; font-weight:500; color:var(--ink); }
+  .field .sub{ font-weight:400; color:var(--ink-2); }
+  .field input{ width:100%; height:40px; padding:0 12px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); color:var(--ink); font-family:var(--font-sans); font-size:16px; font-variant-numeric:tabular-nums; }
+  .field input::placeholder{ color:var(--ink-3); }
+  .field input:focus{ outline:2px solid var(--union); outline-offset:1px; border-color:var(--union); }
 
-  .checks{ margin-top:18px; display:flex; flex-direction:column; gap:11px; }
-  .chk{ display:flex; gap:11px; align-items:flex-start; font-size:14.5px; color:var(--night); cursor:pointer; }
-  .chk input{ margin:3px 0 0; width:17px; height:17px; accent-color:var(--clay); flex:0 0 auto; }
-  .chk span small{ display:block; color:var(--night-3); font-size:12.5px; }
+  .checks{ margin-top:20px; display:grid; gap:12px; }
+  .chk{ display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
+  .chk input{ flex:none; width:18px; height:18px; margin:3px 0 0; accent-color:var(--union); }
+  .chk .t{ display:block; font-size:16px; line-height:1.4; color:var(--ink); }
+  .chk .d{ display:block; margin-top:2px; font-size:13px; line-height:1.45; color:var(--ink-2); }
 
-  .btn{ appearance:none; border:0; cursor:pointer; font-family:var(--font-sans); font-weight:600; font-size:16px; border-radius:11px; padding:14px 22px; transition:transform .08s, background .15s, box-shadow .15s; }
-  .btn-primary{ background:var(--clay-deep); color:#fff; box-shadow:0 6px 18px rgba(194,97,63,0.28); width:100%; margin-top:22px; }
-  .btn-primary:hover{ background:#b1572f; }
-  .btn-primary:active{ transform:translateY(1px); }
-  .chips{ margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .chips .lbl{ font-size:12.5px; color:var(--night-3); }
-  .chip{ font-family:var(--font-mono); font-size:12.5px; border:1px solid var(--line-2); background:var(--paper); color:var(--night-2); border-radius:999px; padding:5px 11px; cursor:pointer; }
-  .chip:hover{ border-color:var(--clay); color:var(--clay-deep); }
+  .btn{ appearance:none; display:inline-flex; align-items:center; justify-content:center; min-height:48px; padding:0 20px; border:1px solid transparent; border-radius:6px; font-family:var(--font-sans); font-size:16px; font-weight:500; line-height:1.2; cursor:pointer; }
+  .btn-primary{ background:var(--union); color:var(--union-ink); }
+  .btn-primary:hover{ background:var(--union-deep); }
+  .btn[disabled]{ opacity:0.5; cursor:default; }
+  .actions{ margin-top:24px; }
+  .examples{ margin-top:16px; display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13px; color:var(--ink-2); }
+  .chip{ appearance:none; min-height:32px; padding:0 12px; border:1px solid var(--rule-2); border-radius:6px; background:var(--surface); color:var(--ink); font-family:var(--font-sans); font-size:13px; font-weight:500; font-variant-numeric:tabular-nums; cursor:pointer; }
+  .chip:hover{ background:var(--surface-2); }
+  @media (max-width:479px){ .btn{ width:100%; } }
 
-  /* ── Result ─────────────────────────────────────────────────────────── */
-  #result{ margin-top:22px; display:none; }
-  #result.show{ display:block; animation:rise .28s ease both; }
-  @keyframes rise{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none; } }
-  .verdict{ border:1px solid; border-radius:16px; padding:24px; }
-  .verdict.in{ background:var(--in-bg); border-color:var(--in-bd); }
-  .verdict.filo{ background:var(--filo-bg); border-color:var(--filo-bd); }
-  .verdict.out{ background:var(--out-bg); border-color:var(--out-bd); }
-  .v-tag{ font-family:var(--font-mono); font-size:11.5px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; }
-  .verdict.in .v-tag{ color:var(--in-ink); }
-  .verdict.filo .v-tag{ color:var(--filo-ink); }
-  .verdict.out .v-tag{ color:var(--out-ink); }
-  .v-title{ font-family:var(--font-serif); font-weight:600; font-size:24px; line-height:1.16; letter-spacing:-0.01em; margin:8px 0 0; }
-  .v-body{ font-size:15.5px; color:var(--night); margin:14px 0 0; }
-  .v-body b{ font-weight:600; }
+  #result{ display:none; scroll-margin-top:72px; }
+  #result.show{ display:block; border-top:1px solid var(--rule); padding:40px 0 0; }
+  .verdict{ background:var(--surface-2); border:1px solid var(--rule); border-radius:10px; padding:24px; }
+  .badge{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:12px; line-height:1.4; font-weight:500; background:var(--surface-3); color:var(--ink-2); }
+  .badge.union{ background:var(--union-tint); color:var(--union); }
+  .badge.ok{ background:var(--ok-tint); color:var(--ok); }
+  .badge.warn{ background:var(--warn-tint); color:var(--warn); }
+  .v-title{ margin-top:12px; }
+  .v-body{ margin-top:12px; color:var(--ink-2); }
 
-  .axes{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 0; }
-  @media (max-width:480px){ .axes{ grid-template-columns:1fr; } }
-  .axis{ background:rgba(255,255,255,0.6); border:1px solid var(--line); border-radius:11px; padding:13px 15px; }
-  .axis .k{ font-size:12px; color:var(--night-3); text-transform:uppercase; letter-spacing:0.05em; }
-  .axis .val{ font-family:var(--font-mono); font-size:20px; font-weight:500; margin-top:3px; display:flex; align-items:baseline; gap:7px; }
-  .axis .cmp{ font-size:13px; font-family:var(--font-sans); }
-  .axis .cmp.ok{ color:var(--in-ink); } .axis .cmp.no{ color:var(--night-2); }
+  .axes{ margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .axis{ background:var(--surface); border:1px solid var(--rule); border-radius:6px; padding:12px 14px; }
+  .axis .k{ font-size:13px; line-height:1.45; color:var(--ink-2); }
+  .axis .val{ margin-top:2px; font-size:20px; line-height:1.3; font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .axis .cmp{ margin-top:2px; font-size:13px; line-height:1.45; color:var(--ink-2); }
+  .axis .cmp.over{ color:var(--union); font-weight:500; }
 
-  .legal{ margin-top:18px; border-top:1px solid var(--line); padding-top:15px; font-size:13px; color:var(--night-2); }
-  .legal .cite{ font-family:var(--font-mono); font-size:12px; color:var(--night); background:rgba(255,255,255,0.55); border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin-top:7px; line-height:1.5; }
-  .legal .asof{ color:var(--night-2); margin-top:8px; font-size:12px; }
-  ul.notes{ margin:14px 0 0; padding-left:18px; }
-  ul.notes li{ margin:6px 0; font-size:14.5px; color:var(--night); }
-  ul.notes li b{ font-weight:600; }
+  figure.law{ margin:20px 0 0; padding-left:16px; border-left:2px solid var(--mark-deep); }
+  figure.law blockquote{ margin:0; font-family:var(--font-serif); font-size:16px; line-height:1.6; color:var(--ink-2); }
+  figure.law figcaption{ margin-top:8px; font-size:13px; line-height:1.45; color:var(--ink-2); }
+  figure.law figcaption b{ font-weight:500; color:var(--ink); }
 
-  /* ── CTA / lead ─────────────────────────────────────────────────────── */
-  .cta{ margin-top:18px; background:var(--night); color:var(--paper); border-radius:16px; padding:24px; }
-  .cta h3{ font-family:var(--font-serif); font-weight:600; font-size:20px; margin:0 0 6px; color:#fff; }
-  .cta p{ font-size:14.5px; color:#cfcdc6; margin:0 0 16px; }
-  .cta .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  @media (max-width:560px){ .cta .row{ grid-template-columns:1fr; } }
-  .cta input[type=email], .cta input[type=text]{ width:100%; border:1px solid #3a3a37; background:#1f1f1d; color:#fff; border-radius:10px; padding:12px 14px; font-family:var(--font-sans); font-size:15px; }
-  .cta input::placeholder{ color:#9a9991; }
-  .cta input:focus{ outline:none; border-color:var(--clay); box-shadow:0 0 0 3px rgba(217,119,87,0.25); }
-  .cta .btn-cta{ background:var(--clay); color:#fff; margin-top:12px; width:100%; }
-  .cta .btn-cta:hover{ background:var(--clay-deep); }
-  .cta .fine{ font-size:11.5px; color:#85847d; margin:12px 0 0; line-height:1.5; }
-  .cta .fine a{ color:#cfcdc6; text-decoration:underline; }
+  ul.notes{ margin:20px 0 0; padding-left:20px; color:var(--ink-2); }
+  ul.notes li{ margin-top:10px; font-size:15px; line-height:1.5; }
+  .asof{ margin-top:20px; padding-top:16px; border-top:1px solid var(--rule); font-size:13px; line-height:1.45; color:var(--ink-2); }
+
+  .lead{ margin-top:24px; border:1px solid var(--rule); border-radius:10px; padding:24px; background:var(--surface); }
+  .lead h3{ font-size:20px; line-height:1.3; }
+  .lead .why{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
+  .fields{ margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:560px){ .grid,.fields,.axes{ grid-template-columns:1fr; } .verdict,.lead{ padding:16px; } }
+  .lead .btn{ margin-top:16px; }
+  .fine{ margin-top:14px; font-size:12px; line-height:1.4; color:var(--ink-2); }
+  .fine.err{ color:var(--bad); }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
-  .cta-ok{ display:none; }
-  .cta.done .cta-form{ display:none; }
-  .cta.done .cta-ok{ display:block; }
-  .cta-ok .big{ font-family:var(--font-serif); font-size:19px; color:#fff; }
+  .lead-ok{ display:none; }
+  .lead.done .lead-form{ display:none; }
+  .lead.done .lead-ok{ display:block; }
+  .lead-ok p{ margin-top:8px; font-size:15px; line-height:1.5; color:var(--ink-2); }
 
-  /* ── Disclaimer / footer ────────────────────────────────────────────── */
-  .disclaimer{ font-size:12.5px; color:var(--night-2); margin:16px 2px 0; line-height:1.55; }
-  footer{ margin-top:46px; border-top:1px solid var(--line); padding:24px 0 56px; }
-  footer .frow{ display:flex; flex-wrap:wrap; gap:10px 22px; align-items:center; justify-content:space-between; }
-  footer .links a{ color:var(--night-2); font-size:13.5px; margin-right:18px; }
-  footer .meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--night-3); }
+  .disclaimer{ margin:24px 0 0; font-size:13px; line-height:1.45; color:var(--ink-2); }
+
+  footer.foot{ margin-top:64px; border-top:1px solid var(--rule); background:var(--surface-2); }
+  .foot-in{ padding-top:32px; padding-bottom:40px; }
+  .foot nav{ display:flex; flex-wrap:wrap; gap:8px 20px; }
+  .foot nav a{ font-size:13px; line-height:1.45; color:var(--ink-2); }
+  .foot nav a:hover{ color:var(--ink); }
+  .imprint{ margin-top:20px; max-width:72ch; font-size:12px; line-height:1.4; color:var(--ink-2); }
+
+  @media (prefers-reduced-motion:reduce){ *{ scroll-behavior:auto !important; transition:none !important; } }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap bar">
-    <a class="brand" href="https://normaai.org" aria-label="NormaAI, home">
-      <span class="mark" aria-hidden="true">N</span>
-      <span class="brand-name">NormaAI</span>
+<header class="top">
+  <div class="site bar">
+    <a class="brand" href="/" aria-label="NormaAI, pagina principale">
+      <svg viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" focusable="false">
+        <rect width="64" height="64" rx="14" fill="#0C1B33"/>
+        <rect x="9" y="34" width="46" height="11" rx="3" fill="#F5C400" transform="rotate(-3 32 39.5)"/>
+        <path d="M20 47V17l24 30V17" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="wordmark"><span class="hl">Norma</span>AI</span>
     </a>
-    <a class="back" href="https://normaai.org">← Torna al sito</a>
+    <a class="back" href="/">Torna al sito</a>
   </div>
 </header>
 
-<main class="wrap">
+<main class="col">
 
   <section class="hero">
-    <span class="eyebrow">Strumento gratuito · CSRD post-Omnibus I</span>
-    <h1>Sei ancora in ambito CSRD?</h1>
-    <p class="lede">L'<b>Omnibus I</b> (Direttiva UE 2026/470, in vigore dal <b>18 marzo 2026</b>) ha riscritto le soglie: ora servono <b>più di 1.000 dipendenti</b> <b>e</b> <b>oltre €450M di ricavi</b>, in logica <b>cumulativa</b>, non più "2 su 3". Circa l'<b>80% delle imprese</b> prima obbligate ne è uscito, o è finito in una zona grigia. Verifica la tua posizione in 10 secondi.</p>
-    <p style="font-family:var(--font-mono);font-size:12px;color:var(--night-2);margin:14px 0 0;line-height:1.5">Base normativa: <b>Art. 19-bis Direttiva 2013/34/UE</b> (Art. 29-bis per i gruppi), come modificato dall'Omnibus I, <b>Dir. (UE) 2026/470</b>. CELEX <b>32026L0470</b>.</p>
+    <h1>CSRD dopo l'Omnibus I: la tua impresa è ancora in ambito?</h1>
+    <p class="lede">La direttiva (UE) 2026/470 (Omnibus I), in vigore dal <strong>18 marzo 2026</strong>, ha riscritto l'ambito della rendicontazione di sostenibilità: l'obbligo riguarda le imprese che superano <strong>sia</strong> i 1.000 dipendenti medi <strong>sia</strong> i 450 milioni di euro di ricavi netti. Le due soglie valgono insieme: superarne una sola non basta. Inserisci i due numeri e leggi dove ti trovi, con la norma che lo stabilisce.</p>
+    <p class="basis">Base normativa: direttiva 2013/34/UE, art. 19 bis (imprese) e art. 29 bis (gruppi), come modificati dalla direttiva (UE) 2026/470. Testo consolidato al 18 marzo 2026, letto su <a href="https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02013L0034-20260318" target="_blank" rel="noopener noreferrer">EUR-Lex</a> l'11 novembre 2026.</p>
   </section>
 
-  <section class="card" aria-labelledby="calc-h">
+  <section class="block" aria-labelledby="calc-h">
     <h2 id="calc-h">La tua impresa</h2>
-    <p class="hint">Numeri a livello dell'entità o del gruppo consolidato che redige il bilancio. Nessun dato lascia il tuo browser finché non lo invii tu.</p>
+    <p class="hint">Inserisci i numeri della singola impresa oppure, per una capogruppo, quelli del gruppo su base consolidata. Le risposte restano nel tuo browser finché non decidi di inviarle.</p>
 
     <form id="calc" novalidate>
       <div class="grid">
         <div class="field">
-          <label for="emp">Dipendenti <span class="sub">(numero medio annuo)</span></label>
-          <div class="inp">
-            <input id="emp" inputmode="numeric" autocomplete="off" placeholder="es. 850" aria-describedby="calc-h">
-            <span class="suf">dipendenti</span>
-          </div>
+          <label for="emp">Dipendenti <span class="sub">(numero medio nell'esercizio)</span></label>
+          <input id="emp" inputmode="numeric" autocomplete="off" placeholder="Per esempio 850">
         </div>
         <div class="field">
-          <label for="rev">Ricavi netti annui <span class="sub">(in milioni di €)</span></label>
-          <div class="inp">
-            <span class="pre">€</span>
-            <input id="rev" inputmode="decimal" autocomplete="off" placeholder="es. 300">
-            <span class="suf">milioni</span>
-          </div>
+          <label for="rev">Ricavi netti annui <span class="sub">(in milioni di euro)</span></label>
+          <input id="rev" inputmode="decimal" autocomplete="off" placeholder="Per esempio 300">
         </div>
       </div>
 
       <div class="checks">
-        <label class="chk"><input type="checkbox" id="listed"><span>Società <b>quotata</b> in un mercato regolamentato UE<small>Le PMI quotate sono escluse dal nuovo perimetro, ma restano casi di confine.</small></span></label>
-        <label class="chk"><input type="checkbox" id="wave1"><span>Già soggetta a rendicontazione di sostenibilità <b>(Wave 1 / NFRD, FY2024)</b><small>Per i reporter Wave 1 l'Omnibus prevede un'esenzione transitoria FY2025-2026.</small></span></label>
+        <label class="chk"><input type="checkbox" id="listed"><span><span class="t">Società con titoli quotati in un mercato regolamentato dell'Unione</span><span class="d">Nella direttiva l'obbligo dipende ormai solo dalle due soglie; il decreto italiano nomina ancora le piccole e medie imprese quotate.</span></span></label>
+        <label class="chk"><input type="checkbox" id="wave1"><span><span class="t">Rendiconta già la sostenibilità dall'esercizio 2024</span><span class="d">È la prima fase della CSRD: grandi enti di interesse pubblico con più di 500 dipendenti.</span></span></label>
       </div>
 
-      <button class="btn btn-primary" type="submit">Verifica l'ambito →</button>
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Verifica l'ambito</button>
+      </div>
 
-      <div class="chips">
-        <span class="lbl">Prova:</span>
-        <button type="button" class="chip" data-e="600"  data-r="120">600 dip · €120M</button>
-        <button type="button" class="chip" data-e="1200" data-r="380">1.200 dip · €380M</button>
-        <button type="button" class="chip" data-e="1500" data-r="620">1.500 dip · €620M</button>
+      <div class="examples">
+        <span>Prova con un esempio:</span>
+        <button type="button" class="chip" data-e="600"  data-r="120">600 dipendenti, 120 milioni</button>
+        <button type="button" class="chip" data-e="1200" data-r="380">1.200 dipendenti, 380 milioni</button>
+        <button type="button" class="chip" data-e="1500" data-r="620">1.500 dipendenti, 620 milioni</button>
       </div>
     </form>
   </section>
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="disclaimer">Questo strumento è un <b>primo filtro indicativo</b>, non un parere legale. L'ambito CSRD si valuta sul perimetro a fine esercizio e può dipendere da consolidamento, sussidiarie estere, operazioni straordinarie e recepimento nazionale (in Italia il D.Lgs. 125/2024 va aggiornato al testo Omnibus). Per un caso concreto serve una verifica puntuale.</p>
+  <p class="disclaimer">Questo strumento è un primo filtro, non un parere legale. L'ambito si valuta sui dati alla chiusura dell'esercizio e può dipendere dal consolidamento, da operazioni straordinarie e dal recepimento nazionale: per la rendicontazione di sostenibilità gli Stati membri devono adeguarsi alla direttiva (UE) 2026/470 entro il 19 marzo 2027 (art. 5, par. 1).</p>
 
 </main>
 
-<footer>
-  <div class="wrap frow">
-    <div class="links">
-      <a href="https://normaai.org">normaai.org</a>
-      <a href="https://normaai.org/scope-aiact.html">Check AI Act</a>
-      <a href="https://normaai.org/metodo">Il metodo</a>
-      <a href="https://normaai.org/privacy">Privacy</a>
-    </div>
-    <div class="meta" id="asof-foot">NormaAI · Q&amp;A compliance EU con citazioni verificate</div>
+<footer class="foot">
+  <div class="site foot-in">
+    <nav aria-label="Altre pagine">
+      <a href="/">NormaAI</a>
+      <a href="/scope-aiact.html">Verifica AI Act, art. 50</a>
+      <a href="/metodo">Metodo</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/cookie">Cookie</a>
+      <a href="/terms">Termini</a>
+    </nav>
+    <p class="imprint">NormaAI è un progetto di Daniel Culotta, persona fisica, Inverigo (CO), Italia, non ancora costituito in società. Contatti: <a href="mailto:info@normaai.org">info@normaai.org</a>.</p>
   </div>
 </footer>
 
 <script>
 (function(){
   "use strict";
-  var EMP_T = 1000;        // soglia dipendenti (Omnibus I)
-  var REV_T = 450;         // soglia ricavi netti €M (Omnibus I)
-  var CSDDD_EMP = 5000, CSDDD_REV = 1500; // soglie CSDDD dirette
+  var EMP_T = 1000;        // employee threshold (Omnibus I)
+  var REV_T = 450;         // net turnover threshold, EUR million (Omnibus I)
+  var CSDDD_EMP = 5000, CSDDD_REV = 1500; // direct CSDDD thresholds
 
   function toNum(s){
     if (s == null) return NaN;
-    // accetta "1.200", "1200", "1,5" (migliaia IT / decimale)
+    // accepts "1.200", "1200", "1,5" (Italian thousands / decimal)
     s = String(s).trim().replace(/ /g,'');
     if (s === '') return NaN;
-    // virgola = decimale (punti = migliaia); altrimenti distingui migliaia da decimale
+    // comma = decimal (dots = thousands); otherwise tell thousands from decimal
     if (s.indexOf(',') > -1){ s = s.replace(/\./g,'').replace(',', '.'); }
     else if (/^\d{1,3}(\.\d{3})+$/.test(s)){ s = s.replace(/\./g,''); }  // 1.200 / 1.200.000
-    else if (/^\d+\.\d{1,2}$/.test(s)){ /* decimale 12.5 / 450.5 -> tieni */ }
+    else if (/^\d+\.\d{1,2}$/.test(s)){ /* decimal 12.5 / 450.5 -> keep */ }
     else { s = s.replace(/\./g,''); }
     var n = parseFloat(s.replace(/[^0-9.]/g,''));
     return isNaN(n) ? NaN : n;
   }
-  function fmtInt(n){ return Math.round(n).toLocaleString('it-IT'); }
-  function fmtRev(n){ return (Math.round(n*10)/10).toLocaleString('it-IT'); }
+  // useGrouping 'always': Italian locale data would not group four digits ("1200").
+  var GROUPED = { useGrouping: 'always' };
+  function fmtInt(n){ return Math.round(n).toLocaleString('it-IT', GROUPED); }
+  function fmtRev(n){ return (Math.round(n*10)/10).toLocaleString('it-IT', GROUPED); }
 
   var $ = function(id){ return document.getElementById(id); };
   var resultEl = $('result');
@@ -256,107 +276,131 @@
   function classify(emp, rev, listed){
     var empOver = emp > EMP_T, revOver = rev > REV_T;
     if (empOver && revOver) return 'in';
-    if (empOver || revOver) return 'filo';            // una sola soglia superata: caso "straddle"
-    var empMargin = emp >= 850 && emp <= 1200;        // a ridosso dei 1.000
-    var revMargin = rev >= 380 && rev <= 550;         // a ridosso dei €450M
+    if (empOver || revOver) return 'filo';            // one threshold only: straddle case
+    var empMargin = emp >= 850 && emp <= 1200;        // close to 1,000
+    var revMargin = rev >= 380 && rev <= 550;         // close to EUR 450 million
     if (empMargin || revMargin) return 'filo';
-    if (listed) return 'filo';                        // quotata sotto soglia: caso di confine
+    if (listed) return 'filo';                        // listed below the thresholds: borderline
     return 'out';
   }
 
-  var CITE = 'Base normativa: Art. 19-bis Direttiva 2013/34/UE (rendicontazione di sostenibilità delle grandi imprese; Art. 29-bis per i gruppi), introdotto dalla CSRD, Dir. (UE) 2022/2464, e ristretto dall’Omnibus I, Dir. (UE) 2026/470, in vigore dal 18 marzo 2026. CELEX 32026L0470.';
+  var EURLEX = 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:02013L0034-20260318';
+
+  // Literal passage of art. 19 bis, par. 1, of Directive 2013/34/EU, Italian
+  // consolidated text of 18 March 2026 (CELEX 02013L0034-20260318), checked on
+  // 2026-11-11. "[...]" marks where the sentence goes on.
+  var LAW = {
+    before: "Le imprese che, alla data di chiusura del bilancio, presentano",
+    mark: "ricavi netti delle vendite e delle prestazioni superiori a 450 000 000 EUR e superano un numero medio di 1 000 dipendenti occupati durante l’esercizio",
+    after: " includono nella relazione sulla gestione informazioni necessarie alla comprensione dell’impatto dell’impresa sulle questioni di sostenibilità [...]"
+  };
+
+  // Italian transitional rule: art. 17, comma 3-bis, of D.Lgs. 125/2024, added
+  // by art. 10 of decree-law 193/2026 (text in force on Normattiva, 2026-11-11).
+  var ITALY = "<li><strong>In Italia.</strong> Per gli esercizi che iniziano tra il 1° gennaio 2026 e il 31 dicembre 2027 il D.Lgs. 125/2024 non si applica alle imprese con ricavi netti non superiori a 450 milioni di euro oppure con un numero medio di dipendenti non superiore a 1.000 (art. 17, comma 3-bis, introdotto dal decreto-legge 23 ottobre 2026, n. 193, in vigore dal 24 ottobre 2026 e, all'11 novembre 2026, non ancora convertito in legge).</li>";
+
+  var CHAIN = "<li><strong>Richieste dei clienti.</strong> Per le imprese fino a 1.000 dipendenti che stanno nella catena del valore di un'impresa obbligata, la direttiva prevede il diritto di rifiutare le informazioni che vanno oltre i principi di rendicontazione volontari e vieta all'impresa obbligata di imporle per contratto (direttiva 2013/34/UE, art. 19 bis, par. 3; gli Stati membri devono recepirla entro il 19 marzo 2027).</li>";
 
   function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]; }); }
+
+  function reveal(){
+    resultEl.classList.add('show');
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultEl.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block:'start' });
+  }
 
   function render(emp, rev, listed, wave1){
     var band = classify(emp, rev, listed);
     var empOver = emp > EMP_T, revOver = rev > REV_T;
     var csddd = emp > CSDDD_EMP && rev > CSDDD_REV;
 
-    var tag, title, body, notes = '';
+    var tone, tag, title, body, notes = '';
 
     if (band === 'in'){
-      tag = 'In ambito · obbligo CSRD';
-      title = 'La tua impresa è quasi certamente in ambito di rendicontazione CSRD.';
-      body = 'Superi <b>entrambe</b> le soglie cumulative post-Omnibus (oltre 1.000 dipendenti <b>e</b> oltre €450M di ricavi). Salvo esenzioni specifiche, ricadi nell’obbligo di rendicontazione di sostenibilità secondo gli ESRS.';
+      tone = 'union';
+      tag = "In ambito";
+      title = "Con questi numeri la tua impresa supera entrambe le soglie della CSRD.";
+      body = "Superi sia i 1.000 dipendenti medi sia i 450 milioni di euro di ricavi netti: salvo esenzioni, la relazione sulla gestione deve contenere la rendicontazione di sostenibilità, redatta secondo i principi europei di rendicontazione (art. 19 bis, par. 1 e 4). Le nuove soglie si applicano agli esercizi che iniziano dal 1° gennaio 2027 (direttiva (UE) 2022/2464, art. 5, par. 2, come modificato).";
       notes = '<ul class="notes">'
-        + '<li><b>Verifica le esenzioni:</b> reporter Wave 1 (esenzione transitoria FY2025-2026) e perimetri di gruppo con holding possono cambiare il quadro.</li>'
-        + '<li><b>Doppia materialità ed ESRS Set 1</b> (ridotto del ~61% dei datapoint) restano il cuore del lavoro: la riduzione non semplifica l’assessment.</li>'
-        + (wave1 ? '<li><b>Hai indicato Wave 1:</b> valuti l’esenzione transitoria FY2025-2026 e poi ri-applichi le nuove soglie sull’esercizio rilevante.</li>' : '')
+        + "<li><strong>Gruppi.</strong> Un'impresa figlia è esentata se è inclusa nella relazione consolidata sulla gestione della capogruppo, alle condizioni dell'art. 19 bis, par. 9. Per una capogruppo le due soglie si misurano su base consolidata (art. 29 bis, par. 1).</li>"
+        + (wave1 ? "<li><strong>Rendiconti già dall'esercizio 2024.</strong> Continui senza interruzione: la possibilità di esenzione per gli esercizi 2025 e 2026 riguarda solo chi resta sotto una delle due soglie (direttiva (UE) 2022/2464, art. 5, par. 2, ultimo comma).</li>" : '')
         + '</ul>';
     } else if (band === 'filo'){
-      tag = 'Fuori oggi · sul filo';
+      tone = 'warn';
+      tag = "Fuori ambito oggi, vicino al confine";
       var reason;
-      if (empOver && !revOver) reason = 'Superi la soglia dei dipendenti ma <b>non</b> quella dei ricavi: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo, ma basta una crescita dei ricavi o un cambio di perimetro per entrarci.';
-      else if (revOver && !empOver) reason = 'Superi la soglia dei ricavi ma <b>non</b> quella dei dipendenti: poiché la regola è <b>cumulativa (AND)</b>, oggi sei <b>fuori</b> dall’obbligo, ma un’assunzione netta o un consolidamento può farti entrare.';
-      else if (listed && !(emp>=850||rev>=380)) reason = 'Come <b>società quotata</b> sotto le nuove soglie dimensionali sei in linea di principio esclusa, ma la posizione di una quotata va confermata caso per caso (obblighi da mercato regolamentato, perimetro di gruppo).';
-      else reason = 'Oggi sei <b>fuori</b> dall’obbligo, ma sei <b>a ridosso</b> di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento ti fanno oscillare dentro/fuori da un esercizio all’altro.';
-      title = 'Oggi sei fuori dall’obbligo CSRD, ma sei sul filo della soglia.';
-      body = reason + ' È il caso in cui una <b>verifica puntuale</b> (e una scelta tra obbligo, adozione volontaria e VSME) vale di più.';
+      if (empOver && !revOver) reason = "Superi la soglia dei dipendenti ma non quella dei ricavi. Le due soglie valgono insieme, quindi oggi sei fuori dall'obbligo: basta però una crescita dei ricavi o un cambio di perimetro per entrarci.";
+      else if (revOver && !empOver) reason = "Superi la soglia dei ricavi ma non quella dei dipendenti. Le due soglie valgono insieme, quindi oggi sei fuori dall'obbligo: un aumento dell'organico o un consolidamento può farti entrare.";
+      else if (listed && !(emp>=850||rev>=380)) reason = "Sei sotto entrambe le soglie. Nella direttiva l'obbligo dipende ormai solo da quelle, anche per le società quotate (art. 19 bis, par. 1). Il D.Lgs. 125/2024 nomina però ancora le piccole e medie imprese quotate (art. 3, comma 1, e art. 17, comma 1, lettera c): finché l'Italia non recepisce la direttiva è un punto da verificare sul tuo caso.";
+      else reason = "Oggi sei fuori dall'obbligo, ma a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento possono farti entrare o uscire da un esercizio all'altro.";
+      title = "Oggi sei fuori dall'obbligo CSRD, ma vicino al confine.";
+      body = reason + " È il caso in cui conviene una verifica puntuale sui dati di bilancio.";
       notes = '<ul class="notes">'
-        + '<li><b>Perimetro variabile:</b> lo scope si misura a fine esercizio, ma i dati ESG vanno raccolti su tutto l’anno. Se hai M&amp;A o riassetti in corso, l’analisi diventa multi-scenario.</li>'
-        + '<li><b>Pressione di filiera:</b> anche fuori dall’obbligo, i clienti in ambito CSRD/CSDDD ti chiederanno disclosure (VSME) come fornitore.</li>'
-        + (wave1 ? '<li><b>Wave 1:</b> esenzione transitoria FY2025-2026, poi rivaluti sulle soglie nuove.</li>' : '')
+        + "<li><strong>Quando si misura.</strong> Le soglie si verificano alla data di chiusura del bilancio; per una capogruppo, su base consolidata (art. 19 bis, par. 1, e art. 29 bis, par. 1).</li>"
+        + ITALY
+        + (empOver ? '' : CHAIN)
+        + (wave1 ? "<li><strong>Rendiconti già dall'esercizio 2024.</strong> La direttiva lascia agli Stati membri la possibilità di esentare, per gli esercizi che iniziano tra il 1° gennaio 2025 e il 31 dicembre 2026, chi resta sotto una delle due soglie (direttiva (UE) 2022/2464, art. 5, par. 2, ultimo comma).</li>" : '')
         + '</ul>';
     } else {
-      tag = 'Fuori ambito · obbligo diretto';
-      title = 'Probabilmente sei fuori dall’ambito di rendicontazione CSRD obbligatoria.';
-      body = 'Non superi le soglie cumulative post-Omnibus (1.000 dipendenti <b>e</b> €450M). L’obbligo <b>diretto</b> non scatta, ma "fuori da CSRD" non significa "fuori da tutto":';
+      tone = 'ok';
+      tag = "Fuori ambito";
+      title = "Con questi numeri sei fuori dall'obbligo di rendicontazione CSRD.";
+      body = "Non superi né i 1.000 dipendenti medi né i 450 milioni di euro di ricavi netti: l'obbligo diretto non ti riguarda. Restano alcune cose da sapere:";
       notes = '<ul class="notes">'
-        + '<li><b>Pressione di filiera (VSME):</b> se sei fornitore di un gruppo in ambito, riceverai richieste di disclosure di sostenibilità lungo la catena.</li>'
-        + '<li><b>Taxonomy indiretta:</b> se hai finanziamento bancario, la banca (per il proprio GAR) può chiederti dati Taxonomy-eligible.</li>'
-        + '<li><b>CSDDD di filiera:</b> i grandi gruppi obbligati alla due diligence trasferiscono requisiti ai fornitori, ben sotto le loro soglie dirette (>5.000 dip e >€1,5 mld; prima compliance luglio 2029).</li>'
+        + ITALY
+        + CHAIN
+        + "<li><strong>Dovere di diligenza (CSDDD).</strong> Si applica direttamente solo alle società con più di 5.000 dipendenti e un fatturato netto mondiale superiore a 1,5 miliardi di euro (direttiva (UE) 2024/1760, art. 2, par. 1); gli Stati membri la applicano dal 26 luglio 2029 (art. 37).</li>"
+        + (wave1 ? "<li><strong>Rendiconti già dall'esercizio 2024.</strong> La direttiva lascia agli Stati membri la possibilità di esentare, per gli esercizi che iniziano tra il 1° gennaio 2025 e il 31 dicembre 2026, chi resta sotto una delle due soglie (direttiva (UE) 2022/2464, art. 5, par. 2, ultimo comma).</li>" : '')
         + '</ul>';
     }
 
     var csdddNote = csddd
-      ? '<ul class="notes"><li><b>Attenzione CSDDD diretta:</b> superi anche le soglie della due diligence (oltre 5.000 dipendenti e €1,5 mld di ricavi). Trasposizione 26 luglio 2028, prima compliance luglio 2029 (Dir. UE 2026/470).</li></ul>'
+      ? "<ul class=\"notes\"><li><strong>Attenzione alla CSDDD.</strong> Con questi numeri superi anche le soglie del dovere di diligenza: più di 5.000 dipendenti e un fatturato netto mondiale superiore a 1,5 miliardi di euro (direttiva (UE) 2024/1760, art. 2, par. 1). Gli Stati membri devono recepirla entro il 26 luglio 2028 e applicarla dal 26 luglio 2029 (art. 37).</li></ul>"
       : '';
 
-    var axisEmp = '<div class="axis"><div class="k">Dipendenti</div><div class="val">' + fmtInt(emp)
-      + ' <span class="cmp ' + (empOver?'ok':'no') + '">' + (empOver?'✓ oltre 1.000':'sotto 1.000') + '</span></div></div>';
-    var axisRev = '<div class="axis"><div class="k">Ricavi netti</div><div class="val">€' + fmtRev(rev) + 'M'
-      + ' <span class="cmp ' + (revOver?'ok':'no') + '">' + (revOver?'✓ oltre €450M':'sotto €450M') + '</span></div></div>';
+    var axisEmp = '<div class="axis"><div class="k">Dipendenti</div><div class="val">' + fmtInt(emp) + '</div>'
+      + '<div class="cmp' + (empOver?' over':'') + '">' + (empOver?'Oltre la soglia di 1.000':'Entro la soglia di 1.000') + '</div></div>';
+    var axisRev = '<div class="axis"><div class="k">Ricavi netti</div><div class="val">' + fmtRev(rev) + ' milioni di euro</div>'
+      + '<div class="cmp' + (revOver?' over':'') + '">' + (revOver?'Oltre la soglia di 450 milioni':'Entro la soglia di 450 milioni') + '</div></div>';
 
     var ctaH, ctaP;
-    if (band === 'in'){ ctaH = 'Mappa i tuoi obblighi articolo per articolo'; ctaP = 'Ti invio l’analisi di ambito per la tua impresa, il Codex Post-Omnibus (PDF) e una scope-review di 20 minuti, senza impegno.'; }
-    else if (band === 'filo'){ ctaH = 'Sciogliamo l’ambiguità sul tuo caso'; ctaP = 'La zona grigia si risolve solo sul tuo perimetro reale. Ti invio l’analisi dettagliata + il Codex Post-Omnibus (PDF) e prenotiamo 20 minuti.'; }
-    else { ctaH = 'Verifica la tua esposizione di filiera'; ctaP = 'Anche fuori dall’obbligo diretto, vale sapere cosa ti chiederanno clienti e banche. Ti invio il Codex Post-Omnibus (PDF) e, se vuoi, 20 minuti di confronto.'; }
+    if (band === 'in'){ ctaH = "Vuoi la mappa dei tuoi obblighi?"; ctaP = "Ti scrivo io con l'analisi di ambito della tua impresa. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
+    else if (band === 'filo'){ ctaH = "Vuoi chiarire il tuo caso?"; ctaP = "Il confine si scioglie solo sui dati reali. Ti scrivo io con l'analisi del tuo caso; se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
+    else { ctaH = "Vuoi sapere che cosa possono chiederti i clienti?"; ctaP = "Ti scrivo io con che cosa possono chiederti i clienti obbligati e che cosa puoi rifiutare. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
 
     var html =
-      '<div class="verdict ' + band + '">'
-        + '<div class="v-tag">' + tag + '</div>'
-        + '<div class="v-title">' + title + '</div>'
+      '<div class="verdict">'
+        + '<span class="badge ' + tone + '">' + tag + '</span>'
+        + '<h2 class="v-title">' + title + '</h2>'
         + '<div class="axes">' + axisEmp + axisRev + '</div>'
-        + '<div class="v-body">' + body + '</div>'
+        + '<p class="v-body">' + body + '</p>'
+        + '<figure class="law">'
+          + '<blockquote lang="it">' + esc(LAW.before) + ' <mark>' + esc(LAW.mark) + '</mark>' + esc(LAW.after) + '</blockquote>'
+          + '<figcaption><b>Direttiva 2013/34/UE</b>, art. 19 bis, par. 1. <a href="' + EURLEX + '" target="_blank" rel="noopener noreferrer">Testo su EUR-Lex</a></figcaption>'
+        + '</figure>'
         + notes + csdddNote
-        + '<div class="legal"><div>' + CITE.replace('Base normativa:','<b>Base normativa.</b>') + '</div>'
-          + '<div class="cite">CELEX 32026L0470 · Art. 19-bis / 29-bis Dir. 2013/34/UE</div>'
-          + '<div class="asof" id="asof-line">Quadro normativo aggiornato all’Omnibus I (in vigore 18 marzo 2026).</div>'
-        + '</div>'
+        + '<p class="asof" id="asof-line">Aggiornato all\'11 novembre 2026. Direttiva 2013/34/UE nel testo consolidato al 18 marzo 2026 (CELEX 02013L0034-20260318); D.Lgs. 125/2024 nel testo vigente su Normattiva all\'11 novembre 2026.</p>'
       + '</div>'
-      + '<div class="cta" id="cta">'
-        + '<div class="cta-form">'
-          + '<h3>' + ctaH + '</h3><p>' + ctaP + '</p>'
+      + '<div class="lead" id="cta">'
+        + '<div class="lead-form">'
+          + '<h3>' + ctaH + '</h3><p class="why">' + ctaP + '</p>'
           + '<form id="lead" novalidate>'
-            + '<div class="row">'
-              + '<input type="text" id="org" autocomplete="organization" aria-label="Nome impresa" placeholder="Nome impresa">'
-              + '<input type="email" id="email" autocomplete="email" aria-label="Email aziendale" placeholder="email@impresa.it" required>'
+            + '<div class="fields">'
+              + '<div class="field"><label for="org">Nome dell\'impresa</label><input type="text" id="org" autocomplete="organization"></div>'
+              + '<div class="field"><label for="email">Email di lavoro</label><input type="email" id="email" autocomplete="email" placeholder="nome@impresa.it" required></div>'
             + '</div>'
             + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
-            + '<button class="btn btn-cta" type="submit">Ricevi l’analisi + il Codex →</button>'
-            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel (founder). Niente newsletter, niente cessione a terzi. '
-              + 'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo tema (legittimo interesse, GDPR Art. 6.1.f). <a href="https://normaai.org/privacy">privacy</a>.</p>'
+            + '<button class="btn btn-primary" type="submit">Invia la richiesta</button>'
+            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta. Niente newsletter e nessuna cessione a terzi: uso i tuoi dati solo per mandarti l\'analisi e il Codex e ricontattarti su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR). Vedi la <a href="/privacy">privacy policy</a>.</p>'
           + '</form>'
         + '</div>'
-        + '<div class="cta-ok"><div class="big">Fatto. Ti ricontatto al più presto.</div>'
-          + '<p class="fine" style="margin-top:10px">Il tuo <b style="color:#fff">Codex Post-Omnibus</b> è pronto: <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricalo qui</a>.</p></div>'
+        + '<div class="lead-ok"><h3>Richiesta inviata</h3>'
+          + '<p>Ti scrivo al più presto. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus (PDF)</a>.</p></div>'
       + '</div>';
 
     resultEl.innerHTML = html;
-    resultEl.classList.add('show');
     wireLead(band);
-    resultEl.scrollIntoView({ behavior:'smooth', block:'start' });
+    reveal();
   }
 
   function wireLead(band){
@@ -368,8 +412,8 @@
       var hp = ($('contact_time').value||'').trim();
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-      if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.style.color = '#ffb4a2'; return; }
-      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio...';
+      if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.className = 'fine err'; return; }
+      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio in corso';
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', contact_time:hp })
@@ -379,9 +423,9 @@
         var dl = $('dl'); if (dl && data && data.download_url){ dl.setAttribute('href', data.download_url); }
       })
       .catch(function(){
-        // Non perdere il lead: fallback a email diretta.
-        msg.innerHTML = 'Invio non riuscito. Scrivimi direttamente a <a href="mailto:info@normaai.org">info@normaai.org</a>.';
-        msg.style.color = '#ffb4a2'; btn.disabled = false; btn.textContent = 'Riprova →';
+        // Never lose the request: fall back to a direct email.
+        msg.innerHTML = 'Invio non riuscito. Scrivimi a <a href="mailto:info@normaai.org">info@normaai.org</a>.';
+        msg.className = 'fine err'; btn.disabled = false; btn.textContent = 'Riprova a inviare';
       });
     });
   }
@@ -391,8 +435,8 @@
     var rev = toNum($('rev').value);
     var listed = $('listed').checked, wave1 = $('wave1').checked;
     if (isNaN(emp) || emp < 0 || isNaN(rev) || rev < 0){
-      resultEl.innerHTML = '<div class="verdict filo"><div class="v-tag">Dati mancanti</div>'
-        + '<div class="v-body">Inserisci un numero di dipendenti e un valore di ricavi (in milioni di €) per calcolare l’ambito.</div></div>';
+      resultEl.innerHTML = '<div class="verdict"><span class="badge">Dati mancanti</span>'
+        + '<p class="v-body">Inserisci il numero di dipendenti e i ricavi netti (in milioni di euro) per calcolare l\'ambito.</p></div>';
       resultEl.classList.add('show'); return;
     }
     render(emp, rev, listed, wave1);

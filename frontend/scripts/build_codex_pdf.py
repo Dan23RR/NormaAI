@@ -35,17 +35,22 @@ PUBLIC = Path(__file__).resolve().parent.parent / "public"
 SOURCE = PUBLIC / "codex.html"
 OUTPUT = PUBLIC / "codex-post-omnibus-2025-2029.pdf"
 
-# The paper colour of the guide (--bg). Chromium paints the page margins with
-# the default background of the page, so it is set to the same tone: otherwise
-# every page gets a white frame.
-PAPER = {"r": 250, "g": 249, "b": 245, "a": 1}
-# The web fonts of the guide and the weights it uses. They are loaded here, for
-# the render only: the published codex.html makes no request to a third party.
+# The paper colour of the guide (--paper). Chromium paints the page margins
+# with the default background of the page, so it is set to the same tone:
+# otherwise every page gets a frame of another colour.
+PAPER = {"r": 255, "g": 255, "b": 255, "a": 1}
+# The web fonts of the guide (frontend/DESIGN.md: Literata for headings and
+# law, Public Sans for the text, Geist Mono for the decision paths) and the
+# weights it uses. They are loaded here, for the render only: the published
+# codex.html makes no request to a third party.
 FONTS_CSS = (
     "https://fonts.googleapis.com/css2"
-    "?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap"
+    "?family=Literata:opsz,wght@7..72,400..600"
+    "&family=Public+Sans:wght@400..700"
+    "&family=Geist+Mono:wght@400"
+    "&display=block"
 )
-FONTS = {"Inter": (400, 500, 600, 700, 800), "Geist Mono": (400,)}
+FONTS = {"Literata": (400, 500, 600), "Public Sans": (400, 600, 700), "Geist Mono": (400,)}
 PRIVATE_MAILBOX = re.compile(r"@(gmail|googlemail|hotmail|outlook|yahoo|libero|icloud)\.", re.I)
 # A page with fewer characters than this is a page break gone wrong.
 MIN_CHARS_PER_PAGE = 600
@@ -78,7 +83,7 @@ def chapter_titles(source: str) -> dict[str, str]:
 
 LOAD_FAMILY = """async ([family, weights]) => {
   const faces = await Promise.all(weights.map((w) => document.fonts.load(w + " 12px '" + family + "'")))
-  return faces.every((found) => found.length > 0)
+  return faces.every((found) => found.length > 0 && found.every((face) => face.status === "loaded"))
 }"""
 
 

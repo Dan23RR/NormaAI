@@ -121,7 +121,7 @@ export function noteText(note: CheckedNote): string {
 }
 
 /** Digits and Latin letters, accented ones included: what a word of these texts is made of. */
-const WORD_CHAR = /[0-9A-Za-zÀ-ɏ]/
+const WORD_CHAR = /[0-9A-Za-z\u00C0-\u024F]/
 
 /** `text` cut around the first occurrence of `word` that stands as a whole word. */
 export function splitAtWord(text: string, word: string): { before: string; word: string; after: string } | null {

@@ -260,7 +260,7 @@ describe.each(LANGUAGES)('landing messages (%s)', (language) => {
 
   it('use plain punctuation: no long dashes, ellipsis character or curly quotes', () => {
     for (const [path, text] of own) {
-      expect(text, path).not.toMatch(/[–—…‘’“”]/)
+      expect(text, path).not.toMatch(/[\u2013\u2014\u2026\u2018\u2019\u201C\u201D]/)
     }
   })
 

@@ -1974,7 +1974,7 @@
         "title": "5. Conservazione",
         "items": {
           "1": "Dati dell’applicazione: per tutta la durata del rapporto. Non esiste una cancellazione automatica a scadenza. L’amministratore dell’organizzazione può in qualsiasi momento esportare i dati e cancellare clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati dall’applicazione; ogni utente può cancellare le proprie conversazioni. Per chiudere gli account e l’organizzazione scrivi a info@normaai.org.",
-          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni sul server. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
+          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni. Quando il gestore configura un archivio esterno con restic, la copia lascia anche il server, cifrata prima dell'invio, ed è conservata per lo stesso periodo. Un dato cancellato può restare in una copia di backup fino a 30 giorni. Oggi il server di produzione è spento e nessun backup è in corso: riprenderanno quando il nuovo server sarà attivo.",
           "3": "Richieste del Codex e delle verifiche gratuite: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
           "4": "Registro degli eventi: nei log del server, con la loro rotazione.",
           "5": "Dati nel browser: vedi la <cookie>cookie policy</cookie>."
@@ -2222,8 +2222,8 @@
       },
       "backup": {
         "title": "9. Backup",
-        "p1": "Il repository contiene lo script di backup, pensato per essere avviato da cron ogni notte alle 02:00: esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l’archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> dello stesso server.",
-        "p2": "Lo script non cifra il file e non lo copia su un altro sistema: la copia settimanale su uno storage esterno è una procedura manuale documentata, non automatica. Qdrant e Redis non vengono salvati: l’indice si ricostruisce con una nuova indicizzazione, la cache è effimera per costruzione. La procedura di ripristino è documentata nel repository."
+        "p1": "Il repository contiene lo script di backup, pensato per essere avviato da cron ogni notte alle 02:00: esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l'archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> del server.",
+        "p2": "Se il gestore configura un archivio restic, lo script invia ogni notte fuori dal server il dump del database, le snapshot dell'indice Qdrant e la configurazione del server, cifrati da restic prima dell'invio, e conserva anche quelle copie per 30 giorni. Senza archivio restic resta solo il dump sul disco del server, non cifrato. Redis non viene salvato: la cache è effimera per costruzione. Gli script sono provati su simulazioni: nessuna copia è ancora stata inviata a un archivio reale e nessun ripristino è stato fatto. Il server di produzione oggi è spento, quindi nessun backup è in corso. La procedura di ripristino è documentata nel repository."
       },
       "supplyChain": {
         "title": "10. Sviluppo e catena di fornitura",
@@ -2241,7 +2241,7 @@
           "1": "Nessun SSO (SAML o OpenID Connect) e nessuna autenticazione a due fattori: si entra solo con email e password.",
           "2": "Nessuna certificazione SOC 2 o ISO 27001 e nessun penetration test formale di terze parti. Le scansioni automatiche in CI non lo sostituiscono.",
           "3": "Nessuna cifratura dei dati a riposo gestita dall’applicazione: la protezione dei dati sul disco è quella del server.",
-          "4": "Nessun archivio a lungo termine del registro degli eventi e nessuna copia di backup automatica fuori dal server.",
+          "4": "Nessun archivio a lungo termine del registro degli eventi. La copia di backup fuori dal server esiste solo quando il gestore configura restic e non è ancora stata provata su un archivio reale.",
           "5": "Il filtro contro le prompt injection registra i tentativi ma non blocca l’input. La difesa reale è strutturale: il testo dell’utente non entra mai nel prompt di sistema e le citazioni vengono controllate contro i passaggi recuperati.",
           "6": "Nessun programma di bug bounty."
         }

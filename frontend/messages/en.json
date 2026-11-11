@@ -1974,7 +1974,7 @@
         "title": "5. Retention",
         "items": {
           "1": "Application data: for the whole duration of the relationship. There is no automatic deletion on expiry. The organisation’s administrator can export the data and delete clients, conversations, assessments, alerts and indexed chunks from the application at any time; every user can delete their own conversations. To close the accounts and the organisation write to info@normaai.org.",
-          "2": "Backups: the backup script copies the database every night and keeps the copies for 30 days on the server. Deleted data may remain in a backup for up to 30 days.",
+          "2": "Backups: the backup script copies the database every night and keeps the copies for 30 days. When the operator configures an external repository with restic, the copy also leaves the server, encrypted before it is sent, and is kept for the same period. Deleted data may remain in a backup for up to 30 days. Today the production server is off and no backup is running: they will start again when the new server is up.",
           "3": "Codex and free-checker requests: they stay in the info@normaai.org mailbox until you ask for deletion, and in the serverless function logs for Vercel’s retention period. The Codex is a public file: its address does not expire.",
           "4": "Event log: in the server logs, with their rotation.",
           "5": "Data in the browser: see the <cookie>cookie policy</cookie>."
@@ -2222,8 +2222,8 @@
       },
       "backup": {
         "title": "9. Backups",
-        "p1": "The repository contains the backup script, meant to be started by cron every night at 02:00: it runs <code>pg_dump</code> of the PostgreSQL database in compressed format, checks that the archive is readable with <code>pg_restore --list</code> and keeps the copies for 30 days in the <code>backups/</code> folder of the same server.",
-        "p2": "The script neither encrypts the file nor copies it to another system: the weekly copy to external storage is a documented manual procedure, not an automatic one. Qdrant and Redis are not backed up: the index is rebuilt with a new indexing, the cache is ephemeral by design. The restore procedure is documented in the repository."
+        "p1": "The repository contains the backup script, meant to be started by cron every night at 02:00: it runs <code>pg_dump</code> of the PostgreSQL database in compressed format, checks that the archive is readable with <code>pg_restore --list</code> and keeps the copies for 30 days in the <code>backups/</code> folder of the server.",
+        "p2": "When the operator configures a restic repository, the script sends the database dump, the snapshots of the Qdrant index and the server's configuration off the server every night, encrypted by restic before they are sent, and keeps those copies for 30 days too. Without a restic repository only the dump on the server's disk remains, unencrypted. Redis is not backed up: the cache is ephemeral by design. The scripts are tested against stand-ins: no copy has been sent to a real repository yet and no restore has been done. The production server is off today, so no backup is running. The restore procedure is documented in the repository."
       },
       "supplyChain": {
         "title": "10. Development and supply chain",
@@ -2241,7 +2241,7 @@
           "1": "No SSO (SAML or OpenID Connect) and no two-factor authentication: you sign in with email and password only.",
           "2": "No SOC 2 or ISO 27001 certification and no formal third-party penetration test. The automatic scans in CI do not replace it.",
           "3": "No encryption at rest managed by the application: data protection on disk is that of the server.",
-          "4": "No long-term archive of the event log and no automatic backup copy outside the server.",
+          "4": "No long-term archive of the event log. The backup copy off the server exists only when the operator configures restic, and it has not been tried on a real repository yet.",
           "5": "The prompt injection filter records the attempts but does not block the input. The real defence is structural: the user’s text never enters the system prompt and the citations are checked against the retrieved passages.",
           "6": "No bug bounty programme."
         }

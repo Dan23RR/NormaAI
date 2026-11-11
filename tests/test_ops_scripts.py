@@ -149,7 +149,6 @@ stub_python3() { set -o pipefail; "$STUB_PYTHON" "$@" | tr -d '\r'; }
 LISTING = """snapshot abcd1234 of [/opt/normaai/backups/offsite] at 2026-11-11 02:00:05 +0000 UTC):
 /opt/normaai/backups/offsite/MANIFEST.txt
 /opt/normaai/backups/offsite/config/env
-/opt/normaai/backups/offsite/config/jwt_private.pem
 /opt/normaai/backups/offsite/postgres/normaai.dump
 /opt/normaai/backups/offsite/qdrant/eu_regulations.snapshot
 /opt/normaai/backups/offsite/qdrant/eu_regulations_e5.snapshot
@@ -332,8 +331,6 @@ def test_offsite_backup_sends_database_index_and_secrets(server):
     assert server.backed_up() == [
         "./MANIFEST.txt",
         "./config/env",
-        "./config/jwt_private.pem",
-        "./config/jwt_public.pem",
         "./postgres/normaai.dump",
         "./qdrant/eu_regulations.snapshot",
         "./qdrant/eu_regulations_e5.snapshot",
@@ -360,6 +357,8 @@ def test_offsite_backup_sends_database_index_and_secrets(server):
     assert "qdrant: 1.20.0" in manifest
     assert "./postgres/normaai.dump" in manifest
     assert "secret-of-the-server" not in manifest
+    # The JWT keys stay on the server: a rebuilt one gets a new pair.
+    assert not any("jwt" in path for path in server.backed_up())
     assert "done (off-site)" in result.stdout
     assert "NOT configured" not in result.stderr
     # The local dump is kept as well.

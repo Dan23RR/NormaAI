@@ -10,7 +10,7 @@
 #   1. dumps Postgres into backups/normaai_<stamp>.dump and checks that the
 #      archive is readable;
 #   2. only when restic is configured: takes a snapshot of every Qdrant
-#      collection, copies .env and the JWT keys, sends all of it, encrypted, to
+#      collection, copies .env, sends all of it, encrypted, to
 #      RESTIC_REPOSITORY, then drops the off-site copies past the retention;
 #   3. deletes the local dumps past the retention.
 # Without restic it does 1 and 3 and says what is missing: the dump then stays
@@ -19,7 +19,7 @@
 # Configuration: environment variables, read from BACKUP_ENV_FILE when the file
 # exists (default /etc/normaai/backup.env, root only; the bootstrap writes it).
 # It is kept out of .env on purpose: .env is handed to the app container.
-#   RESTIC_REPOSITORY      s3:https://<endpoint>/<bucket>/normaai, sftp:<host>:normaai, ...
+#   RESTIC_REPOSITORY      s3:https://<endpoint>/<bucket> or sftp:<user>@<host>:/<path>
 #   RESTIC_PASSWORD_FILE   file with the repository password. Keep the password
 #                          OFF this server too: without it no backup can be read.
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY   for S3-compatible storage
@@ -170,21 +170,18 @@ snapshot_qdrant() {
 }
 
 # ── Secrets and a note of what the copy holds ────────────────────────────────
+# .env only. The JWT key pair is left out on purpose: a rebuilt server gets a
+# new pair from the bootstrap, so every session starts again and none that was
+# revoked before the loss can come back (the list of revoked tokens is in Redis,
+# which is not backed up).
 stage_config() {
-  local key missing=0
   mkdir -p "$STAGE_DIR/config"
   if [ -f "$REPO_ROOT/.env" ] && cp "$REPO_ROOT/.env" "$STAGE_DIR/config/env"; then
     log "configuration: .env"
   else
     warn "$REPO_ROOT/.env could not be copied: this run holds no server configuration"
-    missing=1
+    return 1
   fi
-  for key in jwt_private.pem jwt_public.pem; do
-    if [ -f "$REPO_ROOT/data/$key" ]; then
-      cp "$REPO_ROOT/data/$key" "$STAGE_DIR/config/$key" || missing=1
-    fi
-  done
-  return "$missing"
 }
 
 write_manifest() {

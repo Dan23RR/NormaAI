@@ -6,9 +6,10 @@ server, the qdrant/qdrant image of the CI service and the compose files: the
 collection setup_collection creates (named dense vector, BM25 sparse vector
 with the IDF modifier, keyword payload indexes), the points index_chunks writes,
 and query_points with ``using=`` on each vector, under the filters
-hybrid_search builds. The embedder counts topic words, so no model is
-downloaded. Each run writes to a collection of its own and deletes it at the
-end. With no server ready (locally, Docker off) the tests skip.
+hybrid_search builds, also around the lookup of an article the query names.
+The embedder counts topic words, so no model is downloaded. Each run writes to
+a collection of its own and deletes it at the end. With no server ready
+(locally, Docker off) the tests skip.
 """
 
 import os
@@ -62,7 +63,14 @@ SHARED_CHUNKS = [
         "CSRD",
         chunk_type="article",
     ),
-    chunk("DORA", "a bank shall manage ICT risk", "32022R2554", "DORA", chunk_type="article"),
+    chunk(
+        "DORA",
+        "a bank shall manage ICT risk",
+        "32022R2554",
+        "DORA",
+        article="Art. 6",
+        chunk_type="article",
+    ),
     chunk(
         "DORA recital",
         "whereas a bank shall notify major incidents",
@@ -106,7 +114,13 @@ SHARED_CHUNKS = [
 ]
 # A document uploaded by ORG_A.
 TENANT_CHUNKS = [
-    chunk("Acme policy", "acme shall tell clients when a chatbot answers", "acme-policy", "AI_ACT")
+    chunk(
+        "Acme policy",
+        "acme shall tell clients when a chatbot answers",
+        "acme-policy",
+        "AI_ACT",
+        article="Art. 3",
+    )
 ]
 # What a search finds with no filter of its own: the shared chunks in force.
 IN_FORCE = {"CSRD", "DORA", "DORA recital", "AI Act EN", "AI Act IT", "Omnibus I"}
@@ -117,9 +131,12 @@ def found(results: list[dict]) -> list[str]:
 
 
 def server_ready() -> bool:
+    # Any failure means not ready. In the full suite of 2026-11-09, on a busy
+    # laptop, the probe timed out and raised httpcore.ReadTimeout, which is not an
+    # httpx error: every test of the module errored instead of skipping.
     try:
-        return httpx.get(f"http://{QDRANT_HOST}:{QDRANT_PORT}/readyz", timeout=2).is_success
-    except httpx.HTTPError:
+        return httpx.get(f"http://{QDRANT_HOST}:{QDRANT_PORT}/readyz", timeout=10).is_success
+    except Exception:
         return False
 
 
@@ -129,6 +146,7 @@ def server_indexer(collection_name: str) -> HybridIndexer:
         qdrant_port=QDRANT_PORT,
         embedding_dim=len(TOPICS) + 1,
         collection_name=collection_name,
+        qdrant_timeout=60,  # a busy server is slow, not missing
     )
     idx._embedder = TopicEmbedder()
     return idx
@@ -223,6 +241,32 @@ def test_the_filters_reach_both_searches(indexer, filters, expected):
     results = indexer.hybrid_search(FILTER_QUERY, limit=10, **filters)
 
     assert found(results) == sorted(expected)
+
+
+def test_a_named_article_joins_the_ranking(indexer):
+    # "chatbot" points both searches at the AI Act chunks; the article the
+    # question names (by its act's number) brings the DORA chunk first.
+    named = indexer.hybrid_search(
+        "Does Article 6 of Regulation (EU) 2022/2554 cover a chatbot", limit=10
+    )
+    unnamed = indexer.hybrid_search("Does Regulation (EU) 2022/2554 cover a chatbot", limit=10)
+
+    assert named[0]["title"] == "DORA"
+    assert named[0]["score"] > 2 / 61  # the lookup's share, plus the two searches'
+    assert {r["title"] for r in unnamed[:2]} == {"AI Act EN", "AI Act IT"}
+
+
+@pytest.mark.parametrize(("org_id", "acme_named"), [(ORG_A, True), (ORG_B, False)])
+def test_the_lookup_keeps_the_tenant_filter(indexer, org_id, acme_named):
+    # The tenant document is labelled "Art. 3" too: another organisation never gets it.
+    results = indexer.hybrid_search(
+        "What does art. 3 say about a chatbot", limit=10, framework_filter="AI_ACT", org_id=org_id
+    )
+
+    acme = [r for r in results if r["title"] == "Acme policy"]
+    assert bool(acme) is acme_named
+    if acme_named:
+        assert acme[0]["score"] > 2 / 61
 
 
 def test_the_corpus_meta_point_is_never_a_hit(indexer):

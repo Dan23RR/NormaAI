@@ -43,6 +43,9 @@ for them the Qdrant snapshot is the only copy.
 - **The JWT key pair** in `data/`: not backed up, on purpose. A rebuilt server gets a new
   pair from the bootstrap, so every user signs in again and no session that was revoked
   before the loss can come back.
+- **The official texts in `data/texts`** (`NORMAAI_TEXT_CACHE`), downloaded by the document
+  check: not backed up. They are copies of public texts, downloaded again when needed.
+- **The crontab** of the server: not backed up. The bootstrap writes its lines again.
 - **Caddy's certificates**: not backed up. Caddy obtains new ones when it starts.
 - **Prometheus and Grafana data**: not backed up.
 - **Deletion at the storage.** The storage credentials are on the server. Whoever holds

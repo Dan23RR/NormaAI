@@ -113,9 +113,12 @@ two real customers on the instance before this.
 - **Fresh-content guarantee (#3)**: `superseded_by` is written only at seed and
   never updated, and the acquisition scheduler is OFF by default
   (`ACQUISITION_SCHEDULER_ENABLED=false`). So the corpus is frozen at last seed
-  and abrogated law can be served as current. Until amendment-detection is built,
-  either keep the "as-of <seed date>" caveat visible in the UI/PDF, or enable the
-  scheduler and accept best-effort refresh.
+  and abrogated law can be served as current. Keep the "as-of <seed date>" caveat
+  visible in the UI/PDF. Scheduled work runs from cron on the server, not from the
+  in-process scheduler, which stays off: `python -m src.pipeline --action check-freshness`
+  every night compares the indexed consolidated versions with CELLAR, and
+  `python -m src.pipeline --action update --days-back 7` refreshes the corpus by
+  hand (DEPLOY_CHECKLIST.md step 5, RUNBOOK.md section 10).
 - **DNS**: point `normaai.org` + `api.normaai.org` (Cloudflare DNS, proxy OFF so
   Vercel/the server can issue TLS). The funnel + backend don't resolve until then.
 - **Secrets**: rotate any key that ever sat in a shared `.env` (Resend,

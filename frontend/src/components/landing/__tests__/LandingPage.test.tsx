@@ -98,11 +98,11 @@ describe('landing page', () => {
 
   it('says once, with its date, what a visitor cannot reach yet', () => {
     renderLanding()
-    // "Stato all'11 novembre 2026.": whatever the day, one dated line and no other.
+    // "Stato all'11 novembre 2026.": whatever the day and the list that follows
+    // it, one dated line in the hero and no "in development" label elsewhere.
     const dated = screen.getAllByText(STATUS_DATE.it)
     expect(dated).toHaveLength(1)
-    const status = dated[0].parentElement as HTMLElement
-    expect(status).toHaveTextContent(/Aperti a tutti: .+ Non ancora aperti: .+/)
+    expect(dated[0].closest('section')).toBe(screen.getByRole('heading', { level: 1 }).closest('section'))
     expect(screen.queryByText(/in sviluppo/i)).not.toBeInTheDocument()
   })
 

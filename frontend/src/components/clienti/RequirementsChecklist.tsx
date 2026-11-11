@@ -31,7 +31,7 @@ export function RequirementsChecklist({ requirements, labelledBy }: { requiremen
       <THead>
         <TR>
           <TH>{t('colRequirement')}</TH>
-          <TH>{t('colArticle')}</TH>
+          <TH className="hidden sm:table-cell">{t('colArticle')}</TH>
           <TH>{t('colState')}</TH>
         </TR>
       </THead>
@@ -40,8 +40,12 @@ export function RequirementsChecklist({ requirements, labelledBy }: { requiremen
           const state = checklistState(req)
           return (
             <TR key={req.requirement_id || i}>
-              <TD className="text-body text-ink">{req.description}</TD>
-              <TD className="whitespace-nowrap text-small tabular text-ink-2">{req.article_reference || '-'}</TD>
+              <TD className="text-body text-ink">
+                {req.description}
+                {/* On a phone the article goes under the requirement, so that the state stays in view. */}
+                {req.article_reference && <p className="mt-0.5 text-small tabular text-ink-2 sm:hidden">{req.article_reference}</p>}
+              </TD>
+              <TD className="hidden text-small tabular text-ink-2 sm:table-cell">{req.article_reference || '-'}</TD>
               <TD>
                 <Badge tone={state === 'toVerify' ? 'warn' : 'neutral'} className="whitespace-nowrap">
                   {t(`state.${state}`)}

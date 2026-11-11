@@ -276,6 +276,20 @@ describe('the other outcomes', () => {
     expect(screen.getByText(en_label)).toBeInTheDocument()
   })
 
+  it.each([
+    ['cambiato_dopo_controllo', 'Cambiato dopo il controllo', 'Changed after the check'],
+    ['soppresso_dopo_controllo', 'Non esiste più nel testo vigente', 'No longer in the text in force'],
+  ])('a re-check outcome (%s) has words of its own, by code or, from an older server, by label', (code, itLabel, enLabel) => {
+    const byCode: Finding = { ...finding(gdpr, 'valido'), group: 'correggere', status: { code, label: 'altro' } }
+    const { unmount } = renderWithIntl(<FindingCard finding={byCode} {...setting(gdpr)} />)
+    expect(screen.getByText(itLabel)).toBeInTheDocument()
+    unmount()
+    const old = code === 'cambiato_dopo_controllo' ? 'cambiato' : 'inesistente'
+    const byLabel: Finding = { ...byCode, status: { code: old, label: itLabel } }
+    renderWithIntl(<FindingCard finding={byLabel} {...setting(gdpr)} />, { language: 'en' })
+    expect(screen.getByText(enLabel)).toBeInTheDocument()
+  })
+
   it('an outcome the interface does not know keeps the words of the server', () => {
     const unknown: Finding = { ...finding(gdpr, 'valido'), status: { code: 'rinumerato', label: 'Articolo rinumerato' } }
     renderWithIntl(<FindingCard finding={unknown} {...setting(gdpr)} />)

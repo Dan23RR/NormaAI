@@ -128,7 +128,7 @@ describe('DEMO_DOCUMENTS', () => {
     const moved = doc.findings.filter((f) => f.group === 'correggere')
     expect(moved.map((f) => f.provision?.key)).toEqual(['art:2', 'art:10', 'art:37'])
     for (const finding of moved) {
-      expect(finding.status).toEqual({ code: 'cambiato', label: 'Cambiato dopo il controllo' })
+      expect(finding.status).toEqual({ code: 'cambiato_dopo_controllo', label: 'Cambiato dopo il controllo' })
       expect(finding.version?.id).toBe('02024L1760-20260318')
       expect(finding.before?.version_id).toBe('02024L1760-20250417')
       expect(finding.after_text).toBeTruthy()

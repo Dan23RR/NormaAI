@@ -715,7 +715,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
       {
         id: 'f1',
         group: 'correggere',
-        status: { code: 'cambiato', label: 'Cambiato dopo il controllo' },
+        status: { code: 'cambiato_dopo_controllo', label: 'Cambiato dopo il controllo' },
         line: 5,
         raw: 'articolo 2, paragrafo 1, della CSDDD',
         context: "... nella direttiva (UE) 2024/1760 (di seguito «CSDDD»). L'articolo 2, paragrafo 1, della CSDDD riguarda le società che hanno avuto «in media, più di 1 ...",
@@ -750,7 +750,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
       {
         id: 'f2',
         group: 'correggere',
-        status: { code: 'cambiato', label: 'Cambiato dopo il controllo' },
+        status: { code: 'cambiato_dopo_controllo', label: 'Cambiato dopo il controllo' },
         line: 8,
         raw: 'art. 10, par. 2, della CSDDD',
         context: "Le garanzie contrattuali che vi chiediamo sono quelle dell'art. 10, par. 2, della CSDDD.",
@@ -802,7 +802,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
       {
         id: 'f4',
         group: 'correggere',
-        status: { code: 'cambiato', label: 'Cambiato dopo il controllo' },
+        status: { code: 'cambiato_dopo_controllo', label: 'Cambiato dopo il controllo' },
         line: 14,
         raw: 'art. 37, par. 1, della CSDDD',
         context: "L'art. 37, par. 1, della CSDDD fissa il recepimento: «Gli Stati membri adottano e pubblicano, entro il 26 luglio 2027, le disposizioni legislative, ...",

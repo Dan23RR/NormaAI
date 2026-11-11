@@ -674,7 +674,7 @@
       "verificata": "Citazione verificata",
       "non_coperto": "Non coperto da NormaAI",
       "cambiato_dopo_controllo": "Cambiato dopo il controllo",
-      "non_esiste_piu": "Non esiste più nel testo vigente"
+      "soppresso_dopo_controllo": "Non esiste più nel testo vigente"
     },
     "finding": {
       "noAct": "Atto non indicato",

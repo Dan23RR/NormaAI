@@ -674,7 +674,7 @@
       "verificata": "Verified quote",
       "non_coperto": "Not covered by NormaAI",
       "cambiato_dopo_controllo": "Changed after the check",
-      "non_esiste_piu": "No longer in the text in force"
+      "soppresso_dopo_controllo": "No longer in the text in force"
     },
     "finding": {
       "noAct": "Act not stated",

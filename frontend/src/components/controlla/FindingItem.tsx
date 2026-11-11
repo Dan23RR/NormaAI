@@ -29,7 +29,7 @@ interface FindingProps extends FindingSetting {
 }
 
 /** The outcomes that already say "this provision is not what it was". */
-const SAYS_CHANGED = ['cambiato', 'inesistente']
+const SAYS_CHANGED = ['cambiato', 'inesistente', 'cambiato_dopo_controllo', 'soppresso_dopo_controllo']
 
 /** "GDPR, art. 33, par. 1": the short name of the act and the provision, as a consultant says it. */
 export function findingTitle(finding: Finding, noAct: string): string {

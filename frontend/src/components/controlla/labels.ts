@@ -27,19 +27,28 @@ export function groupLabel(group: FindingGroup, t: Translate): string {
 }
 
 /**
- * After a re-check the server reuses two codes with a meaning of their own
- * ("cambiato" then means changed after the check, not after the document's
- * date) and tells them apart by the label: these are our words for them.
+ * The two outcomes a re-check gives: the provision changed, or it is gone,
+ * after the check (not after the document's date). The server sends them with
+ * codes of their own; older servers reused "cambiato" and "inesistente" and
+ * told them apart only by the label, which is still understood.
  */
-const STATUS_BY_LABEL: Record<string, string> = {
+export const RECHECK_CODES = ['cambiato_dopo_controllo', 'soppresso_dopo_controllo'] as const
+
+const RECHECK_CODE_BY_LABEL: Record<string, (typeof RECHECK_CODES)[number]> = {
   'Cambiato dopo il controllo': 'cambiato_dopo_controllo',
-  'Non esiste più nel testo vigente': 'non_esiste_piu',
+  'Non esiste più nel testo vigente': 'soppresso_dopo_controllo',
+}
+
+/** The code of an outcome, with the re-check outcomes of older servers read from their label. */
+export function statusCode(status: FindingStatus): string {
+  if ((RECHECK_CODES as readonly string[]).includes(status.code)) return status.code
+  return RECHECK_CODE_BY_LABEL[status.label] ?? status.code
 }
 
 /** The words of an outcome: ours for the codes the check produces today, the server's for any other. */
 export function statusLabel(status: FindingStatus, t: Translate): string {
-  const special = STATUS_BY_LABEL[status.label]
-  if (special) return t(`controlla.status.${special}`)
+  const recheck = statusCode(status)
+  if (recheck !== status.code || (RECHECK_CODES as readonly string[]).includes(recheck)) return t(`controlla.status.${recheck}`)
   const key = `controlla.status.${status.code}`
   if (status.code && /^[a-z_]+$/.test(status.code) && t.has(key)) return t(key)
   return status.label || status.code

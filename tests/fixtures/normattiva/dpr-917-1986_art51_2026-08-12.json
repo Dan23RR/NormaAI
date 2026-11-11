@@ -1,0 +1,39 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.del.presidente.della.repubblica:1986;917~art51!vig=2026-11-11",
+  "retrieved": "2026-11-11",
+  "trimmed": "comma 1 kept; commi 2 to 9 and the update notes cut"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO DEL PRESIDENTE DELLA REPUBBLICA 22 dicembre 1986, n. 917",
+    "sottoTitolo": "Approvazione del testo unico delle imposte sui redditi.\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_51\">Art. 51</h2>\n        <div class=\"article-heading-akn\">(Determinazione del reddito di lavoro dipendente)</div>\n        <div class=\"art-commi-div-akn\">\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">1. </span><span class=\"art_text_in_comma\">Il reddito di lavoro dipendente &egrave; costituito da tutte le somme e i valori in genere, a qualunque titolo percepiti nel periodo d'imposta, anche sotto forma di erogazioni liberali, in relazione al rapporto di lavoro. Si considerano percepiti nel periodo d'imposta anche le somme e i valori in genere, corrisposti dai datori di lavoro entro il giorno 12 del mese di gennaio del periodo d'imposta successivo a quello cui si riferiscono. \n                    <br>\n                    \n                </span>\n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO DEL PRESIDENTE DELLA REPUBBLICA",
+    "tipoProvvedimentoCodice": "PPR",
+    "annoProvvedimento": 1986,
+    "meseProvvedimento": 12,
+    "giornoProvvedimento": 22,
+    "numeroProvvedimento": 917,
+    "tipoSupplementoCode": "SO",
+    "numeroSupplemento": 126,
+    "annoGU": 1986,
+    "meseGU": 12,
+    "giornoGU": 31,
+    "numeroGU": 302,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20260812",
+    "articoloDataFineVigenza": "20261231",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

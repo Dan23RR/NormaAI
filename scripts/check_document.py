@@ -1,17 +1,21 @@
-"""Check a document's legal references against the official EU texts in force.
+"""Check a document's legal references against the official texts in force.
 
-Prototype of "controlla un documento" (src/document_check). From the
+"Controlla un documento" from the command line (src/document_check). From the
 repository root:
 
     python scripts/check_document.py informativa.docx
-    python scripts/check_document.py policy_ia.pdf --data 2026-03-01
+    python scripts/check_document.py nota_cliente.pdf --data 2026-03-15
     python scripts/check_document.py --ricontrolla informativa.norma-lock.json
 
-The first run writes, next to the document, an HTML report and a lock file
-(the provisions the document cites, with today's text). --ricontrolla compares
-a lock file with the texts in force and writes a report of what changed. Texts
-come from CELLAR (Publications Office of the EU) and are cached in
-~/.cache/normaai/cellar; the first check of an act downloads it (about 5 s).
+EU acts are read on CELLAR (Publications Office of the EU), Italian acts on
+Normattiva, article by article (open data API, licence CC BY 4.0). The first
+run writes, next to the document, an HTML report and a lock file (the
+provisions the document cites, with today's text). --ricontrolla compares a
+lock file with the texts in force and writes a report of what changed.
+
+Texts are cached in ~/.cache/normaai/cellar (Italian articles in its
+"normattiva" folder), or in $NORMAAI_TEXT_CACHE. The first check of an EU act
+downloads it (about 5 s); an Italian article takes about half a second.
 
 Formats: .docx, .pdf, .html, .txt, .md.
 """
@@ -26,15 +30,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.document_check.check import build_lock, check_text, recheck  # noqa: E402
 from src.document_check.extract import load_text  # noqa: E402
-from src.document_check.official import CellarTextSource  # noqa: E402
 from src.document_check.report import (  # noqa: E402
     render_html,
     render_recheck_html,
     summary_lines,
 )
+from src.document_check.sources import default_cache_dir, default_source  # noqa: E402
 
-DEFAULT_CACHE = Path.home() / ".cache" / "normaai" / "cellar"
 LOCK_SUFFIX = ".norma-lock.json"
+
+EPILOG = """\
+esiti:
+  da correggere   Citazione superata (corrisponde solo a un testo precedente);
+                  Cambiato dopo la data del documento (con --data);
+                  Non esiste nel testo vigente (articolo, paragrafo o comma);
+                  Citazione diversa dal testo ufficiale (con le parole diverse);
+                  Citazione non trovata
+  da controllare  Citazione in un altro articolo; Testo ufficiale non raggiungibile;
+                  Versione più recente non leggibile; Estremi dell'atto da controllare;
+                  Articolo letto solo in parte; Modifica pubblicata, non ancora in vigore;
+                  Sentenza della Corte costituzionale in nota; Atto non indicato
+  a posto         Riferimento valido; Citazione verificata
+  fuori copertura Atto che il controllo non legge (leggi regionali, decreti ministeriali,
+                  circolari, allegati)
+
+I testi di EUR-Lex e di Normattiva non sono ufficiali: fanno fede la Gazzetta ufficiale
+dell'Unione europea e la Gazzetta Ufficiale. Testi italiani: Normattiva, licenza CC BY 4.0.
+"""
 
 
 def _beside(path: Path, suffix: str) -> Path:
@@ -44,26 +66,38 @@ def _beside(path: Path, suffix: str) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Controlla i riferimenti di legge di un documento sui testi UE in vigore."
+        description=(
+            "Controlla i riferimenti di legge di un documento sui testi in vigore: norme UE "
+            "(EUR-Lex) e norme italiane (Normattiva)."
+        ),
+        epilog=EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("documento", nargs="?", type=Path, help="il documento da controllare")
     parser.add_argument(
         "--data", help="data del documento (AAAA-MM-GG): segnala cosa è cambiato dopo"
     )
     parser.add_argument(
-        "--lingua", choices=["it", "en"], help="lingua dei testi ufficiali (di solito si capisce)"
+        "--lingua",
+        choices=["it", "en"],
+        help="lingua dei testi UE (di solito si capisce); i testi italiani sono in italiano",
     )
     parser.add_argument("--report", type=Path, help="file HTML del report")
     parser.add_argument("--lock", type=Path, help="file delle disposizioni citate")
     parser.add_argument(
         "--ricontrolla", type=Path, metavar="LOCK", help="ricontrolla un file delle disposizioni"
     )
-    parser.add_argument("--cache", type=Path, default=DEFAULT_CACHE, help="cartella dei testi")
+    parser.add_argument(
+        "--cache",
+        type=Path,
+        default=default_cache_dir(),
+        help="cartella dei testi scaricati (UE e, nella sottocartella normattiva, italiani)",
+    )
     args = parser.parse_args(argv)
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")
-    source = CellarTextSource(args.cache)
+    source = default_source(args.cache)
     today = date.today().isoformat()
 
     if args.ricontrolla:

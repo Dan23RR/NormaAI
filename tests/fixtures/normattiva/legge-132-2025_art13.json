@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:legge:2025;132~art13",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "LEGGE 23 settembre 2025, n. 132",
+    "sottoTitolo": "Disposizioni  e  deleghe  al  Governo  in  materia  di   intelligenza\nartificiale. (25G00143) \n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_13\">Art. 13</h2>\n        <div class=\"article-heading-akn\"> Disposizioni in materia di professioni intellettuali</div>\n        <div class=\"art-commi-div-akn\">\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">1. </span><span class=\"art_text_in_comma\">L'utilizzo di sistemi di intelligenza artificiale nelle professioni intellettuali &egrave; finalizzato al solo esercizio delle attivit&agrave; strumentali e di supporto all'attivit&agrave; professionale e con prevalenza del lavoro intellettuale oggetto della prestazione d'opera. \n                    <br>\n                    \n                </span>\n            </div>\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">2. </span><span class=\"art_text_in_comma\">Per assicurare il rapporto fiduciario tra professionista e cliente, le informazioni relative ai sistemi di intelligenza artificiale utilizzati dal professionista sono comunicate al soggetto destinatario della prestazione intellettuale con linguaggio chiaro, semplice ed esaustivo. \n                    <br>\n                    \n                </span>\n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "LEGGE",
+    "tipoProvvedimentoCodice": "PLE",
+    "annoProvvedimento": 2025,
+    "meseProvvedimento": 9,
+    "giornoProvvedimento": 23,
+    "numeroProvvedimento": 132,
+    "tipoSupplementoCode": "NO",
+    "numeroSupplemento": 0,
+    "annoGU": 2025,
+    "meseGU": 9,
+    "giornoGU": 25,
+    "numeroGU": 223,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20251010",
+    "articoloDataFineVigenza": "99999999",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

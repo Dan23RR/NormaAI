@@ -41,10 +41,13 @@ def _make_settings(provider="gemini", api_key="test-key", **overrides):
         anthropic_model_analysis="claude-sonnet-4-5",
         openrouter_model_analysis="some/free-model:free",
         openrouter_base_url="https://openrouter.ai/api/v1",
+        mistral_model_analysis="mistral-small-2603",
+        mistral_base_url="https://api.eu.mistral.ai/v1",
         normaai_public_url="https://normaai.org",
         google_api_key="" if provider != "gemini" else api_key,
         anthropic_api_key="" if provider != "anthropic" else api_key,
         openrouter_api_key="" if provider != "openrouter" else api_key,
+        mistral_api_key="" if provider != "mistral" else api_key,
     )
     # active_api_key is a real @property on Settings; emulate it here.
     s.active_api_key = api_key
@@ -172,8 +175,41 @@ class TestGetLLM:
         assert kwargs["default_headers"]["X-Title"] == "NormaAI"
         assert kwargs["default_headers"]["HTTP-Referer"] == "https://normaai.org"
 
+    def test_mistral_provider_selected(self):
+        settings = _make_settings(provider="mistral", api_key="m-key")
+        fake_cls = MagicMock(return_value="MISTRAL_LLM")
+        with (
+            _patch_settings(settings),
+            patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=fake_cls)}),
+        ):
+            result = get_llm()
+        assert result == "MISTRAL_LLM"
+        _, kwargs = fake_cls.call_args
+        assert kwargs["model"] == "mistral-small-2603"
+        assert kwargs["api_key"].get_secret_value() == "m-key"
+        assert "m-key" not in repr(kwargs["api_key"])
+        assert kwargs["base_url"] == "https://api.eu.mistral.ai/v1"
+        assert kwargs["temperature"] == 0.3
+        assert kwargs["timeout"] == 30
+        # The limit goes in the body under the name Mistral's API documents:
+        # ChatOpenAI would send its own max_tokens as max_completion_tokens.
+        assert kwargs["extra_body"] == {"max_tokens": 2048}
+        assert "max_tokens" not in kwargs
+        # The OpenRouter attribution headers are for OpenRouter only.
+        assert "default_headers" not in kwargs
+
+    def test_mistral_temperature_override(self):
+        settings = _make_settings(provider="mistral", api_key="m-key")
+        fake_cls = MagicMock(return_value="MISTRAL_LLM")
+        with (
+            _patch_settings(settings),
+            patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=fake_cls)}),
+        ):
+            get_llm(temperature=0.7)
+        assert fake_cls.call_args.kwargs["temperature"] == 0.7
+
     def test_anthropic_is_the_fallback_branch(self):
-        # Any provider that is not gemini/openrouter falls through to Anthropic.
+        # Any provider that is not gemini/openrouter/mistral falls through to Anthropic.
         settings = _make_settings(provider="anthropic", api_key="a-key")
         fake_cls = MagicMock(return_value="ANTHROPIC_LLM")
         with (
@@ -565,6 +601,14 @@ class TestCallLLM:
         with _patch_settings(settings):
             result = call_llm("sys", "user")
         assert "OPENROUTER_API_KEY" in result["error"]
+
+    def test_missing_api_key_names_the_mistral_variable(self):
+        settings = _make_settings(provider="mistral", api_key="")
+        settings.active_api_key = ""
+        with _patch_settings(settings):
+            result = call_llm("sys", "user")
+        assert "MISTRAL_API_KEY not configured" in result["error"]
+        assert result["error_code"] == "llm_not_configured"
 
     def test_open_circuit_returns_graceful_error(self):
         # An OPEN circuit degrades to the standardized error dict (it previously

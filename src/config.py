@@ -11,12 +11,15 @@ from pydantic_settings import BaseSettings, NoDecode
 
 _config_logger = logging.getLogger("normaai.config")
 
+# Values LLM_PROVIDER accepts; any other value stops the API at startup.
+LLM_PROVIDERS = ("gemini", "anthropic", "openrouter", "mistral")
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # ─── LLM Provider ─────────────────────────────────────────
-    # Supported: "gemini", "anthropic", "openrouter"
+    # Supported: "gemini", "anthropic", "openrouter", "mistral" (LLM_PROVIDERS)
     llm_provider: str = "gemini"
 
     # Google Gemini. Read from GEMINI_MODEL_ANALYSIS or, as in .env.example,
@@ -46,6 +49,24 @@ class Settings(BaseSettings):
     # Default: strongest broadly-available free tier as of 2026-06
     # (list live models: GET https://openrouter.ai/api/v1/models)
     openrouter_model_analysis: str = "nvidia/nemotron-3-super-120b-a12b:free"
+
+    # Mistral (La Plateforme), a provider based in the EU. Its API speaks the
+    # OpenAI chat-completions dialect, so it needs no dependency of its own
+    # (src/agents/llm.py). Read from MISTRAL_MODEL_ANALYSIS or, as in
+    # .env.example, MISTRAL_MODEL. Checked on docs.mistral.ai on 2026-11-11:
+    # - mistral-small-2603 is Mistral Small 4, generally available. A dated id
+    #   does not change under a measurement, unlike the "-latest" aliases;
+    # - the default base URL is the EU regional endpoint, where inference runs
+    #   in data centres in EU and EFTA countries (billed at 1.1 times the list
+    #   price). On the global endpoint, https://api.mistral.ai/v1, Mistral
+    #   commits to no inference location.
+    # Not measured on the golden set yet: docs/MODELS.md, section 5.
+    mistral_api_key: str = ""
+    mistral_base_url: str = "https://api.eu.mistral.ai/v1"
+    mistral_model_analysis: str = Field(
+        default="mistral-small-2603",
+        validation_alias=AliasChoices("mistral_model_analysis", "mistral_model"),
+    )
 
     # Shared LLM settings
     llm_temperature: float = 0.0
@@ -354,6 +375,8 @@ class Settings(BaseSettings):
             return self.google_api_key
         if self.llm_provider == "openrouter":
             return self.openrouter_api_key
+        if self.llm_provider == "mistral":
+            return self.mistral_api_key
         return self.anthropic_api_key
 
     @property
@@ -363,6 +386,8 @@ class Settings(BaseSettings):
             return self.gemini_model_analysis
         if self.llm_provider == "openrouter":
             return self.openrouter_model_analysis
+        if self.llm_provider == "mistral":
+            return self.mistral_model_analysis
         return self.anthropic_model_analysis
 
 
@@ -376,10 +401,11 @@ def validate_settings_or_exit() -> Settings:
     settings = get_settings()
     warnings = []
 
-    if settings.llm_provider not in ("gemini", "anthropic", "openrouter"):
+    if settings.llm_provider not in LLM_PROVIDERS:
         _config_logger.error(
-            "Invalid LLM_PROVIDER '%s'. Must be 'gemini', 'anthropic' or 'openrouter'.",
+            "Invalid LLM_PROVIDER '%s'. Must be one of: %s.",
             settings.llm_provider,
+            ", ".join(LLM_PROVIDERS),
         )
         sys.exit(1)
 
@@ -398,6 +424,12 @@ def validate_settings_or_exit() -> Settings:
     elif settings.llm_provider == "openrouter" and not settings.openrouter_api_key:
         warnings.append(
             "OPENROUTER_API_KEY is not set. "
+            "Intelligence endpoints will fail. "
+            "Add it to your .env file."
+        )
+    elif settings.llm_provider == "mistral" and not settings.mistral_api_key:
+        warnings.append(
+            "MISTRAL_API_KEY is not set. "
             "Intelligence endpoints will fail. "
             "Add it to your .env file."
         )

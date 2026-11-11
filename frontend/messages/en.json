@@ -828,7 +828,7 @@
           },
           "literacy": {
             "title": "AI literacy of staff",
-            "requirement": "Whoever uses AI systems takes measures to support the AI literacy of their staff and of those who use them on their behalf.",
+            "requirement": "Whoever uses AI systems takes measures to support the AI literacy of their staff.",
             "exception": "The obligation does not require guaranteeing a specific level of literacy. Applicable from {date} (Art. 113)."
           },
           "clients": {

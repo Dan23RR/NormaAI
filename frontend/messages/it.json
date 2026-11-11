@@ -828,7 +828,7 @@
           },
           "literacy": {
             "title": "Alfabetizzazione in materia di IA del personale",
-            "requirement": "Chi utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione in materia di IA del proprio personale e di chi li usa per suo conto.",
+            "requirement": "Chi utilizza sistemi di IA adotta misure per sostenere l’alfabetizzazione in materia di IA del proprio personale.",
             "exception": "L’obbligo non impone di garantire un livello specifico di alfabetizzazione. In applicazione dal {date} (art. 113)."
           },
           "clients": {

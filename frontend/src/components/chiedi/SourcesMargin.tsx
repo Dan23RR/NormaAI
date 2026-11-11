@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
-import type { Source } from '@/lib/sources'
 import { detectAbstention } from '@/lib/chiedi/abstention'
+import type { ChiediSource } from '@/lib/chiedi/sources'
 import type { AssistantMessage } from '@/lib/chiedi/types'
 import { SourcesList } from './SourcesList'
 
@@ -21,7 +21,7 @@ export function SourcesMargin({
   children,
 }: {
   message: AssistantMessage | undefined
-  sources: Source[]
+  sources: ChiediSource[]
   activeIndex: number | null
   totalAnswers: number
   onSelect: (index: number) => void

@@ -421,7 +421,7 @@
       "legend": "«Verificata»: il passaggio è stato ritrovato nel testo ufficiale. «Da verificare»: non è stato ancora confermato.",
       "near": {
         "title": "Diversa dal testo ufficiale",
-        "quoted": "Nella risposta",
+        "quoted": "Nella risposta: «{text}»",
         "both": "Nella risposta <w>«{quoted}»</w>, nel testo ufficiale <w>«{official}»</w>.",
         "missing": "Nella risposta manca <w>«{official}»</w>, che nel testo ufficiale c'è.",
         "extra": "Nella risposta c'è <w>«{quoted}»</w>, che nel testo ufficiale non c'è.",

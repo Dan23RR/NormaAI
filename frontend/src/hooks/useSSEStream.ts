@@ -25,6 +25,12 @@ export interface CitationEvent {
   /** The amending act whose text the passage was verified in, when the cited article is quoted by it. */
   amending_celex?: string;
   amending_article?: string;
+  /** Not verified, but close: the official wording the quote almost matched. */
+  near_quote?: string;
+  /** Where that wording is, e.g. "Art. 33". */
+  near_article?: string;
+  /** The words that differ between the quote and that wording. */
+  differences?: Array<{ quoted: string; official: string }>;
   grounded?: boolean;
 }
 

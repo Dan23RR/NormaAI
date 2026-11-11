@@ -229,4 +229,109 @@ describe('ChiediPage (demo mode)', () => {
     expect(screen.getByText('Cosa vuoi sapere?')).toBeInTheDocument()
     expect(sessionStorage.getItem('normaai_qa_messages')).toBeNull()
   })
+
+  it('asks a suggested question with one click', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+
+    const suggestions = within(screen.getByRole('list', { name: 'Esempi di domande' })).getAllByRole('button')
+    expect(suggestions).toHaveLength(3)
+    const question = suggestions[1].textContent as string
+    await user.click(suggestions[1])
+
+    // No second click on "Invia la domanda": the question is already on its way.
+    expect(mocks.post).toHaveBeenCalledTimes(1)
+    const [path, body] = mocks.post.mock.calls[0] as [string, { question: string; language: string }]
+    expect(path).toBe('/api/v1/qa')
+    expect(body.question).toBe(question)
+    expect(body.language).toBe('it')
+    expect(screen.getByLabelText('La tua domanda')).toHaveValue('')
+    expect(screen.getByText(question)).toBeInTheDocument()
+    await screen.findByText(/Sì\. L'articolo 50, paragrafo 1/)
+    expect(screen.queryByText('Cosa vuoi sapere?')).not.toBeInTheDocument()
+  })
+
+  it('asks an example question of an abstention with one click', async () => {
+    mocks.post
+      .mockResolvedValueOnce({
+        status: 'success',
+        data: {
+          answer: 'La demo copre alcuni scenari di esempio.',
+          citations: [],
+          confidence_score: 0,
+          requires_expert_review: false,
+          abstention_reason: 'demo_not_covered',
+          suggested_questions: ['Quali incidenti vanno notificati entro 24 ore secondo la NIS2?'],
+        },
+        metadata: {},
+      })
+      .mockResolvedValueOnce(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Quanto costa un caffè a Bruxelles?')
+    await user.keyboard('{Enter}')
+    await screen.findByText('NormaAI non risponde a questa domanda')
+
+    await user.click(screen.getByRole('button', { name: 'Quali incidenti vanno notificati entro 24 ore secondo la NIS2?' }))
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2))
+    const [, body] = mocks.post.mock.calls[1] as [string, { question: string }]
+    expect(body.question).toBe('Quali incidenti vanno notificati entro 24 ore secondo la NIS2?')
+    await screen.findByText(/Sì\. L'articolo 50, paragrafo 1/)
+  })
+
+  it('shows in the margin that a quote differs from the official text, and how', async () => {
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'La violazione va notificata entro 48 ore [1].',
+        citations: [
+          {
+            framework: 'GDPR',
+            reference: 'art. 33, par. 1',
+            quote_snippet: 'senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza',
+            celex: '32016R0679',
+            verified: false,
+            near_quote: 'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
+            near_article: 'Art. 33',
+            differences: [{ quoted: '48', official: '72' }],
+          },
+        ],
+        confidence_score: 0.4,
+        requires_expert_review: true,
+        related_frameworks: [],
+        caveats: [],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Entro quando va notificata una violazione dei dati?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/La violazione va notificata entro 48 ore/)
+
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2016/679 (GDPR)')).toBeInTheDocument()
+    expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
+    expect(within(margin).queryByText('Verificata')).not.toBeInTheDocument()
+
+    // It differs, this is how, and this is what the official text says.
+    expect(within(margin).getByText('Diversa dal testo ufficiale')).toBeInTheDocument()
+    expect(
+      within(margin).getByText(
+        'Nella risposta: «senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza»',
+      ),
+    ).toBeInTheDocument()
+    expect(within(margin).getByText('Testo ufficiale, Art. 33')).toBeInTheDocument()
+    const note = within(margin).getByText('Diversa dal testo ufficiale').parentElement as HTMLElement
+    expect(within(note).getByRole('listitem')).toHaveTextContent('Nella risposta «48», nel testo ufficiale «72».')
+
+    // The highlighter marks the official words only, never the altered quote.
+    const marks = margin.querySelectorAll('mark')
+    expect(marks).toHaveLength(1)
+    expect(marks[0]).toHaveTextContent(/^72$/)
+    expect(marks[0].parentElement).toHaveTextContent(
+      'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
+    )
+  })
 })

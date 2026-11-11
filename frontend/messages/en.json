@@ -421,7 +421,7 @@
       "legend": "\"Verified\": the passage was found in the official text. \"Unverified\": it has not been confirmed yet.",
       "near": {
         "title": "Differs from the official text",
-        "quoted": "In the answer",
+        "quoted": "In the answer: \"{text}\"",
         "both": "The answer has <w>\"{quoted}\"</w>, the official text has <w>\"{official}\"</w>.",
         "missing": "The answer lacks <w>\"{official}\"</w>, which the official text has.",
         "extra": "The answer has <w>\"{quoted}\"</w>, which the official text does not have.",

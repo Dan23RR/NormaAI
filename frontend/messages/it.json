@@ -209,6 +209,11 @@
       "mail": "Scrivi a info@normaai.org",
       "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie.",
       "login": "Hai già un account? Accedi"
+    },
+    "demoEntry": {
+      "metaTitle": "Demo con dati di esempio",
+      "opening": "Sto aprendo la demo con dati di esempio.",
+      "fallback": "Se la pagina non cambia, <link>apri la demo da qui</link>."
     }
   },
   "login": {

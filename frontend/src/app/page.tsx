@@ -120,7 +120,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Controlla un documento */}
+        {/* Check a document: the three checks, what comes out, what it does not do */}
         <section id="come-funziona" className="scroll-mt-16 border-t border-rule">
           <div className="mx-auto max-w-site px-6 py-16 md:py-20">
             <h2 className="max-w-3xl text-h2 md:text-h1">{t('check.title')}</h2>
@@ -146,7 +146,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Sorveglia: l'avviso quando una norma citata cambia */}
+        {/* Watch: the warning when a cited provision changes */}
         <section id="sorveglia" className="scroll-mt-16 border-t border-rule bg-surface-2">
           <div className="mx-auto grid max-w-site gap-10 px-6 py-16 md:py-20 lg:grid-cols-12 lg:gap-12">
             <div className="lg:col-span-5">
@@ -160,7 +160,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Chiedi */}
+        {/* Ask: questions answered with the passage of law */}
         <section id="chiedi" className="scroll-mt-16 border-t border-rule">
           <div className="mx-auto grid max-w-site gap-10 px-6 py-16 md:py-20 lg:grid-cols-12 lg:gap-12">
             <div className="lg:col-span-5">
@@ -181,7 +181,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Ambito e scadenze: le verifiche gratuite, come link secondari */}
+        {/* Scope and deadlines: the free checks, as secondary links */}
         <section id="ambito" className="scroll-mt-16 border-t border-rule">
           <div className="mx-auto grid max-w-site gap-6 px-6 py-12 md:py-14 lg:grid-cols-12 lg:gap-12">
             <div className="lg:col-span-7">
@@ -203,7 +203,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Fonti: il corpus delle risposte e, separati, i testi del controllo */}
+        {/* Sources: the corpus of the answers and, apart from it, the texts the document check reads */}
         <section id="fonti" className="scroll-mt-16 border-t border-rule bg-surface-2">
           <div className="mx-auto max-w-site px-6 py-16 md:py-20">
             <h2 className="max-w-3xl text-h2 md:text-h1">{t('sources.title')}</h2>
@@ -230,7 +230,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Per chi: prima i consulenti */}
+        {/* For whom: consultants first */}
         <section className="border-t border-rule">
           <div className="mx-auto max-w-site px-6 py-16 md:py-20">
             <h2 className="max-w-3xl text-h2 md:text-h1">{t('who.title')}</h2>
@@ -269,7 +269,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Demo e pilot */}
+        {/* Demo and pilot: the two actions again */}
         <section id="demo" className="scroll-mt-16 border-t border-rule bg-surface-2">
           <div className="mx-auto max-w-site px-6 py-16 md:py-20">
             <h2 className="max-w-3xl text-h2 md:text-h1">{t('demo.title')}</h2>

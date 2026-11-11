@@ -25,13 +25,13 @@ Full details: [ARCHITECTURE.md](ARCHITECTURE.md) § Security Model.
 | Layer | Control |
 |---|---|
 | Transport | HTTPS/HSTS (Vercel frontend; TLS termination required in front of the API in production) |
-| AuthN | JWT RS256, 15-min access / 7-day refresh with family tracking; Redis blacklist **fail-closed in production**; bcrypt runs off the event loop |
+| AuthN | JWT RS256, 60-min access / 7-day refresh with family tracking; Redis blacklist **fail-closed in production**; bcrypt runs off the event loop |
 | Registration | Invite-only by default (`REGISTRATION_MODE=invite`): single-use, expiring codes stored hashed; `open` / `closed` modes; email verification (`REQUIRE_EMAIL_VERIFICATION` gates the intelligence endpoints) |
 | AuthZ | RBAC (admin/member/viewer) + PostgreSQL Row-Level Security per organization; staff allowlist (`STAFF_EMAILS`) for corpus crawl / re-index and cross-organization invites |
 | Brute force | Redis-backed lockout, 5 attempts / 5 min, keyed on email (bounded in-memory fallback during a Redis outage); per-IP rate limits on register (5/h), login (10/min), refresh (30/min) behind the trusted-proxy IP |
 | Abuse / cost | Daily LLM quota per organization (`LLM_DAILY_QUOTA_PER_ORG`, default 200; Redis INCR with in-memory fallback), `X-Quota-Remaining` header |
 | Input | Prompt-injection sanitization + typed profile validation + length caps |
-| Output | CoVe 5-phase verification; citations validated against EUR-Lex/Normattiva |
+| Output | Every Q&A citation is checked word for word against the retrieved official text (numbers and short words must coincide; a tenant's upload never counts as official text); grounding guard; abstention in code when nothing is retrieved; CoVe only on request |
 | Secrets | `.env` + `*.pem` gitignored; gitleaks in pre-commit and CI (full history) |
 | Container | Multi-stage build, non-root user, read-only rootfs, `cap_drop: ALL` |
 | Supply chain | Dependabot, Trivy (fs + image), Bandit, CodeQL, CycloneDX SBOM per release |
@@ -40,7 +40,7 @@ Full details: [ARCHITECTURE.md](ARCHITECTURE.md) § Security Model.
 
 | Secret | Rotation | Procedure |
 |---|---|---|
-| JWT RSA keypair | 90 days or on suspicion | Generate new pair, deploy, old access tokens expire in 15 min |
+| JWT RSA keypair | 90 days or on suspicion | Generate new pair, deploy, old access tokens expire within 60 min |
 | `APP_SECRET_KEY` | On suspicion | Regenerate (`secrets.token_urlsafe(64)`), restart |
 | LLM API keys | 90 days | Provider console → update `.env`/secrets manager |
 | Resend API key | 90 days | resend.com/api-keys → revoke old, generate new |

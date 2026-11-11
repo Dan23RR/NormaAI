@@ -55,7 +55,7 @@
 - **Fusion:** Reciprocal Rank Fusion with k=60
 
 **Consequences:**
-- +15-20% retrieval accuracy on legal benchmark vs. dense-only
+- Retrieval quality is measured, not assumed: `tests/validation/retrieval_eval.py` counts the questions of the golden set whose expected article is among the first 15 results, and `docs/MODELS.md` records the figure for every model tried (no comparison with dense-only search has been run)
 - No need for a separate full-text search engine (Elasticsearch)
 - Hash-based sparse vectors avoid vocabulary synchronization across nodes
 - Point ids are deterministic (`UUID5(celex|lang|article|chunk_index|sha1(text))`): re-seeding an act replaces its chunks (delete per CELEX+lang, then upsert) instead of duplicating them; a `corpus_meta` point records `corpus_as_of`, the indexed acts and the embedding model
@@ -98,12 +98,12 @@
 2. **Planning** - Extract claims and generate verification questions
 3. **Independent Verification** - Answer each question in isolated context
 4. **Revision** - Correct the draft based on verification results
-5. **Citation Validation** - Verify every CELEX/URN against EUR-Lex/Normattiva APIs
+5. **Citation Validation** - Check every CELEX identifier against the registry of indexed acts
 
 **Consequences:**
-- 2-5x increase in latency for verified responses (mitigated by SSE streaming)
-- Every CELEX/URN citation is validated against the live EUR-Lex/Normattiva APIs at generation time, so a hallucinated identifier is caught before it reaches the user (engineered and unit-tested at MVP scale; not yet measured against a production-volume benchmark)
-- Only triggered when confidence < 0.85 (configurable threshold)
+- 2-5x increase in latency for the responses that go through it
+- A CELEX identifier is accepted when it is well formed and belongs to an indexed act; anything else is reported as unverified. The code has a branch for a live EUR-Lex lookup, but nothing wires the client it needs, so no live lookup happens today
+- It runs only when a request asks for it (`enable_cove`) and the answer's confidence is under 0.85; the web interface never asks, and the `COVE_ENABLED` setting only appears in the startup summary. The guarantee the product relies on is the deterministic citation verifier described below, which runs on every answer
 
 ### ADR-6: SNC Trust Layer (Behavioral Trust Clustering)
 
@@ -138,7 +138,7 @@ behaviorally, compute a closed-form trust score, and route three ways:
 **Context:** The API needs stateless authentication with support for token revocation and multi-device sessions.
 
 **Decision:** Use RS256 (RSA asymmetric) JWT with:
-- 15-minute access token TTL
+- 60-minute access token TTL (`ACCESS_TOKEN_EXPIRE_MINUTES`)
 - 7-day refresh token with family tracking
 - Redis-backed blacklist for immediate revocation
 - Replay attack detection via token family chains
@@ -153,10 +153,11 @@ behaviorally, compute a closed-form trust score, and route three ways:
 ### Regulatory Q&A Flow
 
 ```
-User Question → Sanitize → Retrieve (Qdrant hybrid) → Route → QA Agent (LLM)
-    → Grounding guard → Citation verifier (word for word) → Confidence Check
-    → [if < 0.85] → CoVe 5-phase verification → Response
-    → [if ≥ 0.85] → Response with citations
+User Question → Sanitize → Retrieve (Qdrant hybrid)
+    → [no passage retrieved] → abstention decided in code, the model is not called
+    → Route → QA Agent (LLM) → Grounding guard → Citation verifier (word for word)
+    → Confidence Check → Response with citations
+    → [only when the request sets enable_cove] → CoVe 5-phase verification → Response
 ```
 
 ### Ingestion Pipeline Flow

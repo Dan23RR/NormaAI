@@ -420,8 +420,55 @@ model, set by the variable in brackets.
 | `claude-haiku-5-5` | measured (`ANTHROPIC_MODEL=claude-haiku-5-5`) | provider terms | Anthropic API | 2026-10-24 | 84 / 101, recall 0.83, 99.6 % verified (§1) |
 | `nvidia/nemotron-3-super-120b-a12b:free` | default for `LLM_PROVIDER=openrouter` (`OPENROUTER_MODEL_ANALYSIS`) | provider terms | OpenRouter | 2026-10-26 code | — |
 | `qwen3.5:4b` | local router, off by default (`LOCAL_LLM_ENABLED`, `LOCAL_LLM_MODEL`) | to check | Ollama | 2026-10-26 code | — |
-| Mistral Small 4 | candidate: sovereign LLM (EU provider, open weights) | Apache-2.0 | Mistral AI | 2026-10-26 notes | — |
+| `mistral-small-2603` (Mistral Small 4) | default for `LLM_PROVIDER=mistral` (`MISTRAL_MODEL`); code ready, **not measured, never called with a real key** (§5.1) | provider terms for the API; open weights under Apache-2.0 | Mistral API (La Plateforme), [model card](https://docs.mistral.ai/models/mistral-small-4-0-26-03) | 2026-11-11 code, Mistral documentation | not measured |
 | Llama 4 | **excluded** (§7) | Llama 4 Community License + Acceptable Use Policy | Meta | 2026-10-26 notes | — |
+
+### 5.1 Mistral: an EU provider, not measured yet
+
+`LLM_PROVIDER=mistral` sends the questions to Mistral's API instead of a US provider.
+**It is not measured on the golden set and must not become the default before a
+measured run**: the gate of month 1 (§2.3) was met with Claude Haiku 5.5, and nothing in
+this file says how Mistral Small 4 answers, quotes or formats its JSON. No request has
+been sent to Mistral's API from this project: the code was checked against the
+documentation and against the request the client builds, not against the service.
+
+What was read on docs.mistral.ai on 2026-11-11:
+
+- **Model.** Mistral Small 4 is `mistral-small-2603`, generally available since
+  2026-03-16, with 256k tokens of context. The default is the dated id, which does not
+  change under a measurement: the lifecycle page warns that "Using an alias may expose you
+  to silent updates in model behavior and pricing". A generally available model is retired
+  with six months of notice, after which its id stops answering: watch the model page (the
+  Gemini default of 2025 was shut down the same way).
+- **Where the questions are processed.** `MISTRAL_BASE_URL` defaults to the EU regional
+  endpoint, `https://api.eu.mistral.ai/v1`: "Multiple data centers in EU and EFTA
+  countries", billed at 1.1 times the list price. On the global endpoint,
+  `https://api.mistral.ai/v1`, "Mistral does not commit to a specific inference location".
+  The regional endpoint covers the inference only: the same page says account
+  configuration, API keys, billing and usage analytics "may still be handled by Mistral
+  systems outside the selected inference geography". Retention and training terms were not
+  read: check them in Mistral's terms before describing them to users.
+- **Not verified without a key:** that `mistral-small-2603` is served by the EU endpoint
+  ("Regional endpoints only serve models hosted in that region"). The check is one
+  request, in [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md), "Model provider".
+
+How it is wired (`src/agents/llm.py`):
+
+- No dependency of its own: Mistral's chat completions endpoint speaks the OpenAI dialect,
+  so the client is `langchain-openai`, the optional extra `openrouter`
+  (`poetry install -E openrouter`; the Docker image always installs it).
+- The request carries `model`, `messages`, `temperature`, `max_tokens` and `stream`, all
+  in Mistral's API reference. `ChatOpenAI` would send its `max_tokens` argument as
+  `max_completion_tokens`, which that reference does not list, so the limit goes through
+  `extra_body` (tests in `tests/test_llm_model_settings.py` read the request the client
+  sends, with the HTTP layer answered in process).
+- Reasoning is left at the API default (`reasoning_effort` is not sent). With reasoning
+  on, Mistral returns the content as a list with a `thinking` chunk before the text;
+  `message_text` keeps the text.
+
+Before making it the default: golden v2 end to end through the API (§1 has the command)
+with `LLM_PROVIDER=mistral`, the result in a row of the table above, and the same gate as
+§2.3 (at least 90 / 101 questions and 99.5 % of citations verified).
 
 ## 6. Changing the dense model
 
@@ -474,3 +521,4 @@ model, set by the variable in brackets.
 | 2026-10-27 | Golden v2 end to end: mpnet 81, e5 85, e5 with the response parser fixed 89 (§2.2); parent articles match only at a separator |
 | 2026-11-03 | Sparse terms split on punctuation and lookup of the articles a question names, retrieval only: e5 83 → 89 / 90, mpnet 80 → 85 (§3.1, §3.2); the retrieval-only measure counts the expected paragraph; golden v2 end to end 95 and 96 / 101 with e5 (§2.3); licences and training data of two permissive rerankers, MS MARCO in e5's fine-tuning data too (§4, §4.2) |
 | 2026-11-09 | Golden v2 end to end with the final retrieval and a second attempt for replies in prose: 96 / 101, citations verified 99.79 %; the gate of month 1 is met (§2.3) |
+| 2026-11-11 | Provider `mistral` added: Mistral Small 4 on Mistral's EU regional endpoint, through the OpenAI-compatible client; not measured, not the default (§5.1) |

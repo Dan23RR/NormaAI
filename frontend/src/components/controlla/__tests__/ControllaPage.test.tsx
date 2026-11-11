@@ -107,7 +107,7 @@ describe('ControllaPage', () => {
     )
     expect(within(gdpr).getByText('Da correggere')).toBeInTheDocument()
     expect(within(gdpr).getByText('2 da correggere, 1 da controllare, 4 a posto, 1 non coperto')).toBeInTheDocument()
-    expect(within(gdpr).getByRole('link', { name: 'Banca Meridiana S.p.A.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
+    expect(within(gdpr).getByRole('link', { name: 'Beta Software S.r.l.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
     expect(within(gdpr).getAllByText('2026-11-10').length).toBeGreaterThan(0)
     expect(within(gdpr).getByText('Attiva')).toBeInTheDocument()
 
@@ -249,7 +249,7 @@ describe('ControllaPage', () => {
     const file = docx('Policy uso IA.docx')
     await user.upload(within(form).getByLabelText('Scegli un file'), file)
     expect(within(form).getByText(/File scelto: Policy uso IA\.docx \(16 B\)/)).toBeInTheDocument()
-    await user.selectOptions(within(form).getByLabelText('Cliente'), 'MedTech Innovations B.V.')
+    await user.selectOptions(within(form).getByLabelText('Cliente'), 'Epsilon Salute S.r.l.')
     fireEvent.change(within(form).getByLabelText('Data del documento'), { target: { value: '2026-03-15' } })
     await user.click(within(form).getByRole('checkbox', { name: /Sorveglia questo documento/ }))
     await user.click(within(form).getByRole('button', { name: 'Controlla il documento' }))
@@ -258,7 +258,7 @@ describe('ControllaPage', () => {
     const [path, body] = mocks.upload.mock.calls[0] as [string, FormData]
     expect(path).toBe('/api/v1/documents/check')
     expect(body.get('file')).toBe(file)
-    expect(body.get('client_id')).toBe('demo-c3')
+    expect(body.get('client_id')).toBe('demo-c5')
     expect(body.get('document_date')).toBe('2026-03-15')
     expect(body.get('watch')).toBe('false')
 

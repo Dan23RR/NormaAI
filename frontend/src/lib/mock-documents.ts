@@ -56,7 +56,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         status: { code: 'alterata', label: 'Citazione diversa dal testo ufficiale' },
         line: 8,
         raw: 'articolo 33, paragrafo 1, del regolamento (UE) 2016/679',
-        context: "Ai sensi dell'articolo 33, paragrafo 1, del regolamento (UE) 2016/679, la banca notifica la violazione al Garante «senza ingiustificato ritardo e, ove ...",
+        context: "Ai sensi dell'articolo 33, paragrafo 1, del regolamento (UE) 2016/679, la società notifica la violazione al Garante «senza ingiustificato ritardo e, ove ...",
         act: { source: 'eurlex', id: '32016R0679', name: 'GDPR', label: 'regolamento (UE) 2016/679 (GDPR)' },
         provision: {
           key: 'art:33',
@@ -138,7 +138,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
         status: { code: 'altro_articolo', label: 'Citazione in un altro articolo' },
         line: 17,
         raw: 'art. 28, par. 3, del GDPR',
-        context: "In base all'art. 28, par. 3, del GDPR, il fornitore che tratta dati per conto della banca «informa il titolare del trattamento senza ingiustificato ...",
+        context: "In base all'art. 28, par. 3, del GDPR, il fornitore che tratta dati per conto della società «informa il titolare del trattamento senza ingiustificato ...",
         act: { source: 'eurlex', id: '32016R0679', name: 'GDPR', label: 'GDPR' },
         provision: {
           key: 'art:28',
@@ -351,7 +351,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
   },
   {
     id: 'demo-doc-ai',
-    client_id: 'demo-c3',
+    client_id: 'demo-c5',
     filename: 'Policy uso IA.pdf',
     document_sha256: 'f5b37bab3e7c9ac543574d2ab4f2a2d8ff197c5c83b7d9df12fe575742a72428',
     document_date: '2026-03-15',
@@ -701,7 +701,7 @@ export const DEMO_DOCUMENTS: DocumentCheck[] = [
   },
   {
     id: 'demo-doc-csddd',
-    client_id: 'demo-c1',
+    client_id: 'demo-c6',
     filename: 'Nota fornitori dovere di diligenza.docx',
     document_sha256: 'df272ff7dd7deef5377f22da4b32840780eddb035639332f37b16dfd6191467c',
     document_date: '2026-02-02',

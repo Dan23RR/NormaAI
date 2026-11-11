@@ -164,7 +164,7 @@ describe('demo interception of the documents API', () => {
     expect(review.items.map((i) => i.id)).toEqual(['demo-doc-csddd'])
     expect(review.total).toBe(1)
 
-    const ofClient = asList(await api.get('/api/v1/documents/checks?client_id=demo-c3'))
+    const ofClient = asList(await api.get('/api/v1/documents/checks?client_id=demo-c5'))
     expect(ofClient.items.map((i) => i.id)).toEqual(['demo-doc-ai'])
 
     const nobody = asList(await api.get('/api/v1/documents/checks?client_id=missing'))

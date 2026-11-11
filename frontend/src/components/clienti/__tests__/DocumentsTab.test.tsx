@@ -43,7 +43,7 @@ describe('DocumentsTab (the documents checked for a client)', () => {
   it('lists only the checks of this client and links to a new check with the client chosen', async () => {
     renderWithIntl(<DocumentsTab client={client('demo-c2')} />)
     expect(screen.getByRole('heading', { name: 'Documenti controllati' })).toBeInTheDocument()
-    expect(screen.getByText(/I documenti di Banca Meridiana S\.p\.A\. di cui hai controllato i riferimenti di legge\./)).toBeInTheDocument()
+    expect(screen.getByText(/I documenti di Beta Software S\.r\.l\. di cui hai controllato i riferimenti di legge\./)).toBeInTheDocument()
 
     const table = await screen.findByRole('table')
     expect(mocks.get).toHaveBeenCalledWith('/api/v1/documents/checks?client_id=demo-c2&limit=50&offset=0')
@@ -64,7 +64,7 @@ describe('DocumentsTab (the documents checked for a client)', () => {
   })
 
   it('shows a check to review as such', async () => {
-    renderWithIntl(<DocumentsTab client={client('demo-c1')} />)
+    renderWithIntl(<DocumentsTab client={client('demo-c6')} />)
     const table = await screen.findByRole('table')
     expect(within(table).getByText('Da rivedere')).toBeInTheDocument()
     expect(within(table).getByText('una norma citata è cambiata')).toBeInTheDocument()

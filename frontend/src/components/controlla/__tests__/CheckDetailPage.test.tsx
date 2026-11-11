@@ -117,7 +117,7 @@ describe('CheckDetailPage', () => {
     const margin = await screen.findByRole('complementary', { name: 'Documento' })
     expect(within(margin).getByText('10 novembre 2026')).toBeInTheDocument()
     expect(within(margin).getByText('12 gennaio 2026')).toBeInTheDocument()
-    expect(await within(margin).findByRole('link', { name: 'Banca Meridiana S.p.A.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
+    expect(await within(margin).findByRole('link', { name: 'Beta Software S.r.l.' })).toHaveAttribute('href', '/app/clienti/demo-c2')
     expect(within(margin).getByText('Italiano')).toBeInTheDocument()
     expect(within(margin).getByText('Attiva')).toBeInTheDocument()
     expect(within(margin).getByText(doc('demo-doc-gdpr').document_sha256)).toBeInTheDocument()
@@ -149,7 +149,7 @@ describe('CheckDetailPage', () => {
     ])
     expect(within(notice).getByRole('link', { name: 'Controlla la versione aggiornata' })).toHaveAttribute(
       'href',
-      '/app/controlla?cliente=demo-c1',
+      '/app/controlla?cliente=demo-c6',
     )
 
     // The margin tells the same story, provision by provision.

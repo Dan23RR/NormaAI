@@ -1,0 +1,12 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2024;138~art999",
+  "retrieved": "2026-11-11"
+ },
+ "status": 404,
+ "body": {
+  "message": "dataPubblicazioneGazzetta:Tue Oct 01 00:00:00 CEST 2024 codiceRedazionale:24G00155 idArticolo:999 idSottoArticolo:1 idSottoArticolo1:null artP:0",
+  "code": null
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2024-09-04;138~art24",
+  "retrieved": "2026-11-11",
+  "trimmed": "comma 1 kept; commi 2 to 4 cut"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO LEGISLATIVO 4 settembre 2024, n. 138",
+    "sottoTitolo": "Recepimento della direttiva (UE) 2022/2555, relativa a misure per  un\nlivello  comune  elevato  di  cibersicurezza   nell'Unione,   recante\nmodifica del regolamento (UE) n.  910/2014  e  della  direttiva  (UE)\n2018/1972 e che abroga la direttiva (UE) 2016/1148. (24G00155) \n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_24\">Art. 24</h2>\n        <div class=\"article-heading-akn\">Obblighi in materia di misure di gestione dei rischi per la sicurezza informatica</div>\n        <div class=\"art-commi-div-akn\">\n            <div class=\"art-comma-div-akn\">\n                <div>\n                    <div class=\"pointedList-first-akn\">\n                        <span class=\"comma-num-akn\">1. </span>I soggetti essenziali e i soggetti importanti adottano misure tecniche, operative e organizzative adeguate e proporzionate, secondo le modalit&agrave; e i termini di cui agli articoli 30, 31 e 32, alla gestione dei rischi posti alla sicurezza dei sistemi informativi e di rete che tali soggetti utilizzano nelle loro attivit&agrave; o nella fornitura dei loro servizi, nonch&egrave; per prevenire o ridurre al minimo l'impatto degli incidenti per i destinatari dei loro servizi e per altri servizi. Tali misure: \n                        <br>\n                         \n                    </div>\n                    <div class=\"pointedList-rest-akn\">\n                        a) assicurano un livello di sicurezza dei sistemi informativi e di rete adeguato ai rischi esistenti, tenuto conto delle conoscenze pi&ugrave; aggiornate e dello stato dell'arte in materia e, ove applicabile, delle pertinenti norme nazionali, europee e internazionali, nonch&egrave; dei costi di attuazione; \n                        <br>\n                        \n                    </div>\n                    <div class=\"pointedList-rest-akn\">\n                        b) sono proporzionate al grado di esposizione a rischi del soggetto, alle dimensioni del soggetto e alla probabilit&agrave; che si verifichino incidenti, nonch&egrave; alla loro gravit&agrave;, compreso il loro impatto sociale ed economico. \n                        <br>\n                        \n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO LEGISLATIVO",
+    "tipoProvvedimentoCodice": "PLL",
+    "annoProvvedimento": 2024,
+    "meseProvvedimento": 9,
+    "giornoProvvedimento": 4,
+    "numeroProvvedimento": 138,
+    "tipoSupplementoCode": "NO",
+    "numeroSupplemento": 0,
+    "annoGU": 2024,
+    "meseGU": 10,
+    "giornoGU": 1,
+    "numeroGU": 230,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20241016",
+    "articoloDataFineVigenza": "99999999",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

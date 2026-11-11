@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2003;196~art2quinquiesdecies!vig=2026-11-11",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO LEGISLATIVO 30 giugno 2003, n. 196",
+    "sottoTitolo": "Codice in materia di protezione dei dati personali <em><strong>((, recante disposizioni per l'adeguamento dell'ordinamento nazionale al regolamento (UE) n. 2016/679 del Parlamento europeo e del Consiglio, del 27 aprile 2016, relativo alla protezione delle persone fisiche con riguardo al trattamento dei dati personali, nonche' alla libera circolazione di tali dati e che abroga la direttiva 95/46/CE))</strong></em>.\r\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_2-quindecies\">Art. 2-quindecies</h2>\n        <span class=\"art-just-text-akn\"> Art. 2-quinquiesdecies \n            <br>\n             \n            <br>\n            \n            <div class=\"ins-akn art_abrogato-akn\" eId=\"ins_1\">((ARTICOLO ABROGATO DAL <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2021-10-08;139\" target=\"_blank\">D.L. 8 OTTOBRE 2021, N. 139</a>, CONVERTITO CON MODIFICAZIONI DALLA <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2021-12-03;205\" target=\"_blank\">L. 3 DICEMBRE 2021, N. 205</a>))</div>\n        </span>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO LEGISLATIVO",
+    "tipoProvvedimentoCodice": "PLL",
+    "annoProvvedimento": 2003,
+    "meseProvvedimento": 6,
+    "giornoProvvedimento": 30,
+    "numeroProvvedimento": 196,
+    "tipoSupplementoCode": "SO",
+    "numeroSupplemento": 123,
+    "annoGU": 2003,
+    "meseGU": 7,
+    "giornoGU": 29,
+    "numeroGU": 174,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20211208",
+    "articoloDataFineVigenza": "99999999",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

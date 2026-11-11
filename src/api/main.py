@@ -65,25 +65,20 @@ tags_metadata = [
 ]
 
 DESCRIPTION = """
-## EU Regulatory Intelligence Monitor
+## NormaAI API
 
-NormaAI monitors **7 EU regulatory frameworks** in real-time and provides AI-powered compliance intelligence:
+Checks legal references word for word against the official texts in force
+(EUR-Lex / CELLAR for EU law, Normattiva for Italian law) and answers questions
+on a corpus of EU acts with every citation verified.
 
-| Framework | Status |
-|-----------|--------|
-| **CSRD** - Corporate Sustainability Reporting | Active |
-| **CSDDD** - Corporate Sustainability Due Diligence | Active |
-| **AI Act** - Artificial Intelligence Regulation | Active |
-| **DORA** - Digital Operational Resilience | Active |
-| **NIS2** - Network & Information Security | Active |
-| **EU Taxonomy** - Sustainable Finance Classification | Active |
-| **GDPR** - General Data Protection | Active |
+### What it does
+- **Documents** - check the legal references of a document, keep the outcome and re-check it when a cited provision changes
+- **Q&A** - answers on the indexed EU acts; each citation is checked word for word against the retrieved official text, and the answer is an abstention when nothing is retrieved
+- **Gap analysis** - the requirements of a framework for a company profile: a checklist, not an assessment
+- **Monitor** - reads a regulatory change against a company profile
+- **Crawl** - staff only: refreshes the metadata of the tracked acts from EUR-Lex
 
-### Core capabilities
-- **Q&A** - Ask questions about EU regulations with cited answers
-- **Gap Analysis** - Compliance assessment with scoring per framework
-- **Monitor** - Impact analysis of regulatory changes on your company
-- **Crawl** - Real-time EUR-Lex data via SPARQL endpoint
+Frameworks of the Q&A corpus: CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR, CRA.
 """
 
 # ─── App ──────────────────────────────────────────────────────────

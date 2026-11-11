@@ -111,7 +111,7 @@ it): the interface and the report show the official passage in place.
 | Lock file and re-check from the command line | wired | `scripts/check_document.py` |
 | Documents HTTP API: check, storage, re-check, HTML report, alerts | wired | `src/api/routers/documents.py`, `src/document_check/service.py` |
 | Weekly surveillance of watched documents, digest email | wired, runs as a cron job on the server | `src/document_check/surveillance.py`, `src/email_client.py` |
-| Web screen for the document check | not built in this branch | |
+| Web screen for the document check ("Controlla"): upload or paste, outcome by group, differing words, before and after, list with "da rivedere" | wired; works on sample data in the declared demo, needs the backend for real documents | `frontend/src/app/app/controlla/`, `frontend/src/components/controlla/` |
 | Q&A on 18 EU acts, IT and EN, with word-for-word citation check | wired | `src/agents/nodes.py`, `src/agents/citation_verifier.py` |
 | Abstention when retrieval finds nothing (decided in code, no model call) | wired | `_abstain_without_sources` in `src/agents/nodes.py` |
 | Italian law in the Q&A corpus | not built | old client in `src/crawler/normattiva/` (see below) |

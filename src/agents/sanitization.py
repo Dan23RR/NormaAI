@@ -15,10 +15,13 @@ compliance questions (e.g. "le regole precedenti", "supera i limiti") and gave
 false confidence. A regex denylist is trivially bypassable (obfuscation,
 encoding, novel phrasings, other languages), so it can only ever be telemetry.
 
-The REAL defenses against prompt injection in this codebase are structural:
-strict system/user message separation (untrusted text never lands in the system
-prompt), output grounding against retrieved chunks, and Chain-of-Verification
-(CoVe) citation validation. This layer exists to *measure*, not to protect.
+The defenses against prompt injection in this codebase are partial. The
+question, the company profile and the retrieved passages are all placed in the
+system prompt (the question is also sent as the user message), behind an
+instruction that tells the model to treat them as data, not as instructions;
+the grounding guard and the word-for-word citation verifier then check the
+output against the retrieved official text. This layer exists to *measure*,
+not to protect.
 
 Design constraints: dependency-free (stdlib ``re``), fast (patterns compiled
 once at import), low telemetry-noise on Italian compliance prose.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This package provides a production-grade async Python client for the Italian Normattiva Open Data API, with comprehensive URN validation, citation extraction, and data parsing capabilities.
+This package holds the older async client for Normattiva, with URN validation, citation extraction and data parsing. Its endpoints (`www.normattiva.it/opendata`) answer HTTP 409 today, so it feeds no Italian text into the Q&A corpus. The document check reads Italian law through the newer open data API in `src/document_check/normattiva.py`; moving this client to that API is future work.
 
 ## Module Structure
 

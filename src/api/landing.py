@@ -111,8 +111,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="stat-row" style="margin-top:20px">
     <div class="stat"><div class="stat-n" id="s-chunks">&mdash;</div><div class="stat-l">Chunks Indexed</div></div>
-    <div class="stat"><div class="stat-n">7</div><div class="stat-l">EU Frameworks</div></div>
-    <div class="stat"><div class="stat-n">9</div><div class="stat-l">Core Regulations</div></div>
+    <div class="stat"><div class="stat-n">8</div><div class="stat-l">EU Frameworks</div></div>
+    <div class="stat"><div class="stat-n">18</div><div class="stat-l">Tracked Acts</div></div>
     <div class="stat"><div class="stat-n" id="s-uptime">&mdash;</div><div class="stat-l">System Status</div></div>
   </div>
 
@@ -127,6 +127,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         <div class="fw"><span class="fw-dot"></span><b>NIS2</b><small>Cybersecurity</small></div>
         <div class="fw"><span class="fw-dot"></span><b>Taxonomy</b><small>Green Finance</small></div>
         <div class="fw"><span class="fw-dot"></span><b>GDPR</b><small>Data Privacy</small></div>
+        <div class="fw"><span class="fw-dot"></span><b>CRA</b><small>Product Security</small></div>
       </div>
     </div>
 

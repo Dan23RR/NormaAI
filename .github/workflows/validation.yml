@@ -77,7 +77,9 @@ jobs:
       - name: Start from an empty reports directory
         # The repository keeps reports of earlier runs there: the check and the
         # artifact below must see this run only.
-        run: find tests/validation/reports -type f -delete
+        run: |
+          mkdir -p tests/validation/reports
+          find tests/validation/reports -type f -delete
 
       - name: Generate the extra test cases
         if: env.SUITE == 'all'

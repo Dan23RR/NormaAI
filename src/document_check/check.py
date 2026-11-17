@@ -35,6 +35,14 @@ the one in force then. A wording whose last day is already set (a repeal or an
 amendment published but not yet in force) is reported too. Only the cited
 articles are read, never the whole act.
 
+Statements. A sentence can state, in its own words, a rule that an amendment
+changed ("the obligations for Annex III systems apply from 2 August 2026"):
+``stale_facts`` finds them. Each one is a finding of its own, on the provision
+that states the rule now, read on the official source: its words are shown and
+the rule's message is given only when they confirm it. A document dated before
+the change is "changed after the document's date"; otherwise the statement is
+outdated.
+
 The worst outcome gives a provision its status. Every provision found in force
 becomes a dependency in the lock file (source, version, text, SHA-256 of the
 normalised text); ``recheck`` compares a lock file with the texts in force
@@ -65,6 +73,7 @@ from src.document_check.extract import (
     Provision,
     Reference,
     detect_language,
+    eu_act,
     extract_references,
     paragraph_label,
 )
@@ -86,6 +95,7 @@ from src.document_check.official import (
     Version,
     find_article,
 )
+from src.document_check.stale_facts import Rule, Statement, find_statements, official_passage
 
 # ─── Statuses ────────────────────────────────────────────────────────
 
@@ -116,10 +126,17 @@ SCHEDULED = Status(
     "modifica_pubblicata", "Modifica pubblicata, non ancora in vigore", "controllare"
 )
 RULING = Status("sentenza_in_nota", "Sentenza della Corte costituzionale in nota", "controllare")
+# Statements (stale_facts): a sentence states a rule as it was before an amendment.
+STALE = Status("affermazione_superata", "Affermazione superata", "correggere")
+# The text in force read does not confirm the rule: older than the change, or changed again.
+STALE_UNCONFIRMED = Status(
+    "affermazione_da_controllare", "Affermazione da controllare", "controllare"
+)
 
 # Worst first: a provision keeps the worst outcome of its checks.
 _ORDER = (
     OUTDATED,
+    STALE,
     CHANGED,
     MISSING,
     ALTERED,
@@ -127,6 +144,7 @@ _ORDER = (
     ELSEWHERE,
     UNAVAILABLE,
     UNREAD,
+    STALE_UNCONFIRMED,
     ACT_UNCLEAR,
     PARTIAL,
     SCHEDULED,
@@ -166,6 +184,10 @@ class Finding:
     # An altered quote: the document's words and how they differ from ``official_quote``.
     altered_quote: str | None = None
     differences: list[dict[str, str]] = field(default_factory=list)
+    # A statement, not a reference: the stale_facts rule it matched ("R1"). Its
+    # reference is the words that state the old rule; ``official_quote`` is the
+    # passage of the provision in force that states the rule now.
+    rule: str | None = None
 
     @property
     def act_name(self) -> str:
@@ -1065,6 +1087,139 @@ def _check_italian(
     return findings
 
 
+# ─── Statements (stale_facts) ────────────────────────────────────────
+
+# An act as read for its statements: the versions up to the newest readable one,
+# that version's articles and the newer versions that could not be read.
+_InForce = tuple[list[Version], list[ArticleText], list[Version]]
+
+
+def _in_force_for_statements(
+    celex: str, source: TextSource, lang: str, memo: dict[str, _InForce | str]
+) -> _InForce | str:
+    """The act's text in force, read once per check; why not, when it cannot be read."""
+    if celex not in memo:
+        try:
+            versions = source.versions(celex)
+        except TextUnavailableError as e:
+            memo[celex] = str(e)
+            return memo[celex]
+        readable = _newest_readable(versions, source, lang)
+        if readable is None:
+            memo[celex] = f"CELLAR non ha nessun testo di {ACT_NAMES.get(celex, celex)} in {lang}"
+        else:
+            index, articles = readable
+            memo[celex] = (versions[: index + 1], articles, versions[index + 1 :])
+    return memo[celex]
+
+
+def _wording_before_the_change(
+    finding: Finding,
+    rule: Rule,
+    article: ArticleText,
+    versions: list[Version],
+    source: TextSource,
+    lang: str,
+) -> None:
+    """The provision the day before the change: the wording the statement rests on."""
+    readable = _readable_at(versions, _day_before(rule.since), source, lang)
+    if readable is None:
+        return
+    then, articles = readable
+    old = find_article(articles, rule.provision)
+    if old is not None and normalize(old.text) != normalize(article.text):
+        finding.before, finding.before_version = old.text, then
+
+
+def _check_statement(
+    statement: Statement,
+    source: TextSource,
+    lang: str,
+    document_date: str | None,
+    memo: dict[str, _InForce | str],
+) -> Finding:
+    """The finding for a sentence that states a rule as it was before an amendment.
+
+    The rule's message is confirmed on the provision in force, read on the
+    official source: its passage is the official text the report shows. When
+    the text cannot be read, or does not say what the rule expects (it is older
+    than the change, or changed again), the statement is to be checked by hand.
+    """
+    rule = statement.rule
+    act = eu_act(rule.act)
+    provision = rule.part
+    reference = Reference(
+        statement.start,
+        statement.end,
+        [provision],
+        act,
+        raw=statement.words,
+        line=statement.line,
+        context=statement.context,
+    )
+    finding = Finding(reference, provision, act, STALE, [rule.message], lang=lang, rule=rule.id)
+    read = _in_force_for_statements(rule.act, source, lang, memo)
+    if isinstance(read, str):
+        finding.status = UNAVAILABLE
+        finding.messages.append(
+            f"{_capitalized(read)}: il controllo non ha potuto confermarlo sul testo vigente."
+        )
+        return finding
+    versions, in_force, unread = read
+    current = versions[-1]
+    finding.version = current
+    article = find_article(in_force, rule.provision)
+    passage = official_passage(rule, article.text) if article is not None else None
+    if article is None or passage is None:
+        finding.status = STALE_UNCONFIRMED
+        finding.messages.append(
+            f"Il controllo non ha potuto confermarlo: nel {current.label} "
+            f"l'{Provision(rule.provision).label} non lo dice. Va controllato su EUR-Lex."
+        )
+    else:
+        finding.article, finding.official_quote = article, passage
+        since = _italian_date(rule.since)
+        if document_date and document_date < rule.since:
+            finding.status = CHANGED
+            finding.messages.append(
+                f"Alla data del documento ({_italian_date(document_date)}) la regola era questa: "
+                f"è cambiata il {since}, con il {rule.by}."
+            )
+        elif document_date:
+            finding.messages.append(
+                f"Alla data del documento ({_italian_date(document_date)}) la regola era già "
+                f"cambiata: dal {since}, con il {rule.by}."
+            )
+        else:
+            finding.messages.append(f"La regola è cambiata il {since}, con il {rule.by}.")
+        if not rule.was_in:
+            _wording_before_the_change(finding, rule, article, versions, source, lang)
+    if unread:
+        _note_unread([finding], current, unread)
+    stale = getattr(source, "stale", {}).get(rule.act)
+    if stale:
+        finding.messages.append(
+            "Oggi CELLAR non ha dato l'elenco delle versioni: usato quello del "
+            f"{_italian_date(stale)}."
+        )
+    return finding
+
+
+def _check_statements(
+    text: str,
+    references: list[Reference],
+    source: TextSource,
+    lang: str,
+    document_date: str | None,
+) -> list[Finding]:
+    """A finding for each sentence of ``text`` that states a rule as it was before it changed."""
+    memo: dict[str, _InForce | str] = {}
+    return [
+        _check_statement(statement, source, lang, document_date, memo)
+        for statement in find_statements(text, references)
+    ]
+
+
 def check_text(
     text: str,
     source: TextSource,
@@ -1074,12 +1229,15 @@ def check_text(
     document_date: str | None = None,
     today: str | None = None,
 ) -> DocumentCheck:
-    """Check every reference in ``text``; ``document_date`` is ISO (YYYY-MM-DD) or None."""
+    """Check every reference and statement in ``text``; ``document_date`` is ISO or None."""
     lang = (lang or detect_language(text)).upper()
     today = today or date.today().isoformat()
+    references = extract_references(text)
     findings: list[Finding] = []
-    for ref in extract_references(text):
+    for ref in references:
         findings.extend(_check_reference(ref, source, lang, document_date, today))
+    findings.extend(_check_statements(text, references, source, lang, document_date))
+    findings.sort(key=lambda f: f.reference.start)  # stable: the document's order
     return DocumentCheck(
         document=document,
         checked_on=today,

@@ -42,14 +42,20 @@ LOCK_SUFFIX = ".norma-lock.json"
 EPILOG = """\
 esiti:
   da correggere   Citazione superata (corrisponde solo a un testo precedente);
-                  Cambiato dopo la data del documento (con --data);
+                  Affermazione superata (una frase dice, con parole sue, una regola
+                  cambiata: per esempio una data dell'AI Act spostata dall'Omnibus
+                  digitale; il report mostra il testo vigente che la dice oggi);
+                  Cambiato dopo la data del documento (con --data, anche per le
+                  affermazioni scritte prima della modifica);
                   Non esiste nel testo vigente (articolo, paragrafo o comma);
                   Citazione diversa dal testo ufficiale (con le parole diverse);
                   Citazione non trovata
   da controllare  Citazione in un altro articolo; Testo ufficiale non raggiungibile;
-                  Versione più recente non leggibile; Estremi dell'atto da controllare;
-                  Articolo letto solo in parte; Modifica pubblicata, non ancora in vigore;
-                  Sentenza della Corte costituzionale in nota; Atto non indicato
+                  Versione più recente non leggibile; Affermazione da controllare (il
+                  testo vigente letto non conferma la modifica); Estremi dell'atto da
+                  controllare; Articolo letto solo in parte; Modifica pubblicata, non
+                  ancora in vigore; Sentenza della Corte costituzionale in nota;
+                  Atto non indicato
   a posto         Riferimento valido; Citazione verificata
   fuori copertura Atto che il controllo non legge (leggi regionali, decreti ministeriali,
                   circolari, allegati)

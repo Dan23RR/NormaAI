@@ -25,6 +25,9 @@ AI Act", "artt. 15-17", "considerando 47", "Allegato III", "paragrafo 9 dell'art
    an earlier version is **outdated**, and the report shows the provision then and now.
 4. **Document date** (`--data`). The provision in force on that date is compared with
    today's. When paragraphs are cited, only those paragraphs count.
+5. **Statements.** A sentence that states in its own words a rule an amendment changed
+   ("the obligations for Annex III systems apply from 2 August 2026") is reported too: see
+   "Statements about rules that changed".
 
 Every provision found in force goes into a lock file (`*.norma-lock.json`): source
 (`fonte`: `eurlex` or `normattiva`), act (CELEX or URN:NIR), version, article, text, SHA-256
@@ -38,13 +41,15 @@ read has no `fonte`: its entries are EU provisions.
 | Outcome (report label) | Group | Meaning |
 |---|---|---|
 | Citazione superata | da correggere | The quote matches only an earlier wording; the card shows before and after |
-| Cambiato dopo la data del documento | da correggere | The provision in force on `--data` differs from today's (in the cited paragraphs or commi, when cited) |
+| Affermazione superata | da correggere | A sentence states, in its own words, a rule an amendment changed; the card shows the passage of the provision in force |
+| Cambiato dopo la data del documento | da correggere | The provision in force on `--data` differs from today's (in the cited paragraphs or commi, when cited); for a statement, the rule changed after that date |
 | Non esiste nel testo vigente | da correggere | Article, paragraph or comma not in the text in force: never existed, repealed (the card shows the last wording), or not yet in force |
 | Citazione diversa dal testo ufficiale | da correggere | The quote almost matches but words differ (a number, a negation, a short word); the card lists the differing words |
 | Citazione non trovata | da correggere | The quote is in no wording of the cited provision |
 | Citazione in un altro articolo | da controllare | EU law: the quote is in another article of the act |
 | Testo ufficiale non raggiungibile | da controllare | CELLAR or Normattiva did not answer and nothing is cached |
 | Versione più recente non leggibile | da controllare | EU law: a later consolidated text exists but could not be read; the check used an older one |
+| Affermazione da controllare | da controllare | A sentence states an old rule, but the text in force that was read does not confirm the change (older than the change, or changed again) |
 | Estremi dell'atto da controllare | da controllare | Italian law: Normattiva has no act with this type, year and number, or its date differs from the document's |
 | Articolo letto solo in parte | da controllare | Italian law: the API gives only the first 100 commi of a very long article |
 | Modifica pubblicata, non ancora in vigore | da controllare | Italian law: the wording in force already has its last day set (a repeal or an amendment published) |
@@ -52,6 +57,38 @@ read has no `fonte`: its entries are EU provisions.
 | Atto non indicato | da controllare | A reference whose act cannot be told |
 | Riferimento valido, Citazione verificata | a posto | The provision exists; the quote is in the text in force, word for word |
 | Atto che il controllo non legge | fuori copertura | Regional laws, ministerial decrees, d.P.C.M., circulars, annexes of Italian acts |
+
+## Statements about rules that changed
+
+A document can state a rule without quoting it: "the obligations for Annex III systems apply
+from 2 August 2026 (Article 113)". The reference is valid and there is nothing to quote, but
+the Digital Omnibus on AI (Regulation (EU) 2026/1744, in force since 27 July 2026) changed the
+date. `src/document_check/stale_facts.py` holds a short list of such rules. A rule fires on a
+sentence (split at a line break, a semicolon or a full stop, never after "art.", "par.", "n.",
+"d.lgs.") when its words of the old rule are there outside quotation marks (an old wording
+quoted is a "Citazione superata"), the sentence is about the rule's topic, it is not a correct
+statement with the same words, it neither states the new rule nor says that the rule changed
+("originally", "postponed", "no longer", "Omnibus", "inizialmente", "rinviato", "non più"), and
+none of its references belongs to another act.
+
+| Rule | Old rule, English and Italian | The sentence must mention | Left alone when it mentions | Provision now |
+|---|---|---|---|---|
+| R1 | 2 August 2026 ("August 2, 2026", "02/08/2026", "dall'agosto 2026") | high-risk, alto rischio, Annex III, Article 6(2) | Article 50, transparency, general-purpose, GPAI, finalità generali, uso generale, sandboxes, 2030, an exception ("except", "ad eccezione"), 2 December 2027, 2 August 2028 | art. 113, terzo comma, lettera c), punto i) |
+| R2 | 2 August 2027 | Annex I, safety components, Article 6(1), Union harmonisation legislation | as R1, and delegated acts | art. 113, terzo comma, lettera c), punto ii) |
+| R3 | "sufficient level of AI literacy", "to their best extent", "livello sufficiente di alfabetizzazione", "nella misura del possibile" | AI literacy, alfabetizzazione; and Article 4, the AI Act, the Regulation, providers, deployers or an obligation (a company's own aim is left alone) | "support the development of AI literacy", "specific level", "sostenere lo sviluppo", "livello specifico" | art. 4, par. 1 |
+| R4 | Article 10(5), art. 10, par. 5 | special categories, sensitive data, bias, categorie particolari, distorsioni | Article 4a, art. 4 bis | art. 4 bis |
+
+Each statement is a finding of its own, on the provision now in force, read on CELLAR at run
+time in the document's language. The card shows the sentence with the outdated words marked,
+the rule's message, the passage of the official text that states the rule now (point (c) of
+art. 113, paragraph 1 of art. 4 and of art. 4 bis), the article before and after the change
+when the rule stayed in it, and the EUR-Lex link. The message is given only when that passage
+says what the rule expects (the new dates, the new wording of art. 4, art. 4 bis on special
+categories of data); otherwise the outcome is "Affermazione da controllare", or "Testo
+ufficiale non raggiungibile". A document dated (`--data`) before 27 July 2026 was right when
+written: "Cambiato dopo la data del documento". The provision goes into the lock file like a
+cited one. The terminal summary counts statements apart from the provisions cited and quotes
+their outdated words; the API returns them with `rule` set ("R1").
 
 ## Italian law (Normattiva)
 
@@ -116,6 +153,7 @@ changes = recheck(build_lock(check), default_source())
 | Module | Role |
 |---|---|
 | `src/document_check/extract.py` | Acts, provisions, quotes in the document text (no network) |
+| `src/document_check/stale_facts.py` | Rules of statements an amendment made untrue; sentences that state them (no network) |
 | `src/document_check/official.py` | Versions and articles from CELLAR: `EurLexClient.list_consolidated_celex`, `download_full_text_html`, the corpus chunker; on-disk cache |
 | `src/document_check/normattiva.py` | Italian articles from the Normattiva open data API: client, HTML parsing, on-disk cache |
 | `src/document_check/sources.py` | `default_source()`: EU and Italian law behind one object; `default_cache_dir()` |
@@ -123,6 +161,7 @@ changes = recheck(build_lock(check), default_source())
 | `src/document_check/report.py` | HTML report, terminal summary |
 | `scripts/check_document.py` | Command line |
 | `tests/test_document_check.py` | Offline tests with a fake source |
+| `tests/test_document_check_stale_facts.py` | Offline tests of the statements, English and Italian, with a fake source of the AI Act before and after the Omnibus |
 | `tests/test_document_check_normattiva.py` | Offline tests on Normattiva answers recorded on 2026-11-11 (`tests/fixtures/normattiva/`) |
 
 ## Known limits
@@ -137,6 +176,10 @@ changes = recheck(build_lock(check), default_source())
   Italian act is looked for in the cited article only. Of a very long article (art. 1 of a
   budget law) the API gives the first 100 commi. Normattiva does not apply rulings of the
   Constitutional Court to the text.
+- Statements: only the four rules of `stale_facts.RULES` (the AI Act after the Digital
+  Omnibus). A rule said in other words is missed, and a sentence that also names Article 50,
+  transparency, GPAI, the Omnibus or the new dates is left alone, even when another part of
+  it is outdated: the rules prefer missing a statement to flagging a right one.
 - No case law, no authority guidance yet.
 - Scanned PDFs (no text layer) give no text.
 

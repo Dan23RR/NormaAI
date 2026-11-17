@@ -306,6 +306,17 @@ NEGATIVE = [
 ]
 # Correct sentences that use the words of an old rule.
 ALSO_NEGATIVE = [
+    # A real answer of an AI assistant (17/11/2026): the history of Article 4, not its rule today.
+    "Original Article 4 (applied from 2 February 2025). Providers and deployers had to ensure a "
+    "sufficient level of AI literacy among their staff and others operating AI systems on their "
+    "behalf.",
+    "Before the amendment, Article 4 of the AI Act required providers to ensure a sufficient level "
+    "of AI literacy.",
+    "Under the old text, the obligations for Annex III systems applied from 2 August 2026.",
+    "Nel testo originario dell'AI Act gli obblighi per i sistemi dell'allegato III dovevano "
+    "applicarsi dal 2 agosto 2026.",
+    "Secondo la formulazione previgente dell'art. 4, fornitori e deployer garantivano un livello "
+    "sufficiente di alfabetizzazione in materia di IA.",
     "Annex III obligations, originally due from 2 August 2026, now apply from 2 December 2027.",
     "Gli obblighi per i sistemi ad alto rischio, inizialmente previsti dal 2 agosto 2026, sono "
     "stati rinviati.",

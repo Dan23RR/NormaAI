@@ -18,8 +18,9 @@ Pure functions, no network, like ``extract``. A rule fires on a sentence when:
 3. no ``unless`` pattern matches: the correct statements that use the same
    words ("Article 50 applies from 2 August 2026");
 4. the sentence neither states the rule in force (``current``) nor says that
-   the rule changed or no longer holds (``CHANGE_WORDS``: "originally",
-   "postponed", "no longer", "Omnibus", "inizialmente", "rinviato", "non più");
+   the rule changed, no longer holds or used to hold (``CHANGE_WORDS``:
+   "originally", "postponed", "no longer", "Omnibus", "had to", "original",
+   "inizialmente", "rinviato", "non più", "doveva", "previgente");
 5. no reference in the sentence belongs to another act, unless one belongs to
    the rule's act ("Article 10(5) GDPR" is not the AI Act).
 
@@ -113,6 +114,10 @@ CHANGE_WORDS = Words(
         r"|\bformerly\b|\bpostpon(?:ed|ement)\b|\bdelayed\b|\bdeferred\b|\bpushed\s+back\b"
         r"|\bmoved\b|\brepealed\b|\b(?:was|were)\s+(?:originally\s+)?(?:due|set|scheduled"
         r"|expected|planned)\b|\bnot\s+(?:required|obliged)\b|\bOmnibus\b|\b2026/1744\b"
+        # The history of the rule: "Original Article 4", "had to", "under the old text".
+        r"|\boriginal\b|\bhad\s+to\b|\bused\s+to\b|\b(?:was|were)\s+(?:required|obliged)\b"
+        r"|\bbefore\s+the\s+(?:amendment|change|reform)s?\b|\bprior\s+to\s+the\s+amendments?\b"
+        r"|\b(?:old|previous)\s+(?:text|rule|wording|version|regime|deadline|date)s?\b"
     ),
     it=(
         r"\bnon\s+(?:è\s+|sono\s+)?più\b(?!\s+tardi)|\binizialmente\b|\boriginariamente\b"
@@ -121,6 +126,12 @@ CHANGE_WORDS = Words(
         r"|\bprorogat[oaie]\b|\bsoppress[oaie]\b|\babrogat[oaie]\b|\bera(?:no)?\s+previst[oaie]\b"
         r"|\bnon\s+(?:è|sono)\s+(?:richiest|tenut|obbligat)[oaie]\b"
         r"|\bnon\s+(?:impone|richiede|obbliga)\b"
+        # La storia della regola: "testo originario", "doveva", "formulazione previgente".
+        r"|\boriginari[oaie]\b|\bdoveva(?:no)?\b|\bprevigente\b"
+        r"|\bvecchi[oa]\s+(?:testo|regola|versione)\b"
+        r"|\bprecedente\s+(?:formulazione|versione|testo|regola|scadenza|data)\b"
+        r"|\bprima\s+(?:della\s+modifica|delle\s+modifiche|dell['’]\s?Omnibus)\b"
+        r"|\bera(?:no)?\s+(?:tenut|obbligat|richiest)[oaie]\b"
     ),
 )
 

@@ -887,6 +887,11 @@ def _within(position: int, spans: list[tuple[int, int]]) -> bool:
     return any(start <= position < end for start, end in spans)
 
 
+def quote_spans(text: str) -> list[tuple[int, int]]:
+    """Where the quotes of ``text`` are («...», “...”, "..."), quotation marks included."""
+    return [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
+
+
 def extract_references(text: str) -> list[Reference]:
     """Every reference to a provision in ``text``, with its act and quotes.
 
@@ -897,7 +902,7 @@ def extract_references(text: str) -> list[Reference]:
     """
     mentions = _act_mentions(text)
     refs = [r for r in _references(text) if not any(m.start <= r.start < m.end for m in mentions)]
-    quotes = [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
+    quotes = quote_spans(text)
     outside = [r for r in refs if not _within(r.start, quotes)]
     given = _link_quotes(text, outside)
     refs = [r for r in refs if not _within(r.start, given)]

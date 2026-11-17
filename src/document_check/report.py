@@ -3,9 +3,11 @@
 Findings are grouped by what to do (correct, check, fine, acts the check does
 not read) and keep the document's order inside each group, EU and Italian law
 together. An outdated quote or a provision changed after the document's date
-shows the provision then and now, word by word; every card links to the text in
-force on EUR-Lex or on Normattiva. The footer says that neither source is the
-official text and credits Normattiva (CC BY 4.0).
+shows the provision then and now, word by word; a sentence that states a rule
+as it was before an amendment shows the sentence, what changed and the passage
+of the provision in force that states the rule now. Every card links to the
+text in force on EUR-Lex or on Normattiva. The footer says that neither source
+is the official text and credits Normattiva (CC BY 4.0).
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from html import escape
 from typing import TYPE_CHECKING
 
 from src.document_check.check import GROUPS, Change, DocumentCheck, Finding
+from src.document_check.extract import Provision
 
 if TYPE_CHECKING:
     from src.document_check.official import Version
@@ -157,6 +160,15 @@ def _diff_block(before: str, after: str, old: Version | None, new: Version | Non
     )
 
 
+def _official_label(finding: Finding) -> str:
+    """ "Testo ufficiale", or for a statement the provision and version the passage is from."""
+    if not finding.rule or finding.provision is None:
+        return "Testo ufficiale"
+    article = Provision(finding.provision.key).label
+    version = f" ({finding.version.label})" if finding.version else ""
+    return f"Testo vigente dell'{article}{version}"
+
+
 def _card(finding: Finding) -> str:
     ref = finding.reference
     parts = [
@@ -171,7 +183,10 @@ def _card(finding: Finding) -> str:
             parts.append(f"<blockquote>Nel documento: «{escape(quote)}»</blockquote>")
     parts.append("<ul>" + "".join(f"<li>{escape(m)}</li>" for m in finding.messages) + "</ul>")
     if finding.official_quote:
-        parts.append(f'<p class="official">Testo ufficiale: «{escape(finding.official_quote)}»</p>')
+        parts.append(
+            f'<p class="official">{escape(_official_label(finding))}: '
+            f"«{escape(finding.official_quote)}»</p>"
+        )
     if finding.altered_quote and finding.official_quote:
         parts.append(
             '<div class="diff">'
@@ -367,14 +382,24 @@ def render_recheck_html(lock: dict[str, object], changes: list[Change], today: s
 
 
 def summary_lines(check: DocumentCheck) -> list[str]:
-    """A short plain-text summary for the terminal."""
+    """A short plain-text summary for the terminal.
+
+    Statements (a sentence that states a rule as it was before an amendment)
+    are counted apart from the provisions cited, and their lines quote the
+    words that state the old rule.
+    """
     counts = {name: len(check.group(name)) for name in GROUPS}
-    lines = [
+    statements = sum(1 for f in check.findings if f.rule)
+    head = (
         f"Controllo di {check.document or 'documento'} ({_italian_date(check.checked_on)}): "
-        f"{len(check.findings)} disposizioni citate.",
-        ", ".join(f"{counts[n]} {_SUMMARY_LABELS[n]}" for n in GROUPS) + ".",
-    ]
+        f"{len(check.findings) - statements} disposizioni citate"
+    )
+    if statements:
+        noun = "affermazione" if statements == 1 else "affermazioni"
+        head += f", {statements} {noun} su norme cambiate"
+    lines = [head + ".", ", ".join(f"{counts[n]} {_SUMMARY_LABELS[n]}" for n in GROUPS) + "."]
     for f in check.findings:
         if f.status.group in ("correggere", "controllare"):
-            lines.append(f"- riga {f.reference.line}, {_title(f)}: {f.status.label}")
+            words = f" («{f.reference.raw}»)" if f.rule else ""
+            lines.append(f"- riga {f.reference.line}, {_title(f)}: {f.status.label}{words}")
     return lines

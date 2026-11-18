@@ -235,9 +235,13 @@ previous one (3,268 citations; 378 of the 400 of the 18/11 run). Failing an
 exact match, a span of the chunk whose difflib ratio with a part is at least 0.92 is accepted
 (`"fuzzy"`), under the same rules, only when the words agree
 (`wording_differences`): every number, every number word and every word under
-five letters ("non", "o", "e", "may", "not") must be identical. What is
+six letters ("non", "o", "e", "may", "not", "Stati") must be identical. What is
 forgiven: punctuation, accents, a word split or joined at a line break, and one
-wrong, missing or extra letter (not the first) inside a longer ordinary word.
+missing or extra letter inside a word of at least six letters, neither its
+first nor its last ("notifca" for "notifica"). A different letter is never
+forgiven ("consent" is not "content", 2026-11-18), nor a letter added or
+dropped at the end of a word ("trattamenti" is not "trattamento",
+"requirements" is not "requirement"): those are other words or other forms.
 
 **A close match is not a verification** (2026-11-11). A quote that says "entro
 48 ore" where the article says "entro 72 ore" has a ratio above 0.99 and used to

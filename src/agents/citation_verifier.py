@@ -43,10 +43,13 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
    tolerant comparison, under the same rules, accepts a span whose difflib
    ratio with a part is at least 0.92 (``"fuzzy"``) only when the WORDS agree
    (``wording_differences``): every number, every number word and every word
-   under five letters ("non", "o", "e", "may", "not") must be identical. The
-   differences forgiven are punctuation, accents, a word split or joined at a
-   line break, and one wrong, missing or extra letter inside a longer
-   ordinary word.
+   under six letters must be identical. The differences forgiven are
+   punctuation, accents, a word split or joined at a line break, and one
+   missing or extra letter inside a word of at least six letters, neither its
+   first nor its last ("notifca" for "notifica"). A different letter is never
+   forgiven ("consent" is not "content"), nor a letter added or dropped at the
+   end of a word ("trattamenti" is not "trattamento", "requirements" is not
+   "requirement").
 5. A span that is close but differs in a word that matters ("48 ore" where the
    law says "72 ore") is not a verification. The result stays unverified and
    says what was almost matched: ``near_quote`` (the official wording),
@@ -85,9 +88,10 @@ MIN_QUOTE_WORDS = 4
 # fuzzily: there are too few letters to tell a slip from another word.
 MIN_SEGMENT_CHARS = 12
 FUZZY_MIN_RATIO = 0.92
-# A one-letter slip is forgiven only in words at least this long: shorter words
-# ("non", "o", "e", "deve", "may", "not", "June") carry too much meaning per letter.
-MIN_SLIP_WORD_CHARS = 5
+# A missing or extra letter is forgiven only in words at least this long:
+# shorter words ("non", "deve", "Stati", "shall", "notify") carry too much
+# meaning per letter.
+MIN_SLIP_WORD_CHARS = 6
 # How much of the official text an omission may skip (see _place). Measured on
 # the ten live golden v2 runs of 24/10-18/11/2026 (152 distinct quotes with an
 # omission, each placed in the cached official text): inside running text the
@@ -701,17 +705,21 @@ def _is_number_word(word: str) -> bool:
 
 
 def _one_letter_slip(a: str, b: str) -> bool:
-    """One wrong, missing or extra letter, not the first, inside a longer ordinary word."""
-    if min(len(a), len(b)) < MIN_SLIP_WORD_CHARS or a[0] != b[0]:
+    """One missing or extra letter inside a long ordinary word: a typing slip.
+
+    Both words have at least MIN_SLIP_WORD_CHARS letters and one of them has a
+    letter more, which is neither its first nor its last ("notifca" for
+    "notifica"). A different letter in the same place is another word
+    ("consent", "content") and a letter added or dropped at the end is another
+    form of it ("trattamenti", "requirements"): neither is forgiven. Numbers
+    and number words never are.
+    """
+    if abs(len(a) - len(b)) != 1 or min(len(a), len(b)) < MIN_SLIP_WORD_CHARS:
         return False
-    if a.isdigit() or b.isdigit() or _is_number_word(a) or _is_number_word(b):
-        return False
-    if len(a) == len(b):
-        return sum(x != y for x, y in zip(a, b, strict=True)) == 1
-    if abs(len(a) - len(b)) != 1:
+    if not (a.isalpha() and b.isalpha()) or _is_number_word(a) or _is_number_word(b):
         return False
     short, long = (a, b) if len(a) < len(b) else (b, a)
-    return any(long[:i] + long[i + 1 :] == short for i in range(1, len(long)))
+    return any(long[:i] + long[i + 1 :] == short for i in range(1, len(long) - 1))
 
 
 def _same_word(a: str, b: str) -> bool:
@@ -726,10 +734,10 @@ def wording_differences(quote: str, official: str) -> list[tuple[str, str]]:
     Words are aligned in order; a stretch that differs is forgiven when it is
     the same letters split differently ("infor- mazioni", "15 000"), or when
     each word has its counterpart and the two differ only by accents or by a
-    one-letter slip (see ``_one_letter_slip``). Anything else is returned as
-    ``(quoted words, official words)``: a changed number, a changed, added or
-    dropped short word, a different word. An empty list means the wording is
-    the same.
+    letter missing or added inside a long word (see ``_one_letter_slip``).
+    Anything else is returned as ``(quoted words, official words)``: a
+    changed number, a changed, added or dropped word, a different letter, a
+    different ending. An empty list means the wording is the same.
     """
     quoted = _WORD_RE.findall(quote)
     official_words = _WORD_RE.findall(official)

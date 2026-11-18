@@ -750,15 +750,22 @@ class TestTooGenericOrMissing:
 
 
 class TestFuzzyMatch:
-    def test_one_character_difference(self):
-        # "meccanicamante": a one-letter slip of the model.
-        quote = "siano marcati in un formato leggibile meccanicamante e rilevabili"
+    def test_one_missing_letter(self):
+        # "meccanicamnte": a letter the model left out, inside a long word.
+        quote = "siano marcati in un formato leggibile meccanicamnte e rilevabili"
         out = verify_citation(_cite(quote), _corpus())
         assert out.verified and out.match == "fuzzy" and out.level == "article"
         assert (
             out.official_quote
             == "siano marcati in un formato leggibile meccanicamente e rilevabili"
         )
+
+    def test_one_different_letter_is_a_difference(self):
+        # "meccanicamante" for "meccanicamente": a different letter is never forgiven.
+        quote = "siano marcati in un formato leggibile meccanicamante e rilevabili"
+        out = verify_citation(_cite(quote), _corpus())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "meccanicamante", "official": "meccanicamente"}]
 
     def test_missing_comma(self):
         quote = "contenuti audio immagine, video o testuali sintetici garantiscono"
@@ -949,6 +956,50 @@ class TestWordsMustAgree:
         out = verify_citation(_cite_33(quote), _gdpr_33())
         assert out.verified is False
         assert out.differences == [{"quoted": "contitolare", "official": "titolare"}]
+
+    def test_a_different_letter_is_never_a_slip(self):
+        # B3.9: "consent" for "content" was forgiven and shown as a punctuation difference.
+        text = (
+            "Article 50\nTransparency obligations\n2. Providers of AI systems, including "
+            "general-purpose AI systems, generating synthetic audio, image, video or text content, "
+            "shall ensure that the outputs of the AI system are marked in a machine-readable format."
+        )
+        chunk = _chunk(text, chunk_id="pt-ai-50-en", lang="EN")
+        quote = "generating synthetic audio, image, video or text consent, shall ensure that the outputs"
+        out = verify_citation(_cite(quote, reference="Art. 50(2)"), [chunk])
+        assert out.verified is False
+        assert out.differences == [{"quoted": "consent", "official": "content"}]
+        assert wording_differences(
+            "il titolare del trattamenti", "il titolare del trattamento"
+        ) == [("trattamenti", "trattamento")]
+
+    def test_a_different_ending_is_not_a_slip(self):
+        # Singular and plural, a letter added or dropped at the end of a word.
+        quote = "il titolare del trattamenti notifica la violazione all'autorità di controllo"
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "trattamenti", "official": "trattamento"}]
+        text = (
+            "Article 8\nCompliance with the requirements\n1. High-risk AI systems shall comply "
+            "with the requirements laid down in this Section, taking into account their intended "
+            "purpose."
+        )
+        chunk = _chunk(text, chunk_id="pt-ai-8-en", article="Art. 8", lang="EN")
+        quote = "High-risk AI systems shall comply with the requirement laid down in this Section"
+        out = verify_citation(_cite(quote, reference="Art. 8(1)"), [chunk])
+        assert out.verified is False
+        assert out.differences == [{"quoted": "requirement", "official": "requirements"}]
+
+    def test_a_missing_letter_inside_a_long_word_is_forgiven(self):
+        quote = "il titolare del trattamento notifca la violazione all'autorità di controllo"
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified and out.match == "fuzzy"
+        assert out.official_quote == (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo"
+        )
+        assert wording_differences("the controller shall notfy", "the controller shall notify") == [
+            ("notfy", "notify")
+        ]  # "notify" has six letters, "notfy" five: too short to forgive
 
     def test_a_changed_first_letter_is_not_a_slip(self):
         # "lecito" for "recito": the first letter makes another word.

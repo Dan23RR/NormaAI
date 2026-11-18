@@ -2,8 +2,9 @@
 
 Every call to an intelligence endpoint (Q&A, gap analysis, monitor and their
 streaming variants) consumes one unit of the organization's daily quota
-(``settings.llm_daily_quota_per_org``; 0 disables the quota). The day rolls
-over at 00:00 UTC.
+(``settings.llm_daily_quota_per_org``; 0 disables the quota), and a PDF report
+one unit per framework it analyses (``src/api/routers/reports.py``). The day
+rolls over at 00:00 UTC.
 
 Storage: Redis ``INCR`` on ``normaai:quota:llm:<org_id>:<YYYY-MM-DD>`` with
 an ``EXPIRE`` set to the next UTC midnight (plus slack), so counters vanish on
@@ -175,24 +176,30 @@ class DailyLLMQuota:
         self._memory[key] = value
         return value
 
-    async def consume(self, org_id: str, limit: int | None = None) -> QuotaStatus:
-        """Count one request for ``org_id`` and report the resulting status.
+    async def consume(self, org_id: str, limit: int | None = None, units: int = 1) -> QuotaStatus:
+        """Count ``units`` requests for ``org_id`` and report the resulting status.
 
         The counter is incremented even when the request ends up rejected (the
         n-th request past the limit still counts), which keeps the check a
         single atomic INCR. ``allowed`` tells the caller whether to serve it.
+        A request worth several units (a report over several frameworks) that
+        is refused can give them back with ``refund``.
         """
         limit = get_settings().llm_daily_quota_per_org if limit is None else limit
         day = _today()
         if limit <= 0:
             return self._status(org_id, day, limit, 0)
+        units = max(1, units)
 
         redis = await self._get_redis()
         if redis is not None:
             try:
                 key = self._key(org_id, day)
                 pipe = redis.pipeline()
-                pipe.incr(key)
+                if units == 1:
+                    pipe.incr(key)
+                else:
+                    pipe.incrby(key, units)
                 pipe.expire(key, seconds_until_utc_midnight() + _EXPIRE_SLACK_SECONDS)
                 used, _ = await pipe.execute()
                 return self._status(org_id, day, limit, int(used))
@@ -202,7 +209,22 @@ class DailyLLMQuota:
                 self._available = False
                 self._next_connect_attempt = time.monotonic() + _RECONNECT_BACKOFF_SECONDS
 
-        return self._status(org_id, day, limit, self._memory_incr(org_id, day, 1))
+        return self._status(org_id, day, limit, self._memory_incr(org_id, day, units))
+
+    async def refund(self, org_id: str, units: int) -> None:
+        """Give back ``units`` counted by ``consume`` for a request that was not served."""
+        if units <= 0:
+            return
+        day = _today()
+        redis = await self._get_redis()
+        if redis is not None:
+            try:
+                await redis.decrby(self._key(org_id, day), units)
+                return
+            except Exception as e:  # noqa: BLE001
+                logger.warning("llm_quota_redis_error: %s", e)
+        if (org_id, day) in self._memory:
+            self._memory[(org_id, day)] = max(0, self._memory[(org_id, day)] - units)
 
     async def usage(self, org_id: str, limit: int | None = None) -> QuotaStatus:
         """Current status WITHOUT consuming."""

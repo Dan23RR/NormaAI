@@ -1,10 +1,14 @@
 name: NormaAI CI
 
+# integration/** too: the branches that combine several feature branches before
+# main (integration/2026-11-all) must pass the same gates as main, on push and
+# on the pull requests that target them. .github/workflows/deploy.yml deploys a
+# commit of main only after this workflow succeeded on it.
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'integration/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**']
 
 # Least-privilege default; jobs that need more declare it explicitly.
 permissions:

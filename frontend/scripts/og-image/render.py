@@ -46,7 +46,10 @@ def embedded_font_faces(next_dir: Path) -> str:
             url = _URL.search(face)
             if not family or not url or family.group(1).strip() not in FAMILIES:
                 continue
-            font = (css.parent / url.group(1)).resolve()
+            # A production build writes absolute URLs ("/_next/static/media/x.woff2"):
+            # they point inside the .next folder, not at the root of the disk.
+            href = url.group(1)
+            font = (next_dir / href[len("/_next/"):] if href.startswith("/_next/") else css.parent / href).resolve()
             if not font.is_file():
                 continue
             data = base64.b64encode(font.read_bytes()).decode("ascii")

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getFormatter, getTranslations } from 'next-intl/server'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
+import { EmailCopy } from '@/components/site/EmailCopy'
 import { ButtonLink } from '@/components/ui/Button'
 import { LEGAL_TAGS, itemKeys } from '@/components/LegalLayout'
 import { LONG_DATE } from '@/i18n/format'
@@ -68,6 +69,7 @@ const CHOICE_PATHS: string[][] = [
 export default async function MetodoPage() {
   const t = await getTranslations('legal.metodo')
   const tl = await getTranslations('legal')
+  const tc = await getTranslations('landing.cta')
   const format = await getFormatter()
   const rich = (key: string) => t.rich(key, { ...LEGAL_TAGS, code: (chunks) => <code className="font-mono text-small">{chunks}</code> })
 
@@ -204,6 +206,8 @@ export default async function MetodoPage() {
                 {t('cta.codex')}
               </ButtonLink>
             </div>
+            {/* The demo button is a mailto link: the address in clear works without a mail client. */}
+            <EmailCopy lead={tc('pilotFree')} className="mt-3 max-w-prose" />
           </div>
         </section>
       </main>

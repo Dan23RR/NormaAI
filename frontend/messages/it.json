@@ -1,12 +1,12 @@
 {
   "site": {
     "meta": {
-      "title": "NormaAI: ogni riferimento di legge, verificato sul testo ufficiale",
-      "description": "Risposte sul diritto dell’Unione (CSRD, CSDDD, AI Act, NIS2, DORA, GDPR, Tassonomia) con l’atto, l’articolo e il passaggio di legge citato. Ogni citazione è confrontata, parola per parola, con il testo ufficiale pubblicato su EUR-Lex.",
-      "ogDescription": "Ogni risposta cita l’atto, l’articolo e il passaggio di legge, confrontato parola per parola con il testo ufficiale. Se il testo non basta, il sistema lo dice.",
-      "ogImageAlt": "NormaAI. Ogni riferimento di legge, verificato sul testo ufficiale.",
-      "orgDescription": "NormaAI verifica i riferimenti di legge sul testo ufficiale dell’Unione europea pubblicato su EUR-Lex e risponde alle domande citando atto, articolo e passaggio.",
-      "appDescription": "Domande e risposte sul diritto UE con citazione dell’atto, dell’articolo e del passaggio di legge; verifica di ambito per azienda; monitoraggio delle scadenze."
+      "title": "NormaAI: controlla i riferimenti di legge dei tuoi documenti sul testo vigente",
+      "description": "Controlla i riferimenti di legge di pareri, informative e policy sul testo vigente: articoli e citazioni confrontati parola per parola con EUR-Lex e Normattiva, e un avviso quando una norma citata cambia. Il controllo non usa l’IA generativa. Pilot gratuito su invito.",
+      "ogDescription": "Articoli e citazioni del documento confrontati parola per parola con il testo ufficiale, UE e italiano, e un avviso quando una norma citata cambia. Il controllo non usa l’IA generativa.",
+      "ogImageAlt": "NormaAI. Controlla i riferimenti di legge dei tuoi documenti sul testo vigente. Esempio: nel documento 48 ore, nel testo vigente dell’articolo 33 del GDPR 72 ore.",
+      "orgDescription": "NormaAI controlla i riferimenti di legge dei documenti sul testo ufficiale vigente, dell’Unione europea (EUR-Lex) e italiano (Normattiva), e avvisa quando una norma citata cambia.",
+      "appDescription": "Controllo dei riferimenti di legge nei documenti sul testo vigente UE e italiano, con avviso quando una norma citata cambia; domande sul diritto UE con il passaggio di legge citato; verifiche di ambito e calendario delle scadenze."
     },
     "header": {
       "nav": "Principale",
@@ -22,8 +22,10 @@
       "closeMenu": "Chiudi il menu"
     },
     "footer": {
-      "tagline": "Risposte sul diritto dell’Unione con la fonte esatta: atto, articolo, passaggio di legge e link al testo ufficiale. Quando il testo non basta, lo diciamo.",
+      "tagline": "Controlla i riferimenti di legge dei tuoi documenti sul testo vigente, UE e italiano, e ti avvisa quando una norma citata cambia. Quando un testo non si riesce a leggere, il report lo dice.",
       "product": "Prodotto",
+      "check": "Controlla un documento",
+      "watch": "Avvisi sulle norme citate",
       "ask": "Chiedi",
       "scopeCsrd": "Verifica ambito CSRD",
       "scopeAiAct": "Verifica AI Act, art. 50",
@@ -38,7 +40,12 @@
       "terms": "Termini",
       "security": "Sicurezza",
       "credits": "© {year} Daniel Culotta",
-      "aiNotice": "Le risposte sono generate da un sistema di intelligenza artificiale e non sostituiscono la consulenza di un professionista."
+      "aiNotice": "Il controllo dei documenti non usa l’IA generativa; le risposte di Chiedi sono generate da un sistema di intelligenza artificiale. Nessuno dei due sostituisce la consulenza di un professionista."
+    },
+    "contact": {
+      "copy": "Copia l’indirizzo",
+      "copied": "Indirizzo copiato",
+      "failed": "Copia non riuscita: seleziona l’indirizzo e copialo a mano"
     },
     "imprint": {
       "title": "Chi gestisce NormaAI",
@@ -90,6 +97,7 @@
     "cta": {
       "tryDemo": "Prova la demo",
       "pilot": "Scrivi per un pilot",
+      "pilotFree": "Il pilot è gratuito e su invito. Se il pulsante non apre la posta, scrivi a",
       "mailto": "mailto:info@normaai.org?subject=NormaAI%20demo&body=Buongiorno%2C%0A%0Avorrei%20vedere%20NormaAI%20su%20un%20caso%20reale.%0A%0AOrganizzazione%3A%0ARuolo%3A%0ADisponibilit%C3%A0%3A%0A%0AGrazie."
     },
     "example": {
@@ -128,6 +136,10 @@
         "title": "Cosa ricevi",
         "body": "Un report che divide i riferimenti per cosa c'è da fare: da correggere, da controllare, a posto. Per ognuno trovi la riga del documento, l'esito, il testo ufficiale e il link al testo su EUR-Lex o su Normattiva."
       },
+      "privacy": {
+        "title": "Per il DPO: niente IA generativa, niente copie",
+        "body": "Il controllo non usa l'IA generativa: cerca le parole nel testo ufficiale, quindi non può inventare un articolo. Il documento è letto in memoria e non viene conservato: restano il nome del file, la sua impronta e, per ogni riferimento, al massimo 160 caratteri intorno."
+      },
       "limits": {
         "title": "Cosa non fa",
         "body": "Non dice se il riferimento è quello giusto per il tuo caso, né se una citazione esatta lascia fuori un'eccezione: controlla le parole, la valutazione resta tua. I riferimenti sono trovati in automatico e uno scritto in modo insolito può sfuggire. Non è un parere legale."
@@ -135,7 +147,7 @@
     },
     "watch": {
       "title": "L'avviso quando una norma citata cambia.",
-      "body": "Dopo il controllo NormaAI tiene l'elenco delle disposizioni su cui il documento si regge: atto, articolo, versione e impronta del testo. A ogni nuova versione del testo ufficiale le confronta di nuovo e ti dice quali documenti rivedere, perché una norma citata è cambiata o non c'è più.",
+      "body": "Dopo il controllo NormaAI tiene l'elenco delle disposizioni su cui il documento si regge: atto, articolo, versione e impronta del testo. Una volta alla settimana, il lunedì mattina, le confronta con il testo ufficiale in vigore e ti dice quali documenti rivedere, perché una norma citata è cambiata o non c'è più. Per il diritto dell'Unione il confronto usa il testo consolidato di EUR-Lex, che di solito arriva settimane dopo la pubblicazione della modifica in Gazzetta ufficiale: l'avviso arriva dopo.",
       "clients": "Se segui molti clienti, una modifica diventa un elenco: i documenti da riaprire, con il testo di prima e quello di adesso.",
       "example": {
         "label": "Esempio di una norma citata che è cambiata",
@@ -227,15 +239,15 @@
       "items": {
         "1": {
           "who": "Consulenti che seguono molte aziende",
-          "text": "Consulenti privacy e DPO, commercialisti, consulenti del lavoro, avvocati. Per ogni cliente hai già informative, nomine, pareri, policy e circolari: NormaAI ne controlla i riferimenti e ti avvisa quando una norma citata cambia. La valutazione e la firma restano tue."
+          "text": "Consulenti privacy e DPO, consulenti di compliance e di AI governance, avvocati. Per ogni cliente hai già informative, nomine, pareri e policy: NormaAI ne controlla i riferimenti agli atti dell'Unione e alle leggi italiane e ti avvisa quando una norma citata cambia. Non legge circolari, CCNL, decreti ministeriali né provvedimenti del Garante. La valutazione e la firma restano tue."
         },
         "2": {
           "who": "PMI e titolari d'azienda",
-          "text": "Controlla i documenti che ti hanno consegnato un consulente o un fornitore, e chiedi se un obbligo ti riguarda, da quando e in base a quale articolo."
+          "text": "Controlla i riferimenti delle informative e delle policy che usi prima di rivederle con il tuo consulente, e chiedi che cosa dice un articolo e da quando si applica."
         },
         "3": {
           "who": "Compliance officer e uffici legali",
-          "text": "Una persona, {areas} ambiti normativi. Quando la direzione chiede \"siamo a posto?\", la risposta ha l'articolo accanto."
+          "text": "Una persona, {areas} ambiti normativi. Le policy interne citano decine di articoli: quando una norma cambia, sai quali documenti riaprire."
         }
       }
     },
@@ -252,7 +264,7 @@
     },
     "demo": {
       "title": "Prova la demo, oppure porta un documento vero.",
-      "lead": "La demo si apre subito, con dati di esempio. Per un pilot scrivici: in 30 minuti guardiamo NormaAI su un tuo documento, anche senza i nomi. Se non ti è più utile di come lavori oggi, finisce lì."
+      "lead": "La demo si apre subito, con dati di esempio. Il pilot è gratuito e su invito: scrivici e in 30 minuti guardiamo NormaAI su un tuo documento, anche senza i nomi. Se non ti è più utile di come lavori oggi, finisce lì."
     },
     "demoEntry": {
       "metaTitle": "Demo con dati di esempio",
@@ -335,15 +347,22 @@
       "loading": "Caricamento"
     },
     "home": {
-      "title": "Cosa vuoi sapere oggi?",
-      "titleNamed": "Cosa vuoi sapere oggi, {name}?",
-      "lead": "Una domanda sul diritto dell’Unione, una risposta con l’atto, l’articolo e il passaggio di legge.",
+      "title": "Che cosa controlli oggi?",
+      "titleNamed": "Che cosa controlli oggi, {name}?",
+      "lead": "Carica un parere, un’informativa o una policy: NormaAI ne controlla i riferimenti di legge sul testo vigente, UE e italiano, e ti avvisa quando una norma citata cambia.",
+      "check": "Controlla un documento",
+      "askTitle": "Oppure fai una domanda",
+      "askLead": "Una domanda sul diritto dell’Unione, una risposta con l’atto, l’articolo e il passaggio di legge.",
       "questionLabel": "La tua domanda",
       "placeholder": "Scrivi la domanda, con il contesto che serve: settore, dimensione, Paese.",
       "send": "Invia la domanda",
       "examples": "Esempi di domande",
       "open": "Apri",
       "tiles": {
+        "controlla": {
+          "title": "Controlla",
+          "body": "I riferimenti di legge di un documento, confrontati con il testo vigente."
+        },
         "ambito": {
           "title": "Ambito",
           "body": "Quali obblighi si applicano a un’azienda, e da quando."
@@ -547,7 +566,7 @@
       "watchHelp": "Le norme che cita vengono ricontrollate ogni settimana sul testo vigente. Se una cambia, il documento passa tra quelli da rivedere e in Monitoraggio compare un avviso.",
       "submit": "Controlla il documento",
       "submitting": "Controllo in corso",
-      "progress": "Lettura del documento, ricerca dei riferimenti e confronto con i testi ufficiali: può richiedere fino a un minuto.",
+      "progress": "Lettura del documento, ricerca dei riferimenti e confronto con i testi ufficiali: di solito da 30 secondi a 2 minuti.",
       "failedTitle": "Il controllo non è riuscito",
       "errors": {
         "chooseFile": "Scegli un file o trascinalo nel riquadro, oppure passa a «Incolla il testo».",

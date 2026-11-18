@@ -93,6 +93,15 @@ class User(Base):
     # The digest email "N documenti da rivedere" of the document surveillance.
     # Turned off from PATCH /documents/preferences or from the link in the email.
     notify_document_changes: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # NormaAI personnel (corpus crawl, invites for new organizations). Set only
+    # by scripts/staff.py; honoured only with a verified email (src/auth/dependencies.py).
+    is_staff: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # The one pending password-reset link: SHA-256 of its secret, and its expiry.
+    password_reset_token_hash: Mapped[str | None] = mapped_column(String(64))
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Tokens issued up to this instant are refused: a password reset, or staff
+    # ending the sessions, sets it.
+    sessions_revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

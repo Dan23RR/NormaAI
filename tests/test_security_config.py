@@ -10,8 +10,8 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from src.auth.security import (
-    _get_access_token_expire_minutes,
-    _get_refresh_token_expire_days,
+    _get_access_token_ttl_seconds,
+    _get_refresh_token_ttl_seconds,
     create_access_token,
     create_refresh_token,
     create_token_pair,
@@ -28,16 +28,17 @@ from src.auth.security import (
 class TestTokenExpiryConfig:
     def test_access_token_expire_comes_from_settings(self):
         """Access token expiry should read from settings, not a constant."""
-        minutes = _get_access_token_expire_minutes()
-        # Default in config is 60
-        assert isinstance(minutes, int)
-        assert minutes > 0
+        seconds = _get_access_token_ttl_seconds()
+        # ACCESS_TOKEN_TTL, default 900 (15 minutes)
+        assert isinstance(seconds, int)
+        assert seconds == 900
 
     def test_refresh_token_expire_comes_from_settings(self):
         """Refresh token expiry should read from settings, not a constant."""
-        days = _get_refresh_token_expire_days()
-        assert isinstance(days, int)
-        assert days > 0
+        seconds = _get_refresh_token_ttl_seconds()
+        # REFRESH_TOKEN_TTL, default 604800 (7 days)
+        assert isinstance(seconds, int)
+        assert seconds == 604_800
 
     def test_access_token_has_correct_expiry(self):
         """Created access token should expire according to configured minutes."""
@@ -45,9 +46,9 @@ class TestTokenExpiryConfig:
         org_id = uuid.uuid4()
         token = create_access_token(user_id, org_id, "admin")
         decoded = decode_token(token)
-        expected_minutes = _get_access_token_expire_minutes()
+        expected_seconds = _get_access_token_ttl_seconds()
         # Token exp should be within 2 minutes of expected (accounting for execution time)
-        expected_exp = datetime.now(UTC) + timedelta(minutes=expected_minutes)
+        expected_exp = datetime.now(UTC) + timedelta(seconds=expected_seconds)
         delta = abs((decoded.exp - expected_exp).total_seconds())
         assert delta < 120, f"Token expiry off by {delta}s"
 
@@ -57,8 +58,8 @@ class TestTokenExpiryConfig:
         org_id = uuid.uuid4()
         token = create_refresh_token(user_id, org_id, "member")
         decoded = decode_token(token)
-        expected_days = _get_refresh_token_expire_days()
-        expected_exp = datetime.now(UTC) + timedelta(days=expected_days)
+        expected_seconds = _get_refresh_token_ttl_seconds()
+        expected_exp = datetime.now(UTC) + timedelta(seconds=expected_seconds)
         delta = abs((decoded.exp - expected_exp).total_seconds())
         assert delta < 120, f"Token expiry off by {delta}s"
 
@@ -70,11 +71,11 @@ class TestTokenExpiryConfig:
 
 class TestTokenPair:
     def test_token_pair_has_correct_expires_in(self):
-        """expires_in field should match configured minutes * 60."""
+        """expires_in field should match the configured access TTL (seconds)."""
         user_id = uuid.uuid4()
         org_id = uuid.uuid4()
         pair = create_token_pair(user_id, org_id, "admin")
-        expected = _get_access_token_expire_minutes() * 60
+        expected = _get_access_token_ttl_seconds()
         assert pair.expires_in == expected
 
     def test_token_pair_contains_both_tokens(self):

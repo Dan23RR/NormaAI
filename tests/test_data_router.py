@@ -1,7 +1,7 @@
 """Tests for the data router (src/api/routers/data.py).
 
 Covers the three endpoints exposed under /api/v1:
-- POST /api/v1/crawl           (auth-required, EUR-Lex crawl)
+- POST /api/v1/crawl           (staff only, EUR-Lex crawl)
 - POST /api/v1/documents/upload (auth-required, requires Qdrant, NLP pipeline)
 - GET  /api/v1/processors       (public, OCR engine status)
 
@@ -54,18 +54,25 @@ STAFF_EMAIL = "ops@normaai.org"
 
 
 @pytest.fixture
-def staff_headers(test_user_id, test_org_id):
-    """Admin token whose ``email`` claim is in settings.staff_emails.
+def staff_headers(test_user_id, test_org_id, monkeypatch):
+    """Admin token of an account that the database says is staff, with a verified email.
 
-    /crawl re-indexes the shared corpus and is gated by ``require_staff``; the
-    staff list is read from settings at request time, so patch it for the test.
+    /crawl re-indexes the shared corpus and is gated by ``require_staff``, which
+    reads users.is_staff through the account check of get_current_user.
     """
-    from src.config import get_settings
+    from dataclasses import replace
 
-    staff_settings = get_settings().model_copy(update={"staff_emails": [STAFF_EMAIL]})
+    from src.auth import dependencies
+
+    async def _staff_account(payload):
+        account = dependencies.account_from_claims(payload)
+        if payload.sub == str(test_user_id):
+            return replace(account, is_staff=True, email_verified=True)
+        return account
+
+    monkeypatch.setattr(dependencies, "resolve_account", _staff_account)
     token = create_access_token(test_user_id, test_org_id, "admin", email=STAFF_EMAIL)
-    with patch("src.auth.dependencies.get_settings", return_value=staff_settings):
-        yield {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
@@ -167,9 +174,9 @@ class TestCrawlEndpoint:
         assert response.json()["detail"] == "Operazione riservata al personale NormaAI."
         mock_client.check_for_new_amendments.assert_not_called()
 
-    def test_crawl_staff_email_not_in_allowlist_is_403(self, client, test_user_id, test_org_id):
-        """An email claim alone is not enough: it must be in settings.staff_emails."""
-        token = create_access_token(test_user_id, test_org_id, "admin", email="someone@acme.com")
+    def test_crawl_staff_email_claim_alone_is_403(self, client, test_user_id, test_org_id):
+        """A staff address in the token's email claim is not enough: staff is a DB flag."""
+        token = create_access_token(test_user_id, test_org_id, "admin", email=STAFF_EMAIL)
         response = client.post(
             "/api/v1/crawl", json={}, headers={"Authorization": f"Bearer {token}"}
         )

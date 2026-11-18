@@ -1,13 +1,13 @@
 """NormaAI configuration - single source of truth for all settings."""
 
-import json
 import logging
+import os
 import sys
 from functools import lru_cache
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import AliasChoices, Field, field_validator
-from pydantic_settings import BaseSettings, NoDecode
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings
 
 _config_logger = logging.getLogger("normaai.config")
 
@@ -245,8 +245,19 @@ class Settings(BaseSettings):
 
     # ─── Auth ───────────────────────────────────────────────
     app_secret_key: str = "change-me-in-production-use-64-chars-minimum"
-    access_token_expire_minutes: int = 60
-    refresh_token_expire_days: int = 7
+    # Lifetimes in seconds (ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL). Every refresh
+    # rotates the refresh token, so the refresh TTL is the longest a browser may
+    # stay idle; the absolute limit below is the longest a session may last.
+    access_token_ttl: int = Field(default=900, ge=60, le=86_400)
+    refresh_token_ttl: int = Field(default=604_800, ge=3_600)
+    # No refresh after this many days from the sign-in: the user signs in again.
+    session_max_lifetime_days: int = Field(default=30, ge=1, le=365)
+    # Seconds an API process keeps what it read of an account (exists, active,
+    # role, staff, sessions ended) before reading it again: a removed member or
+    # a changed role takes effect within this delay in every process. 0 = no cache.
+    auth_account_cache_seconds: int = Field(default=30, ge=0, le=300)
+    # Password reset link (POST /auth/password-reset): minutes it stays valid.
+    password_reset_token_ttl_minutes: int = Field(default=30, ge=5, le=1_440)
 
     # ─── Registration ────────────────────────────────────────
     # "invite" (default): POST /auth/register needs a valid invite code
@@ -272,34 +283,14 @@ class Settings(BaseSettings):
     auth_rate_limit_refresh: str = "30/minute"
     # verify-email + resend-verification (token guessing / mail flooding)
     auth_rate_limit_verification: str = "10/hour"
+    # password-reset request + confirm (mail flooding / token guessing)
+    auth_rate_limit_password_reset: str = "5/hour"
 
     # ─── Staff (NormaAI personnel) ───────────────────────────
-    # Emails allowed through ``require_staff`` (corpus crawl/re-index, invites
-    # that create new organizations). Matched case-insensitively against the
-    # ``email`` claim of the access token. Env: JSON list or comma-separated
-    # (STAFF_EMAILS=ops@normaai.org,info@normaai.org). Empty = nobody is staff.
-    staff_emails: Annotated[list[str], NoDecode] = []
-
-    @field_validator("staff_emails", mode="before")
-    @classmethod
-    def _parse_staff_emails(cls, value: object) -> object:
-        """Accept a JSON list or a comma-separated string; normalise to lowercase."""
-        if isinstance(value, str):
-            raw = value.strip()
-            if raw.startswith("["):
-                try:
-                    value = json.loads(raw)
-                except ValueError:
-                    value = raw
-            if isinstance(value, str):
-                return [e.strip().lower() for e in value.split(",") if e.strip()]
-        if isinstance(value, list | tuple | set):
-            return [str(e).strip().lower() for e in value if str(e).strip()]
-        return value
-
-    def is_staff_email(self, email: str | None) -> bool:
-        """True when ``email`` belongs to NormaAI staff (case-insensitive)."""
-        return bool(email) and str(email).strip().lower() in self.staff_emails
+    # Staff is the users.is_staff flag (migration 010), set only with
+    # scripts/staff.py and honoured only on a verified email: no setting, no
+    # registration and no token claim makes anyone staff. STAFF_EMAILS is no
+    # longer read (validate_settings_or_exit warns when it is still set).
 
     # ─── JWT RS256 Keys ──────────────────────────────────────
     jwt_private_key_path: str = ""
@@ -523,6 +514,12 @@ def validate_settings_or_exit() -> Settings:
                 "Set CORS_ORIGINS to explicit https origins (e.g. https://normaai.org)."
             )
             sys.exit(1)
+
+    if os.environ.get("STAFF_EMAILS", "").strip():
+        warnings.append(
+            "STAFF_EMAILS is no longer read: staff is the users.is_staff flag, granted with "
+            "'python scripts/staff.py grant <email>' (docs/RUNBOOK.md). Remove it from .env."
+        )
 
     for w in warnings:
         _config_logger.warning(w)

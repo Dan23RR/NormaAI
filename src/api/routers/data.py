@@ -57,8 +57,9 @@ async def trigger_crawl(
     - `full_crawl`: Re-download and re-index all 9 core regulations
     - `amendment_check`: Check for new amendments to tracked regulations (default)
 
-    Staff only (settings.staff_emails): the crawl re-indexes the SHARED
-    regulatory corpus every tenant reads from, so no customer admin may run it.
+    Staff only (``require_staff``: users.is_staff on a verified email): the
+    crawl re-indexes the SHARED regulatory corpus every tenant reads from, so
+    no customer admin may run it.
     """
     audit_log(
         AuditAction.CRAWL_TRIGGERED,

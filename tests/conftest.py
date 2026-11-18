@@ -30,6 +30,36 @@ from src.config import get_settings  # noqa: E402
 get_settings.cache_clear()
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "live_account: get_current_user reads the account for real (no claims stand-in)",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _accounts_from_token_claims(request, monkeypatch):
+    """Let the account check of get_current_user believe the tokens of the suite.
+
+    Most tests mint access tokens for users that exist in no database. Unless a
+    test is marked ``live_account``, ``resolve_account`` returns the account the
+    claims describe (``account_from_claims``: active, never staff). Tests of the
+    check itself, of staff and of removed members use the mark or patch
+    ``resolve_account`` / ``load_account`` themselves.
+    """
+    from src.auth import dependencies
+
+    dependencies.account_cache.clear()
+    if request.node.get_closest_marker("live_account") is None:
+
+        async def _from_claims(payload):
+            return dependencies.account_from_claims(payload)
+
+        monkeypatch.setattr(dependencies, "resolve_account", _from_claims)
+    yield
+    dependencies.account_cache.clear()
+
+
 @pytest.fixture
 def sample_company_profile():
     return {

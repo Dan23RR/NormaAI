@@ -208,6 +208,10 @@ def test_spec_mirrors_the_orm_metadata(m):
         ("users", "email_verified"),  # 008_invites
         ("users", "notify_document_changes"),  # 009_document_checks
         ("alerts", "document_check_id"),
+        ("users", "is_staff"),  # 010_account_security
+        ("users", "password_reset_token_hash"),
+        ("users", "password_reset_expires_at"),
+        ("users", "sessions_revoked_at"),
     }
 
     dialect = pg.dialect()

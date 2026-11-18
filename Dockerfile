@@ -19,17 +19,22 @@ COPY pyproject.toml poetry.lock ./
 # not match pyproject.toml ("pyproject.toml changed significantly since
 # poetry.lock was last generated"). (`poetry check --lock` would also stop on the
 # README, which .dockerignore keeps out of the context.)
-# Include the `openrouter` extra so langchain-openai (the OpenRouter/OpenAI-
-# compatible provider, imported lazily in src/agents/llm.py) ships in the image
-# - without it the openrouter path fails at runtime with ModuleNotFoundError.
-RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter -o requirements.txt
+# Extras, all imported lazily: `openrouter` (langchain-openai, the OpenRouter and
+# Mistral providers of src/agents/llm.py; without it they fail at runtime with
+# ModuleNotFoundError), `sentry` (sentry-sdk: errors go to Sentry when SENTRY_DSN
+# is set) and `metrics` (prometheus-client: without it GET
+# /api/v1/metrics/prometheus answers a placeholder and no alert rule can fire).
+RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main \
+    --extras openrouter --extras sentry --extras metrics -o requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
 
-# Build-time version stamp. docker-compose.prod.yml passes the git SHA
-# (`GIT_SHA` exported by bootstrap_hetzner.sh / the deploy workflow) and
-# GET /health reports it as "version", so a deploy can be verified end to end.
+# Build-time version stamp: the short git SHA, passed by the image job of
+# .github/workflows/deploy.yml, or by docker-compose.prod.yml from the GIT_SHA
+# that scripts/deploy.sh and bootstrap_hetzner.sh export when they build here.
+# GET /health reports it as "version", and scripts/deploy.sh checks it against
+# the commit it deploys.
 ARG GIT_SHA=dev
 ENV APP_VERSION=${GIT_SHA}
 LABEL org.opencontainers.image.revision=${GIT_SHA}
@@ -75,6 +80,9 @@ RUN set -e; \
 # model the API reads from its own EMBEDDING_MODEL (docker-compose.yml passes it):
 # intfloat/multilingual-e5-large adds ~2.1 GB (docs/MODELS.md, section 6).
 ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+# scripts/deploy.sh refuses an image whose model is not the EMBEDDING_MODEL of
+# the server's .env: offline, the API could not load another one.
+LABEL org.normaai.embedding-model=${EMBEDDING_MODEL}
 ENV FASTEMBED_CACHE_DIR=/app/models
 RUN python -c "from fastembed import TextEmbedding; \
     TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/app/models')"
@@ -104,13 +112,15 @@ USER normaai
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
 # network/lock writes - it loads the baked model purely from the local cache.
 # WEB_CONCURRENCY = uvicorn worker processes; each loads its own copy of the
-# models: in this image 1.6 GiB per worker with multilingual-e5-large and 1.8 GiB
-# with mpnet (docker stats, dress rehearsal of 2026-11-09).
+# models: 2.8 GB per worker with multilingual-e5-large and 2.1 GB with mpnet
+# after the 101 golden questions (docs/MODELS.md, section 6; 1.6 and 1.8 GiB
+# right after the warm-up, docker stats of 2026-11-09). One by default: two
+# with e5 need 5.6 GB, more than the 4G limit of docker-compose.yml.
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HF_HUB_OFFLINE=1 \
-    WEB_CONCURRENCY=2
+    WEB_CONCURRENCY=1
 
 EXPOSE 8000
 

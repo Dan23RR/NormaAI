@@ -26,7 +26,7 @@ name: Validation harness self-test
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, 'integration/**']
     paths:
       - 'src/**'
       - 'prompts/**'

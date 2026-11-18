@@ -59,9 +59,18 @@ class TestLegalChunker:
         assert len(chunks) > 0
 
     def test_fallback_chunking(self):
+        # No article and no recital: the text must still come out, as paragraphs,
+        # whole and in order (the assertion used to be len(chunks) >= 0).
         html = "<html><body><p>Simple paragraph with no article structure but enough text to be processed correctly.</p><p>Another paragraph with additional content for the fallback chunking mechanism to work properly with minimum sizes.</p></body></html>"
         chunks = self.chunker.chunk_html(html)
-        assert len(chunks) >= 0  # May fallback to paragraph chunking
+        assert len(chunks) == 1
+        (chunk,) = chunks
+        assert chunk.metadata["chunk_type"] == "paragraph"
+        assert chunk.metadata["article"] == ""
+        assert (chunk.metadata["celex"], chunk.metadata["framework"]) == ("32022L2464", "CSRD")
+        assert chunk.text.startswith("Simple paragraph with no article structure")
+        assert chunk.text.index("Simple paragraph") < chunk.text.index("Another paragraph")
+        assert chunk.text.endswith("to work properly with minimum sizes.")
 
     def test_max_chunk_size_respected(self):
         long_article = "Article 1\n" + "x " * 2000  # Very long article

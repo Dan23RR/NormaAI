@@ -179,19 +179,20 @@ content and is run by hand (the in-process `AcquisitionScheduler` is off,
 consolidated version indexed for each act with the latest one in CELLAR and stores the outcome
 in `system_state`, shown as `freshness` by `GET /api/v1/stats`; it does not reseed.
 
-**No Italian law is indexed.** With `DATA_SOURCE=both` (the default) or `normattiva` the seed
-also calls `seed_normattiva`, which uses the old client in `src/crawler/normattiva/client.py`.
-The endpoints that client calls under `https://www.normattiva.it/opendata/api/` answered on
-2026-11-11 with HTTP 409 and a page of the Poligrafico's protection systems; the client logs
-the error and returns nothing, so the seed indexes no Italian passage. The document check
-reads Italian law through the newer open data API instead (below).
+**No Italian law is indexed.** The seed used to call an old Normattiva client
+(`src/crawler/normattiva/client.py`) with `DATA_SOURCE=both`, then the default. Its endpoints
+under `https://www.normattiva.it/opendata/api/` answered on 2026-11-11 with HTTP 409 and a page
+of the Poligrafico's protection systems, so it indexed no Italian passage, and at startup it was
+handed to CoVe, which got an error for every Italian URN. It was removed in November 2026:
+`DATA_SOURCE` defaults to `eurlex`, `both` and `normattiva` only log that no Italian law is
+indexed, and CoVe skips URN citations. The document check reads Italian law through the newer
+open data API (below); `src/crawler/normattiva/` keeps the URN validator it uses.
 
 ### SSE Streaming Flow
 
 ```
 Request → Agent Graph → Draft PhaseChangeEvent
-    → TokenEvents (the finished answer cut into 80-char blocks: not token by token;
-                   src/agents/streaming_llm.py exists but nothing calls it)
+    → TokenEvents (the finished answer cut into 80-char blocks: not token by token)
     → CitationEvents (per-citation, with the verifier's fields)
     → [CoVe] → ThinkingEvents → VerificationEvents
     → DoneEvent (confidence, token count, review flag, citation counters,
@@ -401,7 +402,7 @@ when the app connects as a non-superuser role (ADR-2).
 | `src/agents/` | LangGraph orchestration, LLM calls, citation verifier, CoVe, SNC | LangGraph, LLM providers |
 | `src/document_check/` | Document check: extraction, official texts, statuses, lock file, re-check, report, storage, surveillance | `src/agents/citation_verifier.py`, `src/crawler/eurlex`, httpx |
 | `src/auth/` | JWT, roles, invites, signed tokens, brute-force protection | Redis, cryptography |
-| `src/crawler/` | EUR-Lex SPARQL and CELLAR (`eurlex/`); old Normattiva client and URN tools (`normattiva/`, its endpoints are blocked) | httpx, SPARQLWrapper |
+| `src/crawler/` | EUR-Lex SPARQL and CELLAR (`eurlex/`); Italian URN tools (`normattiva/urn_validator.py`) | httpx, SPARQLWrapper |
 | `src/nlp/` | Chunking, embedding, indexing, named-article lookup, reranker | fastembed, Qdrant, onnxruntime |
 | `src/db/` | SQLAlchemy models, async engine, RLS context | SQLAlchemy, asyncpg |
 | `src/` | Config, cache, quotas, audit log, email, pipeline, resilience, observability | Pydantic, Redis, Resend, OTel |

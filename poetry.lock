@@ -5064,7 +5064,7 @@ description = "Python client for the Prometheus monitoring system."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"observability\""
+markers = "extra == \"observability\" or extra == \"metrics\""
 files = [
     {file = "prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6"},
     {file = "prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b"},
@@ -8681,6 +8681,7 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 
 [extras]
 local-llm = ["langchain-ollama"]
+metrics = ["prometheus-client"]
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-exporter-otlp-proto-grpc", "opentelemetry-instrumentation-fastapi", "opentelemetry-sdk", "prometheus-client", "sentry-sdk"]
 openrouter = ["langchain-openai"]
 sentry = ["sentry-sdk"]
@@ -8688,4 +8689,4 @@ sentry = ["sentry-sdk"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "98ccd56c8bb9e0a396bff29dfcafc3094185ba22da01c7482f1e262f84a1ef22"
+content-hash = "78cc79644a65bd625e7a1b2062252a178a649ae150ade215a263063506726092"

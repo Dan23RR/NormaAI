@@ -236,11 +236,14 @@ def _result_fields(result: dict[str, Any], *, with_citations: bool) -> dict[str,
     ``caveats``, ``related_frameworks``, ``abstention_reason`` and the corpus
     date for every task; the citation counters for Q&A (``with_citations``).
     """
+    from src.api.app_state import corpus_as_of
+
     fields: dict[str, Any] = {
         "caveats": _str_list(result.get("caveats")),
         "related_frameworks": _str_list(result.get("related_frameworks")),
         "abstention_reason": _text_or_none(result.get("abstention_reason")),
-        "corpus_as_of": _text_or_none(getattr(get_settings(), "corpus_as_of", None)),
+        # The date recorded in the collection, else CORPUS_AS_OF.
+        "corpus_as_of": _text_or_none(corpus_as_of(getattr(get_settings(), "corpus_as_of", None))),
     }
     if with_citations:
         verified, total = citation_counters(result)

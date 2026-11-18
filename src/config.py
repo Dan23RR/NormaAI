@@ -36,11 +36,13 @@ class Settings(BaseSettings):
     gemini_model_classification: str = "gemini-2.0-flash"
 
     # Anthropic. Read from ANTHROPIC_MODEL_ANALYSIS or, as in .env.example,
-    # ANTHROPIC_MODEL. The previous default (claude-sonnet-4-5-20250514) was
-    # not a real model id: the API answered 404 to every request.
+    # ANTHROPIC_MODEL. Claude Haiku 5.5 is the model measured on golden v2
+    # (docs/MODELS.md 2.3); claude-sonnet-5-5, the previous default, never was,
+    # and costs more. (The one before, claude-sonnet-4-5-20250514, was not a
+    # real model id: the API answered 404 to every request.)
     anthropic_api_key: str = ""
     anthropic_model_analysis: str = Field(
-        default="claude-sonnet-5-5",
+        default="claude-haiku-5-5",
         validation_alias=AliasChoices("anthropic_model_analysis", "anthropic_model"),
     )
 
@@ -120,20 +122,17 @@ class Settings(BaseSettings):
     # it - leave it off). Without this, "updated nightly" never actually ran.
     acquisition_scheduler_enabled: bool = False
 
-    # ─── Normattiva Open Data ─────────────────────────────────
-    normattiva_enabled: bool = True
-    normattiva_api_base_url: str = "https://www.normattiva.it/opendata"
-    normattiva_rate_limit_delay: float = 1.0
-    normattiva_bulk_download_enabled: bool = False
-
     # ─── Data Sources ─────────────────────────────────────────
-    data_source: str = "both"  # "eurlex", "normattiva", or "both"
+    # What the seed indexes for Chiedi: EUR-Lex only. "normattiva" and "both"
+    # are still accepted and index no Italian law (the old Normattiva client,
+    # whose endpoints answer HTTP 409, was removed); the seed says so.
+    data_source: str = "eurlex"
 
-    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD). Set this to
-    # the last seed/refresh date at deploy time. Surfaced in API metadata and PDF
-    # footers so a reader can tell how fresh the law is - the corpus is frozen
-    # between manual re-seeds and superseded_by is only set at seed time, so an
-    # honest staleness signal is the interim mitigation for serving repealed law.
+    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD): the fallback.
+    # The API shows the date the seed and `--action update` record in the
+    # collection (src.api.app_state.corpus_as_of); this one only when the
+    # collection holds none. Surfaced in API metadata and PDF footers so a reader
+    # can tell how fresh the law is.
     corpus_as_of: str = ""
 
     # ─── Embedding ────────────────────────────────────────────
@@ -189,7 +188,14 @@ class Settings(BaseSettings):
     # ─── Sentry (optional error tracking) ─────────────────────
     # Set to enable sentry_sdk with the FastAPI integration at startup; the SDK
     # is an optional extra (`poetry install -E sentry`), never a hard dependency.
+    # The Docker image installs it.
     sentry_dsn: str | None = None
+
+    # ─── Operator alerts ──────────────────────────────────────
+    # Address told by email (through Resend, RESEND_API_KEY) when a scheduled
+    # job, the backup or the restore test fails (src/ops_alerts.py). Empty: the
+    # failure reaches Sentry (with SENTRY_DSN) and the log only.
+    ops_alert_email: str = ""
 
     # ─── Chain-of-Verification (CoVe) ────────────────────────
     cove_enabled: bool = False
@@ -559,14 +565,6 @@ def validate_settings_or_exit() -> Settings:
 
     # Data sources
     _config_logger.info("Data Sources: %s", settings.data_source.upper())
-    if settings.normattiva_enabled:
-        _config_logger.info(
-            "Normattiva: ENABLED | Rate limit: %.1fs | Bulk download: %s",
-            settings.normattiva_rate_limit_delay,
-            "ON" if settings.normattiva_bulk_download_enabled else "OFF",
-        )
-    else:
-        _config_logger.info("Normattiva: DISABLED")
 
     # Chain-of-Verification
     if settings.cove_enabled:

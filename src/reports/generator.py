@@ -107,12 +107,13 @@ class _NormaPDF(FPDF):
             "It does not constitute legal advice. Consult qualified professionals "
             "before making compliance decisions."
         )
-        # Append the corpus as-of date when configured, so the reader knows how
-        # current the underlying law is (the corpus is frozen between re-seeds).
+        # Append the corpus date, so the reader knows how current the underlying
+        # law is: the one recorded in the collection, else CORPUS_AS_OF.
         try:
+            from src.api.app_state import corpus_as_of
             from src.config import get_settings
 
-            as_of = getattr(get_settings(), "corpus_as_of", "")
+            as_of = corpus_as_of(getattr(get_settings(), "corpus_as_of", ""))
             if as_of:
                 self._disclaimer += (
                     f" Regulatory corpus as of {as_of}; verify the primary source for changes."

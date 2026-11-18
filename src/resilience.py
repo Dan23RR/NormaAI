@@ -13,6 +13,7 @@ import time
 from enum import Enum
 
 from src.config import get_settings
+from src.observability import record_circuit
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,12 @@ class CircuitBreaker:
                 if time.monotonic() - self._last_failure_time >= self.recovery_timeout:
                     self._state = CircuitState.HALF_OPEN
                     logger.info("circuit_half_open", extra={"service": self.name})
+                    self._publish()
             return self._state
+
+    def _publish(self, outcome: str | None = None) -> None:
+        """The state (and the call's outcome) as Prometheus metrics; callers hold the lock."""
+        record_circuit(self.name, self._state.value, outcome)
 
     @property
     def is_available(self) -> bool:
@@ -105,6 +111,7 @@ class CircuitBreaker:
             if self._state == CircuitState.HALF_OPEN:
                 self._state = CircuitState.CLOSED
                 logger.info("circuit_closed", extra={"service": self.name})
+            self._publish("success")
 
     def record_failure(self) -> None:
         with self._lock:
@@ -120,12 +127,14 @@ class CircuitBreaker:
                         "recovery_in_seconds": self.recovery_timeout,
                     },
                 )
+            self._publish("failure")
 
     def reset(self) -> None:
         with self._lock:
             self._state = CircuitState.CLOSED
             self._failure_count = 0
             self._success_count = 0
+            self._publish()
 
 
 # ─── Service Circuit Breakers (Singletons) ────────────────────────

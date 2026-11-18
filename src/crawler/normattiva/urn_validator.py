@@ -10,17 +10,9 @@ EU URN format: urn:nir:unione.europea:regolamento:2024;1689
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
-if TYPE_CHECKING:
-    from .client import NormattivaOpenDataClient, URNValidationResult
-
-if __name__ != "__main__":
-    # Import client only when used as module to avoid circular imports
-    pass
-
 
 logger = logging.getLogger(__name__)
 
@@ -343,27 +335,6 @@ class URNValidator:
             url += f"#{components.articolo}"
 
         return url
-
-    @staticmethod
-    async def verify_remote(
-        urn: str, client: "NormattivaOpenDataClient"
-    ) -> Optional["URNValidationResult"]:
-        """
-        Verify URN validity against Normattiva API.
-
-        Args:
-            urn: URN to verify
-            client: NormattivaOpenDataClient instance
-
-        Returns:
-            URNValidationResult from API, None on error
-        """
-        try:
-            result = await client.validate_urn(urn)
-            return result
-        except Exception as e:
-            logger.error(f"Error verifying URN {urn}: {e}")
-            return None
 
     @staticmethod
     def extract_and_validate(text: str) -> dict[str, list[str]]:

@@ -155,6 +155,10 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=30d'
+    # The scrape token, read by infra/prometheus.yml (credentials_file): compose
+    # writes PROMETHEUS_BEARER_TOKEN of .env to /run/secrets/prometheus_bearer_token.
+    secrets:
+      - prometheus_bearer_token
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
       interval: 15s
@@ -232,6 +236,12 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+
+secrets:
+  # From the variable, not a file: .env stays the one place for the token, and
+  # compose gives the file to the container (readable by Prometheus' user).
+  prometheus_bearer_token:
+    environment: PROMETHEUS_BEARER_TOKEN
 
 networks:
   normaai-network:

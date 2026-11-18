@@ -224,10 +224,13 @@ def _build_metadata(
         "ai_generated": True,
         "disclaimer": "AI-assisted analysis. Not legal advice. Expert review recommended.",
     }
-    # Corpus freshness signal: the regulatory corpus is frozen between manual
-    # re-seeds, so tell the client how current the law is (empty => not configured).
-    if settings.corpus_as_of:
-        meta["corpus_as_of"] = settings.corpus_as_of
+    # How current the law is: the date the seed or the update recorded in the
+    # collection, else CORPUS_AS_OF (absent when neither says).
+    from src.api.app_state import corpus_as_of
+
+    as_of = corpus_as_of(settings.corpus_as_of)
+    if as_of:
+        meta["corpus_as_of"] = as_of
     if cached:
         meta["cached"] = True
     if framework:

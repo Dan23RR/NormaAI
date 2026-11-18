@@ -80,6 +80,9 @@ sentry-sdk = {extras = ["fastapi"], version = "^2.68.0", optional = true}
 observability = ["arize-phoenix", "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi", "opentelemetry-exporter-otlp-proto-grpc", "prometheus-client", "sentry-sdk"]
 # Error tracking only (sentry-sdk[fastapi]); enabled at runtime by SENTRY_DSN.
 sentry = ["sentry-sdk"]
+# Prometheus metrics only (GET /api/v1/metrics/prometheus), without the tracing
+# stack of `observability`. The Docker image installs `sentry` and `metrics`.
+metrics = ["prometheus-client"]
 local-llm = ["langchain-ollama"]
 openrouter = ["langchain-openai"]
 

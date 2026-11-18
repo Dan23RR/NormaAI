@@ -1,4 +1,4 @@
-"""scripts/backup.sh and scripts/restore_test.sh, run for real against stand-ins.
+"""scripts/backup.sh, restore_test.sh and restore_drill.sh, run for real against stand-ins.
 
 The scripts cannot be tried on a server from here, so each test copies them into
 a temporary "server" (an app directory with .env and the JWT keys) and runs them
@@ -21,7 +21,13 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-SCRIPTS = ("backup.sh", "backup_postgres.sh", "restore_test.sh", "bootstrap_hetzner.sh")
+SCRIPTS = (
+    "backup.sh",
+    "backup_postgres.sh",
+    "restore_test.sh",
+    "restore_drill.sh",
+    "bootstrap_hetzner.sh",
+)
 
 
 def _find_bash() -> str | None:
@@ -72,6 +78,11 @@ stub_docker() {
       esac ;;
     exec)
       case "$*" in
+        *src.ops_alerts*)
+          # The alert to the operator: what it was given, and on which channel.
+          printf '%s\n' "$*" > "$STUB_STATE/alert_args.txt"
+          cat > "$STUB_STATE/alert.txt"
+          if flag alert_fails; then return 1; fi ;;
         *"pg_restore --list"*) cat > /dev/null ;;
         *pg_restore*) cat > "$STUB_STATE/restored.dump"; if flag pg_restore_fails; then return 1; fi ;;
         *pg_dump*) if flag pg_dump_fails; then echo "pg_dump: error" >&2; return 1; fi; fake_dump ;;
@@ -84,6 +95,7 @@ stub_docker() {
         *"count(*) FROM public."*) echo 3 ;;
       esac ;;
     run) echo "0123456789ab" ;;
+    port) echo "127.0.0.1:16333" ;;
     rm) return 0 ;;
   esac
 }
@@ -109,6 +121,18 @@ stub_curl() {
     "DELETE http://127.0.0.1:6333/collections/"*) echo '{"result":true}' ;;
     "GET http://127.0.0.1:6333/collections/"*"/snapshots/"*) head -c 2048 /dev/zero > "$out" ;;
     "GET http://127.0.0.1:6333/") echo '{"title":"qdrant - vector search engine","version":"1.20.0"}' ;;
+    "GET http://127.0.0.1:6333/collections/"*)
+      echo "{\"result\":{\"status\":\"green\",\"points_count\":$(cat "$STUB_STATE/live_points")}}" ;;
+    # The throwaway Qdrant of the restore test.
+    "GET http://127.0.0.1:16333/readyz") echo "all shards are ready" ;;
+    "POST http://127.0.0.1:16333/collections/"*"/snapshots/upload?priority=snapshot&wait=true")
+      arg="${url#http://127.0.0.1:16333/collections/}"; arg="${arg%%/*}"
+      echo "$arg" >> "$STUB_STATE/uploaded.txt"
+      if flag qdrant_upload_fails; then echo "curl: (22) 500" >&2; return 22; fi
+      echo '{"result":true,"status":"ok"}' ;;
+    "GET http://127.0.0.1:16333/collections/"*)
+      arg="${url#http://127.0.0.1:16333/collections/}"
+      echo "{\"result\":{\"points_count\":$(cat "$STUB_STATE/restored_points_$arg" 2>/dev/null || cat "$STUB_STATE/live_points")}}" ;;
     "GET https://heartbeat.example/"*) return 0 ;;
     *) echo "unexpected request: $method $url" >&2; return 22 ;;
   esac
@@ -127,7 +151,13 @@ stub_restic() {
     snapshots) printf '[{"time":"%s","short_id":"abcd1234","paths":["/opt/normaai/backups/offsite"]}]\n' "$(cat "$STUB_STATE/snapshot_time")" ;;
     check) if flag restic_check_fails; then return 1; fi ;;
     ls) cat "$STUB_STATE/snapshot_listing" ;;
-    dump) fake_dump ;;
+    dump)
+      case "${*: -1}" in
+        */MANIFEST.txt) cat "$STUB_STATE/manifest_in_repo" ;;
+        */config/env) cat "$STUB_STATE/env_in_repo" ;;
+        *.snapshot) head -c 2048 /dev/zero ;;
+        *) fake_dump ;;
+      esac ;;
     version) echo "restic 0.16.4 compiled with go1.22 on linux/amd64" ;;
   esac
 }
@@ -155,6 +185,24 @@ LISTING = """snapshot abcd1234 of [/opt/normaai/backups/offsite] at 2026-11-11 0
 /opt/normaai/backups/offsite/postgres/normaai.dump
 /opt/normaai/backups/offsite/qdrant/eu_regulations.snapshot
 /opt/normaai/backups/offsite/qdrant/eu_regulations_e5.snapshot
+"""
+
+
+MANIFEST = """NormaAI backup of 2026-11-11T02:00:05Z
+code: 0123abc
+alembic: 008_invites
+qdrant: 1.20.0
+collection eu_regulations: 5852 points
+collection eu_regulations_e5: 5852 points
+files (bytes):
+"""
+
+# The copy of .env a restore needs: the restore test reads the names, never prints a value.
+ENV_COPY = """APP_SECRET_KEY=secret-of-the-server
+POSTGRES_PASSWORD=owner-password
+APP_DB_PASSWORD=app-password
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-not-real
 """
 
 
@@ -187,6 +235,9 @@ class Server:
         (self.state / "behaviour.sh").write_text(BEHAVIOUR, encoding="utf-8", newline="\n")
         (self.state / "announced_size").write_text("2048", newline="\n")
         (self.state / "snapshot_listing").write_text(LISTING, newline="\n")
+        (self.state / "live_points").write_text("5852", newline="\n")
+        (self.state / "manifest_in_repo").write_text(MANIFEST, newline="\n")
+        (self.state / "env_in_repo").write_text(ENV_COPY, newline="\n")
         self.snapshot_age(3)
 
     # ── arranging ──
@@ -217,7 +268,7 @@ class Server:
         return dump
 
     # ── acting ──
-    def run(self, script: str, *args: str) -> subprocess.CompletedProcess:
+    def run(self, script: str, *args: str, **extra_env: str) -> subprocess.CompletedProcess:
         env = {
             **os.environ,
             "STUB_BIN": _posix(self.bin),
@@ -227,6 +278,7 @@ class Server:
         }
         for name in ("RESTIC_REPOSITORY", "RESTIC_PASSWORD_FILE", "BACKUP_HEARTBEAT_URL"):
             env.pop(name, None)
+        env.update(extra_env)
         return subprocess.run(
             [BASH, "-c", PRELUDE, "prelude", _posix(self.app / "scripts" / script), *args],
             env=env,
@@ -252,6 +304,15 @@ class Server:
 
     def crontab(self) -> list[str]:
         return (self.state / "crontab").read_text(encoding="utf-8").splitlines()
+
+    def alert(self) -> tuple[str, str] | None:
+        """(command line, standard input) of the alert to the operator, if one was sent."""
+        args = self.state / "alert_args.txt"
+        if not args.exists():
+            return None
+        return args.read_text(encoding="utf-8"), (self.state / "alert.txt").read_text(
+            encoding="utf-8"
+        )
 
 
 @pytest.fixture
@@ -358,6 +419,9 @@ def test_offsite_backup_sends_database_index_and_secrets(server):
     manifest = (server.state / "manifest.txt").read_text(encoding="utf-8")
     assert "alembic: 008_invites" in manifest
     assert "qdrant: 1.20.0" in manifest
+    # What the restore test compares the loaded collections with.
+    assert "collection eu_regulations: 5852 points" in manifest
+    assert "collection eu_regulations_e5: 5852 points" in manifest
     assert "./postgres/normaai.dump" in manifest
     assert "secret-of-the-server" not in manifest
     # The JWT keys stay on the server: a rebuilt one gets a new pair.
@@ -366,6 +430,8 @@ def test_offsite_backup_sends_database_index_and_secrets(server):
     assert "NOT configured" not in result.stderr
     # The local dump is kept as well.
     assert len(server.dumps()) == 1
+    # A run that succeeds tells nobody.
+    assert server.alert() is None
 
 
 def test_second_offsite_run_does_not_create_the_repository_again(server):
@@ -403,7 +469,11 @@ def test_backup_rejects_a_retention_it_cannot_apply(server, value):
     result = server.run("backup.sh")
     assert result.returncode == 1
     assert "BACKUP_RETENTION_DAYS" in result.stderr
-    assert server.calls() == []
+    # Nothing is dumped or sent; the operator is told, or every night would fail unseen.
+    assert [call.split()[:3] for call in server.calls()] == [["docker", "exec", "-i"]]
+    command, details = server.alert()
+    assert "python -m src.ops_alerts backup" in command
+    assert "BACKUP_RETENTION_DAYS" in details
 
 
 def test_qdrant_down_still_sends_the_database_but_fails_the_run(server):
@@ -492,7 +562,14 @@ def test_install_cron_leaves_exactly_one_backup_line(server, before, others):
     # Through bash: the script has no execute bit after a deploy's git reset.
     assert backup_lines[0].startswith("0 2 * * * bash ")
     assert backup_lines[0].endswith("/app/scripts/backup.sh >> /var/log/normaai-backup.log 2>&1")
-    assert [line for line in lines if "backup" not in line] == others
+    # The restore test on the 1st of every month, once.
+    test_lines = [line for line in lines if "restore_test.sh" in line]
+    assert len(test_lines) == 1
+    assert test_lines[0].startswith("0 5 1 * * bash ")
+    assert test_lines[0].endswith(
+        "/app/scripts/restore_test.sh >> /var/log/normaai-restore-test.log 2>&1"
+    )
+    assert [line for line in lines if "backup" not in line and "restore_test" not in line] == others
 
 
 def _app_cron_block() -> str:
@@ -566,8 +643,27 @@ def test_restore_test_passes_on_a_complete_recent_backup(server):
     assert docker[-1].startswith("docker rm -f -v normaai-restore-test-")
     restic = server.calls("restic")
     assert "restic check" in restic
-    assert restic[-1].startswith("restic dump --host normaai --tag normaai latest ")
-    assert restic[-1].endswith("/postgres/normaai.dump")
+    dumps = [
+        call
+        for call in restic
+        if call.startswith("restic dump --host normaai --tag normaai latest ")
+    ]
+    assert any(call.endswith("/postgres/normaai.dump") for call in dumps)
+    # Every collection of the copy is loaded into the throwaway Qdrant and checked.
+    assert (server.state / "uploaded.txt").read_text().split() == [
+        "eu_regulations",
+        "eu_regulations_e5",
+    ]
+    assert "collection eu_regulations_e5: 5852 points, as recorded at backup time" in result.stdout
+    qdrant_run = [call for call in docker if call.startswith("docker run ") and "qdrant" in call]
+    assert len(qdrant_run) == 1
+    # Reached from this host only, and removed with the other one.
+    assert "-p 127.0.0.1::6333" in qdrant_run[0]
+    assert any(call.startswith("docker rm -f -v normaai-restore-test-qdrant-") for call in docker)
+    assert "the copy of .env names every setting a rebuild needs" in result.stdout
+    assert "secret-of-the-server" not in result.stdout + result.stderr
+    assert "time: copy " in result.stdout and ", qdrant " in result.stdout
+    assert server.alert() is None
 
 
 def test_restore_test_fails_when_the_nightly_job_has_stopped(server):
@@ -649,3 +745,346 @@ def test_restore_test_without_any_backup_fails(server):
     assert result.returncode == 1
     assert "run scripts/backup.sh first" in result.stderr
     assert not any(call.startswith("docker run") for call in server.calls("docker"))
+
+
+# ─── Failures reach the operator ─────────────────────────────────────────────
+
+
+def test_a_failed_backup_tells_the_operator_what_stopped_it(server):
+    server.configure_restic()
+    server.flag("restic_backup_fails")
+    result = server.run("backup.sh")
+    assert result.returncode == 1
+    command, details = server.alert()
+    # Through the app container, which holds the Resend key and the Sentry DSN.
+    assert command.startswith("exec -i normaai-app python -m src.ops_alerts backup ")
+    assert "restic backup failed: nothing was sent off the server" in command
+    assert details.endswith("FAIL: restic backup failed: nothing was sent off the server")
+    assert "secret-of-the-server" not in details
+
+
+def test_the_warnings_of_the_run_travel_with_the_alert(server):
+    server.configure_restic()
+    server.flag("qdrant_down")
+    result = server.run("backup.sh")
+    assert result.returncode == 1
+    _, details = server.alert()
+    assert "WARNING: Qdrant does not answer at http://127.0.0.1:6333" in details
+    assert "FAIL: finished with errors" in details
+
+
+def test_alerts_can_be_switched_off(server):
+    server.configure_restic(BACKUP_ALERTS="0")
+    server.flag("pg_dump_fails")
+    assert server.run("backup.sh").returncode == 1
+    assert server.alert() is None
+
+
+def test_an_alert_that_cannot_be_sent_is_said_and_keeps_the_failure(server):
+    server.flag("pg_dump_fails")
+    server.flag("alert_fails")
+    result = server.run("backup.sh")
+    assert result.returncode == 1
+    assert "the operator was not told of this failure" in result.stderr
+
+
+def test_install_cron_and_help_send_no_alert(server):
+    assert server.run("backup.sh", "--install-cron").returncode == 0
+    assert server.run("backup.sh", "--help").returncode == 0
+    assert server.alert() is None
+
+
+@pytest.mark.parametrize(
+    "repository",
+    [
+        "sftp:u123@u123.your-storagebox.de:/backups",
+        "s3:https://fsn1.your-objectstorage.com/normaai",
+    ],
+)
+def test_a_repository_at_the_server_provider_is_flagged(server, repository):
+    server.configure_restic()
+    text = server.env_file.read_text(encoding="utf-8")
+    server.env_file.write_text(
+        text.replace("s3:https://storage.example/bucket/normaai", repository), newline="\n"
+    )
+    result = server.run("backup.sh")
+    assert result.returncode == 0, result.stderr
+    assert "RESTIC_REPOSITORY is at Hetzner, like this server" in result.stderr
+
+
+def test_the_provider_warning_can_be_acknowledged(server):
+    server.configure_restic(BACKUP_SAME_PROVIDER_OK="1")
+    text = server.env_file.read_text(encoding="utf-8")
+    server.env_file.write_text(
+        text.replace(
+            "s3:https://storage.example/bucket/normaai", "sftp:u1@u1.your-storagebox.de:/b"
+        ),
+        newline="\n",
+    )
+    result = server.run("backup.sh")
+    assert result.returncode == 0
+    assert "at Hetzner" not in result.stderr
+
+
+def test_a_repository_elsewhere_is_not_flagged(server):
+    server.configure_restic()
+    assert "at Hetzner" not in server.run("backup.sh").stderr
+
+
+# ─── restore_test.sh: the index and the settings ─────────────────────────────
+
+
+def test_restore_test_fails_when_a_snapshot_does_not_load(server):
+    server.configure_restic()
+    server.flag("qdrant_upload_fails")
+    result = server.run("restore_test.sh")
+    assert result.returncode == 1
+    assert "the Qdrant snapshot of eu_regulations does not load" in result.stderr
+    command, details = server.alert()
+    assert "python -m src.ops_alerts restore-test" in command
+    assert "PROBLEM: the Qdrant snapshot of eu_regulations does not load" in details
+    # The throwaway containers go, even on a failure.
+    docker = server.calls("docker")
+    assert any(call.startswith("docker rm -f -v normaai-restore-test-qdrant-") for call in docker)
+    assert docker[-1].startswith("docker rm -f -v normaai-restore-test-")
+
+
+def test_restore_test_fails_when_a_collection_lost_points(server):
+    server.configure_restic()
+    (server.state / "restored_points_eu_regulations_e5").write_text("12", newline="\n")
+    result = server.run("restore_test.sh")
+    assert result.returncode == 1
+    assert "eu_regulations_e5 has 12 points, the backup recorded 5852" in result.stderr
+
+
+def test_restore_test_fails_on_an_empty_collection(server):
+    server.configure_restic()
+    (server.state / "manifest_in_repo").write_text("qdrant: 1.20.0\n", newline="\n")
+    (server.state / "restored_points_eu_regulations").write_text("0", newline="\n")
+    result = server.run("restore_test.sh")
+    assert result.returncode == 1
+    assert "the restored collection eu_regulations is empty" in result.stderr
+
+
+def test_restore_test_without_counts_in_the_manifest_still_loads(server):
+    # A copy made before the counts were recorded: a non-empty collection passes.
+    server.configure_restic()
+    (server.state / "manifest_in_repo").write_text("qdrant: 1.20.0\n", newline="\n")
+    result = server.run("restore_test.sh")
+    assert result.returncode == 0, result.stderr
+    assert "collection eu_regulations: 5852 points\n" in result.stdout
+
+
+def test_restore_test_can_list_the_index_without_loading_it(server):
+    server.configure_restic(RESTORE_TEST_QDRANT="0")
+    result = server.run("restore_test.sh")
+    assert result.returncode == 0, result.stderr
+    assert not (server.state / "uploaded.txt").exists()
+    assert "listed, not loaded" in result.stderr
+
+
+def test_restore_test_fails_when_the_copy_of_env_lacks_a_setting(server):
+    server.configure_restic()
+    (server.state / "env_in_repo").write_text(
+        "APP_SECRET_KEY=x\nPOSTGRES_PASSWORD=y\nLLM_PROVIDER=anthropic\nANTHROPIC_API_KEY=\n",
+        newline="\n",
+    )
+    result = server.run("restore_test.sh")
+    assert result.returncode == 1
+    assert "lacks settings a rebuild needs: APP_DB_PASSWORD ANTHROPIC_API_KEY" in result.stderr
+
+
+# ─── restore_drill.sh: away from the server ──────────────────────────────────
+
+
+def _drill_env(server) -> dict[str, str]:
+    server.password_file.write_text("the-repository-password\n", newline="\n")
+    return {
+        "RESTIC_REPOSITORY": "s3:https://storage.example/bucket/normaai",
+        "RESTIC_PASSWORD_FILE": _posix(server.password_file),
+        "RESTORE_DRILL_SERVER_MARK": _posix(server.app / "no-such-file"),
+    }
+
+
+def test_drill_runs_the_restore_test_with_the_keys_it_is_given(server):
+    # The server's own settings point elsewhere: the drill must not read them.
+    server.env_file.write_text("RESTIC_REPOSITORY=s3:https://wrong.example/x\n", newline="\n")
+    result = server.run("restore_drill.sh", **_drill_env(server))
+    assert result.returncode == 0, result.stderr
+    assert "PASSED: the latest backup loads into Postgres and Qdrant" in result.stdout
+    assert "PASSED: the backups open and load with the keys kept off the server" in result.stdout
+    assert "What a real rebuild adds" in result.stdout
+    assert "wrong.example" not in result.stdout + result.stderr
+    # No alert from a laptop: there is no app container to send it.
+    assert server.alert() is None
+
+
+def test_drill_refuses_to_run_on_the_server(server):
+    env = _drill_env(server)
+    env["RESTORE_DRILL_SERVER_MARK"] = _posix(server.env_file)
+    server.configure_restic()
+    result = server.run("restore_drill.sh", **env)
+    assert result.returncode == 1
+    assert "looks like the production server" in result.stderr
+    assert server.calls() == []
+
+
+def test_drill_needs_the_repository_address(server):
+    env = _drill_env(server)
+    del env["RESTIC_REPOSITORY"]
+    result = server.run("restore_drill.sh", **env)
+    assert result.returncode == 1
+    assert "export RESTIC_REPOSITORY" in result.stderr
+
+
+def test_drill_reports_a_failed_restore(server):
+    server.flag("restic_check_fails")
+    result = server.run("restore_drill.sh", **_drill_env(server))
+    assert result.returncode == 1
+    assert "FAILED: see the restore test above" in result.stdout
+    assert "What a real rebuild adds" in result.stdout
+
+
+# ─── bootstrap_hetzner.sh: the configuration it writes ───────────────────────
+
+
+def _bootstrap_text() -> str:
+    return (
+        (REPO / "scripts" / "bootstrap_hetzner.sh")
+        .read_text(encoding="utf-8")
+        .replace("\r\n", "\n")
+    )
+
+
+def _bootstrap_block(start: str, end: str) -> str:
+    text = _bootstrap_text()
+    first = text.index(start)
+    return text[first : text.index(end, first)]
+
+
+def _run_block(tmp_path, block: str, stdin: str = "", **env: str) -> subprocess.CompletedProcess:
+    script = tmp_path / "block.sh"
+    prelude = (
+        "set -euo pipefail\n"
+        'die() { printf "ERRORE: %s\\n" "$1" >&2; exit 1; }\n'
+        'gen() { printf "generated-%s" "$1"; }\n'
+        'E5_MODEL="intfloat/multilingual-e5-large"\n'
+        "CORS_ORIGINS=https://normaai.org PUBLIC_URL=https://normaai.org\n"
+        "API_DOMAIN=api.normaai.org ACME_EMAIL=info@normaai.org\n"
+    )
+    script.write_text(prelude + block, encoding="utf-8", newline="\n")
+    # Bytes in: in text mode Windows would turn each answer's LF into CR LF.
+    result = subprocess.run(
+        [BASH, _posix(script)],
+        cwd=tmp_path,
+        env={**os.environ, **env},
+        input=stdin.encode("utf-8"),
+        capture_output=True,
+        timeout=60,
+    )
+    return subprocess.CompletedProcess(
+        result.args,
+        result.returncode,
+        result.stdout.decode("utf-8", errors="replace"),
+        result.stderr.decode("utf-8", errors="replace"),
+    )
+
+
+def _written_env(tmp_path, stdin: str, **env: str) -> dict[str, str]:
+    block = _bootstrap_block('  echo "   Serve la chiave API del modello.', "  chmod 600 .env")
+    result = _run_block(tmp_path, block, stdin=stdin, **env)
+    assert result.returncode == 0, result.stderr
+    values = {}
+    for line in (tmp_path / ".env").read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            name, _, value = line.partition("=")
+            values[name] = value
+    return values
+
+
+# Answers to the prompts: provider, its key, Resend key, Sentry DSN, admin email, model.
+DEFAULT_ANSWERS = "\nsk-ant-key-of-the-test\n\n\n\n\n"
+
+
+def test_bootstrap_writes_the_measured_configuration_by_default(tmp_path):
+    values = _written_env(tmp_path, DEFAULT_ANSWERS)
+    assert values["LLM_PROVIDER"] == "anthropic"
+    assert values["ANTHROPIC_API_KEY"] == "sk-ant-key-of-the-test"
+    assert values["ANTHROPIC_MODEL"] == "claude-haiku-5-5"
+    assert values["EMBEDDING_MODEL"] == "intfloat/multilingual-e5-large"
+    assert values["QDRANT_COLLECTION"] == "eu_regulations_e5"
+    assert values["EMBEDDING_DIMENSION"] == "1024"
+    assert values["RERANKER_SEARCH_DEPTH"] == "45"
+    assert values["RERANKER_MODEL_DIR"] == ""
+    assert values["WEB_CONCURRENCY"] == "1"
+    assert values["APP_MEMORY_LIMIT"] == "4G"
+    assert values["OPS_ALERT_EMAIL"] == "info@normaai.org"
+    assert values["NORMAAI_IMAGE"] == ""
+    assert values["DATA_SOURCE"] == "eurlex"
+
+
+def test_bootstrap_writes_no_owner_url_for_the_app(tmp_path):
+    values = _written_env(tmp_path, DEFAULT_ANSWERS)
+    # The owner's password stays, for the postgres and migrate services only...
+    assert values["POSTGRES_PASSWORD"].startswith("generated-")
+    assert values["APP_DB_PASSWORD"].startswith("generated-")
+    # ...and no line of .env, the app's env_file, carries it in a URL.
+    assert "DATABASE_URL" not in values
+    assert "DATABASE_URL_SYNC" not in values
+    assert values["COMPOSE_FILE"] == (
+        "docker-compose.yml:docker-compose.prod.yml:docker-compose.rls.yml"
+    )
+
+
+def test_bootstrap_keeps_mpnet_with_its_own_depth(tmp_path):
+    values = _written_env(tmp_path, "gemini\nAIza-key\n\n\n\nmpnet\n")
+    assert values["LLM_PROVIDER"] == "gemini"
+    assert values["GOOGLE_API_KEY"] == "AIza-key"
+    assert values["QDRANT_COLLECTION"] == "eu_regulations"
+    assert values["RERANKER_SEARCH_DEPTH"] == "90"
+
+
+def test_bootstrap_carries_an_image_given_in_the_environment(tmp_path):
+    image = "ghcr.io/dan23rr/normaai@sha256:" + "d" * 64
+    values = _written_env(tmp_path, DEFAULT_ANSWERS, NORMAAI_IMAGE=image)
+    assert values["NORMAAI_IMAGE"] == image
+
+
+@pytest.mark.parametrize(
+    ("model", "workers", "limit", "fits"),
+    [
+        ("intfloat/multilingual-e5-large", "1", "4G", True),
+        ("intfloat/multilingual-e5-large", "2", "4G", False),  # 5.6 GB in 4 GB: the OOM of B5.5
+        ("intfloat/multilingual-e5-large", "2", "7G", True),
+        ("sentence-transformers/paraphrase-multilingual-mpnet-base-v2", "1", "4096M", True),
+        ("intfloat/multilingual-e5-large", "1", "4.5G", False),
+        ("intfloat/multilingual-e5-large", "two", "4G", False),
+    ],
+)
+def test_bootstrap_stops_when_the_workers_do_not_fit(tmp_path, model, workers, limit, fits):
+    block = _bootstrap_block("# The arithmetic of docs/MODELS.md", "# 8 GB recommended")
+    result = _run_block(
+        tmp_path,
+        block,
+        EMBEDDING_MODEL=model,
+        WEB_CONCURRENCY=workers,
+        APP_MEMORY_LIMIT=limit,
+    )
+    assert (result.returncode == 0) is fits, result.stderr
+    if not fits:
+        assert "ERRORE" in result.stderr
+
+
+def test_bootstrap_gives_the_deploy_key_the_deploy_script_only():
+    text = _bootstrap_text()
+    assert (
+        'KEY_LINE="restrict,command=\\"bash $APP_DIR/scripts/deploy.sh --ssh\\" $DEPLOY_SSH_PUBKEY"'
+        in text
+    )
+    # The checkout belongs to the deploy user, who runs git there; root's backups stay root's.
+    assert 'runuser -u "$DEPLOY_USER" -- git clone' in text
+    assert "chown root:root backups && chmod 700 backups" in text
+    assert 'usermod -aG docker "$DEPLOY_USER"' in text
+    # Migrations as the owner in the one-shot service, not in the app container.
+    assert "$COMPOSE_BASE run --rm migrate" in text
+    assert "run --rm app alembic upgrade head" not in text

@@ -1,13 +1,13 @@
 # Production deploy checklist (backend)
 
-Bring `api.normaai.org` back in about an hour: a model provider and a server, one DNS record, an
-encrypted backup repository, the corpus as Qdrant snapshots, the bootstrap script, the GitHub
-deploy secrets, one Vercel variable, the external uptime check, a final test and a first restore
-test.
+Bring `api.normaai.org` back in about an hour: a model provider with a spending limit and a
+server, one DNS record, an encrypted backup repository outside the hosting account, the corpus
+as Qdrant snapshots, the bootstrap script, the deploy key and the GitHub deploy secrets, one
+Vercel variable, the external uptime check, a final test and a first restore test.
 `scripts/bootstrap_hetzner.sh` does the server work; [RUNBOOK.md](RUNBOOK.md) covers what comes after.
 This checklist replaces the older manual guides: [DEPLOY_HETZNER.md](DEPLOY_HETZNER.md) still
-describes a 4 GB server and mpnet, and the `up -d` of [DEPLOY_READINESS.md](DEPLOY_READINESS.md)
-§1 starts the app without the RLS overlay, which production refuses.
+describes a 4 GB server and mpnet, and [DEPLOY_READINESS.md](DEPLOY_READINESS.md) keeps the
+history of the repository and of the RLS switch.
 
 | Step | Where | Time |
 |---|---|---|
@@ -48,8 +48,8 @@ and the passages of law retrieved for it. Choose it knowing where that happens:
 
 | `LLM_PROVIDER` | Company | Where questions are processed | Measured on golden v2 |
 |---|---|---|---|
+| `anthropic` (the bootstrap's default and `.env.example`'s) | Anthropic, US | Anthropic's terms | yes, with `ANTHROPIC_MODEL=claude-haiku-5-5`, the code default for this provider: 96 / 101 (docs/MODELS.md, §2.3) |
 | `gemini` (the code default) | Google, US | Google's terms | no (docs/MODELS.md, §5) |
-| `anthropic` | Anthropic, US | Anthropic's terms | yes, with `ANTHROPIC_MODEL=claude-haiku-5-5`: 96 / 101 (docs/MODELS.md, §2.3) |
 | `mistral` | Mistral AI, France | with the default `MISTRAL_BASE_URL`, the EU regional endpoint: "Multiple data centers in EU and EFTA countries", at 1.1 times the list price ([Mistral, regional inference](https://docs.mistral.ai/studio-api/regional-inference)) | **no** (docs/MODELS.md, §5.1) |
 
 `mistral` is not measured: do not serve it to users before a golden v2 run gives it a row in
@@ -66,6 +66,13 @@ With `mistral`, production refuses to start without `MISTRAL_API_KEY` or with a
 Whatever the choice, the privacy notice must name the provider that actually receives the
 questions.
 
+**Set a spending limit for the key before the API is reachable.** Nothing in NormaAI counts the
+money a key spends, and an exhausted credit shows up only as failed answers (RUNBOOK §4). In the
+Anthropic Console: Settings, Limits, a monthly spend limit for the organization or the
+workspace of the key, and the email notification at a share of it; Google AI Studio and
+Mistral have their own billing limits. A golden v2 run with Haiku 5.5 costs about 0.27 dollars
+(docs/MODELS.md): a limit of a few tens of dollars a month covers a pilot.
+
 ### Search model
 
 The bootstrap asks which search model the API serves (step 5). Both collections travel in the
@@ -79,19 +86,22 @@ change of `.env` (RUNBOOK §3). In the container the two models need about the s
 | AI Act Art. 50 for the chatbot question without an article number | found | not among the first 30 candidates |
 | Collection | `eu_regulations_e5` | `eu_regulations` |
 | Model in the image | 2.1 GB | 1.1 GB |
-| App container, 1 worker | 1.6 GiB | 1.8 GiB |
-| App container, 2 workers | 3.2 GiB | 3.7 GiB |
+| One worker, right after the warm-up (docker stats) | 1.6 GiB | 1.8 GiB |
+| One worker, after the 101 golden questions (private bytes) | 2.8 GB | 2.1 GB |
 | Server | 8 GB recommended; 4 GB holds 1 worker | 8 GB recommended; 4 GB holds 1 worker |
 
 Golden v2 and retrieval figures: docs/MODELS.md, sections 2.1 and 2.2 (a few questions change
 from run to run). Memory: `docker stats` of the app container in the production image, read-only
-root, after the model warm-up, in the local dress rehearsal of 2026-11-09; Postgres, Qdrant with
-both collections, Redis and Caddy added 0.25 GiB. Each uvicorn worker holds its own copy of the
-model. The bootstrap writes `WEB_CONCURRENCY=1` and `APP_MEMORY_LIMIT=4G`; for 2 workers set
-`WEB_CONCURRENCY=2` and `APP_MEMORY_LIMIT=6G` in `.env` on an 8 GB server. On 4 GB one worker
-fits, with little room for long answers, the image builds of the deploys, the monitoring stack
-or the reranker later (0.6 GB more per worker, docs/MODELS.md); the bootstrap asks for
-`ALLOW_LOW_MEMORY=1` below 8 GB.
+root, after the model warm-up, in the local dress rehearsal of 2026-11-09 (Postgres, Qdrant with
+both collections, Redis and Caddy added 0.25 GiB), and the private bytes of one API process
+after the 101 golden questions (docs/MODELS.md §2.1). Size by the second figure. Each uvicorn
+worker holds its own copy of the model, so with e5: 1 worker x 2.8 GB fits in the 4G limit of
+the app container with about 1.2 GB for the requests; 2 workers need 5.6 GB, more than 4G, and
+the kernel would kill the container under load. `.env.example`, the image and the bootstrap
+use `WEB_CONCURRENCY=1` and `APP_MEMORY_LIMIT=4G`; for 2 workers set `WEB_CONCURRENCY=2` and
+`APP_MEMORY_LIMIT=7G`, on a 16 GB server (CX43). The bootstrap stops when `WEB_CONCURRENCY`
+workers do not fit in `APP_MEMORY_LIMIT`, and asks for `ALLOW_LOW_MEMORY=1` below 8 GB of RAM;
+the reranker adds 0.6 GB per worker (docs/MODELS.md).
 
 Prices from hetzner.com on 2026-11-03, per month, excluding VAT, IPv4 included:
 
@@ -140,12 +150,20 @@ which is what was lost in September 2026. With it, `scripts/backup.sh` sends eve
 encrypted by restic before it leaves the server, the Postgres dump, a snapshot of every Qdrant
 collection and the server's `.env` ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md)).
 
-1. Storage that does not live on the server, ideally in the EU: an S3-compatible bucket
-   (address `s3:https://<endpoint>/<bucket>`, with an access key) or an SFTP account
-   (`sftp:<user>@<host>:/<path>`). Turn on versioning or an object lock if the provider has
-   it: the scripts do not, and the storage key lives on the server.
-2. A repository password: generate a long one in the password manager and keep it there. It is
-   the one secret that opens every backup, `.env` included; the bootstrap never generates it.
+1. Storage that does not live on the server **and not in its hosting account**, ideally in the
+   EU: in September 2026 the whole hosting account was lost, and a Storage Box or a bucket in
+   it would have gone with the server. Take it at another provider, with its own login: an
+   S3-compatible bucket (address `s3:https://<endpoint>/<bucket>`, with an access key) or an
+   SFTP account (`sftp:<user>@<host>:/<path>`). The backup warns at every run when the address
+   is a Hetzner one (`your-storagebox.de`, `your-objectstorage.com`); for a Hetzner account
+   that is separate from the server's, acknowledge it with `BACKUP_SAME_PROVIDER_OK=1` in
+   `/etc/normaai/backup.env`. Turn on versioning or an object lock if the provider has it: the
+   scripts do not, and the storage key lives on the server.
+2. A repository password: generate a long one in the password manager and keep it there,
+   with the repository address and the storage key. They are what opens every backup, `.env`
+   included, when the server and its account are gone; the bootstrap never generates the
+   password. The restore drill (step 9 and BACKUP_STRATEGY.md §6.4) proves that these copies
+   work.
 3. On the server, before the bootstrap (step 5), as root:
 
    ```bash
@@ -211,20 +229,27 @@ curl -fsSL https://raw.githubusercontent.com/Dan23RR/NormaAI/main/scripts/bootst
 bash bootstrap.sh
 ```
 
-Run it in the shell where you exported the backup settings of step 3. It asks for the
-answering provider (`gemini`, `anthropic` or `mistral`, step 1), its API key (not echoed), an
-optional Resend key, the first administrator's email and the search model (`e5` or `mpnet`,
-step 1). Then, with every step numbered:
+Run it in the shell where you exported the backup settings of step 3, and the deploy key of
+step 6 if you made it first:
+
+```bash
+export DEPLOY_SSH_PUBKEY='ssh-ed25519 AAAA... github-actions-deploy'   # normaai_deploy.pub, one line
+```
+
+It asks for the answering provider (`anthropic` by default, `gemini` or `mistral`, step 1), its
+API key (not echoed), an optional Resend key, an optional Sentry DSN, the first administrator's
+email (it also receives the failure alerts, `OPS_ALERT_EMAIL`) and the search model (`e5` by
+default, or `mpnet`, step 1). Then, with every step numbered:
 
 | Step | What | Time |
 |---|---|---|
-| 1-2 | Docker, restic, swap, security updates, firewall; clone into `/opt/normaai`; the folder `data/texts` for the official texts the document check downloads (`NORMAAI_TEXT_CACHE=/app/data/texts`, set in `docker-compose.yml`: the app's root file system is read-only and `data/` is its writable mount) | 3-5 min |
-| 3 | `.env` with fresh secrets (permissions 600), the model settings, `COMPOSE_FILE` | seconds |
-| 4 | Image build: about 0.6 GB of Python packages and the model from Hugging Face (2.1 GB for e5, 1.1 GB for mpnet); JWT keys | 10-15 min on a server; 85 min on the laptop at 1-2 MB/s |
-| 5-6 | Postgres, Qdrant, Redis, migrations, the non-superuser role `normaai_app` | 2 min |
+| 1-2 | Docker, restic, swap, security updates, firewall; the user `deploy` (docker group, no password), owner of the clone in `/opt/normaai`, with the deploy key of `DEPLOY_SSH_PUBKEY` able to run `scripts/deploy.sh` only; the folder `data/texts` for the official texts the document check downloads (`NORMAAI_TEXT_CACHE=/app/data/texts`, set in `docker-compose.yml`: the app's root file system is read-only and `data/` is its writable mount) | 3-5 min |
+| 3 | `.env` with fresh secrets (permissions 600, owned by `deploy`), the measured model settings (`anthropic`, `ANTHROPIC_MODEL=claude-haiku-5-5`, e5 with `RERANKER_SEARCH_DEPTH=45`, one worker), `COMPOSE_FILE`; no database URL of the owner: the app container gets `POSTGRES_PASSWORD` blanked | seconds |
+| 4 | The image: pulled from GHCR when `NORMAAI_IMAGE` names one (environment or `.env`), otherwise built here: about 0.6 GB of Python packages and the model from Hugging Face (2.1 GB for e5, 1.1 GB for mpnet); JWT keys | seconds to pull; 10-15 min to build on a server, 85 min on the laptop at 1-2 MB/s |
+| 5-6 | Postgres, Qdrant, Redis, migrations as the owner in the one-shot `migrate` service, the non-superuser role `normaai_app` | 2 min |
 | 7 | Restore of the two snapshots; `CORPUS_AS_OF` from the collection | 2-4 min |
 | 8 | App and Caddy with the RLS overlay: the app listens once the model is loaded (31-90 s with e5), then Caddy starts and gets the Let's Encrypt certificate | 2-3 min |
-| 9 | Cron: the backup at 02:00 every night, and a first backup now; `check-freshness` every night at 03:30 and `recheck-documents` on Mondays at 04:00, both `python -m src.pipeline --action ...` inside the app container, log in `/var/log/normaai-jobs.log`; health checks; the administrator's invite code | seconds |
+| 9 | Cron: the backup at 02:00 every night, and a first backup now; the restore test on the 1st of every month at 05:00; `check-freshness` every night at 03:30 and `recheck-documents` on Mondays at 04:00, both `python -m src.pipeline --action ...` inside the app container, log in `/var/log/normaai-jobs.log`; a failure of any of them is reported to Sentry and `OPS_ALERT_EMAIL`; health checks; the administrator's invite code | seconds |
 
 The invite code is printed once: keep it for step 9. A failed step can be fixed and the script run
 again: it keeps `.env`, the keys and the data, and skips the restore of collections that already
@@ -245,36 +270,69 @@ Scheduled work runs from cron, not from the in-process scheduler
 two `src.pipeline` lines. The two jobs exist from the release that adds the documents API; with
 an older image they fail, and say so in `/var/log/normaai-jobs.log`.
 
-With `anthropic` the API answers with `claude-sonnet-5-5`, the default of `src/config.py`; the
-six-month plan uses Haiku 5.5 as the default. To change it, set `ANTHROPIC_MODEL` in
-`/opt/normaai/.env` and run `docker compose up -d app`.
+With `anthropic` the API answers with `claude-haiku-5-5`, the measured model: the bootstrap
+writes `ANTHROPIC_MODEL=claude-haiku-5-5`, and it is also the default of `src/config.py`. To
+change it, set `ANTHROPIC_MODEL` in `/opt/normaai/.env` and run `docker compose up -d app`;
+`/readyz` says `"llm": "model_not_found"` if the provider does not serve that id.
 
 ## 6. GitHub: automatic deploys
 
-`.github/workflows/deploy.yml` deploys every push to `main` over SSH and waits until
-`https://api.normaai.org/health` reports the new commit. Without its secrets it skips with a
-notice. Create a key pair used only by GitHub, on the laptop (press Enter at the passphrase
-prompts: GitHub cannot type one):
+`.github/workflows/deploy.yml` deploys a commit of `main` only after "NormaAI CI" succeeded on
+it, and exactly that commit: it builds its image in GitHub, pushes it to GHCR
+(`ghcr.io/<owner>/<repo>:deploy-<sha>`), then connects as the non-root user `deploy` and runs
+`scripts/deploy.sh`, which pulls the image by digest, runs the migrations as the owner,
+recreates the app alone and waits for its healthcheck, putting the previous image back when
+the new one is not healthy (RUNBOOK §9). Without its secrets it skips with a notice.
+
+Create a key pair used only by GitHub, on the laptop (press Enter at the passphrase prompts:
+GitHub cannot type one):
 
 ```powershell
 ssh-keygen -t ed25519 -f normaai_deploy -C github-actions-deploy
-scp normaai_deploy.pub root@<IP>:/tmp/
-ssh root@<IP> "cat /tmp/normaai_deploy.pub >> /root/.ssh/authorized_keys && rm /tmp/normaai_deploy.pub"
 ssh-keyscan -p 22 <IP>
 ```
+
+The public half goes to the `deploy` user with a forced command: whatever GitHub sends, the key
+runs `scripts/deploy.sh`, which accepts only `deploy <commit of main> <image of this repository
+by digest | build> <user>`; no terminal, no forwarding. The bootstrap does it when
+`DEPLOY_SSH_PUBKEY` is exported (step 5). After the bootstrap, copy the public half
+(`scp normaai_deploy.pub root@<IP>:/root/`), then as root on the server, in `/root`:
+
+```bash
+install -d -m 700 -o deploy -g deploy ~deploy/.ssh
+printf 'restrict,command="bash /opt/normaai/scripts/deploy.sh --ssh" %s\n' "$(cat normaai_deploy.pub)" >> ~deploy/.ssh/authorized_keys
+chown deploy:deploy ~deploy/.ssh/authorized_keys && chmod 600 ~deploy/.ssh/authorized_keys
+```
+
+`deploy` is in the docker group, which is as much as root on the machine: the restriction is
+the forced command, and the root login keeps your own key only. A deploy by hand runs as
+`deploy` too: `sudo -u deploy -H bash /opt/normaai/scripts/deploy.sh <sha> build` (RUNBOOK §9).
 
 Repository, Settings, Secrets and variables, Actions, New repository secret:
 
 | Secret | Value | |
 |---|---|---|
 | `DEPLOY_HOST` | the server's IPv4 | required |
-| `DEPLOY_USER` | `root`, or a user that can run docker in `/opt/normaai` | required |
+| `DEPLOY_USER` | `deploy` | required |
 | `DEPLOY_SSH_KEY` | the whole content of `normaai_deploy` (the private key) | required |
-| `DEPLOY_KNOWN_HOSTS` | the `ssh-keyscan` output | recommended: without it the host key is trusted on first use |
+| `DEPLOY_KNOWN_HOSTS` | the `ssh-keyscan` output | required: the host key is pinned, never trusted on first use |
 | `DEPLOY_PORT` | only if SSH is not on 22 | optional |
 
-The job runs in the GitHub environment `production`, which GitHub creates on the first run. Test
-it: Actions, Deploy, Run workflow on `main`. Then delete `normaai_deploy` from the laptop.
+Optional repository variable `DEPLOY_EMBEDDING_MODEL`: the model the image bakes, which must be
+the `EMBEDDING_MODEL` of the server's `.env` (`scripts/deploy.sh` refuses another one). Default
+`intfloat/multilingual-e5-large`; set it to the mpnet id if the server runs mpnet.
+
+The deploy job runs in the GitHub environment `production`, which GitHub creates on the first
+run: Settings, Environments, production, Deployment branches and tags, Selected branches,
+`main`, so that no other branch can use the deploy key. The image is a package of the
+repository owner on GHCR, created by the first deploy and private by default: the deploy job
+lends the server its own token for the pull, valid while the job runs. To pull by hand on the
+server (a rollback without GitHub), either make the package public (Package settings, Change
+visibility: the code and the model are public anyway) or `docker login ghcr.io` as `deploy`
+with a token that can only read packages.
+
+Test it: Actions, Deploy, Run workflow on `main` (empty `sha`: the head of `main`, which must
+have passed CI). Then delete `normaai_deploy` from the laptop.
 
 ## 7. Vercel
 
@@ -330,15 +388,26 @@ register at https://normaai.org/login with the invite code, ask a question in Ch
 that the answer quotes a verified passage.
 
 Last, on the server, the first restore test. It takes the latest off-site copy, checks that it
-holds the dump, the Qdrant snapshots and `.env`, and loads the dump into a throwaway Postgres
-container ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md) section 6.1):
+holds the dump, the Qdrant snapshots and `.env` with the settings a rebuild needs, loads the
+dump into a throwaway Postgres container and every collection into a throwaway Qdrant, and
+compares the points with those the backup recorded ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md)
+section 6.1):
 
 ```bash
 bash /opt/normaai/scripts/restore_test.sh
 ```
 
-It must end with `PASSED`. Write the date in the post-mortem log of [RUNBOOK.md](RUNBOOK.md),
-and repeat it every month.
+It must end with `PASSED`. Cron repeats it on the 1st of every month and reports a failure.
+Then, from the laptop, the restore drill with the repository address, password and storage
+key of the password manager only (BACKUP_STRATEGY.md §6.4): it proves the backups open without
+the server and its account.
+
+```bash
+export RESTIC_REPOSITORY='<address>' AWS_ACCESS_KEY_ID='<key id>' AWS_SECRET_ACCESS_KEY='<key>'
+bash scripts/restore_drill.sh
+```
+
+Write the dates and the times it printed in the post-mortem log of [RUNBOOK.md](RUNBOOK.md).
 
 ## Known limits
 
@@ -356,10 +425,15 @@ and repeat it every month.
 | Caddy has no certificate, browser warns | DNS not on the new IP yet, orange proxy, port 80 closed | Step 2, Hetzner firewall; `docker compose logs caddy` |
 | Bootstrap stops at step 8, app unhealthy | Configuration | `docker logs --tail 100 normaai-app`, RUNBOOK §2 |
 | `/readyz` says `corpus: down` | Collection empty or missing | Step 4 and `RESTORE=1 bash bootstrap.sh`, or the curl restore in RUNBOOK §3 |
-| `/readyz` says `llm: down` | No key for the provider | Key in `/opt/normaai/.env`, then `docker compose up -d app` |
+| `/readyz` says `llm: down` | The reason is in `"llm"`: `missing_key`, `key_rejected`, `model_not_found`, ... | RUNBOOK §4; key or model in `/opt/normaai/.env`, then `docker compose up -d app` |
 | App exits at start: `LLM_PROVIDER=mistral in production` | `MISTRAL_API_KEY` empty or `MISTRAL_BASE_URL` not https | Step 1, `.env`, then `docker compose up -d app` |
 | Backup log: `off-site backup is NOT configured` | Step 3 skipped | Write `/etc/normaai/backup.env` ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md) section 7), then `bash scripts/backup.sh` |
 | An issue "Uptime: ..." is open | The site or the API fails a check | The table in the issue, RUNBOOK §1 |
 | Login page says accounts are suspended | Vercel built without `NEXT_PUBLIC_API_BASE_URL` | Step 7, redeploy |
 | CORS error in the browser console | Site origin missing from `CORS_ORIGINS` | Server `.env`, then `docker compose up -d app` |
 | Deploy job: `Permission denied (publickey)` | Wrong key or user | Step 6 |
+| Deploy job: `this key may only run: deploy ...` | Something other than the workflow used the deploy key | Nothing to fix: the forced command refused it |
+| Deploy job: `the image holds the model ..., .env asks for ...` | `DEPLOY_EMBEDDING_MODEL` is not the server's `EMBEDDING_MODEL` | Step 6, the repository variable |
+| Deploy job: `did not become healthy`, previous image back | The new app does not start (configuration, migration) | `docker logs --tail 100 normaai-app`; the old version keeps serving |
+| Deploy skipped: `main moved on` | A newer commit is on `main` | Its own CI run deploys it |
+| Email "NormaAI: backup non riuscito" | The nightly backup failed | The message names the step; `/var/log/normaai-backup.log` |

@@ -15,7 +15,9 @@ class AppState:
     llm_available: bool = False
     local_llm_available: bool = False
     scheduler = None  # AcquisitionScheduler when the opt-in refresh loop is on
-    normattiva_client = None  # shared async client for CoVe URN validation
+    # Read by CoVe to validate Italian URNs; None since the old Normattiva client
+    # (endpoints answering HTTP 409) was removed, so CoVe skips them.
+    normattiva_client = None
 
 
 app_state = AppState()

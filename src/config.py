@@ -119,14 +119,11 @@ class Settings(BaseSettings):
     # it - leave it off). Without this, "updated nightly" never actually ran.
     acquisition_scheduler_enabled: bool = False
 
-    # ─── Normattiva Open Data ─────────────────────────────────
-    normattiva_enabled: bool = True
-    normattiva_api_base_url: str = "https://www.normattiva.it/opendata"
-    normattiva_rate_limit_delay: float = 1.0
-    normattiva_bulk_download_enabled: bool = False
-
     # ─── Data Sources ─────────────────────────────────────────
-    data_source: str = "both"  # "eurlex", "normattiva", or "both"
+    # What the seed indexes for Chiedi: EUR-Lex only. "normattiva" and "both"
+    # are still accepted and index no Italian law (the old Normattiva client,
+    # whose endpoints answer HTTP 409, was removed); the seed says so.
+    data_source: str = "eurlex"
 
     # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD). Set this to
     # the last seed/refresh date at deploy time. Surfaced in API metadata and PDF
@@ -555,14 +552,6 @@ def validate_settings_or_exit() -> Settings:
 
     # Data sources
     _config_logger.info("Data Sources: %s", settings.data_source.upper())
-    if settings.normattiva_enabled:
-        _config_logger.info(
-            "Normattiva: ENABLED | Rate limit: %.1fs | Bulk download: %s",
-            settings.normattiva_rate_limit_delay,
-            "ON" if settings.normattiva_bulk_download_enabled else "OFF",
-        )
-    else:
-        _config_logger.info("Normattiva: DISABLED")
 
     # Chain-of-Verification
     if settings.cove_enabled:

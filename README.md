@@ -149,12 +149,13 @@ acts):
 | GDPR | 32016R0679 |
 | CRA | 32024R2847, 32025R2392 |
 
-**No Italian law in the Q&A corpus.** The seed still calls the old client in
-`src/crawler/normattiva/` when `DATA_SOURCE` is `both` (the default) or `normattiva`. The
-endpoints it calls (`https://www.normattiva.it/opendata/api/...`) answered on 2026-11-11 with
-HTTP 409 and a page of the Poligrafico's protection systems, so no Italian passage is indexed.
-The document check uses the newer open data API instead (`src/document_check/normattiva.py`).
-Set `DATA_SOURCE=eurlex` to skip the attempt.
+**No Italian law in the Q&A corpus.** The seed indexes the EU acts above only. The old
+Normattiva client it used to call for Italian law (`DATA_SOURCE=both`) was removed in November
+2026: its endpoints (`https://www.normattiva.it/opendata/api/...`) answered on 2026-11-11 with
+HTTP 409 and a page of the Poligrafico's protection systems, so it never indexed an Italian
+passage. `DATA_SOURCE` defaults to `eurlex`; `both` and `normattiva` only log that no Italian law
+is indexed. The document check reads Italian law through the newer open data API
+(`src/document_check/normattiva.py`).
 
 Measured quality is in [docs/MODELS.md](docs/MODELS.md). Golden v2 (101 questions) end to end
 on 2026-11-09: 96 / 101 passed, 99.79 % of citations verified word for word, with

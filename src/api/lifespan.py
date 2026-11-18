@@ -173,19 +173,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("observability_init_failed", error=str(e))
 
-    # Shared Normattiva client for CoVe Italian-law (URN) citation validation.
-    app_state.normattiva_client = None
-    if settings.normattiva_enabled:
-        try:
-            from src.crawler.normattiva.client import NormattivaOpenDataClient
-
-            app_state.normattiva_client = NormattivaOpenDataClient(
-                base_url=settings.normattiva_api_base_url,
-                rate_limit_delay=settings.normattiva_rate_limit_delay,
-            )
-            logger.info("normattiva_client_ready")
-        except Exception as e:
-            logger.warning("normattiva_client_init_failed", error=str(e))
+    # No Normattiva client at startup any more: the old one called endpoints
+    # that answer HTTP 409, so CoVe got an error for every Italian URN. CoVe
+    # skips URN citations without a client (app_state.normattiva_client stays
+    # None); the document check reads Italian law itself
+    # (src/document_check/normattiva.py).
 
     # Background acquisition scheduler (opt-in) - the periodic EUR-Lex/Normattiva
     # refresh that makes "updated nightly" actually true. Off unless enabled.
@@ -216,13 +208,6 @@ async def lifespan(app: FastAPI):
             await app_state.scheduler.stop()
         except Exception as e:
             logger.warning("acquisition_scheduler_stop_failed", error=str(e))
-
-    # Close the shared Normattiva HTTP client.
-    if getattr(app_state, "normattiva_client", None) is not None:
-        try:
-            await app_state.normattiva_client.close()
-        except Exception as e:
-            logger.warning("normattiva_client_close_failed", error=str(e))
 
     # Close token blacklist
     try:

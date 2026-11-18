@@ -464,52 +464,40 @@ class TestSeed:
         assert stats["chunks_indexed"] == 1
         assert stats["corpus_as_of"] is None
 
-    def test_normattiva_disabled_when_source_eurlex(self, patched_pipeline):
-        """data_source='eurlex' must not trigger the Normattiva branch."""
+    def test_the_seed_indexes_no_italian_law(self, patched_pipeline):
+        """No Normattiva step: the old client (HTTP 409) was removed."""
         p, m = patched_pipeline
         m["eurlex"].crawl_all_core_frameworks.return_value = []
-
-        with patch.object(p, "seed_normattiva") as seed_norm:
-            stats = p.seed()
-            seed_norm.assert_not_called()
-        assert stats["normattiva"]["success"] == 0
-        assert stats["normattiva"]["total_chunks"] == 0
+        stats = p.seed()
+        assert "normattiva" not in stats
+        assert not hasattr(p, "seed_normattiva")
+        m["indexer"].index_contextual_chunks.assert_not_called()
 
 
 # --------------------------------------------------------------------------- #
-# seed() with Normattiva enabled (seed_normattiva is patched out)
+# seed() with DATA_SOURCE asking for Normattiva
 # --------------------------------------------------------------------------- #
 class TestSeedNormattiva:
-    def test_normattiva_branch_extends_chunks(self, patched_pipeline):
+    def test_both_seeds_eurlex_and_says_italian_law_is_not_indexed(self, patched_pipeline, caplog):
         p, m = patched_pipeline
         m["settings"].data_source = "both"
         m["eurlex"].crawl_all_core_frameworks.return_value = []
-        m["indexer"].index_contextual_chunks.return_value = 5
-
-        norm_chunks = [
-            FakeChunk(f"n{i}", {"framework": "GDPR", "source": "normattiva"}) for i in range(5)
-        ]
-        with patch.object(p, "seed_normattiva", return_value=norm_chunks) as seed_norm:
+        with caplog.at_level("WARNING", logger="normaai.pipeline"):
             stats = p.seed()
-            seed_norm.assert_called_once()
-
-        # 5 normattiva chunks enriched then indexed.
-        assert m["ctx_chunker"].enrich_single.call_count == 5
-        assert stats["normattiva"]["total_chunks"] == 5
-        assert stats["chunks_indexed"] == 5
+        m["eurlex"].crawl_all_core_frameworks.assert_called_once()
         assert stats["data_source"] == "both"
+        assert "no Italian law goes into the Q&A corpus" in caplog.text
 
-    def test_normattiva_only_skips_eurlex_crawl(self, patched_pipeline):
+    def test_normattiva_only_seeds_nothing_and_says_so(self, patched_pipeline, caplog):
         p, m = patched_pipeline
         m["settings"].data_source = "normattiva"
-        m["indexer"].index_contextual_chunks.return_value = 0
-
-        with patch.object(p, "seed_normattiva", return_value=[]) as seed_norm:
+        with caplog.at_level("WARNING", logger="normaai.pipeline"):
             stats = p.seed()
-            seed_norm.assert_called_once()
-
         m["eurlex"].crawl_all_core_frameworks.assert_not_called()
+        m["indexer"].index_contextual_chunks.assert_not_called()
         assert stats["eurlex"]["success"] == 0
+        assert stats["chunks_indexed"] == 0
+        assert "DATA_SOURCE=normattiva" in caplog.text
 
 
 # --------------------------------------------------------------------------- #

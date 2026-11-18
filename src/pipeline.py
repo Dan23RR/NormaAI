@@ -152,7 +152,10 @@ class IngestionPipeline:
         languages: list[str] | None = None,
     ) -> dict:
         """
-        Initial seed: download and index the tracked EU acts (+ Normattiva).
+        Initial seed: download and index the tracked EU acts.
+
+        No Italian law: the old Normattiva client called endpoints that answer
+        HTTP 409 and was removed. DATA_SOURCE=normattiva or both only logs that.
 
         Idempotent: every (act, language) pair is re-indexed in place (delete +
         upsert with deterministic point ids), so re-running the seed never
@@ -173,25 +176,24 @@ class IngestionPipeline:
 
         start_time = time.time()
         settings = get_settings()
-        data_source = settings.data_source  # "eurlex", "normattiva", or "both"
+        data_source = settings.data_source  # "eurlex"; "normattiva"/"both" index no Italian law
         raw_langs = languages or settings.corpus_language_list
         langs = list(dict.fromkeys(celex_utils.normalize_lang(code) for code in raw_langs))
         prefer_consolidated = bool(getattr(settings, "eurlex_prefer_consolidated", True))
         batch_size = settings.embedding_batch_size
 
         # Step 1: Setup Qdrant collection
-        logger.info("[1/5] Setting up Qdrant collection...")
+        logger.info("[1/4] Setting up Qdrant collection...")
         self.indexer.setup_collection(recreate=recreate_collection)
 
         download_stats_eurlex = {"success": 0, "failed": 0, "total_chunks": 0}
-        download_stats_normattiva = {"success": 0, "failed": 0, "total_chunks": 0}
         indexed_acts: list[dict] = []
         indexed = 0
 
         # Step 2-3: EUR-Lex acts, one (act, language) at a time
         if data_source in ("eurlex", "both"):
             logger.info(
-                f"[2/5] Crawling EUR-Lex metadata for the tracked acts "
+                f"[2/4] Crawling EUR-Lex metadata for the tracked acts "
                 f"(languages: {', '.join(langs)}, consolidated: {prefer_consolidated})..."
             )
             regulations = self.eurlex.crawl_all_core_frameworks(celex_filter=acts, unique=True)
@@ -199,7 +201,7 @@ class IngestionPipeline:
                 f"  {len(regulations)} acts selected across {len(CORE_FRAMEWORKS)} frameworks"
             )
 
-            logger.info("[3/5] Downloading, chunking and indexing EUR-Lex texts...")
+            logger.info("[3/4] Downloading, chunking and indexing EUR-Lex texts...")
             for reg in regulations:
                 logger.info(f"  Processing {reg.celex} ({reg.framework}): {reg.title[:60]}...")
                 download_celex = self.eurlex.resolve_download_celex(
@@ -217,26 +219,19 @@ class IngestionPipeline:
                     indexed += result["chunks"]
                     indexed_acts.append(result)
 
-        # Step 4: Seed Normattiva (if enabled)
+        # Italian law is not indexed: the document check reads it through the
+        # newer open data API (src/document_check/normattiva.py) instead.
         if data_source in ("normattiva", "both"):
-            logger.info("[4/5] Initializing Normattiva Italian implementations...")
-            normattiva_chunks = self.seed_normattiva(list(CORE_FRAMEWORKS.keys()))
-            download_stats_normattiva["success"] = len(normattiva_chunks) // max(
-                1, len(normattiva_chunks) // 5
+            logger.warning(
+                f"  DATA_SOURCE={data_source}: no Italian law goes into the Q&A corpus, "
+                "only EUR-Lex (set DATA_SOURCE=eurlex)"
             )
-            download_stats_normattiva["total_chunks"] = len(normattiva_chunks)
-            if normattiva_chunks:
-                logger.info(
-                    f"  Enriching and indexing {len(normattiva_chunks)} Normattiva chunks..."
-                )
-                enriched = self._enrich(normattiva_chunks)
-                indexed += self.indexer.index_contextual_chunks(enriched, batch_size=batch_size)
 
-        # Step 5: corpus metadata - only when something was indexed, so an empty
+        # Step 4: corpus metadata - only when something was indexed, so an empty
         # seed never makes the corpus look ready.
         corpus_meta = None
         if indexed > 0:
-            logger.info("[5/5] Writing corpus metadata point...")
+            logger.info("[4/4] Writing corpus metadata point...")
             try:
                 corpus_meta = self.indexer.write_corpus_meta(
                     acts=indexed_acts,
@@ -245,7 +240,6 @@ class IngestionPipeline:
                         "languages": langs,
                         "data_source": data_source,
                         "prefer_consolidated": prefer_consolidated,
-                        "normattiva_chunks": download_stats_normattiva["total_chunks"],
                     },
                 )
             except Exception as e:
@@ -255,11 +249,9 @@ class IngestionPipeline:
         elapsed = time.time() - start_time
 
         # Summary
-        total_downloads = download_stats_eurlex["success"] + download_stats_normattiva["success"]
-        total_failed = download_stats_eurlex["failed"] + download_stats_normattiva["failed"]
-        total_chunks_created = (
-            download_stats_eurlex["total_chunks"] + download_stats_normattiva["total_chunks"]
-        )
+        total_downloads = download_stats_eurlex["success"]
+        total_failed = download_stats_eurlex["failed"]
+        total_chunks_created = download_stats_eurlex["total_chunks"]
 
         stats = {
             "action": "seed",
@@ -269,7 +261,6 @@ class IngestionPipeline:
             "languages": langs,
             "prefer_consolidated": prefer_consolidated,
             "eurlex": download_stats_eurlex,
-            "normattiva": download_stats_normattiva,
             "total_downloads_success": total_downloads,
             "total_downloads_failed": total_failed,
             "total_chunks": total_chunks_created,
@@ -292,195 +283,12 @@ class IngestionPipeline:
         logger.info(
             f"  EUR-Lex:    {download_stats_eurlex['success']} OK, {download_stats_eurlex['failed']} failed"
         )
-        logger.info(
-            f"  Normattiva: {download_stats_normattiva['success']} OK, {download_stats_normattiva['failed']} failed"
-        )
         logger.info(f"  Chunks:     {stats['chunks_indexed']} indexed (with contextual enrichment)")
         logger.info(f"  Corpus as of: {corpus_as_of or 'n/a'}")
         logger.info(f"  Time:       {stats['elapsed_seconds']}s")
         logger.info("=" * 60)
 
         return stats
-
-    def seed_normattiva(self, frameworks: list[str]) -> list:
-        """
-        Seed Normattiva Italian implementations for the given frameworks.
-
-        This searches for Italian implementing legislation and regulations
-        related to each EU framework, downloads them, and returns chunks
-        ready for indexing.
-
-        Args:
-            frameworks: List of EU framework codes (e.g., ["CSRD", "GDPR", "AI_ACT"])
-
-        Returns:
-            List of Chunk objects enriched with metadata (source="normattiva")
-        """
-        import asyncio
-
-        from src.crawler.normattiva.client import NormattivaOpenDataClient
-
-        logger.info(f"Seeding Normattiva implementations for {len(frameworks)} frameworks...")
-
-        # Map EU framework codes to Italian search queries
-        FRAMEWORK_SEARCH_QUERIES: dict[str, list[str]] = {  # noqa: N806 - function-scoped constant
-            "CSRD": [
-                "rendicontazione societaria di sostenibilità",
-                "decreto legislativo recepimento direttiva 2022/2464",
-            ],
-            "CSDDD": [
-                "dovuta diligenza imprese sostenibilità",
-                "due diligence catena del valore",
-            ],
-            "AI_ACT": [
-                "regolamento intelligenza artificiale",
-                "decreto legislativo intelligenza artificiale 2024",
-            ],
-            "DORA": [
-                "resilienza operativa digitale settore finanziario",
-                "decreto legislativo recepimento DORA",
-            ],
-            "NIS2": [
-                "sicurezza delle reti e dei sistemi informativi",
-                "decreto legislativo recepimento NIS2",
-                "decreto legislativo 138 2024",
-            ],
-            "TAXONOMY": [
-                "finanza sostenibile tassonomia",
-                "regolamento delegato tassonomia UE",
-            ],
-            "GDPR": [
-                "codice protezione dati personali",
-                "decreto legislativo 196 2003 privacy",
-                "decreto legislativo 101 2018",
-            ],
-            # CRA is an EU Regulation (no transposition); national measures
-            # are adaptation decrees - search for those.
-            "CRA": [
-                "regolamento ciberresilienza prodotti elementi digitali",
-                "adeguamento regolamento 2024/2847",
-            ],
-        }
-
-        all_chunks = []
-
-        async def _seed_async():
-            async with NormattivaOpenDataClient(
-                rate_limit_delay=1.5,
-                timeout=30.0,
-                max_retries=3,
-            ) as client:
-                for fw in frameworks:
-                    queries = FRAMEWORK_SEARCH_QUERIES.get(fw, [])
-                    if not queries:
-                        logger.warning(f"  No Normattiva search queries for framework: {fw}")
-                        continue
-
-                    logger.info(
-                        f"  Searching Normattiva for {fw} implementations ({len(queries)} queries)..."
-                    )
-                    seen_urns = set()
-
-                    for query in queries:
-                        try:
-                            search_result = await client.search(query, limit=10)
-                            logger.info(
-                                f"    Query '{query[:40]}...' → {search_result.total} results"
-                            )
-
-                            for act_summary in search_result.results:
-                                # Skip duplicates
-                                if act_summary.urn in seen_urns:
-                                    continue
-                                seen_urns.add(act_summary.urn)
-
-                                # Only process acts that are currently in force
-                                if not act_summary.in_vigore:
-                                    logger.debug(f"    Skipping {act_summary.urn} (not in force)")
-                                    continue
-
-                                # Download full text
-                                try:
-                                    normative_text = await client.get_atto(
-                                        tipo=act_summary.tipo,
-                                        anno=act_summary.anno,
-                                        numero=act_summary.numero,
-                                    )
-                                except Exception as dl_err:
-                                    logger.warning(
-                                        f"    Failed to download {act_summary.urn}: {dl_err}"
-                                    )
-                                    continue
-
-                                if not normative_text:
-                                    continue
-
-                                # Use HTML if available, otherwise plain text
-                                text_content = (
-                                    normative_text.testo_html or normative_text.testo_plain
-                                )
-                                if not text_content or len(text_content.strip()) < 200:
-                                    logger.debug(f"    Skipping {act_summary.urn}: text too short")
-                                    continue
-
-                                # Chunk the content (Italian text, URN as identifier)
-                                chunker = EURLexHTMLChunker(
-                                    celex=act_summary.urn,
-                                    framework=fw,
-                                    lang="IT",
-                                )
-                                try:
-                                    chunks = chunker.chunk_html(text_content)
-                                except Exception:
-                                    # If HTML chunking fails, create a single chunk from plain text
-                                    from src.nlp.chunking.legal_chunker import LegalChunk
-
-                                    plain = normative_text.testo_plain or text_content
-                                    chunks = [
-                                        LegalChunk(
-                                            text=plain[:4000],
-                                            metadata={
-                                                "celex": act_summary.urn,
-                                                "framework": fw,
-                                                "lang": "IT",
-                                                "source": "normattiva",
-                                                "urn": act_summary.urn,
-                                            },
-                                        )
-                                    ]
-
-                                # Enrich metadata for each chunk
-                                for chunk in chunks:
-                                    chunk.metadata["source"] = "normattiva"
-                                    chunk.metadata["urn"] = act_summary.urn
-                                    chunk.metadata["tipo_atto"] = act_summary.tipo
-                                    chunk.metadata["anno"] = act_summary.anno
-                                    chunk.metadata["numero"] = act_summary.numero
-                                    chunk.metadata["titolo"] = act_summary.titolo
-                                    chunk.metadata["in_vigore"] = act_summary.in_vigore
-                                    chunk.metadata["url"] = normative_text.url or ""
-
-                                all_chunks.extend(chunks)
-                                logger.info(
-                                    f"    OK {act_summary.urn}: {len(chunks)} chunks "
-                                    f"({act_summary.titolo[:50]}...)"
-                                )
-
-                        except Exception as q_err:
-                            logger.warning(
-                                f"    Search query failed for '{query[:40]}...': {q_err}"
-                            )
-                            continue
-
-        try:
-            asyncio.run(_seed_async())
-            logger.info(
-                f"  Normattiva seed complete: {len(all_chunks)} chunks from {len(frameworks)} frameworks"
-            )
-        except Exception as e:
-            logger.error(f"Error seeding Normattiva: {e}")
-
-        return all_chunks
 
     def update(self, days_back: int = 7) -> dict:
         """

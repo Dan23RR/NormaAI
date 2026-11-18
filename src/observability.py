@@ -279,7 +279,7 @@ if _metrics_available:
     LLM_TOKENS = Counter(
         "normaai_llm_tokens_total",
         "Total LLM tokens consumed",
-        ["provider", "direction"],  # direction: input/output
+        ["provider", "model", "direction"],  # direction: input/output
     )
 
     QDRANT_QUERY_LATENCY = Histogram(
@@ -383,8 +383,12 @@ def track_llm_call(provider: str, model: str):
             LLM_CALL_LATENCY.labels(provider=provider, model=model).observe(elapsed)
 
 
-def record_llm_tokens(provider: str, input_tokens: int, output_tokens: int) -> None:
-    """Record LLM token usage for cost tracking."""
+def record_llm_tokens(provider: str, model: str, input_tokens: int, output_tokens: int) -> None:
+    """Record the tokens of one LLM call for cost tracking (src.agents.llm.record_token_usage).
+
+    A no-op without prometheus_client: the call's ``llm_token_usage`` log line
+    carries the same numbers.
+    """
     if _metrics_available:
-        LLM_TOKENS.labels(provider=provider, direction="input").inc(input_tokens)
-        LLM_TOKENS.labels(provider=provider, direction="output").inc(output_tokens)
+        LLM_TOKENS.labels(provider=provider, model=model, direction="input").inc(input_tokens)
+        LLM_TOKENS.labels(provider=provider, model=model, direction="output").inc(output_tokens)

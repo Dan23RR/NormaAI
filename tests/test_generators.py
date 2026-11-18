@@ -483,7 +483,11 @@ class TestQaCoveEnabled:
             PhaseChangeEvent(phase="verification", message="verifying..."),
             cove_done,
         ]
-        result = {"answer": "draft answer", "citations": [], "confidence_score": 0.5}
+        result = {
+            "answer": "draft answer",
+            "citations": [_verified_citation()],
+            "confidence_score": 0.5,
+        }
 
         cove_patch, cls = _patch_cove(cove_events)
         with patch(GRAPH_QA, AsyncMock(return_value=result)), cove_patch:
@@ -504,7 +508,7 @@ class TestQaCoveEnabled:
         )
         assert done[0].cove_applied is True
         assert done[0].revised_text == "VERIFIED answer."
-        assert (done[0].verified_citations, done[0].citations_total) == (0, 0)
+        assert (done[0].verified_citations, done[0].citations_total) == (1, 1)
 
         # Orchestrator was constructed with config enabled=True.
         cls.assert_called_once()
@@ -959,6 +963,24 @@ class TestQaCitationVerification:
         done = [e for e in events if isinstance(e, DoneEvent)][0]
         assert done.cove_applied is False
         assert done.abstention_reason == "snc_low_trust"
+
+    async def test_an_answer_without_citations_is_reviewed_even_after_cove(self):
+        result = {"answer": "x", "citations": [], "confidence_score": 0.9}
+        events, _ = await self._stream(result, language="en")
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.9)
+        assert done.caveats == [
+            "The answer cites no passage of the corpus texts: check the sources before using it."
+        ]
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True and done.confidence_score == pytest.approx(0.97)
 
     async def test_request_language_is_forwarded_to_the_agent(self):
         result = {"answer": "x", "citations": [], "confidence_score": 0.9}

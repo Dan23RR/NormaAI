@@ -16,6 +16,8 @@ import pytest
 from src.agents.citation_verifier import (
     CITATION_FIELDS,
     ELSEWHERE_FIELDS,
+    NO_CITATIONS_CAVEAT_EN,
+    NO_CITATIONS_CAVEAT_IT,
     UNVERIFIED_ABSTENTION_EN,
     UNVERIFIED_ABSTENTION_IT,
     UNVERIFIED_ABSTENTION_REASON,
@@ -1513,10 +1515,43 @@ class TestFlagPolicy:
         out = apply_unverified_policy(json.loads(json.dumps(answer)), mode="strict")
         assert out == answer
 
-    def test_no_citations_no_flag(self):
-        answer = {"answer": "Nessuna citazione.", "citations": [], "confidence_score": 0.8}
+    def test_an_answer_without_citations_is_flagged(self):
+        # It passed silently: nothing in it could be verified.
+        answer = {
+            "answer": "Nessuna citazione.",
+            "citations": [],
+            "confidence_score": 0.8,
+            "caveats": ["Nota del modello."],
+        }
         out = apply_unverified_policy(dict(answer))
-        assert out == {**answer, "verified_citations": 0, "citations_total": 0}
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.8  # nothing contradicted it: no cap
+        assert out["caveats"] == ["Nota del modello.", NO_CITATIONS_CAVEAT_IT]
+        assert (out["verified_citations"], out["citations_total"]) == (0, 0)
+        assert "abstention_reason" not in out
+        assert NO_CITATIONS_CAVEAT_IT == (
+            "La risposta non cita nessun passaggio dei testi del corpus: verifica le fonti prima "
+            "di usarla."
+        )
+        english = apply_unverified_policy(json.loads(json.dumps(out)), language="en")
+        assert english["caveats"] == ["Nota del modello.", NO_CITATIONS_CAVEAT_EN]
+        assert apply_unverified_policy(json.loads(json.dumps(english)), language="en") == english
+        # No citations key at all is no citation either; strict does not abstain.
+        strict = apply_unverified_policy({"answer": "x", "confidence_score": 0.8}, mode="strict")
+        assert strict["caveats"] == [NO_CITATIONS_CAVEAT_IT]
+        assert strict["requires_expert_review"] is True and "abstention_reason" not in strict
+        assert policy_requires_review(out) is True and unverified_policy_applies(out) is False
+
+    def test_an_abstention_without_citations_is_left_alone(self):
+        abstention = {
+            "answer": "Non posso rispondere con una fonte.",
+            "citations": [],
+            "requires_expert_review": True,
+            "abstention_reason": "no_sources",
+        }
+        out = apply_unverified_policy(dict(abstention))
+        assert out == {**abstention, "verified_citations": 0, "citations_total": 0}
+        assert policy_requires_review(out) is False
 
     def test_abstention_is_left_alone(self):
         answer = _unverified_answer(abstention_reason="snc_low_trust")

@@ -36,6 +36,20 @@ from src.agents.snc_node import (
     snc_route_to_next,
 )
 
+# An answer whose one citation is verified in the evidence below: neither the
+# grounding guard nor the citation policy flags it (an answer that cites nothing
+# is flagged for review), so the SNC verdict alone sets the review flag.
+_PASSAGE = (
+    "Articolo 33\n"
+    "Il titolare del trattamento notifica la violazione all'autorità di controllo competente."
+)
+_CITED = {
+    "framework": "GDPR",
+    "reference": "Art. 33",
+    "quote_snippet": "Il titolare del trattamento notifica la violazione",
+}
+_CHUNK = {"framework": "GDPR", "article": "Art. 33", "text": _PASSAGE}
+
 
 def _make_decision(action="ADMIT_HIGH", trust=0.9):
     """Build a deterministic SNCDecision for node-level tests."""
@@ -254,7 +268,10 @@ class TestAsyncNodeShortCircuits:
 class TestAsyncNodeHappyPath:
     async def test_writes_decision_into_state(self):
         cfg = SNCConfig(enabled=True)
-        decision = _make_decision(action="ADMIT_MID", trust=0.7)
+        decision = replace(
+            _make_decision(action="ADMIT_MID", trust=0.7),
+            modal_answer={"answer": "modal answer", "citations": [_CITED]},
+        )
         mocked_gov = AsyncMock(return_value=decision)
 
         with (
@@ -263,7 +280,10 @@ class TestAsyncNodeHappyPath:
             patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
             patch.object(snc_node, "snc_governance", mocked_gov),
         ):
-            state = {"result_json": json.dumps({"answer": "draft", "confidence_score": 0.7})}
+            state = {
+                "result_json": json.dumps({"answer": "draft", "confidence_score": 0.7}),
+                "retrieved_chunks": [_CHUNK],
+            }
             out = await async_snc_governance_node(state)
 
         assert out["snc_action"] == "ADMIT_MID"
@@ -961,7 +981,8 @@ class TestBestDenseScore:
 
 class TestRetrievalSupportGate:
     def _admit_high_no_citations(self):
-        # No citations -> the grounding guard is a no-op, isolating the gate.
+        # One citation verified in the evidence: neither the grounding guard nor
+        # the citation policy flags it, isolating the gate.
         return SNCDecision(
             action="ADMIT_HIGH",
             trust=0.9,
@@ -969,8 +990,8 @@ class TestRetrievalSupportGate:
             sigma_calib=0.0,
             t_comp=0.6,
             n_clusters=1,
-            modal_answer={"answer": "risposta", "citations": []},
-            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": []}],
+            modal_answer={"answer": "risposta", "citations": [_CITED]},
+            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": [_CITED]}],
         )
 
     async def _run(self, cfg, chunks):
@@ -986,7 +1007,7 @@ class TestRetrievalSupportGate:
                 "result_json": json.dumps(
                     {"answer": "d", "confidence_score": 0.9, "citations": []}
                 ),
-                "retrieved_chunks": chunks,
+                "retrieved_chunks": [{**c, "text": _PASSAGE, "article": "Art. 33"} for c in chunks],
             }
             return await async_snc_governance_node(state)
 

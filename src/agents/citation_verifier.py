@@ -85,9 +85,9 @@ every citation:
 - ``found_quote``: the official wording there; ``found_url``: its EUR-Lex page.
 
 ``apply_unverified_policy`` gives each such citation a caveat that names it
-and flags the answer for expert review, and decides what happens to an answer
-whose citations were all left unverified (``flag`` or ``strict``, see
-``src.config``).
+and flags the answer for expert review, flags with a caveat an answer that
+cites nothing at all, and decides what happens to an answer whose citations
+were all left unverified (``flag`` or ``strict``, see ``src.config``).
 """
 
 from __future__ import annotations
@@ -156,6 +156,13 @@ UNVERIFIED_ABSTENTION_EN = (
     "I cannot provide a verified answer: none of the cited passages was found verbatim "
     "in the corpus texts. Please consult the official sources directly or request an "
     "expert review."
+)
+# An answer that cites nothing.
+NO_CITATIONS_CAVEAT_IT = (
+    "La risposta non cita nessun passaggio dei testi del corpus: verifica le fonti prima di usarla."
+)
+NO_CITATIONS_CAVEAT_EN = (
+    "The answer cites no passage of the corpus texts: check the sources before using it."
 )
 # The same, when some quote was found, but not where its citation points.
 UNVERIFIED_ELSEWHERE_CAVEAT_IT = (
@@ -1446,14 +1453,15 @@ def _elsewhere(result: dict[str, Any]) -> list[dict[str, Any]]:
 def policy_requires_review(result: Any) -> bool:
     """True when the citation policy flags a real answer for expert review.
 
-    All its citations unverified, or one of them found in another act, article
-    or paragraph than the one cited.
+    It cites nothing, all its citations are unverified, or one of them was
+    found in another act, article or paragraph than the one cited.
     """
     if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
         return False
     if result.get("abstention_reason"):
         return False
-    return unverified_policy_applies(result) or bool(_elsewhere(result))
+    _, total = citation_counters(result)
+    return total == 0 or unverified_policy_applies(result) or bool(_elsewhere(result))
 
 
 def policy_mode(settings: Any) -> str:
@@ -1561,6 +1569,9 @@ def apply_unverified_policy(
     (computed from the ``verified`` flags when an answer predates them). On an
     answer that is not an error nor an abstention:
 
+    - an answer with no citation at all gets ``requires_expert_review = True``
+      and the caveat that says so, under either policy (nothing to verify: it
+      is not turned into an abstention);
     - each citation whose wording was found in another act, article or
       paragraph (``found_elsewhere``) gets a caveat that names it and where
       the wording is, and the answer ``requires_expert_review = True``;
@@ -1587,8 +1598,14 @@ def apply_unverified_policy(
         if result.get("abstention_reason") == UNVERIFIED_ABSTENTION_REASON and twins:
             result["answer"] = twins[1] if english else twins[0]
         return result
+    if total == 0:
+        result["requires_expert_review"] = True
+        ours = (NO_CITATIONS_CAVEAT_IT, NO_CITATIONS_CAVEAT_EN)
+        kept = [c for c in _caveat_list(result) if c not in ours]
+        result["caveats"] = [*kept, NO_CITATIONS_CAVEAT_EN if english else NO_CITATIONS_CAVEAT_IT]
+        return result
     elsewhere = _elsewhere(result)
-    unverified = total > 0 and verified == 0
+    unverified = verified == 0
     if not (elsewhere or unverified):
         return result
 

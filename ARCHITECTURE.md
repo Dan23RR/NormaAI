@@ -322,7 +322,12 @@ English twin when the request language is English; when some quote was found
 elsewhere, *"... nella disposizione che la risposta indica ..."*, since it was
 found); such an answer may be cached. `strict` replaces it with an abstention
 (`abstention_reason = "unverified_citations"`, citations emptied, counters
-kept), which is never cached and skips CoVe. The policy is idempotent and is
+kept), which is never cached and skips CoVe. An answer that is not an
+abstention and cites nothing at all (2026-11-18) is served, under either mode,
+with `requires_expert_review = true` and the caveat *"La risposta non cita
+nessun passaggio dei testi del corpus: verifica le fonti prima di usarla."*
+(or its English twin); there is nothing to verify, so it is not turned into an
+abstention and its confidence is left alone. The policy is idempotent and is
 re-applied where an answer is delivered (`POST /qa`, fresh and cached; the SSE
 stream; after CoVe, which revises the text but cannot clear the flag), so a
 cached answer follows the current setting. The cache key carries a version

@@ -217,6 +217,24 @@ async def _set_rls_org_context(db: AsyncSession, org_id: uuid.UUID) -> None:
         )
 
 
+async def _invite_vouches_for_email(db: AsyncSession, invite: Invite) -> bool:
+    """True when the invite proves that the invitee reads the invited mailbox.
+
+    Only an invite NormaAI minted does: one from the command line (no creator)
+    or from a staff member. An organisation admin can invite any address into
+    their own organisation, so that invitee confirms the address with the link
+    like everyone else; "verified" then always means the mailbox's owner, which
+    staff (``is_staff``) relies on.
+    """
+    if invite.created_by is None:
+        return True
+    result = await db.execute(
+        select(User.is_staff, User.email_verified).where(User.id == invite.created_by)
+    )
+    creator = result.one_or_none()
+    return creator is not None and bool(creator.is_staff) and bool(creator.email_verified)
+
+
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings_limit("auth_rate_limit_register"), key_func=client_ip_key)
 async def register(
@@ -239,8 +257,10 @@ async def register(
     In open mode a supplied invite code is still honoured (an org invite joins
     that organization) and an invalid one is rejected rather than ignored.
 
-    The address is verified automatically when it matches the invite's email;
-    otherwise a verification email is sent in the background.
+    The address is verified automatically when it matches the email of an
+    invite NormaAI minted (scripts/create_invite.py, or staff); otherwise,
+    including with an organisation admin's invite, a verification email is
+    sent in the background.
     """
     client_ip = get_client_ip(request)
 
@@ -305,9 +325,13 @@ async def register(
 
     await _set_rls_org_context(db, org_id)
 
-    # An invite proves control of the invited address: skip verification when
-    # the registered email is the one the invite was issued for.
-    email_verified = invite is not None and invite.email == payload.email.strip().lower()
+    # An invite minted by NormaAI proves control of the invited address: skip
+    # verification when the registered email is the one it was issued for.
+    email_verified = (
+        invite is not None
+        and invite.email == payload.email.strip().lower()
+        and await _invite_vouches_for_email(db, invite)
+    )
 
     # Create user - rely on DB UNIQUE constraint to prevent race conditions
     user = User(

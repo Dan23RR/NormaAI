@@ -49,9 +49,9 @@ def _row(db, user_id) -> User:
 
 
 async def test_grant_and_revoke(staff, db, people):
-    assert await staff.grant(db, "ops@normaai.org") == "ops@normaai.org is now staff."
+    assert await staff.grant(db, "ops@normaai.org") == "ops@normaai.org [NormaAI] is now staff."
     assert _row(db, people["ops"]).is_staff is True
-    assert await staff.grant(db, "ops@normaai.org") == "ops@normaai.org is already staff."
+    assert await staff.grant(db, "ops@normaai.org") == "ops@normaai.org [NormaAI] is already staff."
     assert await staff.list_staff(db) == ["ops@normaai.org  [NormaAI]"]
     assert await staff.revoke(db, "ops@normaai.org") == "ops@normaai.org is no longer staff."
     assert _row(db, people["ops"]).is_staff is False
@@ -88,7 +88,7 @@ async def test_end_sessions(staff, db, people):
 
 async def test_run_dispatches_the_commands(staff, db, people):
     args = staff._parse_args(["grant", "ops@normaai.org"])
-    assert await staff.run(args, db) == ["ops@normaai.org is now staff."]
+    assert await staff.run(args, db) == ["ops@normaai.org [NormaAI] is now staff."]
     assert await staff.run(staff._parse_args(["list"]), db) == ["ops@normaai.org  [NormaAI]"]
     lines = await staff.run(staff._parse_args(["reset-password", "ops@normaai.org"]), db)
     assert lines[0].startswith("Password reset link for ops@normaai.org")

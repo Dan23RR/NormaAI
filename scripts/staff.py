@@ -11,7 +11,8 @@ token claim does, and the API honours it only on a verified email address.
     python scripts/staff.py reset-password anna@studio.it [--send]
     python scripts/staff.py end-sessions anna@studio.it
 
-- ``grant`` needs an active account with a verified email address.
+- ``grant`` needs an active account with a verified email address, and names
+  the account's organisation: check it is the one you expect.
 - ``reset-password`` mints a single-use password-reset link (the one of
   ``POST /auth/password-reset``, valid PASSWORD_RESET_TOKEN_TTL_MINUTES) and
   prints it once, to hand over to the user; ``--send`` also emails it. The
@@ -84,9 +85,16 @@ async def list_staff(manager: Any) -> list[str]:
         return lines
 
 
+async def _organisation_name(session: Any, user: User) -> str:
+    result = await session.execute(select(Organization.name).where(Organization.id == user.org_id))
+    return str(result.scalar_one_or_none() or user.org_id)
+
+
 async def grant(manager: Any, email: str) -> str:
+    """Make an account staff; the message names its organisation, to check."""
     async with manager.session() as session:
         user = await _account(session, email)
+        org_name = await _organisation_name(session, user)
         if not user.is_active:
             raise StaffError(f"{user.email} is deactivated: staff is not granted.")
         if not user.email_verified:
@@ -95,7 +103,7 @@ async def grant(manager: Any, email: str) -> str:
                 "Ask the user to confirm it (or to reset the password, which confirms it)."
             )
         if user.is_staff:
-            return f"{user.email} is already staff."
+            return f"{user.email} [{org_name}] is already staff."
         user.is_staff = True
         user_id, org_id = user.id, user.org_id
         await session.commit()
@@ -107,7 +115,7 @@ async def grant(manager: Any, email: str) -> str:
         resource="scripts/staff.py",
         detail=f"Staff granted to {email.strip()}",
     )
-    return f"{email.strip()} is now staff."
+    return f"{email.strip()} [{org_name}] is now staff."
 
 
 async def revoke(manager: Any, email: str) -> str:

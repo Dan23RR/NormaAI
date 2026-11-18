@@ -268,7 +268,9 @@ una modifica entro `AUTH_ACCOUNT_CACHE_SECONDS` (30 s).
   ```
   Dopo la migrazione 010 nessuno è staff: chi lo era per `STAFF_EMAILS` va nominato di nuovo
   con `grant`. Un'email non verificata si sistema con il link di verifica o con un reset
-  della password, che la verifica.
+  della password, che la verifica. L'invito di un amministratore di un'organizzazione non
+  verifica l'indirizzo (solo quelli di `scripts/create_invite.py` e dello staff): prima di
+  `grant` controlla l'organizzazione che `list` e `grant` mostrano.
 - **Password dimenticata.** L'utente usa «Password dimenticata?» nella pagina di accesso
   (`/reset-password`): arriva un link valido `PASSWORD_RESET_TOKEN_TTL_MINUTES` (30 minuti),
   una volta sola, e al cambio si chiudono tutte le sue sessioni. Serve `RESEND_API_KEY`. Se

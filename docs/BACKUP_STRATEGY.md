@@ -10,7 +10,7 @@ depends on one thing: whether a restic repository is configured.
   when it was cancelled in September 2026, and the state a new server is in until step 3 of
   [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) is done. The script says so at every run.
 
-State of this document on 2026-11-11: the scripts are written and tested against stand-ins
+State of this document on 2026-11-18: the scripts are written and tested against stand-ins
 for Docker, restic and Qdrant (`tests/test_ops_scripts.py`). **No backup has been sent to
 a real repository and no restore has been done yet.** Sections 5 and 6 say which figures
 are measured and which are not.
@@ -22,7 +22,7 @@ are measured and which are not.
 | PostgreSQL: every table (accounts, organisations, invites, clients, conversations, assessments, alerts, Codex requests and the rest) | volume `postgres_data` | `pg_dump` in custom format, `/opt/normaai/backups/normaai_<date>_<time>.dump`, readable by root only, checked with `pg_restore --list` | the same dump |
 | Qdrant: the corpus and the passages indexed from the documents tenants upload | volume `qdrant_data` | no | one snapshot per collection, taken through Qdrant's snapshot API, named `<collection>.snapshot` |
 | `.env`: the server's configuration, with every password and API key | `/opt/normaai/.env` | no | yes |
-| `MANIFEST.txt`: date, code revision, schema revision, Qdrant version, size of each file | written at each run | no | yes |
+| `MANIFEST.txt`: date, code revision, schema revision, Qdrant version, points of each collection, size of each file | written at each run | no | yes |
 
 The corpus could be rebuilt from EUR-Lex with `python -m src.pipeline --action seed`, in
 hours of CPU with multilingual-e5-large. The passages of tenants' documents could not:
@@ -32,10 +32,11 @@ for them the Qdrant snapshot is the only copy.
 
 - **Anything, without restic.** See the top of this page.
 - **What changed since the last run.** The job runs once a day.
-- **A failed run is not reported to anyone** unless `BACKUP_HEARTBEAT_URL` is set (section
-  4). It leaves a line in `/var/log/normaai-backup.log` and nothing else. The external
-  check of [uptime.yml](../.github/workflows/uptime.yml) watches the site and the API, not
-  the backups.
+- **A failed run while the app is down is not reported.** The script tells the operator
+  through the app container (section 4); without it the failure stays in
+  `/var/log/normaai-backup.log`, and the external check of
+  [uptime.yml](../.github/workflows/uptime.yml) reports the API down instead. A job that
+  stops running at all (cron gone, server gone) is noticed only with `BACKUP_HEARTBEAT_URL`.
 - **The audit trail.** Audit events are log lines of the app container (logger
   `normaai.audit`), not rows of a table. Docker keeps them until the container is
   recreated, which every deploy does. They are in no backup.
@@ -55,12 +56,11 @@ for them the Qdrant snapshot is the only copy.
   Versioning or an object lock on the bucket would cover this; these scripts do not set
   it up.
 - **A lost repository password.** Without it no copy can be read (section 3).
-- **Loading a Qdrant snapshot is not part of the restore test.** The test lists the
-  snapshots in the copy; loading one is the upload of [RUNBOOK.md](RUNBOOK.md) section 3,
-  the same call `scripts/bootstrap_hetzner.sh` makes. A snapshot loads on the same minor
-  version of Qdrant or on the next one
-  ([Qdrant documentation](https://qdrant.tech/documentation/snapshots/)); `MANIFEST.txt`
-  records the version that made it.
+- **A search on the restored index.** The restore test loads every collection snapshot
+  into a throwaway Qdrant and checks its points (section 6.1), but runs no query: that needs
+  the embedding model. A snapshot loads on the same minor version of Qdrant or on the next
+  one ([Qdrant documentation](https://qdrant.tech/documentation/snapshots/)); `MANIFEST.txt`
+  records the version that made it, and the test uses the image of the running Qdrant.
 - **The server backups Hetzner sells are not an off-site copy.** "Backups are bound to a
   single server and will automatically be deleted if you delete the server"
   ([Hetzner FAQ](https://docs.hetzner.com/cloud/servers/backups-snapshots/faq)). They help
@@ -81,6 +81,20 @@ the repository". The storage provider holds encrypted data only.
 everything else, and "Losing your password means that your data is irrecoverably lost"
 ([restic documentation](https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html)).
 The bootstrap never generates it: it asks for a file you created.
+
+**Keep the repository and its keys outside the hosting account.** In September 2026 the whole
+hosting account was lost, not only the server: a Storage Box, a bucket or the server's own
+backups in that account would have gone with it. So:
+
+- the repository lives at another provider, under a login of its own (an S3-compatible
+  bucket or an SFTP account), not in the account that rents the server. `scripts/backup.sh`
+  warns at every run when `RESTIC_REPOSITORY` is a Hetzner address (`your-storagebox.de`,
+  `your-objectstorage.com`, `hetzner`); a Hetzner account that is not the server's can be
+  acknowledged with `BACKUP_SAME_PROVIDER_OK=1` in `/etc/normaai/backup.env`;
+- the repository address, its password and the storage key are in the password manager, not
+  only in `/etc/normaai/`: the server needs them to write, a rebuild needs them to read;
+- the restore drill (section 6.4) opens the repository from another machine with those copies
+  alone, so a password that drifted on the server is found before it is needed.
 
 Not encrypted:
 
@@ -109,7 +123,14 @@ credentials.
   or `local only`) of the last complete run. With `BACKUP_HEARTBEAT_URL` in
   `/etc/normaai/backup.env`, the script fetches that address after every complete
   off-site run: point it at a service that warns you when the fetch stops coming. Without
-  it, the restore test is the check: it fails when the newest copy is older than 36 hours.
+  it, the monthly restore test is the check: it fails when the newest copy is older than 36
+  hours.
+- **Knowing that it failed**: a run that stops (a failed step, or a setting it cannot use)
+  sends the reason and the warnings of the run to the operator, through the app container:
+  `docker exec -i normaai-app python -m src.ops_alerts backup ...`, which writes a Sentry event
+  with `SENTRY_DSN` and emails `OPS_ALERT_EMAIL` with `RESEND_API_KEY` (both in `.env`). No
+  secret value is in the message. `BACKUP_ALERTS=0` turns it off; when the app container does
+  not answer, the log says that nobody was told.
 - **Size**: the two collections of 2026-11-03 gave snapshots of about 400 MB each, mostly
   empty write-ahead-log segments, about 110 MB once compressed
   ([DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md), step 4). What restic uploads after the first
@@ -147,18 +168,30 @@ should take minutes for a database of pilot size; that is not measured either.
 bash /opt/normaai/scripts/restore_test.sh
 ```
 
-Run it after the first backup and then every month, and write the outcome in the
-post-mortem log of [RUNBOOK.md](RUNBOOK.md). It does not touch the running database. It:
+Cron runs it on the 1st of every month at 05:00 (`bash scripts/backup.sh --install-cron`
+writes the line, log in `/var/log/normaai-restore-test.log`) and a failure reaches the
+operator like a failed backup (section 4). Run it by hand after the first backup, and write
+the outcome in the post-mortem log of [RUNBOOK.md](RUNBOOK.md). It touches neither the running
+database nor the running index. It:
 
 1. takes the latest off-site snapshot (or the newest local dump when restic is not
    configured, and says so);
 2. fails when that copy is older than 36 hours (`RESTORE_TEST_MAX_AGE_HOURS`);
 3. runs `restic check` and verifies that the snapshot holds the Postgres dump, a snapshot
-   of at least one Qdrant collection and the copy of `.env`;
+   of at least one Qdrant collection and the copy of `.env`, and that this copy names the
+   settings a rebuild needs (`APP_SECRET_KEY`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`,
+   `LLM_PROVIDER` and its key): names only, no value is printed;
 4. loads the dump into a throwaway Postgres container (the image of the running one, no
-   network, removed at the end);
-5. checks that `alembic_version`, `organizations` and `users` exist and prints the row
-   count of every table. Compare the counts with what you expect: the script cannot know.
+   network, removed at the end), checks that `alembic_version`, `organizations` and `users`
+   exist and prints the row count of every table. Compare the counts with what you expect:
+   the script cannot know;
+5. loads every Qdrant snapshot of the copy into a throwaway Qdrant container (the image of
+   the running one, published on 127.0.0.1 only, without telemetry, removed at the end) and
+   checks that each collection has its points again: the number `MANIFEST.txt` recorded at
+   backup time, or more than zero for a copy made before the counts were recorded.
+   `RESTORE_TEST_QDRANT=0` lists the snapshots without loading them;
+6. prints how long each phase took (the copy, Postgres, Qdrant): the measured part of a
+   rebuild.
 
 It exits with 0 only when every check passed.
 
@@ -181,11 +214,12 @@ docker exec normaai-postgres pg_dump -U normaai -d normaai -Fc --no-owner > "bac
 docker exec normaai-postgres dropdb -U normaai --force normaai
 docker exec normaai-postgres createdb -U normaai normaai
 docker exec -i normaai-postgres pg_restore -U normaai -d normaai --no-owner --exit-on-error < "$DUMP"
-# The dump may be older than the code: bring the schema to the code's revision.
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
+# The dump may be older than the code: bring the schema to the code's revision, as the
+# owner, in the one-shot migrate service.
+docker compose run --rm migrate
 # The new database needs the application role's grants again (the script can be re-run).
 set -a; . ./.env; set +a
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T postgres \
+docker compose exec -T postgres \
   psql -U normaai -d normaai -v app_pw="$APP_DB_PASSWORD" < scripts/setup_app_role.sql
 docker compose up -d app
 docker exec normaai-app curl -fsS http://localhost:8000/readyz
@@ -230,10 +264,13 @@ all from outside the server.
    SKIP_FIRST_BACKUP=1 bash /opt/normaai/scripts/bootstrap_hetzner.sh
    ```
 
-   The bootstrap keeps the `.env` it finds, creates a new JWT key pair, loads the
-   collections and, with the `RESTIC_*` variables still exported, writes
-   `/etc/normaai/backup.env` and installs the nightly job. Ignore the invite code it
-   prints: the database you are about to load has its own users.
+   The bootstrap keeps the `.env` it finds (and hands it, with the clone, to the user
+   `deploy`), creates a new JWT key pair, loads the collections and, with the `RESTIC_*`
+   variables still exported, writes `/etc/normaai/backup.env` and installs the nightly job
+   and the monthly restore test. Ignore the invite code it prints: the database you are about
+   to load has its own users. Export `DEPLOY_SSH_PUBKEY` too, or install the deploy key
+   afterwards (DEPLOY_CHECKLIST.md step 6), and update the `DEPLOY_HOST` and
+   `DEPLOY_KNOWN_HOSTS` secrets of GitHub for the new server.
 4. Load the database: section 6.2 from `docker compose stop app`, with
    `DUMP="$R/postgres/normaai.dump"`.
 5. Back up and test, then remove the plain copy:
@@ -251,12 +288,43 @@ If 02:00 passes between steps 3 and 4, the nightly job sends a copy of the empty
 database, which becomes the newest snapshot: the earlier ones stay, and the files you need
 are already in `/root/restore`.
 
+### 6.4 The restore drill, away from the server
+
+The restore test runs on the server, with the keys of the server. The drill answers the
+question of September 2026: can the backups be read when the server and its account are gone?
+Run it every three months, and after any change of the repository, its password or its
+storage key, on a machine that is not the server (a laptop with Docker, or a VM at another
+provider), from a clone of the repository, with bash, docker, restic, curl and python3:
+
+```bash
+export RESTIC_REPOSITORY='<the repository address, from the password manager>'
+export AWS_ACCESS_KEY_ID='<key id>' AWS_SECRET_ACCESS_KEY='<key>'   # S3-compatible storage only
+bash scripts/restore_drill.sh
+```
+
+It asks for the repository password (not echoed; or `RESTIC_PASSWORD_FILE`, a file you wrote
+from the password manager), refuses to run where `/etc/normaai/backup.env` exists (the
+production server: a drill there proves nothing), and runs the restore test of 6.1 without the
+server's settings and without alerts: restic check, the copy of `.env`, the database and every
+collection loaded into throwaway containers, the time of each phase. Nothing stays on the
+machine: the password and the copy are in a temporary folder removed at the end.
+
+Then it prints the checklist of what a real rebuild adds (section 6.3): a new server, the DNS
+record, the restore of the copy on it, the bootstrap, the database load, the final test. Time
+them in the drill (on a throwaway server) or estimate them, and write the date, the times and
+the outcome in the post-mortem log of [RUNBOOK.md](RUNBOOK.md): the first real figure for the
+RTO of section 5.
+
 ## 7. Setting it up, and changing it
 
 Setting up the repository and the password file is step 3 of
 [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md). Afterwards the settings are in
 `/etc/normaai/backup.env`, which the bootstrap does not rewrite: edit it by hand.
-`bash scripts/backup.sh --help` lists every setting.
+`bash scripts/backup.sh --help` and `bash scripts/restore_test.sh --help` list every setting;
+besides the restic ones: `BACKUP_ALERTS` (0: no failure alert), `BACKUP_SAME_PROVIDER_OK`
+(1: the repository is at Hetzner in an account that is not the server's),
+`RESTORE_TEST_QDRANT` (0: the test lists the Qdrant snapshots without loading them),
+`RESTORE_TEST_MAX_AGE_HOURS`.
 
 `scripts/backup_postgres.sh` is the old name: it runs `scripts/backup.sh`.
 

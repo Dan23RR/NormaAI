@@ -121,7 +121,7 @@ it): the interface and the report show the official passage in place.
 | Cross-encoder reranker | wired, off by default (no model directory set) | `src/nlp/embedding/reranker.py` |
 | Streaming of answers | partial: the answer is sent in 80-character slices after it is generated, not token by token | `src/api/streaming/generators.py` |
 | Corpus freshness check against CELLAR | wired, nightly cron; reports, does not reseed | `src/pipeline.py`, `GET /api/v1/stats` |
-| Corpus update | partial: by hand (`--action update`); the in-process scheduler is off | `src/pipeline.py`, `src/crawler/scheduler.py` |
+| Corpus update | by hand (`--action update`): the tracked acts in every corpus language, only the texts CELLAR changed, and the corpus date; the in-process scheduler is off | `src/pipeline.py`, `src/crawler/scheduler.py` |
 | Scope rules (CSRD, CSDDD, AI Act art. 50) and deadline calendar | partial: written by hand in the frontend | `frontend/src/lib/scope`, `frontend/src/lib/obligations` |
 | Gap analysis | partial: a requirements checklist written by the model from the retrieved passages and the profile you type, not an assessment of your documents | `src/agents/nodes.py`, `prompts/` |
 | PDF reports, GDPR export and erasure (admin) | wired | `src/api/routers/reports.py`, `src/api/routers/gdpr.py` |
@@ -159,10 +159,12 @@ is indexed. The document check reads Italian law through the newer open data API
 
 Measured quality is in [docs/MODELS.md](docs/MODELS.md). Golden v2 (101 questions) end to end
 on 2026-11-09: 96 / 101 passed, 99.79 % of citations verified word for word, with
-multilingual-e5-large embeddings and Claude Haiku 5.5. That is **not** the default
-configuration: the code defaults to the mpnet embedding model (`EMBEDDING_MODEL`) and to
-Google Gemini (`LLM_PROVIDER=gemini`), which docs/MODELS.md does not report a golden-set run
-for.
+multilingual-e5-large embeddings and Claude Haiku 5.5. `.env.example` and the server
+bootstrap write that configuration (`LLM_PROVIDER=anthropic`, `ANTHROPIC_MODEL=claude-haiku-5-5`,
+the e5 model and collection, `RERANKER_SEARCH_DEPTH=45`, one worker). The defaults of the code
+are not it: the mpnet embedding model (`EMBEDDING_MODEL`) and Google Gemini
+(`LLM_PROVIDER=gemini`), which docs/MODELS.md does not report a golden-set run for; with
+`LLM_PROVIDER=anthropic` and no `ANTHROPIC_MODEL` the code answers with Haiku 5.5.
 
 ## Running the full stack
 
@@ -170,8 +172,8 @@ for.
 
 - Python 3.11 or 3.12 (`pyproject.toml`), Poetry
 - Docker with Compose
-- An API key of one language-model provider: Google Gemini (default), Anthropic, OpenRouter or
-  Mistral (`LLM_PROVIDER`)
+- An API key of one language-model provider (`LLM_PROVIDER`): Anthropic, the measured one and
+  the choice of `.env.example`; Google Gemini, the default of the code; OpenRouter; or Mistral
 - Node.js for the frontend
 
 ### 1. Configure
@@ -226,8 +228,13 @@ On the server these run from cron, not from the API process
 ```bash
 python -m src.pipeline --action check-freshness     # nightly: indexed versions against CELLAR
 python -m src.pipeline --action recheck-documents   # weekly: watched documents, alerts, digest email
-python -m src.pipeline --action update --days-back 7   # by hand: new EUR-Lex content
+python -m src.pipeline --action update              # by hand: the tracked acts that CELLAR changed
 ```
+
+`update` compares the text of every tracked act, in every language of `CORPUS_LANGUAGES` (EN
+and IT), with the one indexed, re-indexes only what changed and records the corpus date that
+the answers show. A cron job that fails is reported to Sentry (`SENTRY_DSN`) and by email to
+`OPS_ALERT_EMAIL` (`src/ops_alerts.py`).
 
 The digest email needs a Resend key and the public address of the API (`API_PUBLIC_URL` or
 `API_DOMAIN`): with neither address no digest is sent.
@@ -275,12 +282,18 @@ cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
 The full backend suite takes a long time on a laptop; `run_tests.ps1` runs it tier by tier.
-CI (`.github/workflows/ci.yml`) runs on every push: ruff, mypy (a strict gate on ten modules),
+The few tests that talk to EUR-Lex and CELLAR for real are skipped unless
+`NORMAAI_NETWORK_TESTS=1` is set (`tests/test_eurlex_client.py`).
+CI (`.github/workflows/ci.yml`) runs on pushes to `main`, `develop` and `integration/**` and on
+pull requests to `main` and `integration/**`: ruff, mypy (a strict gate on ten modules),
 the backend suite on Postgres, Qdrant and Redis with a coverage floor of 84 %, a schema-drift
 gate (`alembic upgrade head` then `alembic check`), frontend type check, tests and build, a
 Docker build with a health check, Gitleaks, Bandit, Trivy (report-only), CodeQL
-(`codeql.yml`) and a CycloneDX SBOM. `release.yml` publishes an image to GHCR on a `v*.*.*`
-tag and fails on fixable critical or high findings. `validation.yml` is a self-test of the
+(`codeql.yml`) and a CycloneDX SBOM. `deploy.yml` deploys a commit of `main` only after CI
+succeeded on it: it builds that commit's image, pushes it to GHCR, and `scripts/deploy.sh`
+installs it by digest on the server, as a non-root user that can run nothing else.
+`release.yml` publishes an image to GHCR on a `v*.*.*` tag and fails on fixable critical or
+high findings. `validation.yml` is a self-test of the
 evaluation harness on canned outputs, not a measurement; `uptime.yml` checks the public site
 and, once configured, the API every 30 minutes.
 
@@ -289,8 +302,10 @@ and, once configured, the API every 30 minutes.
 - [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md): putting a new server in production.
 - [docs/RUNBOOK.md](docs/RUNBOOK.md): incidents, deploy and rollback, recurring jobs.
 - [docs/BACKUP_STRATEGY.md](docs/BACKUP_STRATEGY.md): nightly encrypted off-site copies with
-  restic. Data loss (RPO) up to 24 hours with a working nightly job; time to be back (RTO) not
-  measured. As of 2026-11-11 no backup has been sent to a real repository and no restore has
+  restic, kept outside the hosting account; a monthly restore test that loads the database and
+  the search index into throwaway containers, and a restore drill to run away from the server.
+  Data loss (RPO) up to 24 hours with a working nightly job; time to be back (RTO) not
+  measured. As of 2026-11-18 no backup has been sent to a real repository and no restore has
   been done.
 
 ## Limits and known gaps
@@ -313,12 +328,15 @@ and, once configured, the API every 30 minutes.
   set yet; it can only lower the share of verified citations. Gap-analysis and monitor answers
   are not checked.
 - **Models.** The EU-hosted option (`LLM_PROVIDER=mistral`) has never been called with a real
-  key and is not measured. The measured configuration is not the default (see "The Q&A
-  corpus").
+  key and is not measured. The measured configuration is the one of `.env.example` and the
+  bootstrap, not the default of the code (see "The Q&A corpus").
 - **Freshness.** A Q&A citation is checked against the corpus as seeded; the nightly
   freshness job reports a newer consolidated version, it does not reseed.
 - **Monitoring.** No Alertmanager is connected: the Prometheus rules are seen only by opening
-  Prometheus. `uptime.yml` is the only check that warns anyone.
+  Prometheus. What warns someone: `uptime.yml` (site and `/readyz`, which asks the model
+  provider whether it takes the key and the model), Sentry with `SENTRY_DSN`, and the emails to
+  `OPS_ALERT_EMAIL` for failed cron jobs, backups and restore tests. An exhausted credit at the
+  provider shows up only as failed answers: set a spending limit there.
 - **Old wording in code.** The OpenAPI description in `src/api/main.py` and the page served at
   `/` by the API (`src/api/landing.py`) still describe the product of spring 2026.
 

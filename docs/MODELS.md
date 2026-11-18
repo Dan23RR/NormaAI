@@ -416,8 +416,8 @@ model, set by the variable in brackets.
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
 |---|---|---|---|---|---|
 | `gemini-3.6-flash` | **default** (`LLM_PROVIDER=gemini`, `GEMINI_MODEL`) | provider terms | Google Gemini API | 2026-10-26 code | — |
-| `claude-sonnet-5-5` | default for `LLM_PROVIDER=anthropic` (`ANTHROPIC_MODEL`) | provider terms | Anthropic API | 2026-10-26 code | — |
-| `claude-haiku-5-5` | measured (`ANTHROPIC_MODEL=claude-haiku-5-5`) | provider terms | Anthropic API | 2026-10-24 | 84 / 101, recall 0.83, 99.6 % verified (§1) |
+| `claude-haiku-5-5` | measured; default for `LLM_PROVIDER=anthropic` (`ANTHROPIC_MODEL`) since 2026-11-18, and the choice of `.env.example` and the bootstrap | provider terms | Anthropic API | 2026-10-24 | 84 / 101, recall 0.83, 99.6 % verified (§1) |
+| `claude-sonnet-5-5` | the previous default for `LLM_PROVIDER=anthropic` | provider terms | Anthropic API | 2026-10-26 code | not measured |
 | `nvidia/nemotron-3-super-120b-a12b:free` | default for `LLM_PROVIDER=openrouter` (`OPENROUTER_MODEL_ANALYSIS`) | provider terms | OpenRouter | 2026-10-26 code | — |
 | `qwen3.5:4b` | local router, off by default (`LOCAL_LLM_ENABLED`, `LOCAL_LLM_MODEL`) | to check | Ollama | 2026-10-26 code | — |
 | `mistral-small-2603` (Mistral Small 4) | default for `LLM_PROVIDER=mistral` (`MISTRAL_MODEL`); code ready, **not measured, never called with a real key** (§5.1) | provider terms for the API; open weights under Apache-2.0 | Mistral API (La Plateforme), [model card](https://docs.mistral.ai/models/mistral-small-4-0-26-03) | 2026-11-11 code, Mistral documentation | not measured |
@@ -498,9 +498,10 @@ with `LLM_PROVIDER=mistral`, the result in a row of the table above, and the sam
    `EMBEDDING_MODEL` the API reads (mpnet by default). e5 adds 2.1 GB to the image.
 5. **Memory**: each uvicorn worker loads its own copy of the models. Measured per process
    (§2.1): 2.1 GB with mpnet, 2.8 GB with e5, 0.6 GB more with the reranker.
-   `WEB_CONCURRENCY` sets the workers (2 in the Dockerfile) and `APP_MEMORY_LIMIT` the
-   app container's limit (4G by default, `docker-compose.yml`): with e5 set
-   `WEB_CONCURRENCY=1`, or `APP_MEMORY_LIMIT=7G` for 2 workers with the reranker.
+   `WEB_CONCURRENCY` sets the workers (1 in the Dockerfile and in `.env.example`) and
+   `APP_MEMORY_LIMIT` the app container's limit (4G by default, `docker-compose.yml`): 1 e5
+   worker (2.8 GB) fits in 4G; 2 need `APP_MEMORY_LIMIT=7G` (2 x 2.8 GB, or 2 x 3.4 GB with
+   the reranker). The bootstrap refuses workers that do not fit.
 6. **SNC**: `SNC_WEAK_EVIDENCE_DENSE_SCORE` (0.25) is a raw cosine threshold set on mpnet
    scores. e5 models give cosine scores in a narrow, high band (the best passage scored
    0.85 to 0.88 for the four chatbot questions), so with e5 the gate would never fire:

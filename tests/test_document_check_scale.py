@@ -24,6 +24,7 @@ from src.document_check import check as check_module
 from src.document_check import service
 from src.document_check.check import ALTERED, NOT_FOUND, VERIFIED, check_text
 from src.document_check.extract import _act_mentions, extract_references
+from src.document_check.official import TextUnavailableError
 from src.document_check.service import DocumentCheckError
 from tests.test_document_check import FakeSource
 
@@ -130,6 +131,15 @@ def _chunks_read(monkeypatch) -> list[int]:
     return sizes
 
 
+class ItalianOnly(FakeSource):
+    """The stand-in for CELLAR without English texts: a quote is searched in Italian only."""
+
+    def articles(self, version, lang):
+        if lang.upper() != "IT":
+            raise TextUnavailableError(f"CELLAR non ha il testo di {version.celex} in {lang}")
+        return super().articles(version, lang)
+
+
 def test_a_quote_in_the_cited_provision_is_verified_on_that_provision_alone(monkeypatch):
     sizes = _chunks_read(monkeypatch)
     text = (
@@ -148,7 +158,7 @@ def test_quotes_not_in_the_cited_provision_stop_at_the_budget(monkeypatch):
         f"L'art. 4 dell'AI Act dice che «ogni dipendente deve superare l'esame numero {n} ogni anno»."
         for n in range(4)
     ]
-    findings = check_text("\n".join(lines), FakeSource()).findings
+    findings = check_text("\n".join(lines), ItalianOnly()).findings
     assert [f.status for f in findings] == [NOT_FOUND] * 4
     # The AI Act of the stand-in has a text in force and two earlier versions:
     # three searches of the whole act for the first quote, the fourth and last
@@ -168,7 +178,8 @@ def test_the_same_quote_twice_is_searched_once(monkeypatch):
     line = "L'art. 4 dell'AI Act dice che «ogni dipendente deve superare un esame annuale»."
     findings = check_text(f"{line}\n{line}", FakeSource()).findings
     assert [f.status for f in findings] == [NOT_FOUND, NOT_FOUND]
-    assert sum(1 for size in sizes if size > 1) == 3  # the text in force, two earlier versions
+    # The text in force and two earlier versions, in Italian and then in English.
+    assert sum(1 for size in sizes if size > 1) == 6
 
 
 def test_an_altered_quote_past_the_budget_is_still_reported_as_altered(monkeypatch):

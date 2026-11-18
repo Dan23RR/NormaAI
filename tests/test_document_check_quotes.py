@@ -1,8 +1,12 @@
-"""Quotes checked where they are: in the paragraph cited.
+"""Quotes checked where they are: in the paragraph cited, in the language they are written in.
 
-A quote cited as paragraph 2 that is in paragraph 1 is not verified: it is
-"Citazione in un altro paragrafo" (for Italian law, "in un altro comma"), to
-be corrected.
+- A quote cited as paragraph 2 that is in paragraph 1 is not verified: it is
+  "Citazione in un altro paragrafo" (for Italian law, "in un altro comma"),
+  to be corrected.
+- The language is decided for each quote, not for the whole document: an
+  Italian quote in an English policy is looked for in the Italian text, and a
+  quote not found in its language is looked for in the other one before it is
+  called not found.
 
 Offline: a stand-in for CELLAR with paragraphs 1 and 2 of Article 33 of the
 GDPR in Italian and in English (the official wording), and the Normattiva
@@ -16,11 +20,15 @@ from typing import Any
 import pytest
 
 from src.document_check.check import (
+    ALTERED,
+    NOT_FOUND,
     OTHER_COMMA,
     OTHER_PARAGRAPH,
     VERIFIED,
+    build_lock,
     check_text,
 )
+from src.document_check.extract import quote_language
 from src.document_check.normattiva import NormattivaTextSource
 from src.document_check.official import ArticleText, TextUnavailableError, Version
 from src.document_check.serialize import findings_to_json, summarize
@@ -157,3 +165,77 @@ def test_an_italian_quote_of_another_comma_is_to_be_corrected(italian):
         today="2026-11-11",
     )
     assert ok.status is VERIFIED
+
+
+# ─── The language of each quote ──────────────────────────────────────
+
+
+def test_the_language_of_a_quote():
+    assert quote_language(QUOTE_IT) == "IT"
+    assert quote_language(QUOTE_EN) == "EN"
+    assert quote_language("72 ore, 72 hours") is None
+
+
+def test_an_italian_quote_in_an_english_policy_is_looked_for_in_the_italian_text():
+    source = BilingualSource()
+    text = (
+        "Data breaches. Under Article 33(1) GDPR, the controller notifies the breach to the "
+        f"supervisory authority «{QUOTE_IT}»."
+    )
+    check = check_text(text, source, today="2026-11-18")
+    assert check.lang == "EN"
+    [f] = check.findings
+    assert f.status is VERIFIED
+    assert f.official_quote is not None and f.official_quote.startswith("senza ingiustificato")
+    assert "La citazione è nel testo vigente in italiano, parola per parola." in f.messages
+    # The provision itself is the English one, in the report and in the lock file.
+    assert f.lang == "EN" and f.article is not None and f.article.text == ART33_EN
+    [entry] = build_lock(check)["dipendenze"]
+    assert entry["lingua"] == "EN" and entry["testo"] == ART33_EN
+    assert ("02016R0679-20160504", "IT") in source.asked
+
+
+def test_an_english_quote_in_an_italian_notice_is_looked_for_in_the_english_text():
+    source = BilingualSource()
+    f = _one(
+        f"Il titolare notifica la violazione come prevede l'art. 33, par. 1, del GDPR: «{QUOTE_EN}».",
+        source,
+    )
+    assert f.status is VERIFIED
+    assert "La citazione è nel testo vigente in inglese, parola per parola." in f.messages
+    assert f.lang == "IT"
+
+
+def test_the_other_language_is_read_only_when_needed():
+    source = BilingualSource()
+    f = _one(f"Ai sensi dell'art. 33, par. 1, del GDPR il titolare notifica «{QUOTE_IT}».", source)
+    assert f.status is VERIFIED
+    assert {lang for _, lang in source.asked} == {"IT"}
+
+
+def test_a_quote_in_neither_language_is_not_found():
+    source = BilingualSource()
+    f = _one(
+        "Ai sensi dell'art. 33 del GDPR «il titolare comunica la violazione entro una settimana "
+        "dalla scoperta».",
+        source,
+    )
+    assert f.status is NOT_FOUND
+    assert any("né in italiano né in inglese" in m for m in f.messages)
+    assert ("02016R0679-20160504", "EN") in source.asked
+
+
+def test_a_quote_whose_language_cannot_be_read_in_the_other_text():
+    source = BilingualSource(langs=("IT",))
+    f = _one(f"Il titolare notifica, come prevede l'art. 33 del GDPR, «{QUOTE_EN}».", source)
+    assert f.status is NOT_FOUND
+    assert any("inglese" in m and "non è disponibile" in m for m in f.messages)
+
+
+def test_an_altered_quote_in_the_other_language_is_altered():
+    source = BilingualSource()
+    quote = QUOTE_IT.replace("72", "48")
+    f = _one(f"Under Article 33(1) GDPR the controller acts «{quote}».", source)
+    assert f.status is ALTERED
+    assert f.differences == [{"quoted": "48", "official": "72"}]
+    assert any("in italiano" in m for m in f.messages)

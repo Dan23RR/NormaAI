@@ -106,6 +106,26 @@ Normattiva dà, che contiene le prime parole del passo trovato. Se il riferiment
 paragrafi, o il paragrafo non si capisce (articoli senza paragrafi numerati, commi non
 distinguibili), la citazione resta «Citazione verificata».
 
+## Lingua delle citazioni
+
+La lingua del documento si decide sulle sue parole fuori dalle citazioni (le parole citate
+contano solo se il resto non ne ha): una policy in inglese che cita la legge in italiano è in
+inglese. È la lingua in cui si leggono le disposizioni citate e quella del file delle
+disposizioni (`lingua`).
+
+La lingua di ogni citazione si decide a parte, dalle parole brevi che solo una delle due lingue
+ha («il», «della», «che», «è»; «the», «of», «shall», «which»); quando non bastano, vale la
+lingua del documento. La citazione si cerca prima nei testi ufficiali della sua lingua
+(disposizione citata, resto dell'atto, versioni precedenti); se lì non c'è, nemmeno quasi, si
+cerca anche nei testi dell'altra lingua, che vengono letti solo in quel caso. Un esito trovato
+nella lingua diversa da quella del documento lo dice («La citazione è nel testo vigente in
+italiano, parola per parola»); una citazione superata in quella lingua indica la versione che la
+contiene, senza il confronto parola per parola tra prima e dopo, che mischierebbe due lingue.
+Una citazione che non è in nessuna delle due risulta «Citazione non trovata», «né in italiano
+né in inglese»; se il testo dell'altra lingua non c'è su CELLAR, il messaggio lo dice. Le
+ricerche nell'altra lingua contano nel limite di ricerche del controllo (sotto). Il diritto
+italiano si legge solo in italiano.
+
 ## Limiti di dimensione e di tempo
 
 Un documento costruito apposta non deve tenere occupato il server: il controllo gira in un

@@ -1135,11 +1135,45 @@ _EN_WORDS = frozenset("the of and to in is are that for with by article data sha
 
 
 def detect_language(text: str) -> str:
-    """Return "IT" or "EN", by counting common words (Italian when in doubt)."""
-    words = re.findall(r"[a-zàèéìòù]+", text.lower())
-    italian = sum(w in _IT_WORDS for w in words)
-    english = sum(w in _EN_WORDS for w in words)
+    """Return "IT" or "EN", by counting common words (Italian when in doubt).
+
+    The words of the quotes count only when the rest has none: an English
+    policy that quotes the law in Italian is in English.
+    """
+    italian = english = 0
+    for part in (_QUOTE_RE.sub(" ", text), text):
+        words = re.findall(r"[a-zàèéìòù]+", part.lower())
+        italian = sum(w in _IT_WORDS for w in words)
+        english = sum(w in _EN_WORDS for w in words)
+        if italian or english:
+            break
     return "EN" if english > italian else "IT"
+
+
+# Short words that only one of the two languages has ("non", "per", "in", "a"
+# and "no" are in both): a quote of a line or two has enough of them.
+_IT_QUOTE_WORDS = frozenset(
+    "il lo la i gli le un uno una di del dello della dei degli delle da dal dallo dalla dai dagli "
+    "dalle nel nello nella nei negli nelle sul sullo sulla sui sugli sulle l dell nell dall sull "
+    "con tra fra che chi cui è e ed o od ma se ai al allo alla alle agli ad ove qualora sono deve "
+    "devono può possono essere suo sua suoi sue loro questo questa questi queste tale tali ogni "
+    "nonché ovvero oppure entro senza".split()
+)
+_EN_QUOTE_WORDS = frozenset(
+    "the an of and or to on at by for with from that which who whom whose this these those is are "
+    "be been being was were has have had shall may must should would not any each such where when "
+    "if as its their it than into under within without upon whether".split()
+)
+
+
+def quote_language(quote: str) -> str | None:
+    """ "IT" or "EN" by the short words only one of the two has; None when they do not tell."""
+    words = re.findall(r"[^\W\d_]+", quote.lower())
+    italian = sum(w in _IT_QUOTE_WORDS for w in words)
+    english = sum(w in _EN_QUOTE_WORDS for w in words)
+    if italian == english:
+        return None
+    return "IT" if italian > english else "EN"
 
 
 def load_text(path: Path) -> str:

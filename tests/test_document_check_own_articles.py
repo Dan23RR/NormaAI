@@ -128,7 +128,7 @@ def test_references_to_the_document_itself(words):
     "heading",
     [
         "Art. 5 - Durata",
-        "Art. 5 – Durata",
+        "Art. 5 \u2013 Durata",  # an en dash
         "Articolo 5 (Durata)",
         "Art. 5. Durata",
         "ARTICOLO 5 - OGGETTO",

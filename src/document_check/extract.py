@@ -1018,7 +1018,7 @@ def _link_acts(
         before: _Mention | None = None
         k = bisect_right(ends, ref.start) - 1
         while k >= 0 and ends[k] >= ref.start - _BEFORE_WINDOW:
-            if re.fullmatch(r"[\s,(:\-–]*", text[ends[k] : ref.start]):
+            if re.fullmatch(r"[\s,(:\-\u2013]*", text[ends[k] : ref.start]):
                 before = mentions[k]
                 break
             k -= 1
@@ -1090,7 +1090,7 @@ _OWN_AFTER_RE = re.compile(
 # "Articolo 5 (Durata)", "Art. 5. Durata", "ARTICOLO 5 - OGGETTO", "Article 5 - Term".
 _HEADING_BEFORE_RE = re.compile(r"[ \t>#*•]*")
 _HEADING_INDENT = 20  # characters of spaces or markup a heading may have before it
-_HEADING_AFTER_RE = re.compile(r"[^\S\n]*(?:[-–—:.]|\()[^\S\n]*[^\W\d_]")
+_HEADING_AFTER_RE = re.compile(r"[^\S\n]*(?:[-\u2013\u2014:.]|\()[^\S\n]*[^\W\d_]")
 # Words that say a document is a contract or terms with articles of its own
 # ("presente documento" is not one: a privacy notice calls itself that too).
 _SELF_RE = re.compile(

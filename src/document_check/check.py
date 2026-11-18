@@ -719,7 +719,7 @@ def _mark_verified(
     words = (
         "parola per parola"
         if result.match == "exact"
-        else "con piccole differenze di punteggiatura"
+        else "con piccole differenze di forma (punteggiatura, accenti, a capo, una lettera mancante o in più)"
     )
     provision = finding.provision
     if found_in and provision is not None:

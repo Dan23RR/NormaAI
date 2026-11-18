@@ -125,7 +125,7 @@
         },
         "2": {
           "title": "La citazione è parola per parola",
-          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera sbagliata in una parola lunga. Se le parole sono in un altro articolo, o solo in una versione precedente, il report lo dice."
+          "body": "Le parole tra virgolette vengono cercate nell'articolo citato. Ogni numero e ogni parola breve, come «non» oppure «o», deve coincidere: «48 ore» dove la legge dice «72 ore» è una citazione da correggere. Sono tollerati solo punteggiatura, accenti, una parola spezzata a fine riga e una lettera mancante o in più dentro una parola lunga: una lettera diversa, o una desinenza diversa («trattamento» e «trattamenti»), è una citazione da correggere. Se le parole sono in un altro articolo, o solo in una versione precedente, il report lo dice."
         },
         "3": {
           "title": "La norma non è cambiata dopo la data del documento",
@@ -320,9 +320,9 @@
     "demo": "Apri la demo con dati di esempio",
     "demoNote": "Nessun account necessario. Risposte, clienti e analisi sono esempi, non il corpus reale.",
     "terms": "Accedendo accetti i <terms>Termini di servizio</terms> e la <privacy>Privacy</privacy>.",
-    "claim": "Ogni risposta mostra il passaggio di legge che la sostiene.",
+    "claim": "Ogni citazione di un documento è cercata, parola per parola, nel testo ufficiale in vigore.",
     "article": "art. 50, par. 1",
-    "asideNote": "Codice aperto su GitHub. Database e indice di ricerca in Germania; la domanda va al fornitore del modello linguistico configurato.",
+    "asideNote": "Codice aperto su GitHub. Database e indice di ricerca in Germania. Il controllo dei documenti non usa modelli generativi; solo le domande a Chiedi vanno al fornitore del modello linguistico configurato.",
     "verifyEmail": {
       "title": "Conferma dell’email",
       "verifying": "Sto confermando il tuo indirizzo.",
@@ -1998,7 +1998,7 @@
           "2": "Organizzazione: nome, identificativo, piano.",
           "3": "Clienti, cioè le aziende analizzate: nome, settore, numero di dipendenti, fatturato, giurisdizioni, normative applicabili.",
           "4": "Conversazioni: domande e risposte con i relativi metadati (per esempio le fonti citate), collegate all’utente e, se indicato, al cliente.",
-          "5": "Documenti caricati per le risposte: il file viene elaborato e cancellato; resta il testo estratto, in frammenti indicizzati con l’identificativo dell’organizzazione.",
+          "5": "Documenti caricati per le risposte: il caricamento è chiuso e non se ne possono aggiungere di nuovi; i frammenti di testo di documenti caricati in passato restano indicizzati con l’identificativo dell’organizzazione finché l’amministratore non li cancella.",
           "6": "Documenti controllati: il file che carichi per controllarne i riferimenti di legge viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende.",
           "7": "Valutazioni (gap analysis) e avvisi generati per ciascun cliente.",
           "8": "Registro degli eventi: azione, esito, utente, organizzazione, indirizzo IP, data e ora.",
@@ -2277,7 +2277,7 @@
       },
       "documents": {
         "title": "5. Documenti caricati",
-        "p1": "Un documento caricato (PDF, HTML o immagine, fino a 50 MB) viene scritto in un file temporaneo, elaborato e cancellato alla fine dell’elaborazione, anche se questa fallisce. Resta il testo estratto, suddiviso in frammenti e indicizzato nel motore di ricerca con l’identificativo dell’organizzazione.",
+        "p1": "Il caricamento di documenti per le risposte è chiuso: la richiesta risponde con un errore che indica il controllo dei riferimenti. I frammenti di testo di documenti caricati in passato restano indicizzati nel motore di ricerca con l’identificativo dell’organizzazione, finché l’amministratore non li cancella.",
         "p2": "L’amministratore dell’organizzazione può esportare in JSON tutti i dati dell’organizzazione e cancellare in blocco clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati. La cancellazione richiede una conferma esplicita ed è registrata nel registro degli eventi.",
         "p3": "Un documento caricato per il controllo dei riferimenti di legge segue un’altra strada: il file viene elaborato in memoria e non viene conservato. Restano il nome del file, la sua impronta SHA-256, le date, i riferimenti trovati (per ciascuno: al massimo 160 caratteri di contesto, le citazioni e l’esito) e le disposizioni di legge da cui il documento dipende."
       },
@@ -2400,7 +2400,7 @@
           },
           "4": {
             "title": "Verifica letterale delle citazioni",
-            "body": "È un controllo deterministico, che non dipende da un modello: il passaggio che la risposta cita viene cercato nel testo ufficiale recuperato. Da novembre 2026 una citazione conta come verificata solo se è letterale: numeri, parole brevi e negazioni devono coincidere esattamente; sono tollerati soltanto la punteggiatura, gli accenti, la sillabazione a fine riga e l’errore di una lettera dentro una parola lunga. Il testo dei documenti caricati da un’organizzazione non vale mai come testo ufficiale. Se una risposta ha citazioni e nessuna risulta verificata, viene servita con un avviso e con il segnale di revisione esperta; in configurazione si può scegliere di sostituirla con un’astensione."
+            "body": "È un controllo deterministico, che non dipende da un modello: il passaggio che la risposta cita viene cercato nel testo ufficiale recuperato. Da novembre 2026 una citazione conta come verificata solo se è letterale: numeri, parole brevi e negazioni devono coincidere esattamente; sono tollerati soltanto la punteggiatura, gli accenti, la sillabazione a fine riga e una lettera mancante o in più dentro una parola lunga, mai una lettera o una desinenza diversa. Le parole tra omissioni («[...]») devono trovarsi tutte, nell’ordine e vicine. Una citazione trovata in un altro atto, articolo o paragrafo non conta come verificata: la scheda dice dove si trova il testo. Una risposta che non cita nessun passaggio esce con un avviso. Il testo dei documenti caricati da un’organizzazione non vale mai come testo ufficiale. Se una risposta ha citazioni e nessuna risulta verificata, viene servita con un avviso e con il segnale di revisione esperta; in configurazione si può scegliere di sostituirla con un’astensione."
           },
           "5": {
             "title": "Campionamento multiplo, spento per impostazione predefinita",

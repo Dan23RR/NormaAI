@@ -125,7 +125,7 @@
         },
         "2": {
           "title": "The quote is word for word",
-          "body": "The words in quotation marks are looked for in the article cited. Every number and every short word, such as \"not\" or \"or\", must match: \"48 hours\" where the law says \"72 hours\" is a quote to correct. Only punctuation, accents, a word split at a line break and one wrong letter in a long word are tolerated. If the words are in another article, or only in an earlier version, the report says so."
+          "body": "The words in quotation marks are looked for in the article cited. Every number and every short word, such as \"not\" or \"or\", must match: \"48 hours\" where the law says \"72 hours\" is a quote to correct. Only punctuation, accents, a word split at a line break and one missing or extra letter inside a long word are tolerated: a different letter, or a different ending (\"requirement\" and \"requirements\"), is a quote to correct. If the words are in another article, or only in an earlier version, the report says so."
         },
         "3": {
           "title": "The provision has not changed since the date of the document",
@@ -320,9 +320,9 @@
     "demo": "Open the demo with sample data",
     "demoNote": "No account needed. Answers, clients and analyses are examples, not the real corpus.",
     "terms": "By signing in you accept the <terms>Terms of service</terms> and the <privacy>Privacy policy</privacy>.",
-    "claim": "Every answer shows the passage of law behind it.",
+    "claim": "Every quote in a document is looked up, word for word, in the official text in force.",
     "article": "Art. 50(1)",
-    "asideNote": "Open source on GitHub. Database and search index in Germany; your question goes to the configured language-model provider.",
+    "asideNote": "Open source on GitHub. Database and search index in Germany. The document check uses no generative model; only questions to Chiedi go to the configured language-model provider.",
     "verifyEmail": {
       "title": "Email confirmation",
       "verifying": "Confirming your address.",
@@ -1998,7 +1998,7 @@
           "2": "Organisation: name, identifier, plan.",
           "3": "Clients, that is the companies analysed: name, sector, number of employees, turnover, jurisdictions, applicable regulations.",
           "4": "Conversations: questions and answers with their metadata (for example the sources cited), linked to the user and, where indicated, to the client.",
-          "5": "Documents uploaded for the answers: the file is processed and deleted; what remains is the extracted text, in chunks indexed with the organisation identifier.",
+          "5": "Documents uploaded for the answers: uploading is closed and no new ones can be added; the text chunks of documents uploaded in the past remain indexed with the organisation identifier until the administrator deletes them.",
           "6": "Checked documents: the file you upload to have its legal references checked is processed in memory and is not stored. What remains is the file name, its SHA-256 fingerprint, the dates, the references found (for each: at most 160 characters of context, the quotes and the outcome) and the provisions of law the document depends on.",
           "7": "Assessments (gap analyses) and alerts generated for each client.",
           "8": "Event log: action, outcome, user, organisation, IP address, date and time.",
@@ -2277,7 +2277,7 @@
       },
       "documents": {
         "title": "5. Uploaded documents",
-        "p1": "An uploaded document (PDF, HTML or image, up to 50 MB) is written to a temporary file, processed and deleted at the end of processing, even if it fails. What remains is the extracted text, split into chunks and indexed in the search engine with the organisation identifier.",
+        "p1": "Uploading documents for the answers is closed: the request returns an error that points to the reference check. Text chunks of documents uploaded in the past remain indexed in the search engine with the organisation identifier, until the administrator deletes them.",
         "p2": "The organisation’s administrator can export all the organisation’s data in JSON and delete clients, conversations, assessments, alerts and indexed chunks in bulk. Deletion requires explicit confirmation and is recorded in the event log.",
         "p3": "A document uploaded to have its legal references checked takes a different path: the file is processed in memory and is not stored. What remains is the file name, its SHA-256 fingerprint, the dates, the references found (for each: at most 160 characters of context, the quotes and the outcome) and the provisions of law the document depends on."
       },
@@ -2400,7 +2400,7 @@
           },
           "4": {
             "title": "Literal verification of citations",
-            "body": "It is a deterministic check that does not depend on a model: the passage the answer quotes is looked up in the official text retrieved. Since November 2026 a quote counts as verified only when it is literal: numbers, short words and negations must coincide exactly; only punctuation, accents, line-break hyphenation and a one-letter slip inside a long word are tolerated. Text from documents uploaded by an organisation never counts as official text. If an answer has citations and none is verified, it is served with a warning and the expert-review flag; the configuration can replace it with an abstention instead."
+            "body": "It is a deterministic check that does not depend on a model: the passage the answer quotes is looked up in the official text retrieved. Since November 2026 a quote counts as verified only when it is literal: numbers, short words and negations must coincide exactly; only punctuation, accents, line-break hyphenation and one missing or extra letter inside a long word are tolerated, never a different letter or ending. The words between omission marks (\"[...]\") must all be found, in order and close together. A quote found in another act, article or paragraph does not count as verified: the card says where the text is. An answer that cites no passage is served with a warning. Text from documents uploaded by an organisation never counts as official text. If an answer has citations and none is verified, it is served with a warning and the expert-review flag; the configuration can replace it with an abstention instead."
           },
           "5": {
             "title": "Multiple sampling, off by default",

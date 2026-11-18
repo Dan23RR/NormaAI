@@ -834,7 +834,7 @@ async def async_simple_response_node(state: AgentState) -> dict:
     try:
         from src.cache import response_cache
 
-        cached = await response_cache.get(task_type, query, profile)
+        cached = await response_cache.get(task_type, query, profile, language=state.get("language"))
         if cached:
             logger.info("simple_response_cache_hit", extra={"task_type": task_type})
             try:

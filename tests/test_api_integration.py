@@ -401,6 +401,27 @@ class TestQACitationVerificationContract:
         mock_qa.assert_not_awaited()
 
 
+class TestQACacheKeyLanguage:
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_the_answer_is_cached_and_looked_up_in_the_request_language(
+        self, mock_qa, client, auth_headers
+    ):
+        mock_qa.return_value = {"answer": "Within 72 hours.", "confidence_score": 0.9}
+        get, set_ = AsyncMock(return_value=None), AsyncMock(return_value=True)
+        with (
+            patch("src.cache.response_cache.get", new=get),
+            patch("src.cache.response_cache.set", new=set_),
+        ):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "Entro quando va notificata?", "language": "en"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        assert get.await_args.kwargs["language"] == "en"
+        assert set_.await_args.kwargs["language"] == "en"
+
+
 class TestQALanguageReachesThePrompt:
     """The request's ``language`` is the language the model is asked to answer in,
     on the JSON route and on the stream: the real graph runs, with the retrieval

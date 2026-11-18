@@ -94,6 +94,9 @@ class Settings(BaseSettings):
 
     # ─── Redis ────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
+    # Seconds a Q&A answer stays in the answer cache; gap analyses keep half of
+    # it and monitor checks a quarter (src/cache.py, ResponseCache.ttl_seconds).
+    # 0 turns the answer cache off.
     cache_ttl_seconds: int = 3600
 
     # ─── EUR-Lex ──────────────────────────────────────────────

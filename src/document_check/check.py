@@ -27,6 +27,10 @@ For every reference ``extract`` finds:
    a later consolidated text could not be read, the provision is to be checked
    by hand.
 
+The document's own articles ("art. 12 del presente Contratto", "Art. 5 -
+Durata" in a contract) are not references to an act: they are listed in
+``DocumentCheck.own_articles``, neither checked nor put in the lock file.
+
 Italian law. Normattiva gives one article per request, as in force on a day,
 with the days between which that wording holds. The article must exist and be
 in force today, and so must each cited comma; a repealed article is reported
@@ -68,9 +72,9 @@ from src.document_check.extract import (
     Provision,
     Reference,
     detect_language,
-    extract_references,
     paragraph_label,
     quote_language,
+    split_references,
 )
 from src.document_check.normattiva import (
     IN_FORCE,
@@ -201,6 +205,9 @@ class DocumentCheck:
     document_date: str | None
     lang: str
     findings: list[Finding]
+    # References to the document's own articles ("art. 12 del presente
+    # Contratto"): listed, neither checked nor in the lock file.
+    own_articles: list[Reference] = field(default_factory=list)
 
     def group(self, name: str) -> list[Finding]:
         return [f for f in self.findings if f.status.group == name]
@@ -1386,7 +1393,8 @@ def check_text(
     today = today or date.today().isoformat()
     findings: list[Finding] = []
     searches = _Searches()
-    for ref in extract_references(text):
+    references, own = split_references(text)
+    for ref in references:
         findings.extend(_check_reference(ref, source, lang, document_date, today, searches))
     return DocumentCheck(
         document=document,
@@ -1394,6 +1402,7 @@ def check_text(
         document_date=document_date,
         lang=lang,
         findings=findings,
+        own_articles=own,
     )
 
 

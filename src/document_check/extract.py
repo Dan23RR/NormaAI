@@ -1063,6 +1063,85 @@ def _link_acts(
         ref.raw = re.sub(r"\s+", " ", ref.raw).strip()
 
 
+# ─── The document's own articles ─────────────────────────────────────
+
+# Words right after an article that say it is an article of the document itself:
+# "art. 12 del presente Contratto", "art. 7 delle Condizioni Generali", "Article 4
+# of this Agreement", "Article 6 hereof". "del Regolamento" alone is not one of
+# them: it is how a document calls the GDPR it defined as "Regolamento".
+_OWN_AFTER_RE = re.compile(
+    r"[^\S\n]*(?:,[^\S\n]*)?(?:"
+    r"(?:del|dello|della|dal|dalla|al|alla|nel|nella)[^\S\n]+present[ei][^\S\n]+"
+    r"(?:contratt[oi]|accord[oi]|atto|documento|regolamento|disciplinare|statuto)\b"
+    r"|(?:delle|dalle|alle|nelle)[^\S\n]+presenti[^\S\n]+condizioni(?:[^\S\n]+generali)?\b"
+    r"|(?:delle|dalle|alle|nelle)[^\S\n]+condizioni[^\S\n]+generali"
+    r"(?:[^\S\n]+(?:di[^\S\n]+(?:contratto|servizio|vendita|fornitura)|d['’][^\S\n]?uso))?\b"
+    r"|del[^\S\n]+contratto\b(?![^\S\n]+collettiv)"
+    r"|dell['’][^\S\n]?accordo\b(?![^\S\n]+(?:di|sul|sulla|tra|fra|quadro)\b)"
+    r"|of[^\S\n]+(?:this|the)[^\S\n]+(?:agreement|contract|addendum)\b"
+    r"|of[^\S\n]+this[^\S\n]+policy\b"
+    r"|of[^\S\n]+(?:these|the)[^\S\n]+terms"
+    r"(?:[^\S\n]+(?:and[^\S\n]+conditions|of[^\S\n]+(?:use|service)))?\b"
+    r"|here(?:of|in|under|to)\b(?!after)"
+    r")",
+    re.IGNORECASE,
+)
+# A line that starts with an article of the document and its title: "Art. 5 - Durata",
+# "Articolo 5 (Durata)", "Art. 5. Durata", "ARTICOLO 5 - OGGETTO", "Article 5 - Term".
+_HEADING_BEFORE_RE = re.compile(r"[ \t>#*•]*")
+_HEADING_INDENT = 20  # characters of spaces or markup a heading may have before it
+_HEADING_AFTER_RE = re.compile(r"[^\S\n]*(?:[-–—:.]|\()[^\S\n]*[^\W\d_]")
+# Words that say a document is a contract or terms with articles of its own
+# ("presente documento" is not one: a privacy notice calls itself that too).
+_SELF_RE = re.compile(
+    r"\bpresent[ei]\s+(?:contratt[oi]|accord[oi]|disciplinare|statuto|condizioni)\b"
+    r"|\bcondizioni\s+generali\b"
+    r"|\bthis\s+(?:agreement|contract|addendum)\b|\bthese\s+terms\b|\bterms\s+and\s+conditions\b"
+    r"|\bhere(?:of|in|under|to)\b(?!after)",
+    re.IGNORECASE,
+)
+
+
+def _own_articles(text: str, refs: list[Reference], lines: _Lines) -> set[int]:
+    """Which of ``refs`` (their positions in the list) are articles of the document itself.
+
+    An article followed by words that name the document ("del presente
+    Contratto", "of these Terms", "hereof") is one, whatever act is named
+    later. A line that starts with an article followed only by a title ("Art.
+    5 - Durata") is one too, when no act is written next to it (an act named
+    in the same sentence wins: "Art. 33 GDPR - Notifica") and the document has
+    articles of its own: it calls itself a contract, an agreement or terms, or
+    a line opens its article 1 ("Art. 1 - Oggetto"). Without that, "Art. 15 -
+    Diritto di accesso" in a privacy notice is the GDPR's.
+    """
+    own: set[int] = set()
+    headings: list[int] = []
+    for i, ref in enumerate(refs):
+        phrase = _OWN_AFTER_RE.match(text, ref.end)
+        if phrase:
+            ref.raw = re.sub(r"\s+", " ", text[ref.start : phrase.end()]).strip()
+            own.add(i)
+            continue
+        line_start, _ = lines.bounds(ref.start)
+        if (
+            ref.start - line_start <= _HEADING_INDENT
+            and (ref.act is None or ref.act_inferred)
+            and len(ref.provisions) == 1
+            and ref.provisions[0].key.startswith("art:")
+            and not ref.provisions[0].paragraphs
+            and _HEADING_BEFORE_RE.fullmatch(text, line_start, ref.start)
+            and _HEADING_AFTER_RE.match(text, ref.end)
+        ):
+            headings.append(i)
+    if headings:
+        first = any(refs[i].provisions[0].key == "art:1" for i in headings)
+        if first or _SELF_RE.search(_QUOTE_RE.sub(" ", text)):
+            own.update(headings)
+    for i in own:
+        refs[i].act, refs[i].act_inferred, refs[i].amended_by = None, False, None
+    return own
+
+
 def _link_quotes(
     text: str, refs: list[Reference], lines: _Lines | None = None
 ) -> list[tuple[int, int]]:
@@ -1100,13 +1179,16 @@ def _within(position: int, spans: list[tuple[int, int]]) -> bool:
     return i >= 0 and position < spans[i][1]
 
 
-def extract_references(text: str) -> list[Reference]:
-    """Every reference to a provision in ``text``, with its act and quotes.
+def split_references(text: str) -> tuple[list[Reference], list[Reference]]:
+    """The references to a provision in ``text``, and those to the document's own articles.
 
     What stands inside a quoted passage of law is the law's own wording: an
     article it refers to ("a norma dell'articolo 55") is not a reference of the
     document, and an act it names is not the act of the references around it.
     A quote that no reference outside it claims is read as the document's text.
+    The articles of the document itself ("art. 12 del presente Contratto",
+    "Art. 5 - Durata" in a contract) come second, without act: they are not
+    checked.
     """
     mentions = _act_mentions(text)
     lines = _Lines(text)
@@ -1117,10 +1199,27 @@ def extract_references(text: str) -> list[Reference]:
     given = _link_quotes(text, outside, lines)
     refs = [r for r in refs if not _within(r.start, given)]
     _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)], lines)
+    own = _own_articles(text, refs, lines)
     for ref in refs:
         ref.line = lines.index(ref.start) + 1
         ref.context = _context(text, ref.start, ref.end, lines=lines)
-    return refs
+    return (
+        [r for i, r in enumerate(refs) if i not in own],
+        [r for i, r in enumerate(refs) if i in own],
+    )
+
+
+def extract_references(text: str) -> list[Reference]:
+    """Every reference to a provision of an act in ``text``, with its act and quotes.
+
+    The document's own articles are left out: see ``split_references``.
+    """
+    return split_references(text)[0]
+
+
+def own_articles(text: str) -> list[Reference]:
+    """The references to the document's own articles ("art. 12 del presente Contratto")."""
+    return split_references(text)[1]
 
 
 def mentioned_acts(text: str) -> list[Act]:

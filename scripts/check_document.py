@@ -135,6 +135,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     report.write_text(render_html(check, lock_path.name), encoding="utf-8")
     print("\n".join(summary_lines(check)))
+    if check.own_articles:
+        own = ", ".join(f"{ref.raw} (riga {ref.line})" for ref in check.own_articles)
+        print(f"Articoli del documento, non controllati: {own}")
     print(f"Report: {report}")
     print(f"Disposizioni citate: {lock_path}")
     return 0

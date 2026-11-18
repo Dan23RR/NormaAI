@@ -93,6 +93,34 @@ is needed; the data are licensed CC BY 4.0. The whole act is never downloaded.
   and update notes are removed from the text; rulings of the Constitutional Court that sit
   only in the notes are flagged.
 
+## Articoli del documento
+
+Un contratto numera i propri articoli e li richiama: non sono articoli della legge che nomina.
+Non vengono controllati né messi nel file delle disposizioni (quindi la sorveglianza non li
+segue); il report HTML e la riga di comando li elencano come «Articoli del documento, non
+controllati». L'API e l'interfaccia per ora non li mostrano: non sono salvati con il controllo.
+
+- **Riferimenti al documento stesso**: l'articolo seguito da «del presente contratto», «accordo»,
+  «atto», «documento», «regolamento», «disciplinare», «statuto»; «delle presenti condizioni
+  (generali)»; «delle Condizioni Generali (di contratto, di servizio, di vendita, di fornitura,
+  d'uso)»; «del contratto» (non «del contratto collettivo»); «dell'accordo» (non «dell'accordo
+  di», «sul», «quadro»); «of this Agreement», «of this Contract», «of this Addendum» (anche con
+  «the»), «of this Policy», «of these Terms», «of the Terms and Conditions», «hereof», «herein»,
+  «hereunder», «hereto». Vale anche se dopo è nominato un atto. «Del Regolamento» da solo non conta: è il
+  modo in cui un documento chiama il GDPR definito come «Regolamento».
+- **Titoli degli articoli**: una riga che comincia con un articolo seguito solo da un titolo
+  («Art. 5 - Durata», «Articolo 5 (Durata)», «Art. 5. Durata», «ARTICOLO 5 - OGGETTO», «Article
+  5 - Term»), senza un atto scritto accanto. Conta solo in un documento che ha articoli propri:
+  che si dice contratto, accordo, condizioni generali o termini («il presente Contratto», «these
+  Terms», «hereof»), o che ha una riga per il suo articolo 1 («Art. 1 - Oggetto»). Così in
+  un'informativa che elenca «Art. 15 - Diritto di accesso» l'articolo resta quello del GDPR.
+  «Section 5. Fees» non è mai stato letto come riferimento. Una riga con il solo «Articolo 5»,
+  senza titolo, resta un riferimento normale.
+- **Un atto nominato accanto vince**: «Art. 33 GDPR - Notifica», «Articolo 13 del Regolamento
+  (UE) 2016/679», «art. 28 del GDPR (Responsabile del trattamento)» restano articoli del GDPR.
+  Un'informativa che nomina il GDPR una volta e poi cita «art. 15» continua a dare l'articolo al
+  GDPR, e l'articolo entra nel file delle disposizioni.
+
 ## Paragrafo e comma citati
 
 Quando il riferimento indica un paragrafo o un comma («art. 33, par. 2», «Article 6(1)», «art.

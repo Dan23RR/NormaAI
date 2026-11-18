@@ -350,17 +350,17 @@ class TestNextState:
         assert update.verified and not update.is_new
 
     def test_a_change_is_new_once(self):
-        version = Version("02016R0679-20270101", "2027-01-01")
+        version = Version("02016R0679-20261101", "2026-11-01")
         change = _change("cambiato", "nuovo testo", version, "Art. 13 è cambiato.")
         first = serialize.next_state(self._dependency(), change, NOW)
         assert first.state == "changed" and first.is_new and first.verified
         assert first.changed_at == NOW
-        assert first.change["version"] == "02016R0679-20270101"
-        assert first.change["as_of"] == "2027-01-01"
-        assert first.change["label"] == "testo consolidato al 01/01/2027"
+        assert first.change["version"] == "02016R0679-20261101"
+        assert first.change["as_of"] == "2026-11-01"
+        assert first.change["label"] == "testo consolidato al 01/11/2026"
         assert first.change["text"] == "nuovo testo"
         assert first.change["message"] == "Art. 13 è cambiato."
-        assert first.change["url"].endswith("uri=CELEX:02016R0679-20270101")
+        assert first.change["url"].endswith("uri=CELEX:02016R0679-20261101")
 
         seen = self._dependency(state=first.state, changed_at=first.changed_at, change=first.change)
         again = serialize.next_state(seen, change, LATER)
@@ -427,7 +427,7 @@ class TestEffectiveFindings:
 
     def test_a_changed_provision_moves_its_findings_to_correggere(self):
         findings, dependencies, source = self._stored()
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         self._recheck(dependencies, source)
         effective = serialize.effective_findings(findings, dependencies)
         changed = _by_raw(effective, "art. 13 del GDPR")
@@ -444,12 +444,12 @@ class TestEffectiveFindings:
         }
         assert changed["after_text"] == ART13_AMENDED
         assert changed["version"] == {
-            "id": "02016R0679-20270101",
-            "as_of": "2027-01-01",
-            "label": "testo consolidato al 01/01/2027",
+            "id": "02016R0679-20261101",
+            "as_of": "2026-11-01",
+            "label": "testo consolidato al 01/11/2026",
         }
-        assert changed["url"].endswith("uri=CELEX:02016R0679-20270101")
-        assert changed["messages"][-1] == "Art. 13 è cambiato nel testo consolidato al 01/01/2027."
+        assert changed["url"].endswith("uri=CELEX:02016R0679-20261101")
+        assert changed["messages"][-1] == "Art. 13 è cambiato nel testo consolidato al 01/11/2026."
         untouched = _by_raw(effective, "art. 50, par. 1")
         assert untouched == _by_raw(findings, "art. 50, par. 1")
         # The stored findings are not modified.
@@ -458,7 +458,7 @@ class TestEffectiveFindings:
 
     def test_a_removed_provision(self):
         findings, dependencies, source = self._stored()
-        source.publish(GDPR, "2027-01-01", [article("Art. 12", "Articolo 12\nAltro.")])
+        source.publish(GDPR, "2026-11-01", [article("Art. 12", "Articolo 12\nAltro.")])
         self._recheck(dependencies, source)
         removed = _by_raw(serialize.effective_findings(findings, dependencies), "art. 13 del GDPR")
         assert removed["status"] == {
@@ -472,14 +472,14 @@ class TestEffectiveFindings:
         findings, dependencies, source = self._stored(DOCUMENT)
         source.publish(
             AI_ACT,
-            "2027-01-01",
+            "2026-11-01",
             [article("Art. 4", NEW_ART4 + "\n3. Nuovo paragrafo."), article("Art. 50", ART50)],
         )
         self._recheck(dependencies, source)
         outdated = _by_raw(serialize.effective_findings(findings, dependencies), "art. 4 dell'AI")
         assert outdated["status"]["code"] == "superata"
         assert outdated["before"]["text"] == OLD_ART4 and outdated["after_text"] == NEW_ART4
-        assert outdated["messages"][-1] == "Art. 4 è cambiato nel testo consolidato al 01/01/2027."
+        assert outdated["messages"][-1] == "Art. 4 è cambiato nel testo consolidato al 01/11/2026."
 
     def test_an_unreachable_text_changes_no_finding(self):
         findings, dependencies, source = self._stored()

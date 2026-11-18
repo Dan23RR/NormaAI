@@ -718,7 +718,7 @@ class TestListAndDetail:
         assert ids("?needs_review=true") == set()
         assert ids("?needs_review=false") == {with_client, without}
 
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         for check_id in (with_client, without):
             assert (
                 client.post(f"{BASE}/checks/{check_id}/recheck", headers=alpha.headers).status_code
@@ -742,7 +742,7 @@ class TestListAndDetail:
     def test_delete(self, client, db, source, alpha):
         keep = _check(client, alpha).json()["id"]
         gone = _check(client, alpha).json()["id"]
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         client.post(f"{BASE}/checks/{gone}/recheck", headers=alpha.headers)
         assert len(db.rows(Alert)) == 1
 
@@ -811,7 +811,7 @@ class TestTenantIsolation:
     ):
         mine = _check(client, alpha).json()
         _check(client, beta)
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         client.post(f"{BASE}/checks/{mine['id']}/recheck", headers=alpha.headers)
         (alert,) = db.rows(Alert)
         assert str(alert.document_check_id) == mine["id"]
@@ -840,7 +840,7 @@ class TestRecheck:
         self, client, db, source, alpha
     ):
         created = _check(client, alpha).json()
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         body = client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers).json()
 
         assert body["needs_review"] is True
@@ -852,12 +852,12 @@ class TestRecheck:
             "label": "Cambiato dopo il controllo",
         }
         assert changed["before"]["text"] == ART13 and changed["after_text"] == ART13_AMENDED
-        assert changed["version"]["id"] == "02016R0679-20270101"
+        assert changed["version"]["id"] == "02016R0679-20261101"
         gdpr, ai_act = body["dependencies"]
         assert gdpr["state"] == "changed" and gdpr["changed_at"].endswith("Z")
         assert gdpr["version"] == "02016R0679-20160504"  # the text of the day of the check
-        assert gdpr["current_version"] == "02016R0679-20270101"
-        assert gdpr["message"] == "Art. 13 è cambiato nel testo consolidato al 01/01/2027."
+        assert gdpr["current_version"] == "02016R0679-20261101"
+        assert gdpr["message"] == "Art. 13 è cambiato nel testo consolidato al 01/11/2026."
         assert ai_act["state"] == "current" and ai_act["changed_at"] is None
 
         (alert,) = db.rows(Alert)
@@ -867,7 +867,7 @@ class TestRecheck:
         assert alert.title == "Documento da rivedere: nota.txt"
         assert alert.description == (
             "Dopo il controllo è cambiata una disposizione citata nel documento: "
-            "GDPR, Art. 13 (testo consolidato al 01/01/2027)."
+            "GDPR, Art. 13 (testo consolidato al 01/11/2026)."
         )
         assert alert.actions_required == service.ALERT_ACTIONS
         assert alert.is_read is False and alert.is_dismissed is False
@@ -879,7 +879,7 @@ class TestRecheck:
 
     def test_checking_again_does_not_write_a_second_alert(self, client, db, source, alpha):
         created = _check(client, alpha).json()
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         first = client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers).json()
         (alert,) = db.rows(Alert)
         with db.sync_session() as session:
@@ -894,7 +894,7 @@ class TestRecheck:
         # up to date and unread again, still one.
         source.publish(
             AI_ACT,
-            "2027-02-01",
+            "2026-11-02",
             [article("Art. 4", "Articolo 4\nNuovo."), article("Art. 50", "Articolo 50\n1. Nuovo.")],
         )
         third = client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers).json()
@@ -904,11 +904,11 @@ class TestRecheck:
         assert updated.description.startswith(
             "Dopo il controllo sono cambiate 2 disposizioni citate nel documento: GDPR, Art. 13"
         )
-        assert "AI Act, Art. 50 (testo consolidato al 01/02/2027)" in updated.description
+        assert "AI Act, Art. 50 (testo consolidato al 02/11/2026)" in updated.description
 
     def test_a_dismissed_alert_is_not_reopened_for_the_same_change(self, client, db, source, alpha):
         created = _check(client, alpha).json()
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers)
         (alert,) = db.rows(Alert)
         with db.sync_session() as session:
@@ -919,7 +919,7 @@ class TestRecheck:
 
     def test_a_removed_provision(self, client, db, source, alpha):
         created = _check(client, alpha).json()
-        source.publish(GDPR, "2027-01-01", [article("Art. 12", "Articolo 12\nAltro.")])
+        source.publish(GDPR, "2026-11-01", [article("Art. 12", "Articolo 12\nAltro.")])
         body = client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers).json()
         assert body["dependencies"][0]["state"] == "removed"
         assert body["findings"][0]["status"]["code"] == "soppresso_dopo_controllo"
@@ -943,7 +943,7 @@ class TestRecheck:
     def test_the_alert_of_a_clients_document_names_the_client(self, client, db, source, alpha):
         acme = db.add_client(alpha.org_id)
         created = _check(client, alpha, client_id=str(acme)).json()
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers)
         (alert,) = db.rows(Alert)
         assert alert.client_id == acme and str(alert.document_check_id) == created["id"]
@@ -981,13 +981,13 @@ class TestReport:
         created = _check(client, alpha).json()
         before = client.get(f"{BASE}/checks/{created['id']}/report", headers=alpha.headers).text
         assert "Cambiato dopo il controllo" not in before
-        source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+        source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
         client.post(f"{BASE}/checks/{created['id']}/recheck", headers=alpha.headers)
         after = client.get(f"{BASE}/checks/{created['id']}/report", headers=alpha.headers).text
         assert "Cambiato dopo il controllo" in after
         assert "<ins>almeno</ins>" in after
         assert (
-            "Differenze tra il testo consolidato al 04/05/2016 e il testo consolidato al 01/01/2027"
+            "Differenze tra il testo consolidato al 04/05/2016 e il testo consolidato al 01/11/2026"
             in after
         )
 

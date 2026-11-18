@@ -7,8 +7,10 @@ For every reference ``extract`` finds:
    on Normattiva, article by article (see "Italian law" below); the steps that
    follow are those of an EU act.
 2. The provision must exist in the version in force (the latest consolidated
-   text), and so must each cited paragraph. A provision missing today but
-   present in an earlier version was repealed or renumbered.
+   text dated no later than the day of the check: CELLAR lists some ahead of
+   their date, and those are only mentioned), and so must each cited
+   paragraph. A provision missing today but present in an earlier version was
+   repealed or renumbered.
 3. Each quote goes through the production verifier
    (src/agents/citation_verifier.py: same normalisation, same thresholds): in
    the cited provision, then elsewhere in the act, then in the earlier
@@ -789,6 +791,25 @@ def _mark_altered(
     )
 
 
+def _applicable(versions: list[Version], day: str) -> tuple[list[Version], list[Version]]:
+    """The versions already applicable on ``day``, and those consolidated at a later date.
+
+    CELLAR lists consolidated texts ahead of their date (the Accounting Directive
+    as consolidated on 30 January 2027, listed in November 2026): such a text is
+    not yet the one in force.
+    """
+    now = [v for v in versions if v.as_of is None or v.as_of <= day]
+    return now, [v for v in versions if v.as_of is not None and v.as_of > day]
+
+
+def _note_later(later: list[Version], read: Version) -> str:
+    """What a check says of the consolidated texts dated after its day."""
+    return (
+        f"Esiste già il {later[0].label}, non ancora applicabile: il controllo è fatto sul "
+        f"{read.label}."
+    )
+
+
 def _newest_readable(
     versions: list[Version], source: TextSource, lang: str
 ) -> tuple[int, list[ArticleText]] | None:
@@ -863,7 +884,7 @@ def _check_reference(
         return out
 
     try:
-        versions = source.versions(act.key)
+        versions, later = _applicable(source.versions(act.key), today)
     except TextUnavailableError as e:
         return unavailable(str(e))
     readable = _newest_readable(versions, source, lang)
@@ -881,6 +902,9 @@ def _check_reference(
     _check_quotes(ref, findings, act, versions, in_force, source, lang, searches)
     if unread:
         _note_unread(findings, versions[-1], unread)
+    if later:
+        for finding in findings:
+            finding.messages.append(_note_later(later, versions[-1]))
     stale = getattr(source, "stale", {}).get(act.key)
     if stale:
         for finding in findings:
@@ -1497,12 +1521,15 @@ def _recheck_italian(entry: dict[str, Any], italian: ItalianTextSource | None) -
     return Change(entry, "invariato", message, version)
 
 
-def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
+def recheck(lock: dict[str, Any], source: TextSource, today: str | None = None) -> list[Change]:
     """Compare a lock file's provisions with the texts in force now.
 
     An entry without ``fonte`` comes from a lock file written before Italian
-    law was read: it is an EU provision.
+    law was read: it is an EU provision. A consolidated text dated after
+    ``today`` (ISO, the current day by default) is not yet in force: it is
+    neither a change nor a reason to read the provision again.
     """
+    today = today or date.today().isoformat()
     changes: list[Change] = []
     for entry in lock.get("dipendenze", []):
         if entry.get("fonte") == "normattiva":
@@ -1510,11 +1537,16 @@ def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
             continue
         lang = str(entry.get("lingua") or "IT")
         try:
-            versions = source.versions(entry["atto"])
+            versions, later = _applicable(source.versions(entry["atto"]), today)
+            if not versions:
+                raise TextUnavailableError(f"nessuna versione di {entry['atto']} in vigore oggi")
             current = versions[-1]
             if current.celex == entry["versione"]:
+                note = f" {_note_later(later, current)}" if later else ""
                 changes.append(
-                    Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
+                    Change(
+                        entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.{note}"
+                    )
                 )
                 continue
             readable = _newest_readable(versions, source, lang)
@@ -1530,8 +1562,11 @@ def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
                     "da controllare su EUR-Lex"
                 )
             if current.celex == entry["versione"]:
+                note = f" {_note_later(later, current)}" if later else ""
                 changes.append(
-                    Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
+                    Change(
+                        entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.{note}"
+                    )
                 )
                 continue
             article = find_article(articles, entry["chiave"])

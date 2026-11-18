@@ -20,7 +20,8 @@ AI Act", "artt. 15-17", "considerando 47", "Allegato III", "paragrafo 9 dell'art
    Acts named side by side ("Regulation (EU) 2016/679, Regulation (EU) 2018/1725 or
    Directive (EU) 2016/680") leave the article after them without act.
 2. **Provision.** The article, recital or annex must exist in the latest CELLAR consolidated
-   text (for Italian law: the article in force today on Normattiva), and so must each cited
+   text dated no later than the day of the check (see «Versioni consolidate con una data
+   futura»; for Italian law: the article in force today on Normattiva), and so must each cited
    paragraph or comma. A provision missing today but present in an earlier version is
    reported as repealed or renumbered.
 3. **Quotes.** Each quote («...», “...”, "...") goes through the production verifier
@@ -92,6 +93,20 @@ is needed; the data are licensed CC BY 4.0. The whole act is never downloaded.
   case of discrepancy. The report says so and credits Normattiva (CC BY 4.0). Editorial marks
   and update notes are removed from the text; rulings of the Constitutional Court that sit
   only in the notes are flagged.
+
+## Versioni consolidate con una data futura
+
+CELLAR elenca alcuni testi consolidati prima della loro data: a novembre 2026 la Direttiva
+contabile (2013/34/UE) aveva già il testo consolidato al 30/01/2027 (`02013L0034-20270130`).
+Il testo vigente è il consolidato più recente con una data non successiva al giorno del
+controllo; quelli con una data successiva non si leggono, e ogni esito lo dice: «Esiste già il
+testo consolidato al 30/01/2027, non ancora applicabile: il controllo è fatto sul testo
+consolidato al 18/03/2026». Le citazioni si confrontano con il testo vigente e con i
+precedenti, mai con quello futuro, e il file delle disposizioni registra il testo vigente. Il
+ricontrollo (`--ricontrolla`, sorveglianza) segue la stessa regola: un consolidato non ancora
+applicabile non è un cambiamento e non fa scattare avvisi; dal giorno della sua data diventa il
+testo vigente e, se l'articolo cambia, il ricontrollo lo segnala. Con `--data` il testo alla
+data del documento è, come prima, il più recente con una data non successiva a quella.
 
 ## Articoli del documento
 

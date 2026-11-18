@@ -95,7 +95,7 @@ async def _store(db, source, org_id, text=CLEAN_DOCUMENT, **fields):
         return row.id
 
 
-def _amend_gdpr(source, as_of="2027-01-01", text=ART13_AMENDED):
+def _amend_gdpr(source, as_of="2026-11-01", text=ART13_AMENDED):
     source.publish(GDPR, as_of, [article("Art. 13", text)])
 
 
@@ -133,7 +133,7 @@ async def test_a_changed_provision_marks_the_check_writes_one_alert_and_sends_on
     (alert,) = db.rows(Alert)
     assert alert.document_check_id == check_id and alert.client_id is None
     assert alert.title == "Documento da rivedere: informativa.docx"
-    assert "GDPR, Art. 13 (testo consolidato al 01/01/2027)" in alert.description
+    assert "GDPR, Art. 13 (testo consolidato al 01/11/2026)" in alert.description
     assert alert.severity == "HIGH" and alert.is_read is False
 
     (email,) = outbox
@@ -147,7 +147,7 @@ async def test_a_changed_provision_marks_the_check_writes_one_alert_and_sends_on
     for body in (email["html"], email["text"]):
         assert "Ciao Anna," in body
         assert "informativa.docx" in body
-        assert "GDPR, Art. 13 (testo consolidato al 01/01/2027)" in body
+        assert "GDPR, Art. 13 (testo consolidato al 01/11/2026)" in body
         assert f"{APP}/app/controlla/{check_id}" in body
         assert "token=" in body  # the unsubscribe link is in the message too
     assert link in email["text"]
@@ -188,14 +188,14 @@ async def test_a_later_wording_is_announced_again_on_the_same_alert(db, source, 
         session.get(Alert, alert.id).is_read = True
         session.commit()
 
-    _amend_gdpr(source, "2027-06-01", ART13_AMENDED + " E altro ancora.")
+    _amend_gdpr(source, "2026-11-05", ART13_AMENDED + " E altro ancora.")
     report = await surveillance.run(db.session, source, now=NEXT_MONDAY)
 
     assert (report.checks_changed, report.emails_sent) == (1, 1)
     assert len(outbox) == 2
     (same,) = db.rows(Alert)
     assert same.id == alert.id and same.is_read is False
-    assert "testo consolidato al 01/06/2027" in same.description
+    assert "testo consolidato al 05/11/2026" in same.description
     assert _check(db, check_id).needs_review is True
 
 
@@ -253,7 +253,7 @@ async def test_each_distinct_provision_is_read_once_for_all_organisations(db, so
     # Three documents, two organisations, one provision: asked once.
     assert report.provisions == 1 and report.checks == 3
     assert source.asked_versions == [GDPR]
-    assert source.asked_articles == ["02016R0679-20270101"]
+    assert source.asked_articles == ["02016R0679-20261101"]
     assert (report.checks_changed, report.alerts, report.emails_sent) == (3, 3, 2)
 
     assert {a.document_check_id for a in db.rows(Alert)} == {*of_alfa, of_beta}
@@ -404,7 +404,7 @@ async def test_two_provisions_of_one_document_one_alert(db, source, outbox):
     _amend_gdpr(source)
     source.publish(
         AI_ACT,
-        "2027-02-01",
+        "2026-11-02",
         [article("Art. 4", NEW_ART4), article("Art. 50", ART50 + "\n8. Nuovo paragrafo.")],
     )
 
@@ -416,7 +416,7 @@ async def test_two_provisions_of_one_document_one_alert(db, source, outbox):
         "Dopo il controllo sono cambiate 2 disposizioni citate nel documento: "
     )
     assert "GDPR, Art. 13" in alert.description and "AI Act, Art. 50" in alert.description
-    assert "AI Act, Art. 50 (testo consolidato al 01/02/2027)" in outbox[0]["text"]
+    assert "AI Act, Art. 50 (testo consolidato al 02/11/2026)" in outbox[0]["text"]
 
 
 # ─── Who gets the email ──────────────────────────────────────────────
@@ -550,7 +550,7 @@ class TestDigestEmail:
                 {
                     "filename": "nota <b>cliente</b> & co.docx",
                     "url": f"{APP}/app/controlla/123",
-                    "provisions": ["GDPR, Art. 13 (testo consolidato al 01/01/2027)"],
+                    "provisions": ["GDPR, Art. 13 (testo consolidato al 01/11/2026)"],
                 }
             ],
             "app_url": f"{APP}/app/controlla",

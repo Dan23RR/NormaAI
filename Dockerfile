@@ -19,10 +19,13 @@ COPY pyproject.toml poetry.lock ./
 # not match pyproject.toml ("pyproject.toml changed significantly since
 # poetry.lock was last generated"). (`poetry check --lock` would also stop on the
 # README, which .dockerignore keeps out of the context.)
-# Include the `openrouter` extra so langchain-openai (the OpenRouter/OpenAI-
-# compatible provider, imported lazily in src/agents/llm.py) ships in the image
-# - without it the openrouter path fails at runtime with ModuleNotFoundError.
-RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main --extras openrouter -o requirements.txt
+# Extras, all imported lazily: `openrouter` (langchain-openai, the OpenRouter and
+# Mistral providers of src/agents/llm.py; without it they fail at runtime with
+# ModuleNotFoundError), `sentry` (sentry-sdk: errors go to Sentry when SENTRY_DSN
+# is set) and `metrics` (prometheus-client: without it GET
+# /api/v1/metrics/prometheus answers a placeholder and no alert rule can fire).
+RUN poetry export -f requirements.txt --without-hashes --no-interaction --only main \
+    --extras openrouter --extras sentry --extras metrics -o requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime

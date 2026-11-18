@@ -186,9 +186,11 @@ jobs:
           build-args: |
             GIT_SHA=${{ steps.names.outputs.short }}
             EMBEDDING_MODEL=${{ vars.DEPLOY_EMBEDDING_MODEL || 'intfloat/multilingual-e5-large' }}
-          # Its own cache scope: the model layer differs from the CI image's.
+          # Its own cache scope: the model layer differs from the CI image's. The
+          # layers of the final image only (mode=min): GitHub keeps 10 GB of
+          # cache per repository, and the CI image has its own.
           cache-from: type=gha,scope=deploy
-          cache-to: type=gha,scope=deploy,mode=max
+          cache-to: type=gha,scope=deploy,mode=min
 
       - name: Image reference by digest
         id: ref

@@ -334,4 +334,117 @@ describe('ChiediPage (demo mode)', () => {
       'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
     )
   })
+
+  it('shows a quote found in another act as not verified, with where it really is', async () => {
+    const quote = 'garantiscono che gli output del sistema di IA siano marcati'
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Gli output vanno marcati [GDPR, Art. 6].',
+        citations: [
+          {
+            framework: 'GDPR',
+            reference: 'Art. 6',
+            quote_snippet: quote,
+            verified: false,
+            found_elsewhere: true,
+            found_in: 'act',
+            found_celex: '32024R1689',
+            found_article: 'Art. 50',
+            found_paragraph: '2',
+            found_quote: quote,
+            found_url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+          },
+        ],
+        confidence_score: 0.6,
+        requires_expert_review: true,
+        related_frameworks: [],
+        caveats: [
+          'La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro atto, Regolamento (UE) 2024/1689, Art. 50, par. 2.',
+        ],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Gli output di un sistema di IA vanno marcati?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/Gli output vanno marcati/)
+
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2016/679 (GDPR)')).toBeInTheDocument()
+    expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
+    expect(within(margin).queryByText('Verificata')).not.toBeInTheDocument()
+    expect(
+      within(margin).getByText('Testo trovato in un altro atto: Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2'),
+    ).toBeInTheDocument()
+    expect(within(margin).getByRole('link', { name: /Apri il testo ufficiale/ })).toHaveAttribute(
+      'href',
+      'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+    )
+    // The caveat names the mismatch under the answer too.
+    expect(screen.getByText(/La citazione \[GDPR, Art. 6\] non è verificata/)).toBeInTheDocument()
+  })
+
+  it('labels an answer the backend marks as AI-generated (AI Act, Art. 50(2))', async () => {
+    mocks.post.mockResolvedValue({
+      ...ANSWER,
+      data: {
+        ...ANSWER.data,
+        ai_generated: true,
+        generator: { system: 'NormaAI Chiedi', provider: 'anthropic', model: 'claude-haiku-5-5' },
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    const label = await screen.findByText('Testo generato con un sistema di IA')
+    expect(label).toHaveAttribute('title', 'Modello: claude-haiku-5-5')
+  })
+
+  it('does not label an answer the backend does not mark', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/obbliga chi fornisce un chatbot/)
+    expect(screen.queryByText('Testo generato con un sistema di IA')).not.toBeInTheDocument()
+  })
+
+  it('names an act cited by its CELEX, in the answer and in the margin', async () => {
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Il regolamento modifica il calendario [32026R1744, Art. 1].',
+        citations: [
+          {
+            framework: '32026R1744',
+            reference: 'Art. 1',
+            quote_snippet: 'Il regolamento (UE) 2024/1689 è così modificato',
+            verified: true,
+            celex: '32026R1744',
+            article: 'Art. 1',
+            official_quote: 'Il regolamento (UE) 2024/1689 è così modificato',
+          },
+        ],
+        confidence_score: 0.9,
+        requires_expert_review: false,
+        related_frameworks: [],
+        caveats: [],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Cosa cambia il regolamento 2026/1744?')
+    await user.keyboard('{Enter}')
+    // The marker reads the act's name, not "[32026R1744, Art. 1]", and still leads to its source.
+    const marker = await screen.findByRole('button', { name: 'Vai alla fonte 1' })
+    expect(marker).toHaveTextContent('[Regolamento (UE) 2026/1744, Art. 1]')
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2026/1744')).toBeInTheDocument()
+    expect(within(margin).getByText('Verificata')).toBeInTheDocument()
+  })
 })

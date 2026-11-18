@@ -23,7 +23,8 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.agents.citation_verifier import base_celex
+from src.agents.citation_verifier import base_celex, principal_celex
+from src.crawler.eurlex import celex as celex_utils
 from src.resilience import ServiceUnavailableError, llm_circuit, require_circuit
 
 logger = logging.getLogger(__name__)
@@ -702,16 +703,35 @@ def extract_confidence(result: dict) -> float:
 _ACT_TITLE_MAX = 100
 
 
+def _citation_key(chunk: dict[str, Any], celex: str | None) -> str:
+    """What a source is cited as: its framework key, or its CELEX for another act.
+
+    A framework key names the principal act of its group (principal_celex):
+    [AI_ACT, Art. 50] is an article of the AI Act, in any consolidated
+    version. A passage of another act of the group (the Digital Omnibus on AI
+    32026R1744 under AI_ACT; the Accounting Directive 32013L0034, ESRS Set 1
+    and the Omnibus directives under CSRD) is cited by its CELEX,
+    [32026R1744, Art. 1]: under the key a jurist would read it as an article
+    of the principal act.
+    """
+    framework = str(chunk.get("framework") or "?")
+    principal = principal_celex(framework)
+    if principal and celex and celex_utils.parse_celex(celex) and celex != principal:
+        return celex
+    return framework
+
+
 def _chunk_label(chunk: dict) -> str:
     """Header of one source in the prompt: what the model must cite, and from where.
 
-    ``[FRAMEWORK, Art. N]`` is the citation marker the model copies; the base
-    CELEX, the act title and the language tell it which official text the
-    passage below comes from (quotes are verified against that text). An
-    article an amending act quotes (src/agents/quoted_articles.py) is labelled
-    as the amended act's article, ``[CELEX, Art. N]``, with the amending act
-    where its wording comes from; a consolidated article names the act that
-    amended it.
+    ``[FRAMEWORK, Art. N]`` is the citation marker the model copies, with the
+    CELEX instead of the framework key for an act other than the framework's
+    principal one (``_citation_key``); the base CELEX, the act title and the
+    language tell it which official text the passage below comes from (quotes
+    are verified against that text). An article an amending act quotes
+    (src/agents/quoted_articles.py) is labelled as the amended act's article,
+    ``[CELEX, Art. N]``, with the amending act where its wording comes from; a
+    consolidated article names the act that amended it.
     """
     celex = base_celex(chunk)
     if chunk.get("citation_celex"):
@@ -721,9 +741,8 @@ def _chunk_label(chunk: dict) -> str:
             f"as worded in CELEX {celex} {chunk.get('article')}, which amends it",
         ]
     else:
-        framework = chunk.get("framework") or "?"
         article = chunk.get("article") or chunk.get("article_number") or "?"
-        parts = [f"[{framework}, {article}]"]
+        parts = [f"[{_citation_key(chunk, celex)}, {article}]"]
         if celex:
             parts.append(f"CELEX {celex}")
         title = " ".join(str(chunk.get("act_title") or "").split())

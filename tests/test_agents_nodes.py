@@ -1266,7 +1266,8 @@ class TestAsyncLocalRouterNode:
 
 class TestAsyncSimpleResponseNode:
     async def test_cache_hit_returns_cached_payload(self):
-        cached = {"answer": "cached", "confidence_score": 0.91}
+        # A verified citation: the citation policy has nothing to flag.
+        cached = {"answer": "cached", "confidence_score": 0.91, "citations": [{"verified": True}]}
         with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
             out = await async_simple_response_node(
                 {"query": "What is GDPR?", "task_type": "qa", "company_profile": {}}
@@ -1284,6 +1285,16 @@ class TestAsyncSimpleResponseNode:
             out = await async_simple_response_node({"query": "Q", "task_type": "qa"})
         assert out["confidence_score"] == 0.0
         assert out["requires_review"] is True
+
+    async def test_cache_hit_without_citations_is_reviewed(self):
+        cached = {"answer": "cached", "confidence_score": 0.91, "citations": []}
+        with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
+            out = await async_simple_response_node({"query": "Q", "task_type": "qa"})
+        assert out["requires_review"] is True
+        assert json.loads(out["result_json"])["caveats"] == [
+            "La risposta non cita nessun passaggio dei testi del corpus: verifica le fonti prima "
+            "di usarla."
+        ]
 
     async def test_cache_hit_honours_cached_review_flag(self):
         cached = {"answer": "c", "confidence_score": 0.95, "requires_expert_review": True}

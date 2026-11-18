@@ -15,12 +15,20 @@ import pytest
 
 from src.agents.citation_verifier import (
     CITATION_FIELDS,
+    ELSEWHERE_FIELDS,
+    NO_CITATIONS_CAVEAT_EN,
+    NO_CITATIONS_CAVEAT_IT,
     UNVERIFIED_ABSTENTION_EN,
     UNVERIFIED_ABSTENTION_IT,
     UNVERIFIED_ABSTENTION_REASON,
     UNVERIFIED_CAVEAT_EN,
     UNVERIFIED_CAVEAT_IT,
+    UNVERIFIED_ELSEWHERE_ABSTENTION_EN,
+    UNVERIFIED_ELSEWHERE_ABSTENTION_IT,
+    UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+    UNVERIFIED_ELSEWHERE_CAVEAT_IT,
     VerificationResult,
+    act_name,
     annotate_citations,
     apply_unverified_policy,
     article_label,
@@ -31,7 +39,10 @@ from src.agents.citation_verifier import (
     normalize,
     normalize_framework,
     parse_article,
+    parse_paragraph,
     policy_mode,
+    policy_requires_review,
+    principal_celex,
     same_article,
     unverified_policy_applies,
     verify_citation,
@@ -227,7 +238,7 @@ class TestNormalizeFramework:
             ("EU AI Act", "AI_ACT"),
             ("nis 2", "NIS2"),
             ("EU Taxonomy", "TAXONOMY"),
-            ("ESRS", "CSRD"),
+            ("ESRS", "32023R2772"),
             ("CSRD Directive", "CSRD"),
             ("02024R1689-20260727", "32024R1689"),
             ("Some Other Act", "SOME_OTHER_ACT"),
@@ -373,19 +384,238 @@ class TestOmissions:
         )
         assert verify_citation(_cite(quote), _corpus()).verified is False
 
-    def test_segments_shorter_than_12_characters_are_not_required(self):
-        # "di IA xyz" (9 chars) is not in the text, but it is too short to check.
+    def test_every_part_is_required_however_short(self):
+        # "di IA xyz" (9 chars) is not in the text: the quote is not verified.
         quote = (
             "I fornitori garantiscono che i sistemi [...] di IA xyz [...] "
             "stare interagendo con un sistema di IA"
         )
-        assert verify_citation(_cite(quote), _corpus()).verified is True
+        assert verify_citation(_cite(quote), _corpus()).verified is False
+        present = (
+            "I fornitori garantiscono che i sistemi [...] destinati [...] "
+            "stare interagendo con un sistema di IA"
+        )
+        assert verify_citation(_cite(present), _corpus()).verified is True
 
     def test_only_short_segments_is_too_generic(self):
         assert (
             verify_citation(_cite("I fornitori [...] di IA [...] sono"), _corpus()).verified
             is False
         )
+
+
+# GDPR, Art. 33, as published (Italian, then paragraph 1 in English).
+GDPR_33_IT_FULL = (
+    "Articolo 33\n"
+    "Notifica di una violazione dei dati personali all'autorità di controllo\n"
+    "1. In caso di violazione dei dati personali, il titolare del trattamento notifica la "
+    "violazione all'autorità di controllo competente a norma dell'articolo 55 senza "
+    "ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a "
+    "conoscenza, a meno che sia improbabile che la violazione dei dati personali presenti un "
+    "rischio per i diritti e le libertà delle persone fisiche. Qualora la notifica "
+    "all'autorità di controllo non sia effettuata entro 72 ore, è corredata dei motivi del "
+    "ritardo.\n"
+    "2. Il responsabile del trattamento informa il titolare del trattamento senza "
+    "ingiustificato ritardo dopo essere venuto a conoscenza della violazione.\n"
+    "3. La notifica di cui al paragrafo 1 deve almeno:\n"
+    "a) descrivere la natura della violazione dei dati personali compresi, ove possibile, le "
+    "categorie e il numero approssimativo di interessati in questione nonché le categorie e il "
+    "numero approssimativo di registrazioni dei dati personali in questione;\n"
+    "b) comunicare il nome e i dati di contatto del responsabile della protezione dei dati o "
+    "di altro punto di contatto presso cui ottenere più informazioni;\n"
+    "c) descrivere le probabili conseguenze della violazione dei dati personali;\n"
+    "d) descrivere le misure adottate o di cui si propone l'adozione da parte del titolare del "
+    "trattamento per porre rimedio alla violazione dei dati personali e anche, se del caso, per "
+    "attenuarne i possibili effetti negativi.\n"
+    "4. Qualora e nella misura in cui non sia possibile fornire le informazioni "
+    "contestualmente, le informazioni possono essere fornite in fasi successive senza "
+    "ulteriore ingiustificato ritardo.\n"
+    "5. Il titolare del trattamento documenta qualsiasi violazione dei dati personali, "
+    "comprese le circostanze a essa relative, le sue conseguenze e i provvedimenti adottati "
+    "per porvi rimedio. Tale documentazione consente all'autorità di controllo di verificare "
+    "il rispetto del presente articolo."
+)
+GDPR_33_EN_1 = (
+    "Article 33\n"
+    "Notification of a personal data breach to the supervisory authority\n"
+    "1. In the case of a personal data breach, the controller shall without undue delay and, "
+    "where feasible, not later than 72 hours after having become aware of it, notify the "
+    "personal data breach to the supervisory authority competent in accordance with Article "
+    "55, unless the personal data breach is unlikely to result in a risk to the rights and "
+    "freedoms of natural persons. Where the notification to the supervisory authority is not "
+    "made within 72 hours, it shall be accompanied by reasons for the delay."
+)
+
+
+def _gdpr_33_full(text=GDPR_33_IT_FULL, lang="IT"):
+    return [
+        _chunk(
+            text,
+            chunk_id=f"pt-gdpr-33-{lang.lower()}",
+            article="Art. 33",
+            framework="GDPR",
+            celex="32016R0679",
+            source_celex="02016R0679-20160504",
+            consolidated_as_of="2016-05-04",
+            lang=lang,
+        )
+    ]
+
+
+class TestPartsBetweenOmissions:
+    """B3.1 of the pre-launch evaluation: every word between omissions counts."""
+
+    def test_a_negation_between_omissions_is_not_verified(self):
+        # It reverses the obligation; "non" alone was dropped as too short and
+        # the quote was shown as an exact match.
+        quote = (
+            "il titolare del trattamento [...] non [...] notifica la violazione all'autorità di "
+            "controllo competente"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out == VerificationResult()
+
+    def test_the_english_twin_is_not_verified(self):
+        # Here "not" does stand between the two parts ("not later than 72
+        # hours"): a part made only of a negation is never verified.
+        quote = (
+            "the controller [...] not [...] notify the personal data breach to the supervisory "
+            "authority"
+        )
+        chunks = _gdpr_33_full(GDPR_33_EN_1, "EN")
+        assert verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), chunks) == (
+            VerificationResult()
+        )
+
+    def test_parts_out_of_order_are_not_verified_even_with_words_of_their_own(self):
+        # "non sia effettuata" is in the article, but after the words that follow it here.
+        quote = (
+            "il titolare del trattamento [...] non sia effettuata [...] notifica la violazione "
+            "all'autorità di controllo competente"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified is False
+
+    def test_a_legitimate_omission_still_verifies(self):
+        quote = (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.match == "exact" and out.level == "article"
+        assert out.official_quote == (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        assert out.paragraph == "1"
+
+    def test_a_short_part_present_in_order_still_verifies(self):
+        quote = "Il titolare del trattamento [...] documenta [...] le sue conseguenze"
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.match == "exact"
+        # The words that open paragraph 5, not the same words earlier in the article.
+        assert out.paragraph == "5"
+        assert out.official_quote == (
+            "Il titolare del trattamento [...] documenta [...] le sue conseguenze"
+        )
+
+    def test_a_short_part_must_be_a_whole_word(self):
+        # "stante" stands only inside "nonostante": it is not in the text.
+        chunk = _chunk(
+            "Articolo 7\n1. Il fornitore conserva i dati nonostante la richiesta di cancellazione "
+            "e li comunica all'autorità.",
+            article="Art. 7",
+        )
+        quote = "Il fornitore conserva i dati [...] stante [...] la richiesta di cancellazione"
+        assert verify_citation(_cite(quote, reference="Art. 7"), [chunk]).verified is False
+        whole = "Il fornitore conserva i dati [...] nonostante [...] la richiesta di cancellazione"
+        assert verify_citation(_cite(whole, reference="Art. 7"), [chunk]).verified
+
+    def test_a_part_of_function_words_only_is_not_verified(self):
+        # Its meaning comes from the words the omission removed: "e" is in the text,
+        # in order ("ritardo e, ove possibile"), but nothing in the part says what it joins.
+        for part in ("e", "non è", "shall not", "72", "(a)"):
+            quote = (
+                f"il titolare del trattamento notifica la violazione [...] {part} [...] entro 72 "
+                "ore dal momento in cui ne è venuto a conoscenza"
+            )
+            out = verify_citation(_cite(quote, framework="GDPR"), _gdpr_33_full())
+            assert out.verified is False, part
+
+    def test_a_long_part_must_start_and_end_on_word_boundaries(self):
+        # "lecito" is inside "illecito", "72 ore" inside "172 ore".
+        chunk = _chunk(
+            "Articolo 9\n1. È illecito il trattamento dei dati raccolti oltre 172 ore dopo la "
+            "richiesta.",
+            article="Art. 9",
+        )
+        for quote in (
+            "lecito il trattamento dei dati raccolti",
+            "dei dati raccolti oltre 72 ore dopo la richiesta",
+        ):
+            assert verify_citation(_cite(quote, reference="Art. 9"), [chunk]).verified is False
+        assert verify_citation(
+            _cite("illecito il trattamento dei dati raccolti", reference="Art. 9"), [chunk]
+        ).verified
+
+    def test_a_part_found_only_far_away_is_not_verified(self):
+        # "documenta qualsiasi violazione" is 1500 characters after the first
+        # part and does not start a point: words stitched from distant sentences.
+        quote = (
+            "il titolare del trattamento notifica la violazione [...] documenta qualsiasi "
+            "violazione dei dati personali"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified is False
+
+    def test_an_omission_may_skip_whole_points_up_to_the_next_one(self):
+        # From the opening of paragraph 3 to point d), over points a) to c).
+        quote = (
+            "La notifica di cui al paragrafo 1 deve almeno: [...] d) descrivere le misure adottate"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.paragraph == "3"
+        # A longer skip is accepted only when it lands on the start of a point or paragraph.
+        far = (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] 5. Il titolare del trattamento documenta qualsiasi violazione"
+        )
+        out = verify_citation(_cite(far, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.level == "article"
+
+    def test_the_fuzzy_path_follows_the_same_rules(self):
+        # A slip in a part ("violazzione") does not let the parts be reordered or
+        # fetched from far away.
+        cite = {"framework": "GDPR", "reference": "Art. 33"}
+        reordered = (
+            "il titolare del trattamento notifica la violazzione [...] non sia effettuata [...] "
+            "a norma dell'articolo 55"
+        )
+        assert verify_citation({**cite, "quote_snippet": reordered}, _gdpr_33_full()).verified is (
+            False
+        )
+        far = (
+            "il titolare del trattamento notifica la violazzione [...] documenta qualsiasi "
+            "violazione dei dati personali"
+        )
+        assert verify_citation({**cite, "quote_snippet": far}, _gdpr_33_full()).verified is False
+        near_enough = (
+            "il titolare del trattamento notifica la violazzione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        out = verify_citation({**cite, "quote_snippet": near_enough}, _gdpr_33_full())
+        assert out.verified and out.match == "fuzzy" and out.level == "article"
+
+    def test_many_occurrences_stay_fast(self):
+        import time
+
+        text = "Articolo 1\n" + " ".join(["il dato e il dato non e il dato"] * 400)
+        quote = "il dato [...] e il dato [...] non e il dato [...] parola assente"
+        start = time.perf_counter()
+        assert verify_citation(
+            _cite(quote, reference="Art. 1"), [_chunk(text, article="Art. 1")]
+        ) == (VerificationResult())
+        assert time.perf_counter() - start < 2.0
 
 
 class TestLevels:
@@ -452,6 +682,8 @@ class TestLevels:
         assert out.celex is None and out.url is None and out.lang is None
 
     def test_act_listed_under_several_frameworks(self):
+        # Omnibus I is listed under CSRD and CSDDD; it is cited by its CELEX. Under a
+        # framework key its Art. 4 is another act's article (see TestPrincipalActs).
         chunk = _chunk(
             "Gli Stati membri recepiscono la presente direttiva entro il termine stabilito.",
             framework="CSRD",
@@ -460,15 +692,11 @@ class TestLevels:
             celex="32026L0470",
             source_celex="32026L0470",
         )
-        out = verify_citation(
-            _cite(
-                "recepiscono la presente direttiva entro il termine",
-                framework="CSDDD",
-                reference="Art. 4",
-            ),
-            [chunk],
-        )
+        quote = "recepiscono la presente direttiva entro il termine"
+        out = verify_citation(_cite(quote, framework="32026L0470", reference="Art. 4"), [chunk])
         assert out.verified and out.level == "article"
+        out = verify_citation(_cite(quote, framework="CSDDD", reference="Art. 4"), [chunk])
+        assert out.verified and out.level == "framework"
 
     def test_english_letter_matches_italian_latin_suffix(self):
         # "Article 19a" in English is "articolo 19 bis" in Italian: same provision.
@@ -480,8 +708,9 @@ class TestLevels:
             framework="CSRD",
             celex="32013L0034",
         )
+        # Art. 19a is an article of the Accounting Directive: cited by its CELEX.
         out = verify_citation(
-            {"framework": "CSRD", "reference": "Art. 19a(1)", "quote": sentence}, [chunk]
+            {"framework": "32013L0034", "reference": "Art. 19a(1)", "quote": sentence}, [chunk]
         )
         assert out.verified and out.level == "article" and out.article == "Art. 19 bis"
 
@@ -531,15 +760,22 @@ class TestTooGenericOrMissing:
 
 
 class TestFuzzyMatch:
-    def test_one_character_difference(self):
-        # "meccanicamante": a one-letter slip of the model.
-        quote = "siano marcati in un formato leggibile meccanicamante e rilevabili"
+    def test_one_missing_letter(self):
+        # "meccanicamnte": a letter the model left out, inside a long word.
+        quote = "siano marcati in un formato leggibile meccanicamnte e rilevabili"
         out = verify_citation(_cite(quote), _corpus())
         assert out.verified and out.match == "fuzzy" and out.level == "article"
         assert (
             out.official_quote
             == "siano marcati in un formato leggibile meccanicamente e rilevabili"
         )
+
+    def test_one_different_letter_is_a_difference(self):
+        # "meccanicamante" for "meccanicamente": a different letter is never forgiven.
+        quote = "siano marcati in un formato leggibile meccanicamante e rilevabili"
+        out = verify_citation(_cite(quote), _corpus())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "meccanicamante", "official": "meccanicamente"}]
 
     def test_missing_comma(self):
         quote = "contenuti audio immagine, video o testuali sintetici garantiscono"
@@ -731,6 +967,50 @@ class TestWordsMustAgree:
         assert out.verified is False
         assert out.differences == [{"quoted": "contitolare", "official": "titolare"}]
 
+    def test_a_different_letter_is_never_a_slip(self):
+        # B3.9: "consent" for "content" was forgiven and shown as a punctuation difference.
+        text = (
+            "Article 50\nTransparency obligations\n2. Providers of AI systems, including "
+            "general-purpose AI systems, generating synthetic audio, image, video or text content, "
+            "shall ensure that the outputs of the AI system are marked in a machine-readable format."
+        )
+        chunk = _chunk(text, chunk_id="pt-ai-50-en", lang="EN")
+        quote = "generating synthetic audio, image, video or text consent, shall ensure that the outputs"
+        out = verify_citation(_cite(quote, reference="Art. 50(2)"), [chunk])
+        assert out.verified is False
+        assert out.differences == [{"quoted": "consent", "official": "content"}]
+        assert wording_differences(
+            "il titolare del trattamenti", "il titolare del trattamento"
+        ) == [("trattamenti", "trattamento")]
+
+    def test_a_different_ending_is_not_a_slip(self):
+        # Singular and plural, a letter added or dropped at the end of a word.
+        quote = "il titolare del trattamenti notifica la violazione all'autorità di controllo"
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified is False
+        assert out.differences == [{"quoted": "trattamenti", "official": "trattamento"}]
+        text = (
+            "Article 8\nCompliance with the requirements\n1. High-risk AI systems shall comply "
+            "with the requirements laid down in this Section, taking into account their intended "
+            "purpose."
+        )
+        chunk = _chunk(text, chunk_id="pt-ai-8-en", article="Art. 8", lang="EN")
+        quote = "High-risk AI systems shall comply with the requirement laid down in this Section"
+        out = verify_citation(_cite(quote, reference="Art. 8(1)"), [chunk])
+        assert out.verified is False
+        assert out.differences == [{"quoted": "requirement", "official": "requirements"}]
+
+    def test_a_missing_letter_inside_a_long_word_is_forgiven(self):
+        quote = "il titolare del trattamento notifca la violazione all'autorità di controllo"
+        out = verify_citation(_cite_33(quote), _gdpr_33())
+        assert out.verified and out.match == "fuzzy"
+        assert out.official_quote == (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo"
+        )
+        assert wording_differences("the controller shall notfy", "the controller shall notify") == [
+            ("notfy", "notify")
+        ]  # "notify" has six letters, "notfy" five: too short to forgive
+
     def test_a_changed_first_letter_is_not_a_slip(self):
         # "lecito" for "recito": the first letter makes another word.
         assert wording_differences("il trattamento lecito", "il trattamento recito") == [
@@ -849,8 +1129,12 @@ class TestGoldenSetPassages:
                 .replace("\N{RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK}", '"')
                 .replace("\N{EM DASH}", "-")
             )
+            # Cited as the prompt labels it: the framework key for its principal
+            # act, the CELEX for any other (the Accounting Directive, the Omnibus).
+            act = base_celex(chunk)
+            key = rec["framework"] if act == principal_celex(rec["framework"]) else act
             citation = {
-                "framework": rec["framework"],
+                "framework": key,
                 "reference": f"Art. {exp['article']}",
                 "quote_snippet": model_quote,
             }
@@ -861,16 +1145,26 @@ class TestGoldenSetPassages:
             assert normalize(out.official_quote) == normalize(model_quote), rec["id"]
 
     def test_real_passages_shortened_with_an_omission(self):
+        # Four words left out between the first six and the next six. A part
+        # with no word of its own ("b) a meno che non siano") is never verified.
+        from src.agents.citation_verifier import _has_content
+
+        checked = 0
         for rec in _golden_quotes():
             words = rec["expected"]["quote"].split()
             if len(words) < 16:
                 continue
-            head, tail = " ".join(words[:6]), " ".join(words[-6:])
+            head, tail = " ".join(words[:6]), " ".join(words[10:16])
             chunk = {"framework": rec["framework"], "text": rec["expected"]["quote"]}
             out = verify_citation(
                 {"framework": rec["framework"], "quote_snippet": f"{head} [...] {tail}"}, [chunk]
             )
+            if not (_has_content(normalize(head)) and _has_content(normalize(tail))):
+                assert out.verified is False, rec["id"]
+                continue
+            checked += 1
             assert out.verified and out.official_quote.count("[...]") == 1, rec["id"]
+        assert checked >= 70
 
 
 # ─── annotate_citations ──────────────────────────────────────────────
@@ -923,6 +1217,229 @@ class TestAnnotateCitations:
         out = annotate_citations({"citations": [_cite("I fornitori garantiscono che")]}, None)
         assert out["citations"][0]["verified"] is False
         assert (out["verified_citations"], out["citations_total"]) == (0, 1)
+
+
+# ─── A quote found elsewhere (Chiedi) ────────────────────────────────
+
+MARCATI = "garantiscono che gli output del sistema di IA siano marcati"
+
+
+def _annotated(citation, chunks=None):
+    return annotate_citations({"answer": "x", "citations": [citation]}, chunks or _corpus())
+
+
+class TestFoundElsewhere:
+    """B3.2: a quote from another act, article or paragraph is not a verified citation."""
+
+    def test_verify_citation_keeps_its_levels_for_the_document_check(self):
+        # src/document_check reads level "article" itself: the levels do not change.
+        out = verify_citation(_cite(MARCATI, framework="GDPR", reference="Art. 6"), _corpus())
+        assert out.verified and out.level == "any"
+
+    def test_another_act(self):
+        out = _annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6"))
+        cit = out["citations"][0]
+        assert cit["verified"] is False
+        assert all(cit[f] is None for f in CITATION_FIELDS if f != "verified")
+        assert cit["found_elsewhere"] is True and cit["found_in"] == "act"
+        assert (cit["found_celex"], cit["found_article"], cit["found_paragraph"]) == (
+            "32024R1689",
+            "Art. 50",
+            "2",
+        )
+        assert cit["found_quote"] == MARCATI
+        assert cit["found_url"] == (
+            "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+        )
+        assert (out["verified_citations"], out["citations_total"]) == (0, 1)
+
+    def test_another_article_of_the_act(self):
+        cit = _annotated(_cite(MARCATI, reference="Art. 52"))["citations"][0]
+        assert cit["verified"] is False
+        assert cit["found_in"] == "article" and cit["found_article"] == "Art. 50"
+
+    def test_another_known_paragraph_of_the_article(self):
+        cit = _annotated(_cite(MARCATI, reference="Art. 50(1)"))["citations"][0]
+        assert cit["verified"] is False
+        assert (cit["found_in"], cit["found_paragraph"]) == ("paragraph", "2")
+        right = _annotated(_cite(MARCATI, reference="Art. 50(2)"))["citations"][0]
+        assert right["verified"] is True and right["found_elsewhere"] is False
+        assert all(right[f] is None for f in ELSEWHERE_FIELDS if f != "found_elsewhere")
+
+    def test_an_unknown_paragraph_is_accepted(self):
+        chunk = _chunk("Il fornitore conserva la documentazione tecnica per dieci anni.")
+        cit = _annotated(
+            _cite("Il fornitore conserva la documentazione tecnica", reference="Art. 50(4)"),
+            [chunk],
+        )["citations"][0]
+        assert cit["verified"] is True and cit["found_elsewhere"] is False
+        # A chunk that covers paragraphs 3-4 holds paragraph 4.
+        chunk = _chunk("Il fornitore conserva la documentazione tecnica.", paragraph="3-4")
+        cit = _annotated(
+            _cite("Il fornitore conserva la documentazione tecnica", reference="Art. 50(4)"),
+            [chunk],
+        )["citations"][0]
+        assert cit["verified"] is True
+
+    def test_the_cited_paragraph_is_searched_first(self):
+        sentence = "Il fornitore conserva la documentazione tecnica per dieci anni."
+        chunk = _chunk(f"Articolo 18\n1. {sentence}\n2. {sentence}", article="Art. 18")
+        out = verify_citation(_cite(sentence, reference="Art. 18(2)"), [chunk])
+        assert out.verified and out.paragraph == "2"
+        cit = _annotated(_cite(sentence, reference="Art. 18(2)"), [chunk])["citations"][0]
+        assert cit["verified"] is True
+
+    def test_a_framework_cited_without_an_article_is_not_contradicted(self):
+        cit = _annotated(_cite(MARCATI, reference=""))["citations"][0]
+        assert cit["verified"] is True and cit["level"] == "framework"
+
+    def test_the_policy_names_the_mismatch_and_flags_the_answer(self):
+        result = {
+            **_annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6")),
+            "confidence_score": 0.9,
+            "caveats": ["Nota del modello."],
+        }
+        out = apply_unverified_policy(result, mode="flag", language="it")
+        assert out["requires_expert_review"] is True and out["confidence_score"] == 0.6
+        assert out["caveats"] == [
+            "Nota del modello.",
+            "La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro "
+            "atto, Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2.",
+            UNVERIFIED_ELSEWHERE_CAVEAT_IT,
+        ]
+        again = apply_unverified_policy(json.loads(json.dumps(out)), mode="flag", language="en")
+        assert again["caveats"] == [
+            "Nota del modello.",
+            "The citation [GDPR, Art. 6] is not verified: the quoted text is in another act, "
+            "Regulation (EU) 2024/1689 (AI Act), Art. 50, para. 2.",
+            UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+        ]
+        assert apply_unverified_policy(json.loads(json.dumps(again)), language="en") == again
+
+    def test_a_verified_citation_next_to_one_found_elsewhere(self):
+        citations = [_cite(MARCATI, reference="Art. 50(2)"), _cite(MARCATI, reference="Art. 52")]
+        result = annotate_citations(
+            {"answer": "x", "citations": citations, "confidence_score": 0.9}, _corpus()
+        )
+        assert (result["verified_citations"], result["citations_total"]) == (1, 2)
+        out = apply_unverified_policy(result, language="it")
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.9  # one citation is verified: no cap
+        assert out["caveats"] == [
+            "La citazione [AI_ACT, Art. 52] non è verificata: il testo citato si trova in un "
+            "altro articolo dello stesso atto, Art. 50, par. 2."
+        ]
+        assert policy_requires_review(out) is True
+        assert unverified_policy_applies(out) is False
+
+    def test_strict_mode_abstains_when_every_citation_is_elsewhere(self):
+        result = _annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6"))
+        out = apply_unverified_policy(result, mode="strict", language="it")
+        assert out["abstention_reason"] == "unverified_citations"
+        assert out["answer"] == UNVERIFIED_ELSEWHERE_ABSTENTION_IT
+        assert out["citations"] == [] and out["caveats"] == []
+        english = apply_unverified_policy(json.loads(json.dumps(out)), mode="strict", language="en")
+        assert english["answer"] == UNVERIFIED_ELSEWHERE_ABSTENTION_EN
+
+    def test_act_names_and_paragraphs(self):
+        assert act_name("32024R1689") == "Regolamento (UE) 2024/1689 (AI Act)"
+        assert act_name("32020R0852", english=True) == "Regulation (EU) 2020/852 (Taxonomy)"
+        assert act_name("32026R1744", english=True) == "Regulation (EU) 2026/1744"
+        assert act_name("32023R2772") == "Regolamento delegato (UE) 2023/2772"
+        assert act_name("32024R2956", english=True) == "Implementing Regulation (EU) 2024/2956"
+        assert act_name("32013L0034") == "Direttiva 2013/34/UE"
+        assert act_name("32013R0575") == "CELEX 32013R0575"
+        assert act_name(None) is None
+        assert parse_paragraph("Art. 50(2)") == "2"
+        assert parse_paragraph("art. 50, par. 2") == "2"
+        assert parse_paragraph("articolo 12-bis, comma 2") == "2"
+        assert parse_paragraph("Art. 6(1)(f)") == "1"
+        assert parse_paragraph("Art. 50") is None
+        assert parse_paragraph("Recital 12") is None
+
+
+# ─── Framework keys name their principal act ─────────────────────────
+
+# The principal act of each framework key: its first basic act in TRACKED_ACTS.
+PRINCIPAL_ACTS = {
+    "CSRD": "32022L2464",
+    "CSDDD": "32024L1760",
+    "AI_ACT": "32024R1689",
+    "DORA": "32022R2554",
+    "NIS2": "32022L2555",
+    "TAXONOMY": "32020R0852",
+    "GDPR": "32016R0679",
+    "CRA": "32024R2847",
+}
+OMNIBUS_1 = (
+    "Articolo 1\nModifiche del regolamento (UE) 2024/1689\nIl regolamento (UE) 2024/1689 è "
+    "così modificato: l'articolo 4 è sostituito dal seguente testo."
+)
+
+
+def _omnibus_chunk():
+    return _chunk(
+        OMNIBUS_1,
+        chunk_id="pt-omnibus-1",
+        article="Art. 1",
+        celex="32026R1744",
+        source_celex="32026R1744",
+        consolidated_as_of=None,
+    )
+
+
+class TestPrincipalActs:
+    """B3.8: a framework key names its principal act, every other act its CELEX."""
+
+    def test_every_framework_has_its_principal_act(self):
+        from src.crawler.eurlex.client import FRAMEWORK_ORDER, TRACKED_ACTS
+
+        assert {fw: principal_celex(fw) for fw in FRAMEWORK_ORDER} == PRINCIPAL_ACTS
+        for fw, celex in PRINCIPAL_ACTS.items():
+            act = next(a for a in TRACKED_ACTS if a.celex == celex)
+            assert act.framework == fw and act.kind == "basic"
+        assert principal_celex("AI Act") == "32024R1689"
+        assert principal_celex("32024R1689") is None  # a CELEX is no framework key
+        assert principal_celex("ESRS") is None  # Delegated Regulation 2023/2772 itself
+        assert principal_celex("Some other act") is None
+
+    def test_a_framework_key_does_not_cite_the_article_of_another_act(self):
+        # "[AI_ACT, Art. 1]" with the Omnibus wording: not an article of the AI Act.
+        quote = "Il regolamento (UE) 2024/1689 è così modificato"
+        out = verify_citation(_cite(quote, reference="Art. 1"), [_omnibus_chunk()])
+        assert out.verified and out.level == "framework" and out.celex == "32026R1744"
+        cit = _annotated(_cite(quote, reference="Art. 1"), [_omnibus_chunk()])["citations"][0]
+        assert cit["verified"] is False
+        assert (cit["found_in"], cit["found_celex"], cit["found_article"]) == (
+            "act",
+            "32026R1744",
+            "Art. 1",
+        )
+        # Cited by its CELEX, as the prompt labels it, it is verified.
+        by_celex = _annotated(
+            _cite(quote, framework="32026R1744", reference="Art. 1"), [_omnibus_chunk()]
+        )["citations"][0]
+        assert by_celex["verified"] is True and by_celex["level"] == "article"
+
+    def test_the_principal_act_its_consolidated_text_and_its_quoted_articles_match(self):
+        consolidated = _chunk(ART_50_IT, celex="02024R1689-20260727")
+        out = verify_citation(_cite(MARCATI), [consolidated])
+        assert out.verified and out.level == "article"
+        # Case B of quoted_articles.py: Art. 4 of the AI Act as the Omnibus quotes it.
+        quoted = _chunk(
+            "Articolo 1\nI fornitori e i deployer adottano misure per l'alfabetizzazione in "
+            "materia di IA.",
+            article="Art. 1",
+            celex="32026R1744",
+            citation_celex="32024R1689",
+            citation_article="Art. 4",
+        )
+        quote = "I fornitori e i deployer adottano misure per l'alfabetizzazione"
+        out = verify_citation(_cite(quote, reference="Art. 4"), [quoted])
+        assert out.verified and out.level == "article" and out.amending_celex == "32026R1744"
+        # A chunk without a CELEX cannot be told apart and still matches.
+        bare = {"framework": "AI_ACT", "article": "Art. 50", "text": ART_50_IT}
+        assert verify_citation(_cite(MARCATI), [bare]).level == "article"
 
 
 # ─── Policy ──────────────────────────────────────────────────────────
@@ -998,10 +1515,43 @@ class TestFlagPolicy:
         out = apply_unverified_policy(json.loads(json.dumps(answer)), mode="strict")
         assert out == answer
 
-    def test_no_citations_no_flag(self):
-        answer = {"answer": "Nessuna citazione.", "citations": [], "confidence_score": 0.8}
+    def test_an_answer_without_citations_is_flagged(self):
+        # It passed silently: nothing in it could be verified.
+        answer = {
+            "answer": "Nessuna citazione.",
+            "citations": [],
+            "confidence_score": 0.8,
+            "caveats": ["Nota del modello."],
+        }
         out = apply_unverified_policy(dict(answer))
-        assert out == {**answer, "verified_citations": 0, "citations_total": 0}
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.8  # nothing contradicted it: no cap
+        assert out["caveats"] == ["Nota del modello.", NO_CITATIONS_CAVEAT_IT]
+        assert (out["verified_citations"], out["citations_total"]) == (0, 0)
+        assert "abstention_reason" not in out
+        assert NO_CITATIONS_CAVEAT_IT == (
+            "La risposta non cita nessun passaggio dei testi del corpus: verifica le fonti prima "
+            "di usarla."
+        )
+        english = apply_unverified_policy(json.loads(json.dumps(out)), language="en")
+        assert english["caveats"] == ["Nota del modello.", NO_CITATIONS_CAVEAT_EN]
+        assert apply_unverified_policy(json.loads(json.dumps(english)), language="en") == english
+        # No citations key at all is no citation either; strict does not abstain.
+        strict = apply_unverified_policy({"answer": "x", "confidence_score": 0.8}, mode="strict")
+        assert strict["caveats"] == [NO_CITATIONS_CAVEAT_IT]
+        assert strict["requires_expert_review"] is True and "abstention_reason" not in strict
+        assert policy_requires_review(out) is True and unverified_policy_applies(out) is False
+
+    def test_an_abstention_without_citations_is_left_alone(self):
+        abstention = {
+            "answer": "Non posso rispondere con una fonte.",
+            "citations": [],
+            "requires_expert_review": True,
+            "abstention_reason": "no_sources",
+        }
+        out = apply_unverified_policy(dict(abstention))
+        assert out == {**abstention, "verified_citations": 0, "citations_total": 0}
+        assert policy_requires_review(out) is False
 
     def test_abstention_is_left_alone(self):
         answer = _unverified_answer(abstention_reason="snc_low_trust")

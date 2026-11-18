@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.agents.ai_marking import mark_ai_generated
 from src.agents.citation_verifier import apply_unverified_policy, policy_mode
 from src.api.errors import QDRANT_UNAVAILABLE_DETAIL, llm_not_configured_detail, raise_for_result
 from src.api.streaming.generators import (
@@ -214,14 +215,19 @@ def _build_metadata(
     *,
     cached: bool = False,
     framework: str | None = None,
+    ai_generated: bool = True,
 ) -> dict:
-    """Build response metadata with tenant context."""
+    """Build response metadata with tenant context.
+
+    ``ai_generated`` follows the answer's own marking for Q&A (False for an
+    abstention, whose text NormaAI writes itself).
+    """
     settings = get_settings()
     meta = {
         "timestamp": datetime.now(UTC).isoformat(),
         "model": settings.active_model,
         "org_id": str(user.org_id),
-        "ai_generated": True,
+        "ai_generated": ai_generated,
         "disclaimer": "AI-assisted analysis. Not legal advice. Expert review recommended.",
     }
     # How current the law is: the date the seed or the update recorded in the
@@ -246,9 +252,13 @@ def _finalize_qa_result(result: dict, language: str) -> dict:
     guarantees, for both, the ``verified_citations`` / ``citations_total``
     counters and a decision taken with the CURRENT ``citation_verification``
     setting and the request language (a flagged answer cached under ``flag``
-    becomes an abstention once the deploy switches to ``strict``).
+    becomes an abstention once the deploy switches to ``strict``). Every
+    answer leaves marked as AI-generated or not (``ai_generated``,
+    ``generator``: AI Act, Art. 50(2); src.agents.ai_marking).
     """
-    return apply_unverified_policy(result, mode=policy_mode(get_settings()), language=language)
+    settings = get_settings()
+    result = apply_unverified_policy(result, mode=policy_mode(settings), language=language)
+    return mark_ai_generated(result, settings)
 
 
 # ─── SSE Streaming Helper ────────────────────────────────────────
@@ -285,7 +295,10 @@ async def ask_question(
     carries `verified` (true only when its quote was found word for word in the
     retrieved official text), `official_quote`, `celex`, `article`, `url` and
     the other fields of the citation verifier; `data` carries
-    `verified_citations` and `citations_total`.
+    `verified_citations` and `citations_total`, and the machine-readable
+    marking of the AI Act, Art. 50(2): `ai_generated` (false for an abstention,
+    whose text NormaAI writes itself) and `generator` (`system`, `provider`,
+    `model`).
 
     Set `stream: true` in the request body to receive Server-Sent Events.
 
@@ -330,10 +343,13 @@ async def ask_question(
                 )
             )
             if cached:
+                data = _finalize_qa_result(cached, payload.language.value)
                 response_body = {
                     "status": "success",
-                    "data": _finalize_qa_result(cached, payload.language.value),
-                    "metadata": _build_metadata(user, cached=True),
+                    "data": data,
+                    "metadata": _build_metadata(
+                        user, cached=True, ai_generated=data.get("ai_generated") is not False
+                    ),
                 }
                 if payload.stream:
                     return StreamingResponse(
@@ -380,7 +396,7 @@ async def ask_question(
         response_body = {
             "status": "success",
             "data": result,
-            "metadata": _build_metadata(user),
+            "metadata": _build_metadata(user, ai_generated=result.get("ai_generated") is not False),
         }
 
         if payload.stream:

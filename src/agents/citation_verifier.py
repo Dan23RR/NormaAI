@@ -28,16 +28,28 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
    (``"article"``), then any chunk of the cited framework (``"framework"``),
    then every chunk (``"any"``). The first level where the quote is found is
    recorded in ``level``.
-4. Within a level the quote must be a substring of one chunk (``"exact"``). A
-   quote with omissions (``[...]``, ``...``, ``…``) is split there and every
-   segment of at least 12 characters must appear in the same chunk, in order.
-   Failing that, a tolerant comparison looks for a span of the chunk whose
-   difflib ratio with the quote is at least 0.92 and accepts it (``"fuzzy"``)
-   only when the WORDS agree (``wording_differences``): every number, every
-   number word and every word under five letters ("non", "o", "e", "may",
-   "not") must be identical. The differences forgiven are punctuation,
-   accents, a word split or joined at a line break, and one wrong, missing or
-   extra letter inside a longer ordinary word.
+4. Within a level the quote must be found in one chunk, starting and ending
+   on word boundaries (``"exact"``): "lecito" is not found inside "illecito",
+   nor "72 ore" inside "172 ore". A quote with omissions (``[...]``, ``...``,
+   ``…``) is split there into parts, and EVERY part must be found in the same
+   chunk, in order, on word boundaries: "non" is not found inside "nonché".
+   Each part must hold a word of its own (``_has_content``): a part made only
+   of function words, numbers or a list marker ("non", "not", "shall not",
+   "72") takes its meaning from the words the omission removed, so it cannot
+   be checked. An omission may skip at most ``MAX_OMISSION_CHARS`` characters
+   of the chunk, or ``MAX_SKIPPED_POINTS_CHARS`` when the part after it starts
+   a point or a paragraph (it skips whole points of a list): words stitched
+   together from distant sentences are not a quote. Failing an exact match, a
+   tolerant comparison, under the same rules, accepts a span whose difflib
+   ratio with a part is at least 0.92 (``"fuzzy"``) only when the WORDS agree
+   (``wording_differences``): every number, every number word and every word
+   under six letters must be identical. The differences forgiven are
+   punctuation, accents, a word split or joined at a line break, and one
+   missing or extra letter inside a word of at least six letters, neither its
+   first nor its last ("notifca" for "notifica"). A different letter is never
+   forgiven ("consent" is not "content"), nor a letter added or dropped at the
+   end of a word ("trattamenti" is not "trattamento", "requirements" is not
+   "requirement").
 5. A span that is close but differs in a word that matters ("48 ore" where the
    law says "72 ore") is not a verification. The result stays unverified and
    says what was almost matched: ``near_quote`` (the official wording),
@@ -46,22 +58,47 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
    an official text: it never verifies a quote.
 
 A literal quote can still leave out context that changes its meaning (the
-"non" just before it, an exception in the next sentence): the interface shows
-the official passage so the reader sees it in place.
+"non" just before it, an exception in the next sentence, a clause the omission
+skips): the interface shows the official passage so the reader sees it in
+place.
 
-``annotate_citations`` writes the result on COPIES of the citations and adds
-the ``verified_citations`` / ``citations_total`` counters;
-``apply_unverified_policy`` decides what happens to an answer whose citations
+When the citation names a paragraph ("Art. 50(2)"), the article level looks
+in that paragraph first; ``paragraph`` reports where the quote starts.
+``verify_citation`` keeps reporting a quote found at the "framework" or "any"
+level, or in another paragraph, as verified: the document check
+(src/document_check) reads ``level`` and tells "Citazione in un altro
+articolo" itself.
+
+``annotate_citations`` (the Q&A path) writes the result on COPIES of the
+citations and adds the ``verified_citations`` / ``citations_total`` counters.
+There a quote found word for word but not where its citation points is NOT a
+verified citation: in another act (level "any", or another act of the cited
+framework), in another article of the act cited, when the citation names an
+article, or in another known paragraph than the one it names. Such a citation
+gets ``verified`` False with every field above empty, and says where the
+wording really is in fields of its own (``ELSEWHERE_FIELDS``), written on
+every citation:
+
+- ``found_elsewhere``: True for such a citation, False otherwise;
+- ``found_in``: ``"act"``, ``"article"`` or ``"paragraph"``;
+- ``found_celex``, ``found_article``, ``found_paragraph``: where it is;
+- ``found_quote``: the official wording there; ``found_url``: its EUR-Lex page.
+
+``apply_unverified_policy`` gives each such citation a caveat that names it
+and flags the answer for expert review, flags with a caveat an answer that
+cites nothing at all, and decides what happens to an answer whose citations
 were all left unverified (``flag`` or ``strict``, see ``src.config``).
 """
 
 from __future__ import annotations
 
+import bisect
 import math
 import re
 import unicodedata
 from dataclasses import asdict, dataclass, fields
 from difflib import SequenceMatcher
+from functools import lru_cache
 from typing import Any
 
 from src.crawler.eurlex import celex as celex_utils
@@ -70,11 +107,26 @@ from src.crawler.eurlex import celex as celex_utils
 
 MIN_QUOTE_CHARS = 20
 MIN_QUOTE_WORDS = 4
+# A part of a quote shorter than this is matched only word for word, never
+# fuzzily: there are too few letters to tell a slip from another word.
 MIN_SEGMENT_CHARS = 12
 FUZZY_MIN_RATIO = 0.92
-# A one-letter slip is forgiven only in words at least this long: shorter words
-# ("non", "o", "e", "deve", "may", "not", "June") carry too much meaning per letter.
-MIN_SLIP_WORD_CHARS = 5
+# A missing or extra letter is forgiven only in words at least this long:
+# shorter words ("non", "deve", "Stati", "shall", "notify") carry too much
+# meaning per letter.
+MIN_SLIP_WORD_CHARS = 6
+# How much of the official text an omission may skip (see _place). Measured on
+# the ten live golden v2 runs of 24/10-18/11/2026 (152 distinct quotes with an
+# omission, each placed in the cached official text): inside running text the
+# longest omission of a verified quote was 524 characters (NIS2, Art. 23(11)),
+# the median about 95; an omission that skips to the next point of a list
+# reached 980 (AI Act, Art. 14(4): "... di: [...] e) intervenire ..."). 600
+# keeps the first kind and stops a part from being fetched from sentences
+# further away. A skip that lands on the start of a point or a paragraph
+# leaves out whole points: it may reach 2000 characters, the largest Q&A
+# chunk (EURLexHTMLChunker.MAX_CHUNK_SIZE).
+MAX_OMISSION_CHARS = 600
+MAX_SKIPPED_POINTS_CHARS = 2000
 
 MATCH_EXACT = "exact"
 MATCH_FUZZY = "fuzzy"
@@ -105,6 +157,57 @@ UNVERIFIED_ABSTENTION_EN = (
     "in the corpus texts. Please consult the official sources directly or request an "
     "expert review."
 )
+# An answer that cites nothing.
+NO_CITATIONS_CAVEAT_IT = (
+    "La risposta non cita nessun passaggio dei testi del corpus: verifica le fonti prima di usarla."
+)
+NO_CITATIONS_CAVEAT_EN = (
+    "The answer cites no passage of the corpus texts: check the sources before using it."
+)
+# The same, when some quote was found, but not where its citation points.
+UNVERIFIED_ELSEWHERE_CAVEAT_IT = (
+    "Nessuno dei passaggi citati è stato ritrovato testualmente nella disposizione che la "
+    "risposta indica: verifica le fonti prima di usarla."
+)
+UNVERIFIED_ELSEWHERE_CAVEAT_EN = (
+    "None of the cited passages was found verbatim in the provision the answer names: "
+    "check the sources before using this answer."
+)
+UNVERIFIED_ELSEWHERE_ABSTENTION_IT = (
+    "Non posso fornire una risposta verificata: nessuno dei passaggi citati è stato "
+    "ritrovato testualmente nella disposizione che la risposta indica. Consulta direttamente "
+    "le fonti ufficiali oppure richiedi una revisione esperta."
+)
+UNVERIFIED_ELSEWHERE_ABSTENTION_EN = (
+    "I cannot provide a verified answer: none of the cited passages was found verbatim in "
+    "the provision the answer names. Please consult the official sources directly or "
+    "request an expert review."
+)
+# Each of our abstentions, in Italian and English.
+_ABSTENTION_TWINS: dict[str, tuple[str, str]] = {
+    text: twins
+    for twins in (
+        (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN),
+        (UNVERIFIED_ELSEWHERE_ABSTENTION_IT, UNVERIFIED_ELSEWHERE_ABSTENTION_EN),
+    )
+    for text in twins
+}
+
+# Where a quote found word for word, but not where its citation points, is
+# (annotate_citations): in another act, another article, another paragraph.
+FOUND_IN_ACT = "act"
+FOUND_IN_ARTICLE = "article"
+FOUND_IN_PARAGRAPH = "paragraph"
+# The fields annotate_citations writes on every citation next to CITATION_FIELDS.
+ELSEWHERE_FIELDS: tuple[str, ...] = (
+    "found_elsewhere",
+    "found_in",
+    "found_celex",
+    "found_article",
+    "found_paragraph",
+    "found_quote",
+    "found_url",
+)
 
 # Framework keys of the seeded registry (src.crawler.eurlex.client.FRAMEWORK_ORDER)
 # and the names a model writes for them. Only used to MATCH a citation to the
@@ -133,8 +236,14 @@ _FRAMEWORK_ALIASES: dict[str, str] = {
     "GENERAL_DATA_PROTECTION_REGULATION": "GDPR",
     "RGPD": "GDPR",
     "CS3D": "CSDDD",
-    # ESRS Set 1 (Delegated Regulation 2023/2772) is seeded under CSRD.
-    "ESRS": "CSRD",
+    # ESRS Set 1 is seeded under CSRD, but it is an act of its own: Delegated
+    # Regulation (EU) 2023/2772, cited by its CELEX (see principal_celex).
+    "ESRS": "32023R2772",
+}
+# How a caveat names the framework of a principal act: "(AI Act)".
+_FRAMEWORK_NAMES: dict[str, tuple[str, str]] = {
+    "AI_ACT": ("AI Act", "AI Act"),
+    "TAXONOMY": ("Tassonomia", "Taxonomy"),
 }
 
 # ─── Normalization ───────────────────────────────────────────────────
@@ -257,6 +366,10 @@ _ANNEX_RE = re.compile(
 _BARE_NUMBER_RE = re.compile(rf"^\s*{_NUMBER}(?![\d/.])", re.IGNORECASE)
 # A numbered paragraph at the start of a line of an article: "2. Providers ...".
 _PARAGRAPH_LINE_RE = re.compile(r"(?m)^[ \t]*(\d{1,3})\.[ \t]+\S")
+# The paragraph a reference names after the article: ", par. 2", "paragrafo 2".
+_PARAGRAPH_REF_RE = re.compile(
+    r"[\s,;]*\b(?:par(?:agrafo|agraph|a)?|comma)\b\.?\s*(\d{1,3})\b", re.IGNORECASE
+)
 
 
 def _article_number(match: re.Match[str]) -> str:
@@ -364,6 +477,36 @@ def normalize_framework(name: Any) -> str:
     return key
 
 
+@lru_cache(maxsize=1)
+def _principal_acts() -> dict[str, str]:
+    """Framework key -> CELEX of its principal act: its first basic act in TRACKED_ACTS."""
+    from src.crawler.eurlex.client import TRACKED_ACTS
+
+    principals: dict[str, str] = {}
+    for act in TRACKED_ACTS:
+        if act.kind == "basic":
+            principals.setdefault(act.framework, act.celex)
+    return principals
+
+
+def principal_celex(framework: Any) -> str | None:
+    """CELEX of the act a framework key names, or None for a CELEX or an unknown key.
+
+    A framework groups acts (src.crawler.eurlex.client.TRACKED_ACTS): CSRD
+    holds the CSRD, the Accounting Directive, ESRS Set 1 and the Omnibus
+    directives; AI_ACT the AI Act and the Digital Omnibus on AI. The key names
+    the first basic act of the group (CSRD: 32022L2464, AI_ACT: 32024R1689),
+    its principal act; every other act of the group is cited by its CELEX.
+    """
+    return _principal_acts().get(normalize_framework(framework))
+
+
+def _tracked_act(celex: str) -> Any:
+    from src.crawler.eurlex.client import get_tracked_act
+
+    return get_tracked_act(celex)
+
+
 def base_celex(chunk: dict[str, Any]) -> str | None:
     """The base act of a chunk: ``celex`` or ``source_celex``, never a consolidated id.
 
@@ -438,6 +581,8 @@ class _Chunk:
     frameworks: frozenset[str]
     article_key: str | None
     celex: str | None
+    # Normalized positions where a point or a paragraph starts (_point_starts).
+    points: frozenset[int] | None = None
 
 
 def _prepare(chunks: Any) -> list[_Chunk]:
@@ -483,11 +628,11 @@ def _reference_of(citation: dict[str, Any]) -> str:
 
 
 def _segments(quote: str) -> list[str]:
-    """The parts of a normalized quote that must be found, in order."""
+    """Every part of a normalized quote, split at its omission marks: all must be found."""
     parts = _OMISSION_RE.split(quote)
     if len(parts) == 1:
         return [quote] if quote else []
-    return [p for p in (_strip_edges(part) for part in parts) if len(p) >= MIN_SEGMENT_CHARS]
+    return [p for p in (_strip_edges(part) for part in parts) if p]
 
 
 def _specific_enough(segments: list[str]) -> bool:
@@ -495,37 +640,93 @@ def _specific_enough(segments: list[str]) -> bool:
     return len(content) >= MIN_QUOTE_CHARS and len(content.split()) >= MIN_QUOTE_WORDS
 
 
-def _find_in_order(segments: list[str], text: str) -> list[tuple[int, int]] | None:
-    """Spans of every segment, each after the previous one (greedy is optimal)."""
-    spans: list[tuple[int, int]] = []
-    pos = 0
-    for seg in segments:
-        k = text.find(seg, pos)
-        if k < 0:
-            return None
-        spans.append((k, k + len(seg)))
-        pos = k + len(seg)
-    return spans
+# Words that carry no meaning of their own, in Italian and English (accents
+# removed): articles, prepositions, conjunctions, pronouns, auxiliary and modal
+# verbs, negations and the adverbs that set the scope of a rule ("solo", "only",
+# "senza", "unless"). A part between omissions made only of these, of numbers
+# or of a list marker ("non", "not", "shall not", "72", "(a)") takes its
+# meaning from the text the omission removed, so it is never verified.
+_FUNCTION_WORDS = frozenset(
+    "il lo la i gli le l un uno una di d a da in con su per tra fra del dello della dei "
+    "degli delle dell al allo alla ai agli alle all dal dallo dalla dai dagli dalle dall nel "
+    "nello nella nei negli nelle nell sul sullo sulla sui sugli sulle sull col coi e ed o od "
+    "ma ne se che anche oppure ovvero ossia nonche inoltre pero perche poiche come quando "
+    "mentre sia non piu meno gia solo soltanto sempre mai almeno ancora cosi quindi dunque "
+    "pure senza salvo tranne eccetto si ci vi li mi ti esso essa essi esse cio cui chi quale "
+    "quali questo questa questi queste quello quella quelli quelle tale tali ogni ciascun "
+    "ciascuno ciascuna nessun nessuno nessuna alcun alcuno alcuna alcuni alcune altro altra "
+    "altri altre stesso stessa stessi stesse loro suo sua suoi sue sono siano sara saranno "
+    "era erano essere stato stata stati state ha hanno abbia abbiano avere avuto puo possono "
+    "possa possano potra potranno deve devono debba debbano dovra dovranno viene vengono "
+    "venga vengano "
+    "the an of to on at by for with from as into onto upon about under over between "
+    "within without and or nor but if that which who whom whose this these those it its "
+    "they them their he she his her there here is are be been being was were am shall "
+    "should may might must will would can could do does did done not no never neither "
+    "either has have had having any all each every such so than then where when what also "
+    "only more less other same own both unless except".split()
+)
+
+
+def _has_content(part: str) -> bool:
+    """True when a part of a quote holds a word of its own (see _FUNCTION_WORDS)."""
+    return any(
+        len(word) >= 3 and not word.isdigit() and _without_marks(word) not in _FUNCTION_WORDS
+        for word in _WORD_RE.findall(part)
+    )
+
+
+def _on_word_boundaries(text: str, start: int, end: int) -> bool:
+    """True when ``text[start:end]`` neither starts nor ends inside a word."""
+    if 0 < start < len(text) and text[start - 1].isalnum() and text[start].isalnum():
+        return False
+    return not (0 < end < len(text) and text[end - 1].isalnum() and text[end].isalnum())
+
+
+# A line that starts a point or a paragraph: before the text, at most a number
+# or a letter that numbers it ("4.", "e)", "(iv)", a dash or a bullet), opening
+# quotation marks and the markers of a consolidated text (a black pointer or
+# triangle with its code, "M1", "B").
+_CONSOLIDATION_MARK = (
+    r"[\N{BLACK RIGHT-POINTING POINTER}\N{BLACK LEFT-POINTING POINTER}"
+    r"\N{BLACK DOWN-POINTING TRIANGLE}\N{BLACK UP-POINTING TRIANGLE}]\s*(?:[A-Z]\d{0,3})?\s*"
+)
+_POINT_START_RE = re.compile(
+    r"[\s'\"\N{LEFT SINGLE QUOTATION MARK}\N{RIGHT SINGLE QUOTATION MARK}"
+    r"\N{LEFT DOUBLE QUOTATION MARK}\N{RIGHT DOUBLE QUOTATION MARK}"
+    r"\N{LEFT-POINTING DOUBLE ANGLE QUOTATION MARK}"
+    r"\N{RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK}]*"
+    rf"(?:{_CONSOLIDATION_MARK})*"
+    r"(?:\(?(?:\d{1,3}[a-z]?|[a-z]{1,2}|[ivxlc]{1,6})[.)]"
+    r"|[\-\N{HYPHEN}-\N{HORIZONTAL BAR}\N{BULLET}])?"
+    rf"\s*(?:{_CONSOLIDATION_MARK})*",
+    re.IGNORECASE,
+)
 
 
 def _gram_size(length: int) -> int:
     return 8 if length >= 32 else max(4, length // 4)
 
 
-def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float] | None:
-    """Best span of ``text[start:]`` whose difflib ratio with ``needle`` is >= 0.92.
+# How many places of a chunk a part is aligned with, at most, when it is not
+# found word for word (the best-supported offsets, see _fuzzy_spans).
+_FUZZY_PLACES = 8
+
+
+def _fuzzy_spans(needle: str, text: str) -> list[tuple[int, int, float]]:
+    """Spans of ``text`` whose difflib ratio with ``needle`` is >= 0.92, best first.
 
     Comparing every window of the needle's length is quadratic, so the windows
     worth comparing are located first: each k-gram of the needle that occurs in
     the text votes for the offset where the needle would start, and only the
-    best-supported offsets (at least a quarter of the k-grams, at most three
-    places) are aligned with difflib. A near-copy with a few scattered
-    differences (punctuation, a mistyped letter) keeps most k-grams intact and
-    collects the votes; a paraphrase or a fabricated quote does not.
+    best-supported offsets (at least a quarter of the k-grams, at most
+    _FUZZY_PLACES places) are aligned with difflib. A near-copy with a few
+    scattered differences (punctuation, a mistyped letter) keeps most k-grams
+    intact and collects the votes; a paraphrase or a fabricated quote does not.
     """
     length = len(needle)
-    if length < MIN_SEGMENT_CHARS or len(text) - start < length * FUZZY_MIN_RATIO:
-        return None
+    if length < MIN_SEGMENT_CHARS or len(text) < length * FUZZY_MIN_RATIO:
+        return []
     gram = _gram_size(length)
     stride = max(1, gram // 2)
     votes: dict[int, int] = {}
@@ -533,12 +734,12 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
     for i in range(0, length - gram + 1, stride):
         n_grams += 1
         piece = needle[i : i + gram]
-        k = text.find(piece, start)
+        k = text.find(piece)
         while k != -1:
             votes[k - i] = votes.get(k - i, 0) + 1
             k = text.find(piece, k + 1)
     if not votes:
-        return None
+        return []
 
     width = max(3, math.ceil(length * (1 - FUZZY_MIN_RATIO)))
     offsets = sorted(votes)
@@ -556,14 +757,14 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
 
     centers: list[int] = []
     for offset in sorted(support, key=lambda o: (-support[o], o)):
-        if support[offset] < needed or len(centers) == 3:
+        if support[offset] < needed or len(centers) == _FUZZY_PLACES:
             break
         if all(abs(offset - c) > width for c in centers):
             centers.append(offset)
 
-    best: tuple[int, int, float] | None = None
+    found: list[tuple[int, int, float]] = []
     for center in centers:
-        r_start = max(start, center - width)
+        r_start = max(0, center - width)
         r_end = min(len(text), center + length + width)
         region = text[r_start:r_end]
         blocks = [
@@ -582,9 +783,9 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
         if matcher.real_quick_ratio() < FUZZY_MIN_RATIO or matcher.quick_ratio() < FUZZY_MIN_RATIO:
             continue
         ratio = matcher.ratio()
-        if ratio >= FUZZY_MIN_RATIO and (best is None or ratio > best[2]):
-            best = (s, e, ratio)
-    return best
+        if ratio >= FUZZY_MIN_RATIO:
+            found.append((s, e, ratio))
+    return sorted(found, key=lambda span: -span[2])
 
 
 # ─── Do the words agree? ─────────────────────────────────────────────
@@ -618,17 +819,21 @@ def _is_number_word(word: str) -> bool:
 
 
 def _one_letter_slip(a: str, b: str) -> bool:
-    """One wrong, missing or extra letter, not the first, inside a longer ordinary word."""
-    if min(len(a), len(b)) < MIN_SLIP_WORD_CHARS or a[0] != b[0]:
+    """One missing or extra letter inside a long ordinary word: a typing slip.
+
+    Both words have at least MIN_SLIP_WORD_CHARS letters and one of them has a
+    letter more, which is neither its first nor its last ("notifca" for
+    "notifica"). A different letter in the same place is another word
+    ("consent", "content") and a letter added or dropped at the end is another
+    form of it ("trattamenti", "requirements"): neither is forgiven. Numbers
+    and number words never are.
+    """
+    if abs(len(a) - len(b)) != 1 or min(len(a), len(b)) < MIN_SLIP_WORD_CHARS:
         return False
-    if a.isdigit() or b.isdigit() or _is_number_word(a) or _is_number_word(b):
-        return False
-    if len(a) == len(b):
-        return sum(x != y for x, y in zip(a, b, strict=True)) == 1
-    if abs(len(a) - len(b)) != 1:
+    if not (a.isalpha() and b.isalpha()) or _is_number_word(a) or _is_number_word(b):
         return False
     short, long = (a, b) if len(a) < len(b) else (b, a)
-    return any(long[:i] + long[i + 1 :] == short for i in range(1, len(long)))
+    return any(long[:i] + long[i + 1 :] == short for i in range(1, len(long) - 1))
 
 
 def _same_word(a: str, b: str) -> bool:
@@ -643,10 +848,10 @@ def wording_differences(quote: str, official: str) -> list[tuple[str, str]]:
     Words are aligned in order; a stretch that differs is forgiven when it is
     the same letters split differently ("infor- mazioni", "15 000"), or when
     each word has its counterpart and the two differ only by accents or by a
-    one-letter slip (see ``_one_letter_slip``). Anything else is returned as
-    ``(quoted words, official words)``: a changed number, a changed, added or
-    dropped short word, a different word. An empty list means the wording is
-    the same.
+    letter missing or added inside a long word (see ``_one_letter_slip``).
+    Anything else is returned as ``(quoted words, official words)``: a
+    changed number, a changed, added or dropped word, a different letter, a
+    different ending. An empty list means the wording is the same.
     """
     quoted = _WORD_RE.findall(quote)
     official_words = _WORD_RE.findall(official)
@@ -675,34 +880,171 @@ def _whole_words(text: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _find_tolerant(
-    segments: list[str], text: str
-) -> tuple[list[tuple[int, int]], float, list[tuple[str, str]]] | None:
-    """Like _find_in_order, but a segment may also match fuzzily.
+# How far into a line the start of a point may be: "(viii) " and a consolidation
+# marker before it.
+_POINT_PREFIX_MAX = 24
 
-    Returns the spans, the lowest ratio and the words that differ in the
-    segments matched fuzzily (empty when the wording is the same).
+
+def _point_starts(chunk: _Chunk) -> frozenset[int]:
+    """Normalized positions where a point or a paragraph of the chunk starts.
+
+    A position counts when its line holds nothing before it but what
+    _POINT_START_RE allows: "e) intervenire" starts a point both at "e" and at
+    "intervenire". Computed once per chunk, the first time an omission longer
+    than MAX_OMISSION_CHARS asks for it.
     """
-    spans: list[tuple[int, int]] = []
-    differences: list[tuple[str, str]] = []
-    pos = 0
-    worst = 1.0
-    for seg in segments:
-        k = text.find(seg, pos)
-        if k >= 0:
-            spans.append((k, k + len(seg)))
-            pos = k + len(seg)
-            continue
-        found = _fuzzy_span(seg, text, pos)
-        if found is None:
+    if chunk.points is None:
+        found: set[int] = set()
+        text = chunk.text
+        line = 0
+        while line <= len(text):
+            newline = text.find("\n", line)
+            end = len(text) if newline == -1 else newline
+            for orig in range(line, min(end, line + _POINT_PREFIX_MAX) + 1):
+                if _POINT_START_RE.fullmatch(text, line, orig) is None:
+                    continue
+                k = bisect.bisect_left(chunk.starts, orig)
+                if k < len(chunk.starts) and chunk.starts[k] == orig:
+                    found.add(k)
+            line = end + 1
+        chunk.points = frozenset(found)
+    return chunk.points
+
+
+def _gap_allowed(chunk: _Chunk, previous_end: int, start: int) -> bool:
+    """The omission rule between two parts (MAX_OMISSION_CHARS, MAX_SKIPPED_POINTS_CHARS)."""
+    gap = start - previous_end
+    if gap < 0:
+        return False
+    return gap <= MAX_OMISSION_CHARS or (
+        gap <= MAX_SKIPPED_POINTS_CHARS and start in _point_starts(chunk)
+    )
+
+
+@dataclass(frozen=True)
+class _Span:
+    """Where one part of a quote may be; a fuzzy span carries its ratio and differences."""
+
+    start: int
+    end: int
+    ratio: float = 1.0
+    differences: tuple[tuple[str, str], ...] = ()
+
+
+def _spans_of(
+    part: str, chunk: _Chunk, tolerant: bool, cache: dict[tuple[str, bool], list[_Span]]
+) -> list[_Span]:
+    """Every place of the chunk where a part may be, in order.
+
+    Its occurrences on word boundaries; with ``tolerant``, for a part of at
+    least MIN_SEGMENT_CHARS, also the spans that match it fuzzily, widened to
+    whole words, with the words that differ (empty when they agree).
+    """
+    key = (part, tolerant)
+    if key in cache:
+        return cache[key]
+    text = chunk.norm
+    spans: list[_Span] = []
+    k = text.find(part)
+    while k != -1:
+        if _on_word_boundaries(text, k, k + len(part)):
+            spans.append(_Span(k, k + len(part)))
+        k = text.find(part, k + 1)
+    if tolerant:
+        exact = {(span.start, span.end) for span in spans}
+        for start, end, ratio in _fuzzy_spans(part, text):
+            start, end = _whole_words(text, start, end)
+            if (start, end) not in exact:
+                exact.add((start, end))
+                differences = tuple(wording_differences(part, text[start:end]))
+                spans.append(_Span(start, end, ratio, differences))
+        spans.sort(key=lambda span: (span.start, -span.ratio))
+    cache[key] = spans
+    return spans
+
+
+def _place(
+    parts: list[str],
+    chunk: _Chunk,
+    first: tuple[int, int] | None = None,
+    *,
+    tolerant: bool = False,
+    literal: bool = True,
+    cache: dict[tuple[str, bool], list[_Span]] | None = None,
+) -> list[_Span] | None:
+    """Where every part of a quote is in one chunk, in order, under the omission rules.
+
+    Each part stands on word boundaries; part i+1 starts after part i ends, at
+    most MAX_OMISSION_CHARS later, or at most MAX_SKIPPED_POINTS_CHARS later
+    when it starts a point or a paragraph. ``first`` bounds where the first
+    part may start (the cited paragraph). A part may occur several times and
+    its first occurrence may leave no room for the next parts while a later
+    one does, so the first occurrences do not always make a placement. The
+    places of each part are listed (_spans_of), then kept, from the last part
+    back to the first, only when some place of the next part can follow them;
+    the placement then takes, part by part, the first place that follows the
+    previous one, and moves each part, from the last back to the first, as
+    close as it can go to the next ("Il titolare del trattamento [...]
+    documenta": the words that open paragraph 5, not the same words earlier).
+    Steps: places x log(places). With ``tolerant`` the fuzzy spans count too;
+    ``literal`` keeps only those whose words agree (else a near match may come
+    out). None when the parts cannot be placed.
+    """
+    cache = {} if cache is None else cache
+    lists: list[list[_Span]] = []
+    for i, part in enumerate(parts):
+        spans = _spans_of(part, chunk, tolerant, cache)
+        if literal:
+            spans = [span for span in spans if not span.differences]
+        if i == 0 and first is not None:
+            spans = [span for span in spans if first[0] <= span.start <= first[1]]
+        if not spans:
             return None
-        s, e, ratio = found
-        s, e = _whole_words(text, s, e)
-        differences.extend(wording_differences(seg, text[s:e]))
-        spans.append((s, e))
-        pos = e
-        worst = min(worst, ratio)
-    return spans, worst, differences
+        lists.append(spans)
+
+    points = _point_starts(chunk) if len(parts) > 1 else frozenset()
+    feasible: list[list[_Span]] = [[] for _ in parts]
+    feasible[-1] = lists[-1]
+    for i in range(len(parts) - 2, -1, -1):
+        after = feasible[i + 1]
+        starts = [span.start for span in after]
+        point_starts = [start for start in starts if start in points]
+        kept = []
+        for span in lists[i]:
+            j = bisect.bisect_left(starts, span.end)
+            if j < len(starts) and starts[j] - span.end <= MAX_OMISSION_CHARS:
+                kept.append(span)
+                continue
+            j = bisect.bisect_right(point_starts, span.end + MAX_OMISSION_CHARS)
+            if j < len(point_starts) and point_starts[j] - span.end <= MAX_SKIPPED_POINTS_CHARS:
+                kept.append(span)
+        if not kept:
+            return None
+        feasible[i] = kept
+
+    placed = [feasible[0][0]]
+    for i in range(1, len(parts)):
+        previous = placed[-1]
+        starts = [span.start for span in feasible[i]]
+        j = bisect.bisect_left(starts, previous.end)
+        placed.append(
+            next(span for span in feasible[i][j:] if _gap_allowed(chunk, previous.end, span.start))
+        )
+
+    for i in range(len(parts) - 2, -1, -1):
+        following = placed[i + 1]
+        starts = [span.start for span in lists[i]]
+        j = bisect.bisect_left(starts, following.start)
+        for span in reversed(lists[i][:j]):
+            if span.start <= placed[i].start:
+                break
+            if span.end > following.start or not _gap_allowed(chunk, span.end, following.start):
+                continue
+            if i > 0 and not _gap_allowed(chunk, placed[i - 1].end, span.start):
+                continue
+            placed[i] = span
+            break
+    return placed
 
 
 @dataclass
@@ -715,28 +1057,122 @@ class _Found:
     differences: list[tuple[str, str]]
 
 
-def _search(segments: list[str], candidates: list[_Chunk]) -> _Found | None:
-    """An exact match, else the best literal fuzzy match, else the best near match."""
+def _search(
+    segments: list[str],
+    candidates: list[_Chunk],
+    windows: dict[int, tuple[int, int]] | None = None,
+) -> _Found | None:
+    """An exact match, else the best literal fuzzy match, else the best near match.
+
+    With ``windows`` (chunk id -> where the first part may start) only the
+    chunks it lists are searched, each within its window.
+    """
+    if windows is not None:
+        candidates = [c for c in candidates if id(c) in windows]
+
+    def first(chunk: _Chunk) -> tuple[int, int] | None:
+        return windows[id(chunk)] if windows is not None else None
+
+    caches: dict[int, dict[tuple[str, bool], list[_Span]]] = {}
     for chunk in candidates:
-        spans = _find_in_order(segments, chunk.norm)
-        if spans:
-            return _Found(chunk, spans, MATCH_EXACT, [])
+        cache = caches.setdefault(id(chunk), {})
+        exact = _place(segments, chunk, first(chunk), cache=cache)
+        if exact:
+            return _Found(chunk, [(s.start, s.end) for s in exact], MATCH_EXACT, [])
     literal: tuple[_Found, float] | None = None
     near: tuple[_Found, float] | None = None
     for chunk in candidates:
-        found = _find_tolerant(segments, chunk.norm)
-        if found is None:
+        cache = caches.setdefault(id(chunk), {})
+        placed = _place(segments, chunk, first(chunk), tolerant=True, cache=cache)
+        if placed is not None:
+            ratio = min(s.ratio for s in placed)
+            if literal is None or ratio > literal[1]:
+                where = [(s.start, s.end) for s in placed]
+                literal = (_Found(chunk, where, MATCH_FUZZY, []), ratio)
             continue
-        spans, ratio, differences = found
-        candidate = _Found(chunk, spans, MATCH_FUZZY, differences)
-        if differences:
-            if near is None or ratio > near[1]:
-                near = (candidate, ratio)
-        elif literal is None or ratio > literal[1]:
-            literal = (candidate, ratio)
+        if literal is not None:
+            continue  # a literal match wins over any near one
+        placed = _place(segments, chunk, first(chunk), tolerant=True, literal=False, cache=cache)
+        if placed is None:
+            continue
+        ratio = min(s.ratio for s in placed)
+        if near is None or ratio > near[1]:
+            differences = [d for s in placed for d in s.differences]
+            where = [(s.start, s.end) for s in placed]
+            near = (_Found(chunk, where, MATCH_FUZZY, differences), ratio)
     if literal is not None:
         return literal[0]
     return near[0] if near is not None else None
+
+
+def parse_paragraph(reference: Any) -> str | None:
+    """Number of the paragraph an article reference names, or None.
+
+    ``"Art. 50(2)"``, ``"art. 50, par. 2"``, ``"articolo 50, paragrafo 2"`` and
+    ``"50(2)"`` give ``"2"``; ``"Art. 6(1)(f)"`` gives ``"1"``. A recital, an
+    annex or an article named without a paragraph gives None.
+    """
+    text = str(reference or "").strip()
+    key = parse_article(text)
+    if not key or not key.startswith("art:"):
+        return None
+    m = _ARTICLE_RE.search(text) or _BARE_NUMBER_RE.match(text)
+    if m is None:
+        return None
+    rest = text[m.end() :]
+    p = re.match(r"\s*\((\d{1,3})\)", rest) or _PARAGRAPH_REF_RE.match(rest)
+    return p.group(1) if p else None
+
+
+def _paragraph_range(value: Any) -> tuple[int, int] | None:
+    """``"2"`` -> (2, 2), ``"3-4"`` -> (3, 4); None when the paragraph is not known."""
+    m = re.fullmatch(r"\s*(\d{1,3})\s*(?:-\s*(\d{1,3})\s*)?", str(value or ""))
+    if not m:
+        return None
+    lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
+    return (lo, hi) if lo <= hi else None
+
+
+def _covers(value: Any, paragraph: str) -> bool:
+    """True unless ``value`` is a known paragraph (or range) that excludes ``paragraph``."""
+    span = _paragraph_range(value)
+    return span is None or span[0] <= int(paragraph) <= span[1]
+
+
+def _paragraph_window(chunk: _Chunk, paragraph: str) -> tuple[int, int] | None:
+    """Where in the chunk the cited paragraph is, as a window for the first part.
+
+    The numbered lines of an article chunk ("2. ...") mark its paragraphs; the
+    text before the first one belongs to the chunk's own ``paragraph`` field.
+    A chunk whose paragraph is not known is searched whole. None when the
+    chunk does not hold the paragraph.
+    """
+    whole = (0, len(chunk.norm))
+    if not (chunk.article_key and chunk.article_key.startswith("art:")):
+        return whole
+    lines = [
+        (m.group(1), bisect.bisect_left(chunk.starts, m.start(1)))
+        for m in _PARAGRAPH_LINE_RE.finditer(chunk.text)
+    ]
+    own = chunk.data.get("paragraph")
+    if not lines:
+        return whole if _covers(own, paragraph) else None
+    for index, (number, start) in enumerate(lines):
+        if number == paragraph:
+            end = lines[index + 1][1] if index + 1 < len(lines) else len(chunk.norm)
+            return (start, end)
+    if lines[0][1] > 0 and _paragraph_range(own) is not None and _covers(own, paragraph):
+        return (0, lines[0][1])
+    return None
+
+
+def _paragraph_windows(chunks: list[_Chunk], paragraph: str) -> dict[int, tuple[int, int]]:
+    windows: dict[int, tuple[int, int]] = {}
+    for chunk in chunks:
+        window = _paragraph_window(chunk, paragraph)
+        if window is not None:
+            windows[id(chunk)] = window
+    return windows
 
 
 def _paragraph_at(chunk: _Chunk, position: int) -> str | None:
@@ -796,23 +1232,46 @@ def _result(
     )
 
 
+def _of_act(chunk: _Chunk, celex: str | None) -> bool:
+    """True when the chunk may belong to the act ``celex`` (always true when it is None).
+
+    A chunk of another act (its CELEX, base or quoted, says so) does not; a
+    chunk without a CELEX cannot be told apart and stays.
+    """
+    return celex is None or not _is_celex(chunk.celex) or chunk.celex == celex
+
+
 def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
     if not isinstance(citation, dict) or not chunks:
         return _UNVERIFIED
     segments = _segments(normalize(_quote_of(citation)))
     if not segments or not _specific_enough(segments):
         return _UNVERIFIED
+    if len(segments) > 1 and not all(_has_content(part) for part in segments):
+        return _UNVERIFIED
 
     framework = normalize_framework(citation.get("framework"))
-    article = parse_article(_reference_of(citation))
+    reference = _reference_of(citation)
+    article = parse_article(reference)
+    paragraph = parse_paragraph(reference)
     levels: list[tuple[str, list[_Chunk]]] = []
     if framework:
         of_framework = [
             c for c in chunks if framework in c.frameworks or (c.celex and framework == c.celex)
         ]
         if article:
+            # A framework key names its principal act: the article of another act
+            # of the group (an amending or delegated act) is another article.
+            principal = principal_celex(framework)
             levels.append(
-                (LEVEL_ARTICLE, [c for c in of_framework if same_article(c.article_key, article)])
+                (
+                    LEVEL_ARTICLE,
+                    [
+                        c
+                        for c in of_framework
+                        if same_article(c.article_key, article) and _of_act(c, principal)
+                    ],
+                )
             )
         levels.append((LEVEL_FRAMEWORK, of_framework))
     levels.append((LEVEL_ANY, chunks))
@@ -824,7 +1283,14 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
         searched.update(id(c) for c in fresh)
         if not fresh:
             continue
-        found = _search(segments, fresh)
+        found = None
+        if level == LEVEL_ARTICLE and paragraph:
+            # The cited paragraph first: the same words may stand in two of them.
+            found = _search(segments, fresh, _paragraph_windows(fresh, paragraph))
+        if found is None or found.differences:
+            anywhere = _search(segments, fresh)
+            if anywhere is not None and (found is None or not anywhere.differences):
+                found = anywhere
         if found is None:
             continue
         if not found.differences:
@@ -872,22 +1338,85 @@ def count_verified(citations: Any) -> tuple[int, int]:
     return verified, len(items)
 
 
+def _is_celex(value: Any) -> bool:
+    return isinstance(value, str) and celex_utils.parse_celex(value) is not None
+
+
+def _found_in(citation: dict[str, Any], outcome: VerificationResult) -> str | None:
+    """Where a verified quote is, when that is not where its citation points.
+
+    ``"act"``: in another act than the one cited (level "any", or another act
+    of the cited framework); ``"article"``: in another article of the act
+    cited, when the citation names one; ``"paragraph"``: in the article cited,
+    but in another paragraph than the one it names, when both are known. None
+    when the quote is where the citation says, or nothing contradicts it.
+    """
+    if not outcome.verified:
+        return None
+    framework = normalize_framework(citation.get("framework"))
+    if not framework:
+        return None
+    reference = _reference_of(citation)
+    if outcome.level == LEVEL_ARTICLE:
+        cited = parse_paragraph(reference)
+        found = _paragraph_range(outcome.paragraph)
+        if cited and found and not found[0] <= int(cited) <= found[1]:
+            return FOUND_IN_PARAGRAPH
+        return None
+    cited_act = framework if _is_celex(framework) else principal_celex(framework)
+    found_act = outcome.celex if _is_celex(outcome.celex) else None
+    if cited_act and found_act and cited_act != found_act:
+        return FOUND_IN_ACT
+    if outcome.level == LEVEL_ANY and not (cited_act and found_act == cited_act):
+        return FOUND_IN_ACT
+    return FOUND_IN_ARTICLE if parse_article(reference) else None
+
+
+def _annotated(citation: dict[str, Any], outcome: VerificationResult) -> dict[str, Any]:
+    where = _found_in(citation, outcome)
+    if where is None:
+        return {
+            **citation,
+            **outcome.as_fields(),
+            "found_elsewhere": False,
+            **dict.fromkeys(ELSEWHERE_FIELDS[1:]),
+        }
+    return {
+        **citation,
+        **_UNVERIFIED.as_fields(),
+        "found_elsewhere": True,
+        "found_in": where,
+        "found_celex": outcome.celex,
+        "found_article": outcome.article,
+        "found_paragraph": outcome.paragraph,
+        "found_quote": outcome.official_quote,
+        "found_url": outcome.url,
+    }
+
+
 def annotate_citations(result: dict[str, Any], chunks: list[Any] | None) -> dict[str, Any]:
     """Write the verification fields on COPIES of the citations, plus the counters.
 
     The citation dicts may be shared (e.g. with the SNC samples), so they are
     never modified in place. Non-dict citations are kept as they are and count
-    as unverified. Sets ``verified_citations`` and ``citations_total``.
+    as unverified. A quote found word for word, but not where its citation
+    points (see ``_found_in``), is not a verified citation: it gets
+    ``verified`` False with the other fields of ``verify_citation`` empty, and
+    ``found_elsewhere`` True with where the wording really is (module
+    docstring). Sets ``verified_citations`` and ``citations_total``.
     """
     citations = result.get("citations")
     items = citations if isinstance(citations, list) else []
     outcomes = verify_citations(items, chunks or [])
+    annotated = [
+        _annotated(cit, outcome) if isinstance(cit, dict) else cit
+        for cit, outcome in zip(items, outcomes, strict=True)
+    ]
     if isinstance(citations, list):
-        result["citations"] = [
-            {**cit, **outcome.as_fields()} if isinstance(cit, dict) else cit
-            for cit, outcome in zip(items, outcomes, strict=True)
-        ]
-    result["verified_citations"] = sum(1 for outcome in outcomes if outcome.verified)
+        result["citations"] = annotated
+    result["verified_citations"] = sum(
+        1 for cit in annotated if isinstance(cit, dict) and cit.get("verified") is True
+    )
     result["citations_total"] = len(items)
     return result
 
@@ -915,6 +1444,26 @@ def unverified_policy_applies(result: Any) -> bool:
     return total > 0 and verified == 0
 
 
+def _elsewhere(result: dict[str, Any]) -> list[dict[str, Any]]:
+    citations = result.get("citations")
+    items = citations if isinstance(citations, list) else []
+    return [c for c in items if isinstance(c, dict) and c.get("found_elsewhere") is True]
+
+
+def policy_requires_review(result: Any) -> bool:
+    """True when the citation policy flags a real answer for expert review.
+
+    It cites nothing, all its citations are unverified, or one of them was
+    found in another act, article or paragraph than the one cited.
+    """
+    if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
+        return False
+    if result.get("abstention_reason"):
+        return False
+    _, total = citation_counters(result)
+    return total == 0 or unverified_policy_applies(result) or bool(_elsewhere(result))
+
+
 def policy_mode(settings: Any) -> str:
     """The configured policy (``Settings.citation_verification``); ``flag`` if unset/unknown."""
     mode = getattr(settings, "citation_verification", POLICY_FLAG)
@@ -936,22 +1485,105 @@ def _cap_confidence(result: dict[str, Any]) -> None:
         result["confidence_score"] = UNVERIFIED_CONFIDENCE_CAP
 
 
+def act_name(celex: str | None, english: bool = False) -> str | None:
+    """How a caveat names an act, from its CELEX: "Regolamento (UE) 2024/1689 (AI Act)".
+
+    From 2015 on acts are numbered year/number with "(UE)", a tracked
+    delegated or implementing act says so ("Regolamento delegato (UE)
+    2023/2772") and the principal act of a framework adds its name; the
+    directives of 2010-2014 read "Direttiva 2013/34/UE"; anything else is
+    named by its CELEX. None without a CELEX.
+    """
+    if not celex:
+        return None
+    m = re.fullmatch(r"3(\d{4})([RLD])(\d{4})", celex)
+    if m is None:
+        return f"CELEX {celex}"
+    year, kind, number = m.group(1), m.group(2), str(int(m.group(3)))
+    if int(year) >= 2015:
+        act = _tracked_act(celex)
+        eli_type = getattr(act, "eli_type", "")
+        it, en = {
+            "R": ("Regolamento", "Regulation"),
+            "L": ("Direttiva", "Directive"),
+            "D": ("Decisione", "Decision"),
+        }[kind]
+        if eli_type in ("reg_del", "dir_del"):
+            it, en = f"{it} delegat{'o' if kind == 'R' else 'a'}", f"Delegated {en}"
+        elif eli_type in ("reg_impl", "dir_impl"):
+            it, en = f"{it} di esecuzione", f"Implementing {en}"
+        name = f"{en} (EU) {year}/{number}" if english else f"{it} (UE) {year}/{number}"
+        framework = next((k for k, v in _principal_acts().items() if v == celex), None)
+        if framework:
+            label = _FRAMEWORK_NAMES.get(framework, (framework, framework))[1 if english else 0]
+            name = f"{name} ({label})"
+        return name
+    if kind == "L" and int(year) >= 2010:
+        return f"Directive {year}/{number}/EU" if english else f"Direttiva {year}/{number}/UE"
+    return f"CELEX {celex}"
+
+
+def _elsewhere_caveat(citation: dict[str, Any], english: bool) -> str:
+    """The caveat that names a citation whose wording is in another act, article or paragraph."""
+    label = ", ".join(
+        part
+        for part in (str(citation.get("framework") or "").strip(), _reference_of(citation).strip())
+        if part
+    )
+    article = str(citation.get("found_article") or "").strip()
+    paragraph = str(citation.get("found_paragraph") or "").strip()
+    if article and paragraph:
+        article = f"{article}, {'para.' if english else 'par.'} {paragraph}"
+    where = citation.get("found_in")
+    places = [article] if article else []
+    if where == FOUND_IN_ACT:
+        name = act_name(str(citation.get("found_celex") or "") or None, english)
+        places = [name, *places] if name else places
+    place = f", {', '.join(places)}" if places else ""
+    if english:
+        kind = {
+            FOUND_IN_ARTICLE: "in another article of the same act",
+            FOUND_IN_PARAGRAPH: "in another paragraph of the same article",
+        }.get(str(where), "in another act")
+        return f"The citation [{label}] is not verified: the quoted text is {kind}{place}."
+    kind = {
+        FOUND_IN_ARTICLE: "in un altro articolo dello stesso atto",
+        FOUND_IN_PARAGRAPH: "in un altro paragrafo dello stesso articolo",
+    }.get(str(where), "in un altro atto")
+    return f"La citazione [{label}] non è verificata: il testo citato si trova {kind}{place}."
+
+
+def _caveat_list(result: dict[str, Any]) -> list[Any]:
+    caveats = result.get("caveats")
+    if isinstance(caveats, str):
+        return [caveats] if caveats.strip() else []
+    return list(caveats) if isinstance(caveats, list) else []
+
+
 def apply_unverified_policy(
     result: Any, *, mode: str = POLICY_FLAG, language: str | None = None
 ) -> Any:
     """Apply the unverified-citation policy; idempotent, safe on cached answers.
 
     Always makes sure ``verified_citations`` / ``citations_total`` are present
-    (computed from the ``verified`` flags when an answer predates them). When
-    the answer is not an error nor an abstention and none of its citations is
-    verified:
+    (computed from the ``verified`` flags when an answer predates them). On an
+    answer that is not an error nor an abstention:
 
-    - ``flag``: ``requires_expert_review = True``, confidence capped at 0.6 and
-      the caveat added to ``caveats`` (Italian, or English when ``language``
-      is English; the other twin is removed);
-    - ``strict``: the answer becomes an abstention with ``abstention_reason =
+    - an answer with no citation at all gets ``requires_expert_review = True``
+      and the caveat that says so, under either policy (nothing to verify: it
+      is not turned into an abstention);
+    - each citation whose wording was found in another act, article or
+      paragraph (``found_elsewhere``) gets a caveat that names it and where
+      the wording is, and the answer ``requires_expert_review = True``;
+    - when none of its citations is verified, ``flag`` also caps the
+      confidence at 0.6 and adds the unverified caveat (the "elsewhere"
+      variant when some quote was found elsewhere); ``strict`` turns the
+      answer into an abstention with ``abstention_reason =
       "unverified_citations"``: the text says why, citations and caveats are
       emptied, the counters keep how many citations were rejected.
+
+    The caveats are in Italian, or English when ``language`` is English; the
+    ones this policy added in the other language are removed.
     """
     if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
         return result
@@ -962,28 +1594,51 @@ def apply_unverified_policy(
 
     if result.get("abstention_reason"):
         # Already an abstention. Our own one is re-worded in the request language.
-        if result.get("abstention_reason") == UNVERIFIED_ABSTENTION_REASON and result.get(
-            "answer"
-        ) in (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN):
-            result["answer"] = UNVERIFIED_ABSTENTION_EN if english else UNVERIFIED_ABSTENTION_IT
+        twins = _ABSTENTION_TWINS.get(str(result.get("answer")))
+        if result.get("abstention_reason") == UNVERIFIED_ABSTENTION_REASON and twins:
+            result["answer"] = twins[1] if english else twins[0]
         return result
-    if total == 0 or verified > 0:
+    if total == 0:
+        result["requires_expert_review"] = True
+        twins = (NO_CITATIONS_CAVEAT_IT, NO_CITATIONS_CAVEAT_EN)
+        kept = [c for c in _caveat_list(result) if c not in twins]
+        result["caveats"] = [*kept, twins[1] if english else twins[0]]
+        return result
+    elsewhere = _elsewhere(result)
+    unverified = verified == 0
+    if not (elsewhere or unverified):
         return result
 
     result["requires_expert_review"] = True
-    _cap_confidence(result)
-    if mode == POLICY_STRICT:
-        result["answer"] = UNVERIFIED_ABSTENTION_EN if english else UNVERIFIED_ABSTENTION_IT
-        result["citations"] = []
-        result["caveats"] = []
-        result["abstention_reason"] = UNVERIFIED_ABSTENTION_REASON
-        return result
+    if unverified:
+        _cap_confidence(result)
+        if mode == POLICY_STRICT:
+            twins = (
+                (UNVERIFIED_ELSEWHERE_ABSTENTION_IT, UNVERIFIED_ELSEWHERE_ABSTENTION_EN)
+                if elsewhere
+                else (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN)
+            )
+            result["answer"] = twins[1] if english else twins[0]
+            result["citations"] = []
+            result["caveats"] = []
+            result["abstention_reason"] = UNVERIFIED_ABSTENTION_REASON
+            return result
 
-    caveats = result.get("caveats")
-    if isinstance(caveats, str):
-        caveats = [caveats] if caveats.strip() else []
-    elif not isinstance(caveats, list):
-        caveats = []
-    kept = [c for c in caveats if c not in (UNVERIFIED_CAVEAT_IT, UNVERIFIED_CAVEAT_EN)]
-    result["caveats"] = [*kept, UNVERIFIED_CAVEAT_EN if english else UNVERIFIED_CAVEAT_IT]
+    added = [_elsewhere_caveat(c, english) for c in elsewhere]
+    if unverified:
+        if elsewhere:
+            added.append(
+                UNVERIFIED_ELSEWHERE_CAVEAT_EN if english else UNVERIFIED_ELSEWHERE_CAVEAT_IT
+            )
+        else:
+            added.append(UNVERIFIED_CAVEAT_EN if english else UNVERIFIED_CAVEAT_IT)
+    ours = {
+        UNVERIFIED_CAVEAT_IT,
+        UNVERIFIED_CAVEAT_EN,
+        UNVERIFIED_ELSEWHERE_CAVEAT_IT,
+        UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+        *(_elsewhere_caveat(c, lang) for c in elsewhere for lang in (False, True)),
+    }
+    kept = [c for c in _caveat_list(result) if c not in ours]
+    result["caveats"] = [*kept, *added]
     return result

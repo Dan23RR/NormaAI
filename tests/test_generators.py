@@ -62,6 +62,8 @@ _RESULT_FIELDS = {
     "related_frameworks",
     "abstention_reason",
     "corpus_as_of",
+    "ai_generated",
+    "generator",
 }
 
 
@@ -483,7 +485,11 @@ class TestQaCoveEnabled:
             PhaseChangeEvent(phase="verification", message="verifying..."),
             cove_done,
         ]
-        result = {"answer": "draft answer", "citations": [], "confidence_score": 0.5}
+        result = {
+            "answer": "draft answer",
+            "citations": [_verified_citation()],
+            "confidence_score": 0.5,
+        }
 
         cove_patch, cls = _patch_cove(cove_events)
         with patch(GRAPH_QA, AsyncMock(return_value=result)), cove_patch:
@@ -504,7 +510,7 @@ class TestQaCoveEnabled:
         )
         assert done[0].cove_applied is True
         assert done[0].revised_text == "VERIFIED answer."
-        assert (done[0].verified_citations, done[0].citations_total) == (0, 0)
+        assert (done[0].verified_citations, done[0].citations_total) == (1, 1)
 
         # Orchestrator was constructed with config enabled=True.
         cls.assert_called_once()
@@ -727,6 +733,85 @@ class TestQaCitationVerification:
             "grounded": False,
         }
 
+    def test_a_quote_found_elsewhere_is_streamed_unverified_with_its_place(self):
+        from src.api.streaming.generators import _citation_event
+        from src.api.streaming.sse import format_sse
+
+        quote = "garantiscono che gli output del sistema di IA siano marcati"
+        url = "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+        elsewhere = {
+            **_unverified_citation(),
+            "framework": "GDPR",
+            "reference": "Art. 6",
+            "quote_snippet": quote,
+            "found_elsewhere": True,
+            "found_in": "act",
+            "found_celex": "32024R1689",
+            "found_article": "Art. 50",
+            "found_paragraph": "2",
+            "found_quote": quote,
+            "found_url": url,
+        }
+        wire = json.loads(format_sse(_citation_event(elsewhere, "it"))[6:])
+        assert wire["verified"] is False
+        assert "match" not in wire and "level" not in wire
+        # The source is the act the answer cites; where the wording is travels apart.
+        assert (wire["celex"], wire["article"]) == ("32016R0679", "Art. 6")
+        assert {k: v for k, v in wire.items() if k.startswith("found_")} == {
+            "found_elsewhere": True,
+            "found_in": "act",
+            "found_celex": "32024R1689",
+            "found_article": "Art. 50",
+            "found_paragraph": "2",
+            "found_quote": quote,
+            "found_url": url,
+        }
+        odd = _citation_event({**elsewhere, "found_in": "somewhere"}, "it")
+        assert odd.found_elsewhere is True and odd.found_in is None
+        verified = _citation_event({**_verified_citation(), "found_elsewhere": True}, "it")
+        assert verified.found_elsewhere is None and verified.found_celex is None
+
+    async def test_cove_cannot_clear_the_review_of_a_quote_found_elsewhere(self):
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        elsewhere = {
+            **_unverified_citation(),
+            "found_elsewhere": True,
+            "found_in": "article",
+            "found_article": "Art. 29a",
+        }
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation(), elsewhere],
+            "verified_citations": 1,
+            "citations_total": 2,
+            "confidence_score": 0.7,
+        }
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.97)  # one citation is verified
+        assert done.caveats == [
+            "La citazione [CSRD, Art. 19a(1)] non è verificata: il testo citato si trova in un "
+            "altro articolo dello stesso atto, Art. 29a."
+        ]
+
+    def test_fallback_link_names_the_act_the_citation_names(self):
+        # The principal act of a framework key (for CSDDD not the Stop-the-Clock
+        # directive, the first act seeded under it), the act itself for a CELEX.
+        from src.api.streaming.generators import _primary_celex_for_framework
+
+        assert _primary_celex_for_framework("CSDDD") == "32024L1760"
+        assert _primary_celex_for_framework("AI Act") == "32024R1689"
+        assert _primary_celex_for_framework("32026R1744") == "32026R1744"
+        assert _primary_celex_for_framework("02024R1689-20260727") == "32024R1689"
+        assert _primary_celex_for_framework("ESRS") == "32023R2772"
+        assert _primary_celex_for_framework("Unknown") == ""
+        assert _primary_celex_for_framework("") == ""
+
     def test_verified_passage_without_celex_gets_no_guessed_link(self):
         # Found in a chunk with no CELEX (e.g. an uploaded document): the event
         # must not borrow the cited framework's primary act as its source.
@@ -880,6 +965,60 @@ class TestQaCitationVerification:
         done = [e for e in events if isinstance(e, DoneEvent)][0]
         assert done.cove_applied is False
         assert done.abstention_reason == "snc_low_trust"
+
+    async def test_an_answer_without_citations_is_reviewed_even_after_cove(self):
+        result = {"answer": "x", "citations": [], "confidence_score": 0.9}
+        events, _ = await self._stream(result, language="en")
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.9)
+        assert done.caveats == [
+            "The answer cites no passage of the corpus texts: check the sources before using it."
+        ]
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True and done.confidence_score == pytest.approx(0.97)
+
+    async def test_done_event_marks_the_answer_as_ai_generated(self):
+        # AI Act, Art. 50(2): the final event says the text was written by a model, and which.
+        settings = _settings(llm_provider="anthropic", anthropic_model_analysis="claude-haiku-5-5")
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation()],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        events, _ = await self._stream(result, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.ai_generated is True
+        assert done.generator is not None
+        assert (done.generator.system, done.generator.provider, done.generator.model) == (
+            "NormaAI Chiedi",
+            "anthropic",
+            "claude-haiku-5-5",
+        )
+        # An answer that recorded its generator when it was written keeps it.
+        recorded = {**result, "generator": {"system": "NormaAI Chiedi", "model": "m1"}}
+        events, _ = await self._stream(recorded, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.generator is not None and done.generator.model == "m1"
+        # An abstention is text NormaAI writes itself.
+        abstention = {
+            "answer": "Non posso rispondere con una fonte.",
+            "citations": [],
+            "confidence_score": 0.0,
+            "abstention_reason": "no_sources",
+        }
+        events, _ = await self._stream(abstention, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.ai_generated is False
+        assert done.generator is not None and done.generator.model is None
 
     async def test_request_language_is_forwarded_to_the_agent(self):
         result = {"answer": "x", "citations": [], "confidence_score": 0.9}

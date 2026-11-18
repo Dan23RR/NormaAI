@@ -205,7 +205,8 @@ Request → Agent Graph → Draft PhaseChangeEvent
 ## Verifica deterministica delle citazioni
 
 A Q&A citation is shown as "Verificata" only when the passage it quotes was
-found, word for word, in one of the chunks retrieved for that answer. The check
+found, word for word, in one of the chunks retrieved for that answer, in the
+act, article and paragraph the citation names (below). The check
 is deterministic, with no LLM involved: `src/agents/citation_verifier.py` (pure
 functions), run by the Q&A agent node right after the grounding guard (whose
 `grounded` verdict is kept as it is) and again on the answer the SNC layer
@@ -219,15 +220,33 @@ ellipses). A quote shorter than 20 characters or 4 words is never verified (too
 generic). Chunks are searched by level: the cited framework and article
 (`"article"`; `Art. 50`, `articolo 50`, `50`, `50(1)`, `art. 50, par. 1` all
 name article 50), then any chunk of the framework (`"framework"`), then every
-chunk (`"any"`). Within a level the quote must be a substring of one chunk
-(`"exact"`); a quote with omissions (`[...]`, `...`, the ellipsis character U+2026) is split there and
-every segment of at least 12 characters must appear in the same chunk, in
-order. Failing that, a span of the chunk whose difflib ratio with the quote is
-at least 0.92 is accepted (`"fuzzy"`) only when the words agree
+chunk (`"any"`). Within a level the quote must be found in one chunk, starting
+and ending on word boundaries (`"exact"`): "lecito" is not found inside
+"illecito", nor "72 ore" inside "172 ore". A quote with omissions (`[...]`,
+`...`, the ellipsis character U+2026) is split there into parts, and every part,
+however short, must be found in the same chunk, in order, on word boundaries
+("non" is not found inside "nonché"). A part made only of function words,
+numbers or a list marker ("non", "not", "shall not", "72") is never verified: its
+meaning comes from the words the omission removed. An omission may skip at most
+600 characters of the chunk (`MAX_OMISSION_CHARS`), or 2,000
+(`MAX_SKIPPED_POINTS_CHARS`) when the part after it starts a point or a
+paragraph, so words stitched together from distant sentences are not a quote.
+The bounds come from the ten live golden v2 runs of 24/10-18/11/2026: the
+longest omission inside running text in a verified quote was 524 characters,
+skips to the next point of a list reached 980. Re-verified offline against the
+cached official texts (whole articles, not the corpus chunks), the 3,490
+citations of nine of those runs verify as often with this rule as with the
+previous one (3,268 citations; 378 of the 400 of the 18/11 run). Failing an
+exact match, a span of the chunk whose difflib ratio with a part is at least 0.92 is accepted
+(`"fuzzy"`), under the same rules, only when the words agree
 (`wording_differences`): every number, every number word and every word under
-five letters ("non", "o", "e", "may", "not") must be identical. What is
+six letters ("non", "o", "e", "may", "not", "Stati") must be identical. What is
 forgiven: punctuation, accents, a word split or joined at a line break, and one
-wrong, missing or extra letter (not the first) inside a longer ordinary word.
+missing or extra letter inside a word of at least six letters, neither its
+first nor its last ("notifca" for "notifica"). A different letter is never
+forgiven ("consent" is not "content", 2026-11-18), nor a letter added or
+dropped at the end of a word ("trattamenti" is not "trattamento",
+"requirements" is not "requirement"): those are other words or other forms.
 
 **A close match is not a verification** (2026-11-11). A quote that says "entro
 48 ore" where the article says "entro 72 ore" has a ratio above 0.99 and used to
@@ -237,7 +256,8 @@ matched: `near_quote` (the official wording), `near_article` (where it is) and
 after a near match: the literal wording may be in another provision. A chunk
 that carries an `org_id` is a document uploaded by a tenant and never verifies
 a quote. A literal quote can still leave out context that changes its meaning
-(the "non" just before it): the interface shows the official passage in place.
+(the "non" just before it, a clause an omission skips): the interface shows the
+official passage in place.
 The effect of the stricter rule on the golden-set share of verified citations
 has not been measured yet (it needs a live run); it can only lower it.
 
@@ -257,8 +277,28 @@ modified, and anything the model put in these keys is overwritten):
 | `official_quote` | the exact span of the official text that matched | `null` |
 | `amending_celex`, `amending_article` | only for an article verified in the text of the act that amends it (below): that act and article; `url` is its page | `null` |
 | `near_quote`, `near_article`, `differences` | `null` | set when a passage almost matched: its official wording, where it is, the words that differ |
+| `found_elsewhere` | `false` | `true` when the wording is in the official text, but not where the citation points (below) |
+| `found_in`, `found_celex`, `found_article`, `found_paragraph`, `found_quote`, `found_url` | `null` | for such a citation: `"act"`, `"article"` or `"paragraph"`, where the wording is and its EUR-Lex page |
 
 The answer carries `verified_citations` and `citations_total`.
+
+**A quote found elsewhere is not a verified citation** (2026-11-18, Q&A only).
+"[GDPR, Art. 6]" with the wording of Article 50 of the AI Act used to come out
+`verified` with `level: "any"`, while the answer kept saying "GDPR, Art. 6".
+`annotate_citations` now turns into an unverified citation a quote found in
+another act (level `"any"`, or another act of the framework cited), in another
+article of the act cited (level `"framework"`, when the citation names an
+article) or in another paragraph of the article cited (when the citation names
+a paragraph, "Art. 50(2)", and the passage is in another known one; an unknown
+paragraph is accepted, and the cited paragraph is searched first). It counts as
+unverified in `verified_citations` and in the policy, its verification fields
+stay `null`, and the `found_*` fields keep where the wording really is. The
+answer gets `requires_expert_review = true` and a caveat per such citation
+that names it: *"La citazione [GDPR, Art. 6] non è verificata: il testo citato
+si trova in un altro atto, Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2."*
+(English twin for an English request). `verify_citation` itself keeps its
+levels: the document check reads `level` and reports "Citazione in un altro
+articolo" on its own.
 
 **Articles quoted by amending acts** (decided 2026-10-27,
 `src/agents/quoted_articles.py`, run by `retrieve_node` on the chunks it keeps).
@@ -283,10 +323,16 @@ such a passage with the amending act's own article and records the quoted one
 verified: `flag` serves it with `requires_expert_review = true`, confidence
 capped at 0.6 and the caveat *"Nessuno dei passaggi citati è stato ritrovato
 testualmente nei testi del corpus: verifica le fonti prima di usarla."* (its
-English twin when the request language is English); such an answer may be
-cached. `strict` replaces it with an abstention
+English twin when the request language is English; when some quote was found
+elsewhere, *"... nella disposizione che la risposta indica ..."*, since it was
+found); such an answer may be cached. `strict` replaces it with an abstention
 (`abstention_reason = "unverified_citations"`, citations emptied, counters
-kept), which is never cached and skips CoVe. The policy is idempotent and is
+kept), which is never cached and skips CoVe. An answer that is not an
+abstention and cites nothing at all (2026-11-18) is served, under either mode,
+with `requires_expert_review = true` and the caveat *"La risposta non cita
+nessun passaggio dei testi del corpus: verifica le fonti prima di usarla."*
+(or its English twin); there is nothing to verify, so it is not turned into an
+abstention and its confidence is left alone. The policy is idempotent and is
 re-applied where an answer is delivered (`POST /qa`, fresh and cached; the SSE
 stream; after CoVe, which revises the text but cannot clear the flag), so a
 cached answer follows the current setting. The cache key carries a version
@@ -298,6 +344,38 @@ served.
 `src/agents/llm.py`, which also names the amending act when there is one); the model is
 told to cite the article exactly as labelled and to copy `quote_snippet`
 verbatim from the labelled source, marking omissions with `[...]`.
+
+**A framework key names one act** (2026-11-18). `TRACKED_ACTS` groups acts by
+framework: CSRD holds the CSRD, the Accounting Directive 2013/34/EU, ESRS Set 1
+and the Omnibus directives; AI_ACT the AI Act and the Digital Omnibus on AI
+(2026/1744). Under the key, the Omnibus articles reached the answers as "[AI_ACT,
+Art. 1]" and the thresholds of the Accounting Directive as "[CSRD, Art. 3(4)]",
+which a jurist reads as articles of the AI Act and of the CSRD. The key now
+names the principal act of the framework (`principal_celex`: its first basic
+act in `TRACKED_ACTS`, e.g. 32024R1689 for AI_ACT, 32022L2464 for CSRD), in any
+consolidated version; every other act is labelled with its CELEX,
+`[32026R1744, Art. 1]`, which the model is told to copy, and the interface
+shows as "[Regolamento (UE) 2026/1744, Art. 1]". A citation that names a
+framework key matches at the article level only chunks of the principal act
+(with its consolidated versions and the articles an amending act quotes, case
+2 above): "[AI_ACT, Art. 1]" with the Omnibus wording is a quote found in
+another act. "ESRS" names Delegated Regulation 2023/2772 itself.
+
+**Marking of the answers (AI Act, Art. 50(2))** (2026-11-18). Chiedi writes
+text with a language model, so its outputs are marked as artificially
+generated in a machine-readable way (`src/agents/ai_marking.py`). Every Q&A
+answer carries `ai_generated` (true when the language model wrote the text;
+false for an abstention, whose text NormaAI writes itself) and `generator`:
+`{"system": "NormaAI Chiedi", "provider": ..., "model": ...}` (provider and
+model null for an abstention). They are in `data` of `POST /api/v1/qa`, fresh
+or served from the cache, and in the final `done` event of
+`/api/v1/qa/stream`; `metadata.ai_generated` follows the answer. The provider
+and model are recorded when the answer is generated (the Q&A agent node, also
+for the answer the SNC layer serves), overwriting anything the model wrote in
+those keys, so a cached answer names the model that wrote it. The Chiedi page
+shows "Testo generato con un sistema di IA" (English: "Text generated by an AI
+system") above every answer marked so, with the model in its tooltip. The PDF
+reports are not marked here.
 
 **Golden set.** `tests/validation/metrics.py::verified_citation_rate` reports
 the share of verified citations per case (`SuiteResult.avg_verified_citation_rate`);

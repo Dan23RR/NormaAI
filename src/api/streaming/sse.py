@@ -55,6 +55,8 @@ class TokenEvent(BaseModel):
 # How and where a verified quote matched the official text (citation verifier).
 CitationMatch = Literal["exact", "fuzzy"]
 CitationLevel = Literal["article", "framework", "any"]
+# Where a quote found word for word, but not where its citation points, is.
+CitationFoundIn = Literal["act", "article", "paragraph"]
 
 
 class CitationDifference(BaseModel):
@@ -75,8 +77,10 @@ class CitationEvent(BaseModel):
     ``article``, ``paragraph``, ``url``, ``chunk_id``, ``lang`` and ``quote``
     describe that text. When a quote is NOT verified but a passage almost
     matched, ``near_quote``, ``near_article`` and ``differences`` say what the
-    official text says instead. Fields that are None are omitted from the wire
-    format.
+    official text says instead; when it is not verified because its wording
+    is in another act, article or paragraph than the one cited,
+    ``found_elsewhere`` is True and the ``found_*`` fields say where. Fields
+    that are None are omitted from the wire format.
     """
 
     type: str = Field(default=EventType.CITATION, frozen=True)
@@ -138,6 +142,21 @@ class CitationEvent(BaseModel):
         default=None,
         description="The words that differ between the quote and the wording it almost matched",
     )
+    found_elsewhere: bool | None = Field(
+        default=None,
+        description=(
+            "True when the quote is not verified because its wording is in another act, "
+            "article or paragraph than the one cited"
+        ),
+    )
+    found_in: CitationFoundIn | None = Field(
+        default=None, description="Where that wording is: another act, article or paragraph"
+    )
+    found_celex: str | None = Field(default=None, description="CELEX of the act it is in")
+    found_article: str | None = Field(default=None, description="Article it is in, e.g. 'Art. 50'")
+    found_paragraph: str | None = Field(default=None, description="Paragraph it is in, when known")
+    found_quote: str | None = Field(default=None, description="The official wording found there")
+    found_url: str | None = Field(default=None, description="EUR-Lex page of the act it is in")
     grounded: bool | None = Field(
         default=None,
         description="Whether the citation is backed by the retrieved evidence (grounding guard)",
@@ -197,11 +216,24 @@ class ErrorEvent(BaseModel):
     error_code: str | None = Field(default=None, description="Machine-readable error class")
 
 
+class GeneratorInfo(BaseModel):
+    """What wrote the answer (AI Act, Art. 50(2)): NormaAI Chiedi, and the provider and model."""
+
+    system: str = Field(..., description="The system that served the answer: NormaAI Chiedi")
+    provider: str | None = Field(
+        default=None, description="LLM provider that wrote the text; null for an abstention"
+    )
+    model: str | None = Field(
+        default=None, description="Model that wrote the text; null for an abstention"
+    )
+
+
 class DoneEvent(BaseModel):
     """Stream completion marker with final metadata.
 
     ``abstention_reason`` and ``corpus_as_of`` are always on the wire (null when
-    absent, see NULLABLE_FIELDS); the citation counters are present for Q&A.
+    absent, see NULLABLE_FIELDS); the citation counters and the AI Act, Art.
+    50(2) marking (``ai_generated``, ``generator``) are present for Q&A.
     """
 
     # Serialized even when None (format_sse), so the client reads an explicit null.
@@ -234,6 +266,16 @@ class DoneEvent(BaseModel):
     )
     corpus_as_of: str | None = Field(
         default=None, description="Date of the regulatory corpus (ISO); null when not configured"
+    )
+    ai_generated: bool | None = Field(
+        default=None,
+        description=(
+            "Q&A: true when the answer text was written by a language model (AI Act, "
+            "Art. 50(2)), false for an abstention whose text NormaAI writes itself"
+        ),
+    )
+    generator: GeneratorInfo | None = Field(
+        default=None, description="Q&A: the system, provider and model that wrote the answer"
     )
 
 

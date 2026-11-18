@@ -94,7 +94,8 @@ def test_anthropic_accepts_temperature(model, accepted):
 
 def test_default_models_are_current(monkeypatch):
     s = _settings(monkeypatch)
-    assert s.anthropic_model_analysis == "claude-sonnet-5-5"
+    # The measured model (docs/MODELS.md 2.3), not the larger, unmeasured Sonnet.
+    assert s.anthropic_model_analysis == "claude-haiku-5-5"
     assert s.gemini_model_analysis == "gemini-3.6-flash"
     # Mistral Small 4 by its dated id (docs.mistral.ai, read 2026-11-11).
     assert s.mistral_model_analysis == "mistral-small-2603"

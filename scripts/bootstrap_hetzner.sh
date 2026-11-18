@@ -10,20 +10,32 @@
 #
 # What it does (each step prints [n/9]):
 #   1. Docker + compose, 2 GB swap, unattended security upgrades, ufw 22/80/443
-#   2. Clones (or updates) the repo into /opt/normaai
-#   3. Generates every secret and writes .env (asks only for the LLM key;
-#      Resend is optional)
-#   4. Builds the image (bakes the embedding model) and the RS256 JWT key pair
-#   5. Starts postgres / qdrant / redis and runs the alembic migrations
+#   2. Clones (or updates) the repo into /opt/normaai, owned by the non-root
+#      user GitHub deploys as (DEPLOY_USER, default deploy, created here and
+#      put in the docker group); with DEPLOY_SSH_PUBKEY in the environment it
+#      installs that key for it, able to run scripts/deploy.sh only
+#   3. Generates every secret and writes .env (asks for the LLM key; Resend and
+#      Sentry are optional) with the measured configuration (docs/MODELS.md
+#      2.3): anthropic with ANTHROPIC_MODEL=claude-haiku-5-5, the e5 search
+#      model with RERANKER_SEARCH_DEPTH=45 and no reranker, one worker
+#   4. The image: pulled when NORMAAI_IMAGE (environment or .env) names one
+#      from GHCR, otherwise built here (bakes the embedding model); the RS256
+#      JWT key pair
+#   5. Starts postgres / qdrant / redis and runs the migrations as the owner,
+#      in the one-shot migrate service of docker-compose.prod.yml
 #   6. Creates the NON-superuser DB role (RLS is inert for superusers)
 #   7. Restores the Qdrant collections from the snapshots in $SNAPSHOT_DIR
 #      (minutes); without snapshots it seeds the corpus from EUR-Lex, which
 #      with multilingual-e5-large takes hours of CPU
 #   8. Starts the app behind Caddy with the RLS overlay (TLS via Let's Encrypt)
-#   9. Cron: nightly backup (scripts/backup.sh) with a first run, and the two
-#      application jobs (nightly check-freshness, weekly recheck-documents,
-#      both `python -m src.pipeline` inside the app container); final health
-#      checks
+#   9. Cron: nightly backup (scripts/backup.sh) with a first run, the monthly
+#      restore test, and the two application jobs (nightly check-freshness,
+#      weekly recheck-documents, both `python -m src.pipeline` inside the app
+#      container); final health checks
+#
+# The app container gets no password of the database owner: .env keeps
+# POSTGRES_PASSWORD for the postgres and migrate services and
+# docker-compose.prod.yml blanks it for the app, which connects as normaai_app.
 #
 # Backups leave the server, encrypted, only when both of these are in the
 # environment at the first run (docs/BACKUP_STRATEGY.md, docs/DEPLOY_CHECKLIST.md):
@@ -41,11 +53,14 @@
 # rebuilding a lost server, before its database is restored.
 #
 # The dense model is chosen at the first run (EMBEDDING_CHOICE=e5|mpnet in the
-# environment skips the question): e5, multilingual-e5-large, recommended
-# (golden v2 89/101 against 81, docs/MODELS.md 2.2), 2.1 GB of model in the image
-# against 1.1; or mpnet, the default of the code. It sets EMBEDDING_MODEL,
-# EMBEDDING_DIMENSION and QDRANT_COLLECTION in .env; WEB_CONCURRENCY and
-# APP_MEMORY_LIMIT can also be set in the environment before the first run.
+# environment skips the question; Enter takes e5): e5, multilingual-e5-large,
+# the measured one (golden v2 89/101 against 81, docs/MODELS.md 2.2), 2.1 GB of
+# model in the image against 1.1; or mpnet, the default of the code. It sets
+# EMBEDDING_MODEL, EMBEDDING_DIMENSION, QDRANT_COLLECTION and
+# RERANKER_SEARCH_DEPTH in .env; WEB_CONCURRENCY and APP_MEMORY_LIMIT can also
+# be set in the environment before the first run. Each worker holds its own
+# copy of the model, 2.8 GB with e5 and 2.1 with mpnet (docs/MODELS.md 6): the
+# script stops when WEB_CONCURRENCY workers do not fit in APP_MEMORY_LIMIT.
 # Afterwards .env is the source.
 #
 # DNS must already point api.normaai.org (A record, Cloudflare proxy OFF) to
@@ -62,6 +77,8 @@ CORS_ORIGINS="${CORS_ORIGINS:-https://normaai.org,https://www.normaai.org,https:
 # Qdrant snapshots to restore in step 7, one file per collection named
 # <collection>.snapshot. Outside APP_DIR: git clone needs an empty directory.
 SNAPSHOT_DIR="${SNAPSHOT_DIR:-/opt/normaai-snapshots}"
+# The non-root user that owns the checkout and runs the deploys (scripts/deploy.sh).
+DEPLOY_USER="${DEPLOY_USER:-deploy}"
 E5_MODEL="intfloat/multilingual-e5-large"
 COMPOSE_BASE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 COMPOSE_RLS="$COMPOSE_BASE -f docker-compose.rls.yml"
@@ -92,17 +109,47 @@ ufw allow 22/tcp >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/de
 ufw --force enable >/dev/null
 
 # ── 2. Code ──────────────────────────────────────────────────────────────────
-log "2/9" "Repository in $APP_DIR"
+log "2/9" "Repository in $APP_DIR, utente di deploy $DEPLOY_USER"
+# The deploy user: no password, no sudo; in the docker group, which is as much
+# as root on this machine. What limits GitHub's key is the forced command below.
+if ! id "$DEPLOY_USER" >/dev/null 2>&1; then
+  useradd --create-home --shell /bin/bash "$DEPLOY_USER"
+fi
+usermod -aG docker "$DEPLOY_USER"
+# Root runs git here too (the backup records the commit): allowed for this path only.
+git config --system --get-all safe.directory 2>/dev/null | grep -qxF "$APP_DIR" \
+  || git config --system --add safe.directory "$APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
-  git -C "$APP_DIR" fetch -q origin && git -C "$APP_DIR" reset -q --hard origin/main
+  # A checkout of an older bootstrap belongs to root: hand it over first.
+  chown "$DEPLOY_USER:$DEPLOY_USER" "$APP_DIR"
+  find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name data ! -name backups -exec chown -R "$DEPLOY_USER:$DEPLOY_USER" {} +
+  runuser -u "$DEPLOY_USER" -- git -C "$APP_DIR" fetch -q origin
+  runuser -u "$DEPLOY_USER" -- git -C "$APP_DIR" reset -q --hard origin/main
 else
-  git clone -q "$REPO_URL" "$APP_DIR"
+  install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$APP_DIR"
+  runuser -u "$DEPLOY_USER" -- git clone -q "$REPO_URL" "$APP_DIR"
+fi
+# GitHub's deploy key (docs/DEPLOY_CHECKLIST.md step 6): it may run
+# scripts/deploy.sh and nothing else, with no terminal and no forwarding.
+if [ -n "${DEPLOY_SSH_PUBKEY:-}" ]; then
+  [[ "$DEPLOY_SSH_PUBKEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa)\ [A-Za-z0-9+/=]+(\ [^\"]*)?$ ]] \
+    || die "DEPLOY_SSH_PUBKEY non e' una chiave pubblica OpenSSH su una riga"
+  DEPLOY_HOME="$(getent passwd "$DEPLOY_USER" | cut -d: -f6)"
+  install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$DEPLOY_HOME/.ssh"
+  KEY_LINE="restrict,command=\"bash $APP_DIR/scripts/deploy.sh --ssh\" $DEPLOY_SSH_PUBKEY"
+  touch "$DEPLOY_HOME/.ssh/authorized_keys"
+  grep -qxF "$KEY_LINE" "$DEPLOY_HOME/.ssh/authorized_keys" \
+    || printf '%s\n' "$KEY_LINE" >> "$DEPLOY_HOME/.ssh/authorized_keys"
+  chown "$DEPLOY_USER:$DEPLOY_USER" "$DEPLOY_HOME/.ssh/authorized_keys"
+  chmod 600 "$DEPLOY_HOME/.ssh/authorized_keys"
+  echo "   chiave di deploy installata per $DEPLOY_USER (solo scripts/deploy.sh)"
 fi
 cd "$APP_DIR"
 # data/ is the app container's only writable mount (read-only root file system):
 # data/texts holds the official texts the document check downloads
-# (NORMAAI_TEXT_CACHE=/app/data/texts in docker-compose.yml).
+# (NORMAAI_TEXT_CACHE=/app/data/texts in docker-compose.yml). backups/ is root's.
 mkdir -p data/texts backups
+chown root:root backups && chmod 700 backups
 # Baked into the image (Dockerfile ARG GIT_SHA via docker-compose.prod.yml) and
 # reported by GET /health as "version", so a deploy can be verified end to end.
 export GIT_SHA="$(git rev-parse --short=7 HEAD)"
@@ -112,27 +159,32 @@ log "3/9" "Configurazione .env"
 if [ -f .env ]; then
   echo "   .env esistente: non lo tocco (cancellalo per rigenerarlo)."
 else
-  echo "   Serve la chiave API del modello. Provider: gemini (default), anthropic oppure mistral."
-  echo "   Le domande degli utenti vengono elaborate dal provider scelto: gemini e anthropic sono"
-  echo "   societa' statunitensi; mistral elabora in data center di paesi UE ed EFTA, ma non e'"
-  echo "   ancora misurato sul golden set (docs/DEPLOY_CHECKLIST.md, docs/MODELS.md sezione 5.1)."
-  read -r -p "   LLM_PROVIDER [gemini]: " LLM_PROVIDER; LLM_PROVIDER="${LLM_PROVIDER:-gemini}"
+  echo "   Serve la chiave API del modello. Provider: anthropic (default, l'unico misurato:"
+  echo "   Claude Haiku 5.5, docs/MODELS.md 2.3), gemini oppure mistral, non misurati."
+  echo "   Le domande degli utenti vengono elaborate dal provider scelto: anthropic e gemini sono"
+  echo "   societa' statunitensi; mistral elabora in data center di paesi UE ed EFTA"
+  echo "   (docs/DEPLOY_CHECKLIST.md, docs/MODELS.md sezione 5.1). Imposta un limite di spesa"
+  echo "   nella console del provider prima di aprire il servizio (docs/DEPLOY_CHECKLIST.md, passo 1)."
+  read -r -p "   LLM_PROVIDER [anthropic]: " LLM_PROVIDER; LLM_PROVIDER="${LLM_PROVIDER:-anthropic}"
   read -r -s -p "   Chiave API del provider: " LLM_KEY; echo
   [ -n "$LLM_KEY" ] || die "chiave API vuota"
   read -r -s -p "   RESEND_API_KEY (invio email; invio vuoto per saltare): " RESEND_KEY; echo
+  read -r -s -p "   SENTRY_DSN (errori a Sentry; invio vuoto per saltare): " SENTRY_DSN_VALUE; echo
   read -r -p "   Email del primo amministratore [info@normaai.org]: " ADMIN_EMAIL
   ADMIN_EMAIL="${ADMIN_EMAIL:-info@normaai.org}"
-  echo "   Modello di ricerca (docs/DEPLOY_CHECKLIST.md): e5 = multilingual-e5-large, consigliato"
+  echo "   Modello di ricerca (docs/DEPLOY_CHECKLIST.md): e5 = multilingual-e5-large, quello misurato"
   echo "   (golden set 89/101, modello di 2,1 GB nell'immagine); mpnet = predefinito del codice (81/101, 1,1 GB)."
   EMBEDDING_CHOICE="${EMBEDDING_CHOICE:-}"
   until [ "$EMBEDDING_CHOICE" = e5 ] || [ "$EMBEDDING_CHOICE" = mpnet ]; do
-    read -r -p "   Modello (e5 o mpnet): " EMBEDDING_CHOICE
+    read -r -p "   Modello (e5 o mpnet) [e5]: " EMBEDDING_CHOICE; EMBEDDING_CHOICE="${EMBEDDING_CHOICE:-e5}"
   done
-  # Each collection was built with its model: the snapshots carry both.
+  # Each collection was built with its model: the snapshots carry both. The
+  # search depth is the one measured with that model (docs/MODELS.md 4.1).
   case "$EMBEDDING_CHOICE" in
-    e5) EMBEDDING_MODEL="$E5_MODEL"; EMBEDDING_DIMENSION=1024; QDRANT_COLLECTION=eu_regulations_e5 ;;
+    e5) EMBEDDING_MODEL="$E5_MODEL"; EMBEDDING_DIMENSION=1024; QDRANT_COLLECTION=eu_regulations_e5
+        RERANKER_SEARCH_DEPTH=45 ;;
     mpnet) EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
-           EMBEDDING_DIMENSION=768; QDRANT_COLLECTION=eu_regulations ;;
+           EMBEDDING_DIMENSION=768; QDRANT_COLLECTION=eu_regulations; RERANKER_SEARCH_DEPTH=90 ;;
   esac
   WEB_CONCURRENCY="${WEB_CONCURRENCY:-1}"
   APP_MEMORY_LIMIT="${APP_MEMORY_LIMIT:-4G}"
@@ -149,7 +201,7 @@ else
 # A plain "docker compose" here uses the production files (docs/RUNBOOK.md).
 # Without it, "docker compose up -d app" would recreate the app from the base
 # file and the dev override: as the superuser, which production refuses.
-# Migrations name the base files explicitly (normaai_app cannot ALTER tables).
+# Migrations run as the owner in the one-shot service: docker compose run --rm migrate.
 COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml:docker-compose.rls.yml
 APP_ENV=production
 APP_SECRET_KEY=$(gen 64)
@@ -164,12 +216,16 @@ ACME_EMAIL=$ACME_EMAIL
 LLM_PROVIDER=$LLM_PROVIDER
 GOOGLE_API_KEY=$GOOGLE_API_KEY
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+# The measured model (docs/MODELS.md 2.3), also the default of src/config.py.
+# Set a spending limit for this key in the Anthropic console.
+ANTHROPIC_MODEL=claude-haiku-5-5
 # Mistral answers from its EU regional endpoint unless MISTRAL_BASE_URL says otherwise.
 MISTRAL_API_KEY=$MISTRAL_API_KEY
 
+# Owner of the schema: for the postgres and migrate services only.
+# docker-compose.prod.yml blanks it in the app container, which connects as
+# normaai_app with APP_DB_PASSWORD (docker-compose.rls.yml).
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-DATABASE_URL=postgresql+asyncpg://normaai:$POSTGRES_PASSWORD@postgres:5432/normaai
-DATABASE_URL_SYNC=postgresql://normaai:$POSTGRES_PASSWORD@postgres:5432/normaai
 APP_DB_PASSWORD=$APP_DB_PASSWORD
 QDRANT_HOST=qdrant
 QDRANT_PORT=6333
@@ -179,17 +235,25 @@ REDIS_URL=redis://redis:6379/0
 QDRANT_COLLECTION=$QDRANT_COLLECTION
 EMBEDDING_MODEL=$EMBEDDING_MODEL
 EMBEDDING_DIMENSION=$EMBEDDING_DIMENSION
-# Uvicorn workers and app container memory: 2.8 GB per worker with e5 (docs/MODELS.md, section 6).
+# Uvicorn workers and app container memory: each worker loads its own model,
+# 2.8 GB with e5 and 2.1 with mpnet (docs/MODELS.md, section 6). 1 worker in 4G;
+# 2 workers with e5 need APP_MEMORY_LIMIT=7G, and a 16 GB server.
 WEB_CONCURRENCY=$WEB_CONCURRENCY
 APP_MEMORY_LIMIT=$APP_MEMORY_LIMIT
-# Cross-encoder reranker off (docs/MODELS.md, section 4).
+# Cross-encoder reranker off (docs/MODELS.md, section 4); fusion depth of the model.
 RERANKER_MODEL_DIR=
+RERANKER_SEARCH_DEPTH=$RERANKER_SEARCH_DEPTH
+
+# The image the app runs: scripts/deploy.sh writes the GHCR digest after each
+# deploy. Empty: the image built on this server (normaai-app:local).
+NORMAAI_IMAGE=${NORMAAI_IMAGE:-}
 
 JWT_PRIVATE_KEY_PATH=/app/data/jwt_private.pem
 JWT_PUBLIC_KEY_PATH=/app/data/jwt_public.pem
 
-DATA_SOURCE=both
-# Step 7 writes the corpus date of the collection here (its metadata point).
+DATA_SOURCE=eurlex
+# Fallback only: the API reads the corpus date from the collection's metadata
+# point, written by the seed and by --action update; step 7 copies it here.
 CORPUS_AS_OF=
 ACQUISITION_SCHEDULER_ENABLED=false
 
@@ -198,28 +262,64 @@ RESEND_FROM_EMAIL=info@normaai.org
 RESEND_FROM_NAME=NormaAI
 RESEND_REPLY_TO=info@normaai.org
 
+# Alarms (docs/RUNBOOK.md section 1): errors to Sentry; failed cron jobs,
+# backups and restore tests also by email (through Resend) to OPS_ALERT_EMAIL.
+SENTRY_DSN=$SENTRY_DSN_VALUE
+OPS_ALERT_EMAIL=$ADMIN_EMAIL
+
 GRAFANA_PASSWORD=$(gen 18)
 PROMETHEUS_BEARER_TOKEN=$(gen 32)
 EOF
   chmod 600 .env
   echo "   .env scritto (permessi 600). Copialo in un posto sicuro: contiene le password."
 fi
+# Read by docker compose as the deploy user; root reads it anyway.
+chown "$DEPLOY_USER:$DEPLOY_USER" .env && chmod 600 .env
 # shellcheck disable=SC1091
 set -a; . ./.env; set +a
 # An .env written before the model choice existed: what the app falls back to.
 : "${EMBEDDING_MODEL:=sentence-transformers/paraphrase-multilingual-mpnet-base-v2}"
 : "${QDRANT_COLLECTION:=eu_regulations}"
+: "${WEB_CONCURRENCY:=1}"
+: "${APP_MEMORY_LIMIT:=4G}"
+# The arithmetic of docs/MODELS.md section 6: each worker loads its own model.
+case "$EMBEDDING_MODEL" in
+  "$E5_MODEL") PER_WORKER_MB=2800 ;;
+  *) PER_WORKER_MB=2100 ;;
+esac
+MEM_NUMBER="${APP_MEMORY_LIMIT%[gGmM]}"
+[[ "$MEM_NUMBER" =~ ^[1-9][0-9]*$ ]] || die "APP_MEMORY_LIMIT deve essere un numero intero di G o M (per esempio 4G), trovato '$APP_MEMORY_LIMIT'"
+case "$APP_MEMORY_LIMIT" in
+  *[gG]) LIMIT_MB=$((MEM_NUMBER * 1024)) ;;
+  *[mM]) LIMIT_MB=$MEM_NUMBER ;;
+  *) die "APP_MEMORY_LIMIT deve finire con G o M (per esempio 4G), trovato '$APP_MEMORY_LIMIT'" ;;
+esac
+[[ "$WEB_CONCURRENCY" =~ ^[1-9][0-9]*$ ]] || die "WEB_CONCURRENCY deve essere un numero intero, trovato '$WEB_CONCURRENCY'"
+if [ $((WEB_CONCURRENCY * PER_WORKER_MB)) -gt "$LIMIT_MB" ]; then
+  die "$WEB_CONCURRENCY worker x $PER_WORKER_MB MB = $((WEB_CONCURRENCY * PER_WORKER_MB)) MB non stanno in APP_MEMORY_LIMIT=$APP_MEMORY_LIMIT: WEB_CONCURRENCY=1, oppure APP_MEMORY_LIMIT piu' alto nel .env (docs/MODELS.md sezione 6)"
+fi
 # 8 GB recommended (an 8 GB server reports about 7.6 GiB). With 4 GB one worker
-# fits, 1.6 GiB with e5 and 1.8 GiB with mpnet in the dress rehearsal, but with
-# little room for requests, the deploys' image builds and a second worker.
+# fits: 2.8 GB with e5 after the 101 golden questions (1.6 GiB right after the
+# warm-up in the dress rehearsal), with little room for requests, a build on the
+# server and the monitoring stack.
 MEM_KB="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
 if [ "$MEM_KB" -lt 7340032 ] && [ "${ALLOW_LOW_MEMORY:-0}" != "1" ]; then
   die "consigliati 8 GB di RAM (trovati $((MEM_KB / 1024)) MB): con 4 GB un solo worker e poco margine; ALLOW_LOW_MEMORY=1 per procedere"
 fi
 
-# ── 4. Image build + JWT keys ────────────────────────────────────────────────
-log "4/9" "Build dell'immagine (scarica $EMBEDDING_MODEL, circa 2,2 GB con e5) e chiavi JWT RS256"
-$COMPOSE_BASE build app
+# ── 4. Image + JWT keys ──────────────────────────────────────────────────────
+# NORMAAI_IMAGE names the image CI built (ghcr.io/...@sha256:...): pulled, not
+# built. Without it, the image is built here, as the deploys did before GHCR.
+NORMAAI_IMAGE="${NORMAAI_IMAGE:-}"
+if [ -n "$NORMAAI_IMAGE" ]; then
+  log "4/9" "Immagine $NORMAAI_IMAGE (da GHCR) e chiavi JWT RS256"
+  docker pull -q "$NORMAAI_IMAGE" >/dev/null || die "impossibile scaricare $NORMAAI_IMAGE (pacchetto privato? docker login ghcr.io)"
+  BUILD_FLAG="--no-build"
+else
+  log "4/9" "Build dell'immagine (scarica $EMBEDDING_MODEL, circa 2,2 GB con e5) e chiavi JWT RS256"
+  $COMPOSE_BASE build app
+  BUILD_FLAG="--build"
+fi
 if [ ! -f data/jwt_private.pem ]; then
   openssl genrsa -out data/jwt_private.pem 2048 2>/dev/null
   openssl rsa -in data/jwt_private.pem -pubout -out data/jwt_public.pem 2>/dev/null
@@ -235,11 +335,12 @@ chmod 600 data/jwt_private.pem; chmod 644 data/jwt_public.pem
 log "5/9" "Postgres, Qdrant, Redis e migrazioni"
 $COMPOSE_BASE up -d postgres qdrant redis
 # Alembic is the only source of the schema (scripts/init_db.sql creates just the
-# extensions). Run as the `normaai` owner (base compose, NOT the RLS overlay:
-# normaai_app cannot ALTER tables). No `|| alembic stamp head` fallback: that
-# used to hide the init_db.sql drift and left tables missing - migration 007
-# reconciles any pre-existing database instead.
-$COMPOSE_BASE run --rm app alembic upgrade head
+# extensions). Run as the `normaai` owner, in the one-shot migrate service of
+# docker-compose.prod.yml: normaai_app cannot ALTER tables, and the app
+# container does not get the owner's password. No `|| alembic stamp head`
+# fallback: that used to hide the init_db.sql drift and left tables missing -
+# migration 007 reconciles any pre-existing database instead.
+$COMPOSE_BASE run --rm migrate
 
 # ── 6. Non-superuser role (real RLS) ────────────────────────────────────────
 log "6/9" "Ruolo applicativo normaai_app (isolamento multi-tenant reale)"
@@ -299,7 +400,7 @@ fi
 
 # ── 8. App + Caddy with RLS overlay ─────────────────────────────────────────
 log "8/9" "Avvio applicazione dietro Caddy (TLS automatico per $API_DOMAIN)"
-$COMPOSE_RLS up -d --build app caddy
+$COMPOSE_RLS up -d $BUILD_FLAG app caddy
 echo -n "   attendo che l'app sia healthy"
 for _ in $(seq 1 40); do
   if [ "$(docker inspect -f '{{.State.Health.Status}}' normaai-app 2>/dev/null)" = healthy ]; then echo " ok"; break; fi
@@ -399,9 +500,10 @@ Fatto. Prossimi passi (docs/DEPLOY_CHECKLIST.md):
     backup fuori dal server non e' riuscito.
   - Sorveglianza: variabili API_BASE_URL e API_EXPECTED_IP del repository GitHub, per il
     controllo .github/workflows/uptime.yml (docs/DEPLOY_CHECKLIST.md).
-  - Aggiornamenti: un push su main esegue .github/workflows/deploy.yml (build, migrazioni
-    come owner, riavvio, verifica di /health). A mano, nello stesso ordine:
-      cd $APP_DIR && git pull && export GIT_SHA=\$(git rev-parse --short=7 HEAD)
-      $COMPOSE_BASE build app && $COMPOSE_BASE run --rm app alembic upgrade head
-      $COMPOSE_RLS up -d app caddy
+  - Allarmi: SENTRY_DSN e OPS_ALERT_EMAIL nel .env (docs/RUNBOOK.md sezione 1); un limite di
+    spesa nella console del provider del modello.
+  - Aggiornamenti: dopo la CI riuscita su main, .github/workflows/deploy.yml costruisce
+    l'immagine, la pubblica su GHCR e la installa come $DEPLOY_USER (docs/DEPLOY_CHECKLIST.md
+    passo 6: chiave di deploy e segreti). A mano, come $DEPLOY_USER, lo stesso script:
+      sudo -u $DEPLOY_USER -H bash $APP_DIR/scripts/deploy.sh <commit di main> build
 EOF

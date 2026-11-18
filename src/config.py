@@ -36,11 +36,13 @@ class Settings(BaseSettings):
     gemini_model_classification: str = "gemini-2.0-flash"
 
     # Anthropic. Read from ANTHROPIC_MODEL_ANALYSIS or, as in .env.example,
-    # ANTHROPIC_MODEL. The previous default (claude-sonnet-4-5-20250514) was
-    # not a real model id: the API answered 404 to every request.
+    # ANTHROPIC_MODEL. Claude Haiku 5.5 is the model measured on golden v2
+    # (docs/MODELS.md 2.3); claude-sonnet-5-5, the previous default, never was,
+    # and costs more. (The one before, claude-sonnet-4-5-20250514, was not a
+    # real model id: the API answered 404 to every request.)
     anthropic_api_key: str = ""
     anthropic_model_analysis: str = Field(
-        default="claude-sonnet-5-5",
+        default="claude-haiku-5-5",
         validation_alias=AliasChoices("anthropic_model_analysis", "anthropic_model"),
     )
 

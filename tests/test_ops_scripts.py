@@ -943,3 +943,148 @@ def test_drill_reports_a_failed_restore(server):
     assert result.returncode == 1
     assert "FAILED: see the restore test above" in result.stdout
     assert "What a real rebuild adds" in result.stdout
+
+
+# ─── bootstrap_hetzner.sh: the configuration it writes ───────────────────────
+
+
+def _bootstrap_text() -> str:
+    return (
+        (REPO / "scripts" / "bootstrap_hetzner.sh")
+        .read_text(encoding="utf-8")
+        .replace("\r\n", "\n")
+    )
+
+
+def _bootstrap_block(start: str, end: str) -> str:
+    text = _bootstrap_text()
+    first = text.index(start)
+    return text[first : text.index(end, first)]
+
+
+def _run_block(tmp_path, block: str, stdin: str = "", **env: str) -> subprocess.CompletedProcess:
+    script = tmp_path / "block.sh"
+    prelude = (
+        "set -euo pipefail\n"
+        'die() { printf "ERRORE: %s\\n" "$1" >&2; exit 1; }\n'
+        'gen() { printf "generated-%s" "$1"; }\n'
+        'E5_MODEL="intfloat/multilingual-e5-large"\n'
+        "CORS_ORIGINS=https://normaai.org PUBLIC_URL=https://normaai.org\n"
+        "API_DOMAIN=api.normaai.org ACME_EMAIL=info@normaai.org\n"
+    )
+    script.write_text(prelude + block, encoding="utf-8", newline="\n")
+    # Bytes in: in text mode Windows would turn each answer's LF into CR LF.
+    result = subprocess.run(
+        [BASH, _posix(script)],
+        cwd=tmp_path,
+        env={**os.environ, **env},
+        input=stdin.encode("utf-8"),
+        capture_output=True,
+        timeout=60,
+    )
+    return subprocess.CompletedProcess(
+        result.args,
+        result.returncode,
+        result.stdout.decode("utf-8", errors="replace"),
+        result.stderr.decode("utf-8", errors="replace"),
+    )
+
+
+def _written_env(tmp_path, stdin: str, **env: str) -> dict[str, str]:
+    block = _bootstrap_block('  echo "   Serve la chiave API del modello.', "  chmod 600 .env")
+    result = _run_block(tmp_path, block, stdin=stdin, **env)
+    assert result.returncode == 0, result.stderr
+    values = {}
+    for line in (tmp_path / ".env").read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            name, _, value = line.partition("=")
+            values[name] = value
+    return values
+
+
+# Answers to the prompts: provider, its key, Resend key, Sentry DSN, admin email, model.
+DEFAULT_ANSWERS = "\nsk-ant-key-of-the-test\n\n\n\n\n"
+
+
+def test_bootstrap_writes_the_measured_configuration_by_default(tmp_path):
+    values = _written_env(tmp_path, DEFAULT_ANSWERS)
+    assert values["LLM_PROVIDER"] == "anthropic"
+    assert values["ANTHROPIC_API_KEY"] == "sk-ant-key-of-the-test"
+    assert values["ANTHROPIC_MODEL"] == "claude-haiku-5-5"
+    assert values["EMBEDDING_MODEL"] == "intfloat/multilingual-e5-large"
+    assert values["QDRANT_COLLECTION"] == "eu_regulations_e5"
+    assert values["EMBEDDING_DIMENSION"] == "1024"
+    assert values["RERANKER_SEARCH_DEPTH"] == "45"
+    assert values["RERANKER_MODEL_DIR"] == ""
+    assert values["WEB_CONCURRENCY"] == "1"
+    assert values["APP_MEMORY_LIMIT"] == "4G"
+    assert values["OPS_ALERT_EMAIL"] == "info@normaai.org"
+    assert values["NORMAAI_IMAGE"] == ""
+    assert values["DATA_SOURCE"] == "eurlex"
+
+
+def test_bootstrap_writes_no_owner_url_for_the_app(tmp_path):
+    values = _written_env(tmp_path, DEFAULT_ANSWERS)
+    # The owner's password stays, for the postgres and migrate services only...
+    assert values["POSTGRES_PASSWORD"].startswith("generated-")
+    assert values["APP_DB_PASSWORD"].startswith("generated-")
+    # ...and no line of .env, the app's env_file, carries it in a URL.
+    assert "DATABASE_URL" not in values
+    assert "DATABASE_URL_SYNC" not in values
+    assert values["COMPOSE_FILE"] == (
+        "docker-compose.yml:docker-compose.prod.yml:docker-compose.rls.yml"
+    )
+
+
+def test_bootstrap_keeps_mpnet_with_its_own_depth(tmp_path):
+    values = _written_env(tmp_path, "gemini\nAIza-key\n\n\n\nmpnet\n")
+    assert values["LLM_PROVIDER"] == "gemini"
+    assert values["GOOGLE_API_KEY"] == "AIza-key"
+    assert values["QDRANT_COLLECTION"] == "eu_regulations"
+    assert values["RERANKER_SEARCH_DEPTH"] == "90"
+
+
+def test_bootstrap_carries_an_image_given_in_the_environment(tmp_path):
+    image = "ghcr.io/dan23rr/normaai@sha256:" + "d" * 64
+    values = _written_env(tmp_path, DEFAULT_ANSWERS, NORMAAI_IMAGE=image)
+    assert values["NORMAAI_IMAGE"] == image
+
+
+@pytest.mark.parametrize(
+    ("model", "workers", "limit", "fits"),
+    [
+        ("intfloat/multilingual-e5-large", "1", "4G", True),
+        ("intfloat/multilingual-e5-large", "2", "4G", False),  # 5.6 GB in 4 GB: the OOM of B5.5
+        ("intfloat/multilingual-e5-large", "2", "7G", True),
+        ("sentence-transformers/paraphrase-multilingual-mpnet-base-v2", "1", "4096M", True),
+        ("intfloat/multilingual-e5-large", "1", "4.5G", False),
+        ("intfloat/multilingual-e5-large", "two", "4G", False),
+    ],
+)
+def test_bootstrap_stops_when_the_workers_do_not_fit(tmp_path, model, workers, limit, fits):
+    block = _bootstrap_block("# The arithmetic of docs/MODELS.md", "# 8 GB recommended")
+    result = _run_block(
+        tmp_path,
+        block,
+        EMBEDDING_MODEL=model,
+        WEB_CONCURRENCY=workers,
+        APP_MEMORY_LIMIT=limit,
+    )
+    assert (result.returncode == 0) is fits, result.stderr
+    if not fits:
+        assert "ERRORE" in result.stderr
+
+
+def test_bootstrap_gives_the_deploy_key_the_deploy_script_only():
+    text = _bootstrap_text()
+    assert (
+        'KEY_LINE="restrict,command=\\"bash $APP_DIR/scripts/deploy.sh --ssh\\" $DEPLOY_SSH_PUBKEY"'
+        in text
+    )
+    # The checkout belongs to the deploy user, who runs git there; root's backups stay root's.
+    assert 'runuser -u "$DEPLOY_USER" -- git clone' in text
+    assert "chown root:root backups && chmod 700 backups" in text
+    assert 'usermod -aG docker "$DEPLOY_USER"' in text
+    # Migrations as the owner in the one-shot service, not in the app container.
+    assert "$COMPOSE_BASE run --rm migrate" in text
+    assert "run --rm app alembic upgrade head" not in text

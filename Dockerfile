@@ -112,13 +112,15 @@ USER normaai
 # Environment. HF_HUB_OFFLINE=1 keeps the read-only runtime from attempting any
 # network/lock writes - it loads the baked model purely from the local cache.
 # WEB_CONCURRENCY = uvicorn worker processes; each loads its own copy of the
-# models: in this image 1.6 GiB per worker with multilingual-e5-large and 1.8 GiB
-# with mpnet (docker stats, dress rehearsal of 2026-11-09).
+# models: 2.8 GB per worker with multilingual-e5-large and 2.1 GB with mpnet
+# after the 101 golden questions (docs/MODELS.md, section 6; 1.6 and 1.8 GiB
+# right after the warm-up, docker stats of 2026-11-09). One by default: two
+# with e5 need 5.6 GB, more than the 4G limit of docker-compose.yml.
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HF_HUB_OFFLINE=1 \
-    WEB_CONCURRENCY=2
+    WEB_CONCURRENCY=1
 
 EXPOSE 8000
 

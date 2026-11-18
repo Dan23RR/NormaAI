@@ -96,6 +96,17 @@ class TestSettings:
         assert s.active_model == "another-mistral-model"
         assert s.mistral_base_url == "https://api.mistral.ai/v1"
 
+    def test_anthropic_answers_with_the_measured_model_by_default(self, monkeypatch):
+        # Haiku 5.5 is the model of the golden v2 runs (docs/MODELS.md 2.3).
+        for var in ("ANTHROPIC_MODEL", "ANTHROPIC_MODEL_ANALYSIS"):
+            monkeypatch.delenv(var, raising=False)
+        s = _isolated_settings(monkeypatch, llm_provider="anthropic", anthropic_api_key="k")
+        assert s.active_model == "claude-haiku-5-5"
+
+    def test_operator_alerts_need_an_address(self, monkeypatch):
+        monkeypatch.delenv("OPS_ALERT_EMAIL", raising=False)
+        assert _isolated_settings(monkeypatch).ops_alert_email == ""
+
     def test_the_default_provider_is_unchanged(self, monkeypatch):
         # Mistral is not measured on the golden set (docs/MODELS.md): it must not
         # become the default by accident.
@@ -203,3 +214,42 @@ class TestProviderValidation:
         with caplog.at_level(logging.WARNING, logger="normaai.config"):
             self._validate(monkeypatch, llm_provider="mistral", mistral_api_key="k")
         assert "MISTRAL" not in caplog.text
+
+
+class TestShippedConfiguration:
+    """.env.example and the image carry the measured configuration (docs/MODELS.md 2.2, 2.3)."""
+
+    @staticmethod
+    def _values(path: str) -> dict[str, str]:
+        from pathlib import Path
+
+        values = {}
+        text = (Path(__file__).resolve().parents[1] / path).read_text(encoding="utf-8")
+        for raw in text.splitlines():
+            line = raw.split("#", 1)[0].strip() if not raw.lstrip().startswith("#") else ""
+            if "=" in line:
+                name, _, value = line.partition("=")
+                values[name.strip()] = value.strip()
+        return values
+
+    def test_env_example_is_the_measured_configuration(self):
+        values = self._values(".env.example")
+        assert values["LLM_PROVIDER"] == "anthropic"
+        assert values["ANTHROPIC_MODEL"] == "claude-haiku-5-5"
+        assert values["EMBEDDING_MODEL"] == "intfloat/multilingual-e5-large"
+        assert values["QDRANT_COLLECTION"] == "eu_regulations_e5"
+        assert values["EMBEDDING_DIMENSION"] == "1024"
+        assert values["RERANKER_SEARCH_DEPTH"] == "45"
+        assert values["RERANKER_MODEL_DIR"] == ""
+
+    def test_the_workers_fit_the_memory_limit(self):
+        # 2.8 GB per e5 worker (docs/MODELS.md 6): 2 workers in 4G were the OOM of B5.5.
+        values = self._values(".env.example")
+        limit_mb = int(values["APP_MEMORY_LIMIT"].rstrip("Gg")) * 1024
+        assert int(values["WEB_CONCURRENCY"]) * 2800 <= limit_mb
+        from pathlib import Path
+
+        dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        assert "WEB_CONCURRENCY=1" in dockerfile

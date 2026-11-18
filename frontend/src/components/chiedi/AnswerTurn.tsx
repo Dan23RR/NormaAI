@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, ChevronDown, Copy } from 'lucide-react'
 import { Button, Spinner } from '@/components/ui/Button'
-import { FrameworkBadge, frameworkLabel } from '@/components/ui/Badge'
+import { FRAMEWORK_META, FrameworkBadge, frameworkLabel } from '@/components/ui/Badge'
 import { cn } from '@/lib/cn'
 import { useTextContext } from '@/i18n/useTextContext'
 import { getConfidenceLabel } from '@/lib/confidence-labels'
@@ -118,7 +118,11 @@ export function AnswerTurn({
   const confidence = getConfidenceLabel(data.confidence_score ?? 0, ctx.t)
   const caveats = [...(data.caveats ?? [])]
   if (data.grounding_warning) caveats.push(t('answer.groundingCaveat'))
-  const related = Array.from(new Set((data.related_frameworks ?? []).map(normalizeFramework).filter(Boolean)))
+  // Only frameworks the interface knows become follow-up chips: the model sometimes lists
+  // whole act titles ("Regolamento (UE) 2018/1139 (...)"), which the answer text names already.
+  const related = Array.from(
+    new Set((data.related_frameworks ?? []).map(normalizeFramework).filter((k) => Boolean(k && FRAMEWORK_META[k]))),
+  )
 
   const copy = () =>
     onCopy(buildCopyText({ answer: message.content, sources, corpusAsOf: message.corpusAsOf, demo }, ctx))

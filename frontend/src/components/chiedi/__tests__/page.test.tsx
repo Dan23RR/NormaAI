@@ -403,6 +403,23 @@ describe('ChiediPage (demo mode)', () => {
     expect(label).toHaveAttribute('title', 'Modello: claude-haiku-5-5')
   })
 
+  it('offers follow-ups only on frameworks it knows, not on act titles the model lists', async () => {
+    mocks.post.mockResolvedValue({
+      ...ANSWER,
+      data: {
+        ...ANSWER.data,
+        related_frameworks: ['GDPR', "Regolamento (UE) 2018/1139 (sicurezza dell'aviazione civile)"],
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/obbliga chi fornisce un chatbot/)
+    expect(screen.getByRole('button', { name: /Chiedi di GDPR/ })).toBeInTheDocument()
+    expect(screen.queryByText(/AVIAZIONE/)).not.toBeInTheDocument()
+  })
+
   it('does not label an answer the backend does not mark', async () => {
     mocks.post.mockResolvedValue(ANSWER)
     const user = userEvent.setup()

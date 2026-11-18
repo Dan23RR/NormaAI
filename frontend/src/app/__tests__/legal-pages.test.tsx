@@ -81,7 +81,7 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico')
     expect(main).toHaveTextContent('Google LLC (API Gemini, USA)')
     expect(main).not.toHaveTextContent(/scade dopo 30 giorni|EUR-Lex e Normattiva/)
-    expect(main).toHaveTextContent('Ultimo aggiornamento: 11 novembre 2026')
+    expect(main).toHaveTextContent('Ultimo aggiornamento: 18 novembre 2026')
   })
 
   it('terms: carries the imprint, with no VAT line when none is configured', async () => {
@@ -93,6 +93,43 @@ describe('legal and method pages', () => {
     )
     expect(main).not.toHaveTextContent('Partita IVA')
     expect(main).toHaveTextContent('le verifiche di ambito applicano regole scritte a mano ai dati che inserisci')
+  })
+
+  it('terms: limit liability within the law and say price, duration, law and court', async () => {
+    await show(<TermsPage />)
+    const main = screen.getByRole('main')
+    const text = main.textContent ?? ''
+    // A blanket exclusion is void for wilful misconduct and gross negligence (art. 1229 c.c.),
+    // and a cap equal to the fees of a free service excludes everything.
+    expect(text).not.toMatch(/in alcun caso|corrispettivi pagati/)
+    expect(main).toHaveTextContent('Il gestore risponde dei danni causati con dolo o colpa grave: questa responsabilità non è esclusa né limitata.')
+    expect(main).toHaveTextContent('né i diritti che ti riconosce il Codice del consumo')
+    // who, price, duration and withdrawal
+    expect(main).toHaveTextContent('Il servizio è offerto dalla persona indicata qui sopra')
+    expect(main).toHaveTextContent('pilot gratuito e su invito')
+    expect(main).toHaveTextContent('non è richiesto né incassato alcun pagamento')
+    expect(main).toHaveTextContent('Puoi recedere in qualsiasi momento, senza costi')
+    // law and court
+    expect(main).toHaveTextContent('Questi termini sono regolati dalla legge italiana.')
+    expect(main).toHaveTextContent('art. 66-bis del Codice del consumo')
+    // the model provider of the measured configuration, and no AI claimed for the document check
+    expect(main).toHaveTextContent('Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Gemini')
+    expect(main).toHaveTextContent('il controllo dei documenti e i suoi avvisi confrontano le parole con il testo ufficiale senza modelli generativi')
+    const sections = within(main)
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent)
+    expect(sections.map((title) => Number.parseInt(title ?? '', 10))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  })
+
+  it('terms: say the same in English', async () => {
+    await show(<TermsPage />, 'en')
+    const main = screen.getByRole('main')
+    expect(main.textContent).not.toMatch(/in no case|fees paid/)
+    expect(main).toHaveTextContent('The operator is liable for damage caused by wilful misconduct or gross negligence')
+    expect(main).toHaveTextContent('free, invitation-only pilot')
+    expect(main).toHaveTextContent('These terms are governed by Italian law.')
+    expect(main).toHaveTextContent('Art. 66-bis of the Italian Consumer Code')
   })
 
   it('cookie: lists exactly the keys of storage-keys.ts', async () => {

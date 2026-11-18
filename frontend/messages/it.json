@@ -2009,50 +2009,66 @@
     },
     "terms": {
       "title": "Termini di Servizio",
-      "intro": "Condizioni d’uso di NormaAI: natura del servizio, avviso sul sistema di intelligenza artificiale (art. 50 AI Act), limitazione di responsabilità ed esclusione di garanzia.",
+      "intro": "Condizioni d’uso di NormaAI: chi offre il servizio, pilot gratuito su invito, avviso sul sistema di intelligenza artificiale (art. 50 AI Act), limiti di responsabilità, legge applicabile e foro.",
       "nature": {
-        "title": "1. Natura del servizio",
+        "title": "1. Chi offre il servizio e che cosa fa",
         "p": {
-          "1": "NormaAI fornisce analisi automatizzate basate su intelligenza artificiale a scopo esclusivamente informativo e di supporto decisionale in materia di conformità normativa europea. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
+          "1": "Il servizio è offerto dalla persona indicata qui sopra (di seguito «il gestore»). NormaAI controlla i riferimenti di legge dei documenti sul testo ufficiale, risponde a domande sul diritto dell’Unione con un sistema di intelligenza artificiale e offre verifiche di ambito e un calendario delle scadenze, a scopo informativo e di supporto. Il servizio <strong>non costituisce consulenza legale, fiscale o professionale</strong>.",
           "2": "La modalità \"Demo con dati di esempio\" usa dati fittizi, non interroga il corpus reale ed è segnalata in ogni pagina dell’applicazione."
         }
       },
+      "pilot": {
+        "title": "2. Pilot gratuito: prezzo, durata e recesso",
+        "p": {
+          "1": "Oggi NormaAI è offerto in un pilot gratuito e su invito: per creare un account serve un codice di invito, e non è richiesto né incassato alcun pagamento.",
+          "2": "Il pilot non ha una durata minima. Puoi recedere in qualsiasi momento, senza costi e senza dare motivazioni: basta smettere di usare il servizio e, se vuoi, chiedere la chiusura dell’account a <mail>info@normaai.org</mail>. L’amministratore della tua organizzazione può anche esportare e cancellare i dati dall’applicazione.",
+          "3": "Il gestore può terminare il pilot: lo comunica per email agli utenti con un preavviso che lasci il tempo di esportare i dati. Se il servizio diventerà a pagamento, prezzo e condizioni saranno comunicati prima e si applicheranno solo a chi li accetta."
+        }
+      },
       "ai": {
-        "title": "2. Sistema di intelligenza artificiale (art. 50 AI Act)",
+        "title": "3. Sistema di intelligenza artificiale (art. 50 AI Act)",
         "intro": "Ai sensi dell’art. 50 del Regolamento (UE) 2024/1689 (AI Act) ti informiamo che:",
         "items": {
-          "1": "usando NormaAI interagisci con un sistema di intelligenza artificiale, non con una persona;",
-          "2": "le risposte, le gap analysis, gli avvisi e i report sono generati automaticamente da un modello linguistico di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) a partire dai testi normativi recuperati dal corpus; le verifiche di ambito applicano regole scritte a mano ai dati che inserisci. Nessuno scrive o rivede questi risultati prima che ti vengano mostrati;",
+          "1": "quando fai una domanda a NormaAI interagisci con un sistema di intelligenza artificiale, non con una persona;",
+          "2": "le risposte, le gap analysis, le analisi del monitoraggio e i report della pagina Report sono generati automaticamente da un modello linguistico di un fornitore esterno (nella configurazione in uso, Claude di Anthropic) a partire dai testi normativi recuperati dal corpus; le verifiche di ambito applicano regole scritte a mano ai dati che inserisci, e il controllo dei documenti e i suoi avvisi confrontano le parole con il testo ufficiale senza modelli generativi. Nessuno scrive o rivede questi risultati prima che ti vengano mostrati;",
           "3": "ogni risposta indica le fonti citate (atto, articolo, passaggio), per ciascuna se il passaggio è stato ritrovato alla lettera nel testo ufficiale, e un livello di affidabilità. Quando il sistema non trova sostegno sufficiente nel corpus, lo dichiara e segnala la necessità di una revisione esperta invece di rispondere;",
           "4": "le risposte possono contenere errori, omissioni o citazioni imprecise. Verifica sempre il testo ufficiale su EUR-Lex o Normattiva e consulta un professionista prima di prendere decisioni."
         },
         "p": "Lo stesso avviso è riportato nell’applicazione e nei report generati."
       },
       "liability": {
-        "title": "3. Limitazione di responsabilità",
+        "title": "4. Limiti di responsabilità",
         "p": {
-          "1": "Il gestore del servizio non sarà in alcun caso responsabile per: (a) decisioni prese dall’Utente sulla base degli output del sistema; (b) sanzioni, multe o danni derivanti dalla non conformità normativa; (c) errori, omissioni o imprecisioni nelle analisi generate; (d) mancato aggiornamento delle informazioni normative.",
-          "2": "La responsabilità complessiva del gestore del servizio è in ogni caso limitata all’importo dei corrispettivi pagati dall’Utente nei 12 mesi precedenti l’evento generatore del danno."
+          "1": "Il gestore risponde dei danni causati con dolo o colpa grave: questa responsabilità non è esclusa né limitata. Fuori da questi casi, e nei limiti consentiti dalla legge, il gestore non risponde: (a) delle decisioni che l’Utente prende sulla base dei risultati del servizio, che restano una sua valutazione; (b) di sanzioni o danni derivanti dalla mancata conformità dell’Utente alle norme; (c) di errori, omissioni o imprecisioni dei risultati, che il servizio dichiara possibili (sezione 3); (d) del mancato aggiornamento delle informazioni normative (sezione 6).",
+          "2": "Se usi NormaAI come consumatore, questa sezione non esclude né limita la responsabilità del gestore per morte o danno alla persona, né i diritti che ti riconosce il Codice del consumo (sezione 9)."
         }
       },
       "warranty": {
-        "title": "4. Esclusione di garanzia",
-        "p": "NormaAI non garantisce che l’utilizzo del servizio assicuri la conformità dell’Utente ai requisiti normativi applicabili. I punteggi di conformità, le analisi di gap e le raccomandazioni sono stime basate su modelli di intelligenza artificiale e possono non riflettere lo stato effettivo di conformità. L’Utente è l’unico responsabile delle proprie decisioni di compliance."
+        "title": "5. Garanzie",
+        "p": "NormaAI non garantisce che l’utilizzo del servizio assicuri la conformità dell’Utente ai requisiti normativi applicabili. Le analisi di gap e le raccomandazioni scritte dal modello linguistico sono stime e possono non riflettere lo stato effettivo di conformità; il controllo dei documenti verifica i riferimenti e le parole citate, non se sono quelli giusti per il caso. Le decisioni di conformità restano dell’Utente. Per i consumatori restano salve le garanzie previste dal Codice del consumo."
       },
       "updates": {
-        "title": "5. Aggiornamento normativo",
-        "p": "Le informazioni normative contenute nel sistema sono aggiornate alla data dell’ultima indicizzazione del corpus. Il corpus non si aggiorna da solo: viene reindicizzato con operazioni esplicite, e la data di riferimento è riportata nei metadati delle risposte dell’API e nei report in PDF. NormaAI si impegna a mantenere aggiornate le informazioni ma non garantisce la completezza, l’accuratezza o la tempestività degli aggiornamenti."
+        "title": "6. Aggiornamento normativo",
+        "p": "Le risposte si basano sul corpus, aggiornato alla data dell’ultima indicizzazione. Il corpus non si aggiorna da solo: viene reindicizzato con operazioni esplicite, e la data di riferimento è riportata nei metadati delle risposte dell’API e nei report in PDF. Il controllo dei documenti legge invece il testo vigente da EUR-Lex e Normattiva al momento del controllo; per il diritto dell’Unione il testo consolidato arriva su EUR-Lex di solito settimane dopo la pubblicazione di una modifica nella Gazzetta ufficiale. NormaAI si impegna a mantenere aggiornate le informazioni ma non garantisce la completezza, l’accuratezza o la tempestività degli aggiornamenti."
       },
       "data": {
-        "title": "6. Dati personali e sicurezza",
+        "title": "7. Dati personali e sicurezza",
         "p": "Il trattamento dei dati personali è descritto nella <privacy>Privacy Policy</privacy>; le misure di sicurezza presenti nel codice, e quelle che mancano ancora, nella pagina <securityPage>Sicurezza</securityPage>."
       },
       "source": {
-        "title": "7. Codice sorgente",
+        "title": "8. Codice sorgente",
         "p": "Il codice di NormaAI è pubblicato su <github>GitHub</github> con licenza MIT. La licenza riguarda il codice sorgente, non il servizio ospitato né i suoi contenuti."
       },
+      "law": {
+        "title": "9. Consumatori, legge applicabile e foro",
+        "p": {
+          "1": "Se usi NormaAI come consumatore, cioè per scopi estranei alla tua attività professionale, nessuna clausola di questi termini limita i diritti che ti riconosce il Codice del consumo (D.Lgs. 206/2005).",
+          "2": "Questi termini sono regolati dalla legge italiana. Se sei un consumatore residente in un altro Paese dell’Unione, restano salve le norme di quel Paese che non si possono derogare per contratto.",
+          "3": "Per le controversie con un consumatore è competente il giudice del luogo di residenza o di domicilio del consumatore, se si trova in Italia (art. 66-bis del Codice del consumo). Per le altre controversie il foro è quello previsto dalla legge."
+        }
+      },
       "changes": {
-        "title": "8. Modifiche",
+        "title": "10. Modifiche",
         "p": "Le modifiche a questi termini sono pubblicate su questa pagina con la nuova data di aggiornamento."
       }
     },

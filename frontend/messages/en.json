@@ -2009,50 +2009,66 @@
     },
     "terms": {
       "title": "Terms of Service",
-      "intro": "Conditions of use of NormaAI: nature of the service, notice on the artificial intelligence system (Art. 50 AI Act), limitation of liability and disclaimer of warranty.",
+      "intro": "Conditions of use of NormaAI: who provides the service, the free invitation-only pilot, notice on the artificial intelligence system (Art. 50 AI Act), limits of liability, governing law and court.",
       "nature": {
-        "title": "1. Nature of the service",
+        "title": "1. Who provides the service and what it does",
         "p": {
-          "1": "NormaAI provides automated analyses based on artificial intelligence for information and decision-support purposes only, on European regulatory compliance. The service <strong>does not constitute legal, tax or professional advice</strong>.",
+          "1": "The service is provided by the person named above (the \"operator\"). NormaAI checks the legal references of documents against the official text, answers questions on EU law with an artificial intelligence system and offers scope checks and a calendar of deadlines, for information and support. The service <strong>does not constitute legal, tax or professional advice</strong>.",
           "2": "The \"Demo with sample data\" mode uses fictitious data, does not query the real corpus and is flagged on every page of the application."
         }
       },
+      "pilot": {
+        "title": "2. Free pilot: price, duration and withdrawal",
+        "p": {
+          "1": "Today NormaAI is offered in a free, invitation-only pilot: creating an account needs an invitation code, and no payment is requested or collected.",
+          "2": "The pilot has no minimum duration. You can withdraw at any time, at no cost and without giving reasons: just stop using the service and, if you wish, ask for your account to be closed at <mail>info@normaai.org</mail>. The administrator of your organisation can also export and delete the data from the application.",
+          "3": "The operator may end the pilot: the users are told by email with enough notice to export their data. If the service becomes a paid one, the price and conditions will be stated in advance and will apply only to those who accept them."
+        }
+      },
       "ai": {
-        "title": "2. Artificial intelligence system (Art. 50 AI Act)",
+        "title": "3. Artificial intelligence system (Art. 50 AI Act)",
         "intro": "Under Art. 50 of Regulation (EU) 2024/1689 (AI Act) we inform you that:",
         "items": {
-          "1": "by using NormaAI you interact with an artificial intelligence system, not with a person;",
-          "2": "the answers, gap analyses, alerts and reports are generated automatically by a language model from an external provider (today, by default, Google Gemini) from the legal texts retrieved from the corpus; the scope checks apply hand-written rules to the data you enter. Nobody writes or reviews these results before they are shown to you;",
+          "1": "when you ask NormaAI a question you interact with an artificial intelligence system, not with a person;",
+          "2": "the answers, gap analyses, monitoring analyses and the reports of the Reports page are generated automatically by a language model from an external provider (in the configuration in use, Anthropic’s Claude) from the legal texts retrieved from the corpus; the scope checks apply hand-written rules to the data you enter, and the document check and its alerts compare words with the official text without generative models. Nobody writes or reviews these results before they are shown to you;",
           "3": "every answer indicates the sources cited (act, article, passage), for each whether the passage was found word for word in the official text, and a reliability level. When the system finds insufficient support in the corpus, it says so and flags the need for an expert review instead of answering;",
           "4": "the answers may contain errors, omissions or imprecise citations. Always check the official text on EUR-Lex or Normattiva and consult a professional before taking decisions."
         },
         "p": "The same notice appears in the application and in the generated reports."
       },
       "liability": {
-        "title": "3. Limitation of liability",
+        "title": "4. Limits of liability",
         "p": {
-          "1": "The operator of the service shall in no case be liable for: (a) decisions taken by the User on the basis of the system’s outputs; (b) penalties, fines or damages arising from regulatory non-compliance; (c) errors, omissions or inaccuracies in the generated analyses; (d) failure to update regulatory information.",
-          "2": "The overall liability of the operator of the service is in any case limited to the amount of the fees paid by the User in the 12 months preceding the event giving rise to the damage."
+          "1": "The operator is liable for damage caused by wilful misconduct or gross negligence: this liability is neither excluded nor limited. Outside these cases, and to the extent the law allows, the operator is not liable for: (a) decisions the User takes on the basis of the results of the service, which remain the User’s own assessment; (b) penalties or damages arising from the User’s non-compliance with the law; (c) errors, omissions or inaccuracies in the results, which the service states are possible (section 3); (d) failure to update regulatory information (section 6).",
+          "2": "If you use NormaAI as a consumer, this section neither excludes nor limits the operator’s liability for death or personal injury, nor the rights the Italian Consumer Code gives you (section 9)."
         }
       },
       "warranty": {
-        "title": "4. Disclaimer of warranty",
-        "p": "NormaAI does not warrant that use of the service ensures the User’s compliance with the applicable regulatory requirements. Compliance scores, gap analyses and recommendations are estimates based on artificial intelligence models and may not reflect the actual state of compliance. The User is solely responsible for their own compliance decisions."
+        "title": "5. Warranties",
+        "p": "NormaAI does not warrant that use of the service ensures the User’s compliance with the applicable regulatory requirements. Gap analyses and recommendations written by the language model are estimates and may not reflect the actual state of compliance; the document check verifies the references and the words quoted, not whether they are the right ones for the case. Compliance decisions remain the User’s. For consumers, the guarantees of the Italian Consumer Code are not affected."
       },
       "updates": {
-        "title": "5. Regulatory updates",
-        "p": "The regulatory information in the system is current as of the date of the last indexing of the corpus. The corpus does not update by itself: it is re-indexed through explicit operations, and the reference date is reported in the metadata of the API answers and in the PDF reports. NormaAI undertakes to keep the information up to date but does not warrant the completeness, accuracy or timeliness of the updates."
+        "title": "6. Regulatory updates",
+        "p": "Answers are based on the corpus, current as of the date of its last indexing. The corpus does not update by itself: it is re-indexed through explicit operations, and the reference date is reported in the metadata of the API answers and in the PDF reports. The document check instead reads the text in force from EUR-Lex and Normattiva at the time of the check; for EU law the consolidated text usually reaches EUR-Lex weeks after an amendment is published in the Official Journal. NormaAI undertakes to keep the information up to date but does not warrant the completeness, accuracy or timeliness of the updates."
       },
       "data": {
-        "title": "6. Personal data and security",
+        "title": "7. Personal data and security",
         "p": "The processing of personal data is described in the <privacy>Privacy Policy</privacy>; the security measures present in the code, and those still missing, on the <securityPage>Security</securityPage> page."
       },
       "source": {
-        "title": "7. Source code",
+        "title": "8. Source code",
         "p": "The NormaAI code is published on <github>GitHub</github> under the MIT licence. The licence covers the source code, not the hosted service nor its contents."
       },
+      "law": {
+        "title": "9. Consumers, governing law and court",
+        "p": {
+          "1": "If you use NormaAI as a consumer, that is for purposes outside your trade or profession, no clause of these terms limits the rights the Italian Consumer Code (Legislative Decree 206/2005) gives you.",
+          "2": "These terms are governed by Italian law. If you are a consumer resident in another EU country, the rules of that country that cannot be derogated from by contract still apply.",
+          "3": "For disputes with a consumer the competent court is that of the consumer’s place of residence or domicile, if in Italy (Art. 66-bis of the Italian Consumer Code). For other disputes the court is the one the law provides."
+        }
+      },
       "changes": {
-        "title": "8. Changes",
+        "title": "10. Changes",
         "p": "Changes to these terms are published on this page with the new update date."
       }
     },

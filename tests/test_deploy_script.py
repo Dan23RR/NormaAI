@@ -94,7 +94,7 @@ stub_docker() {
         *"up -d --no-deps --no-build app"*) echo "$NORMAAI_IMAGE" >> "$STUB_STATE/app_images" ;;
       esac ;;
     inspect)
-      if flag app_unhealthy && [ "$(tail -n 1 "$STUB_STATE/app_images")" != "$OLD" ]; then
+      if flag app_unhealthy && [ "$(tail -n 1 "$STUB_STATE/app_images")" != "$(cat "$STUB_STATE/healthy_image")" ]; then
         echo unhealthy
       else
         echo healthy
@@ -128,6 +128,7 @@ class Checkout:
         (self.state / "behaviour.sh").write_text(behaviour, encoding="utf-8", newline="\n")
         (self.state / "head").write_text(OLD_SHA + "\n", newline="\n")
         (self.state / "app_images").write_text(OLD + "\n", newline="\n")
+        (self.state / "healthy_image").write_text(OLD + "\n", newline="\n")
         self.label(SHA[:7], E5)
 
     def label(self, revision: str, model: str) -> None:
@@ -322,6 +323,18 @@ def test_an_unhealthy_app_is_rolled_back_to_the_previous_image(checkout):
     assert checkout.head() == OLD_SHA
     assert checkout.env_image() == OLD
     assert "app log line" in result.stderr
+
+
+def test_the_first_deploy_after_a_local_build_rolls_back_to_it(checkout):
+    # An .env from the bootstrap names no image: compose ran normaai-app:local.
+    checkout.env_file.write_text(f"EMBEDDING_MODEL={E5}\n", newline="\n")
+    (checkout.state / "healthy_image").write_text("normaai-app:local\n", newline="\n")
+    checkout.flag("app_unhealthy")
+    result = checkout.run(SHA, NEW)
+    assert result.returncode == 1
+    images = (checkout.state / "app_images").read_text().split()
+    assert images[-2:] == [NEW, "normaai-app:local"]
+    assert "NORMAAI_IMAGE=" not in checkout.env_file.read_text()
 
 
 def test_without_an_image_it_builds_here(checkout):

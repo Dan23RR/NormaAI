@@ -185,6 +185,8 @@ deploy() { # <commit> <image|build> [<github user>]
 
   # ── 2. The image ──
   previous="$(env_value NORMAAI_IMAGE)"
+  # Without NORMAAI_IMAGE compose ran the image built here (docker-compose.prod.yml).
+  previous="${previous:-$LOCAL_IMAGE:local}"
   model="$(env_value EMBEDDING_MODEL)"
   model="${model:-$DEFAULT_EMBEDDING_MODEL}"
   if [ "$target" = "build" ]; then

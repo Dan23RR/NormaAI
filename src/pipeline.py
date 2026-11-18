@@ -12,7 +12,7 @@ Usage:
     python -m src.pipeline --action seed     # Initial seed: crawl + index all tracked acts
     python -m src.pipeline --action seed --acts AI_ACT,32022L2464 --lang IT   # subset
     python -m src.pipeline --action seed --recreate   # drop + rebuild the collection
-    python -m src.pipeline --action update   # Check for amendments and index new content
+    python -m src.pipeline --action update   # Refresh the tracked acts (EN, IT); corpus date
     python -m src.pipeline --action stats    # Show collection statistics
 
 Scheduled jobs (cron on the server; they do not load the embedding model):
@@ -35,6 +35,7 @@ from src.crawler.eurlex.client import (
     TRACKED_ACTS,
     EurLexClient,
     get_tracked_act,
+    tracked_acts,
 )
 from src.nlp.chunking.contextual_chunker import ContextualChunker
 from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
@@ -290,79 +291,168 @@ class IngestionPipeline:
 
         return stats
 
-    def update(self, days_back: int = 7) -> dict:
+    def update(
+        self,
+        acts: list[str] | None = None,
+        languages: list[str] | None = None,
+    ) -> dict:
         """
-        Incremental update: refresh temporal status + index new publications.
+        Refresh the tracked acts (TRACKED_ACTS), in every corpus language, and nothing else.
 
-        Run on demand (CLI ``--action update``) or by the AcquisitionScheduler
-        when ACQUISITION_SCHEDULER_ENABLED=true. Re-checks the in-force status of
-        tracked regulations and marks any no longer in force as superseded (so
-        the corpus stops serving repealed law as current), then indexes recently
-        published legislation.
+        For each tracked act and each language of CORPUS_LANGUAGES (EN and IT by
+        default), the text CELLAR serves today (the latest consolidated version
+        with EURLEX_PREFER_CONSOLIDATED, else the act as adopted) is compared
+        with the one the corpus metadata point says was indexed. Only a newer or
+        missing text is downloaded and re-indexed in place, as the seed does
+        (delete + upsert for that act and language). Then the in-force status of
+        the tracked acts is re-checked (one no longer in force is marked
+        superseded), and the corpus metadata point is rewritten: its acts list,
+        and ``corpus_as_of`` set to today when every tracked act was checked in
+        every corpus language, which is the date the API shows (src/api/app_state
+        corpus_as_of). A partial run (``acts``, ``languages``, an act CELLAR did
+        not serve) keeps the date it found.
+
+        No act outside TRACKED_ACTS is added: this action used to index up to
+        100 recent EU acts of any kind, in English only, and left the tracked
+        ones as they were. Run by hand (docs/RUNBOOK.md, section 10).
         """
-        logger.info(f"NORMAAI UPDATE - Checking for changes (last {days_back} days)")
-
+        settings = get_settings()
+        raw_langs = languages or settings.corpus_language_list
+        langs = list(dict.fromkeys(celex_utils.normalize_lang(code) for code in raw_langs))
+        prefer_consolidated = bool(getattr(settings, "eurlex_prefer_consolidated", True))
+        batch_size = settings.embedding_batch_size
+        logger.info(
+            f"NORMAAI UPDATE - the tracked acts in {', '.join(langs)} "
+            f"(consolidated: {prefer_consolidated})"
+        )
         start_time = time.time()
+        self.indexer.setup_collection(recreate=False)
 
-        # Tracked CELEX numbers across all frameworks
-        all_celex = []
-        for celex_map in CORE_FRAMEWORKS.values():
-            all_celex.extend(celex_map.keys())
+        try:
+            corpus = self.indexer.get_corpus_info()
+        except Exception as e:  # noqa: BLE001 - no metadata: every text counts as missing
+            logger.warning(f"  corpus metadata not readable: {e}")
+            corpus = None
+        corpus = corpus if isinstance(corpus, dict) else {}
+        previous_acts = [a for a in corpus.get("acts") or [] if isinstance(a, dict)]
+        indexed_text = {
+            (celex_utils.base_celex(str(a.get("celex") or "")), str(a.get("lang") or "")): str(
+                a.get("source_celex") or a.get("celex") or ""
+            )
+            for a in previous_acts
+        }
 
-        # Check amendments to tracked regulations
-        amendments = self.eurlex.check_for_new_amendments(all_celex)
+        wanted = tracked_acts(acts)
+        regulations = self.eurlex.crawl_all_core_frameworks(celex_filter=acts, unique=True)
+        refreshed: list[dict] = []
+        unchanged = 0
+        failed: list[dict] = []
+        for reg in regulations:
+            try:
+                download_celex = self.eurlex.resolve_download_celex(
+                    reg.celex, prefer_consolidated=prefer_consolidated
+                )
+            except Exception as e:  # noqa: BLE001 - CELLAR down for this act: next one
+                logger.warning(f"  {reg.celex}: latest text not known: {e}")
+                failed.extend({"celex": reg.celex, "lang": lang} for lang in langs)
+                continue
+            if not isinstance(download_celex, str) or not download_celex:
+                download_celex = reg.celex
+            for lang in langs:
+                if indexed_text.get((reg.celex, lang)) == download_celex:
+                    unchanged += 1
+                    continue
+                logger.info(f"  {reg.celex} [{lang}]: indexing {download_celex}")
+                try:
+                    result = self._seed_eurlex_act(reg, download_celex, lang, batch_size)
+                except Exception as e:  # noqa: BLE001 - one text must not stop the others
+                    logger.warning(f"  {reg.celex} [{lang}]: not re-indexed: {e}")
+                    result = None
+                if result is None:
+                    failed.append({"celex": reg.celex, "lang": lang})
+                    continue
+                refreshed.append(result)
 
-        # Temporal freshness: mark chunks of regulations no longer in force as
-        # superseded (an amendment alone does NOT supersede a still-in-force act).
+        # In force? Checked after the re-indexing, so the marks land on the new chunks.
+        tracked_celex = [act.celex for act in wanted]
+        try:
+            amendments = self.eurlex.check_for_new_amendments(tracked_celex)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"  amendment lookup failed: {e}")
+            amendments = []
         freshness = refresh_in_force_status(
-            self.eurlex, self.indexer, all_celex, amendments=amendments
+            self.eurlex, self.indexer, tracked_celex, amendments=amendments
         )
 
-        # Check for new legislation
-        new_legislation = self.eurlex.fetch_recent_legislation(days_back=days_back)
-
-        # Download and index any new content
-        new_chunks = []
-        for reg in new_legislation:
-            html = self.eurlex.download_full_text_html(reg.celex)
-            if html and len(html.strip()) > 500:
-                chunker = EURLexHTMLChunker(celex=reg.celex, framework=reg.framework or "UNKNOWN")
-                chunks = chunker.chunk_html(html)
-                new_chunks.extend(chunks)
-
-        # Enrich and index
-        indexed = 0
-        if new_chunks:
-            enriched = []
-            for chunk in new_chunks:
-                ctx = self.contextual_chunker.enrich_single(
-                    text=chunk.text,
-                    framework=chunk.metadata.get("framework", ""),
-                    article=chunk.metadata.get("article_number", ""),
-                    section=chunk.metadata.get("section_title", ""),
+        served = {reg.celex for reg in regulations}
+        complete = (
+            not acts
+            and not failed
+            and set(langs) >= set(settings.corpus_language_list)
+            and all(act.celex in served for act in TRACKED_ACTS)
+        )
+        previous_as_of = corpus.get("corpus_as_of")
+        corpus_as_of = datetime.now(UTC).date().isoformat() if complete else previous_as_of
+        if refreshed or complete:
+            if corpus_as_of:
+                merged = {
+                    (celex_utils.base_celex(str(a.get("celex") or "")), str(a.get("lang") or "")): a
+                    for a in previous_acts
+                }
+                for entry in refreshed:
+                    merged[(entry["celex"], entry["lang"])] = entry
+                carried = {
+                    key: value
+                    for key, value in corpus.items()
+                    if key not in ("kind", "corpus_as_of", "acts", "embedding_model", "built_at")
+                    and key != "org_id"
+                }
+                carried["languages"] = list(
+                    dict.fromkeys([*(carried.get("languages") or []), *langs])
                 )
-                ctx.metadata.update(chunk.metadata)
-                enriched.append(ctx)
-
-            indexed = self.indexer.index_contextual_chunks(enriched)
+                carried["prefer_consolidated"] = prefer_consolidated
+                try:
+                    self.indexer.write_corpus_meta(
+                        acts=list(merged.values()),
+                        corpus_as_of=str(corpus_as_of),
+                        embedding_model=settings.embedding_model,
+                        extra=carried,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(f"  corpus metadata write failed: {e}")
+                    corpus_as_of = previous_as_of
+            else:
+                logger.warning(
+                    "  corpus metadata not rewritten: a partial update cannot date a corpus "
+                    "that had no date"
+                )
 
         elapsed = time.time() - start_time
-
         stats = {
             "action": "update",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "elapsed_seconds": round(elapsed, 1),
+            "languages": langs,
+            "prefer_consolidated": prefer_consolidated,
+            "acts_checked": len(regulations),
+            "texts_refreshed": [
+                {key: entry[key] for key in ("celex", "lang", "source_celex", "chunks")}
+                for entry in refreshed
+            ],
+            "texts_unchanged": unchanged,
+            "texts_failed": failed,
+            "chunks_indexed": sum(entry["chunks"] for entry in refreshed),
             "amendments_found": len(amendments),
             "regulations_superseded": freshness["superseded_regulations"],
             "chunks_superseded": freshness["superseded_chunks"],
-            "new_legislation": len(new_legislation),
-            "new_chunks_indexed": indexed,
+            "complete": complete,
+            "corpus_as_of": corpus_as_of,
         }
-
         logger.info(
-            f"UPDATE COMPLETE: {len(amendments)} amendments, "
-            f"{freshness['superseded_chunks']} chunks superseded, "
-            f"{len(new_legislation)} new, {indexed} chunks indexed ({elapsed:.1f}s)"
+            f"UPDATE COMPLETE: {len(refreshed)} texts re-indexed, {unchanged} unchanged, "
+            f"{len(failed)} failed, {freshness['superseded_chunks']} chunks superseded; "
+            f"corpus as of {corpus_as_of or 'n/a'}{'' if complete else ' (partial run: date kept)'} "
+            f"({elapsed:.1f}s)"
         )
         return stats
 
@@ -802,7 +892,10 @@ def main():
         "--days-back",
         type=int,
         default=7,
-        help="Days to look back for updates (update only)",
+        help=(
+            "Ignored, kept so older command lines still run: update refreshes the "
+            "tracked acts, it no longer looks for recent legislation"
+        ),
     )
     parser.add_argument(
         "--acts",
@@ -810,9 +903,9 @@ def main():
         default=[],
         metavar="CELEX_OR_FRAMEWORK",
         help=(
-            "Restrict the seed to these acts: CELEX ids and/or framework names, "
-            "comma-separated or repeated (e.g. --acts AI_ACT --acts 32022L2464). "
-            "Default: every tracked act (seed only)"
+            "Restrict the seed or the update to these acts: CELEX ids and/or framework "
+            "names, comma-separated or repeated (e.g. --acts AI_ACT --acts 32022L2464). "
+            "Default: every tracked act"
         ),
     )
     parser.add_argument(
@@ -822,7 +915,7 @@ def main():
         metavar="CODE",
         help=(
             "Language(s) to download, comma-separated or repeated (e.g. --lang EN --lang IT). "
-            "Default: CORPUS_LANGUAGES (seed only)"
+            "Default: CORPUS_LANGUAGES (seed and update)"
         ),
     )
 
@@ -847,7 +940,10 @@ def main():
                 languages=_split(args.lang) or None,
             )
         elif args.action == "update":
-            result = pipeline.update(days_back=args.days_back)
+            result = pipeline.update(
+                acts=_split(args.acts) or None,
+                languages=_split(args.lang) or None,
+            )
         elif args.action == "stats":
             result = pipeline.stats()
 

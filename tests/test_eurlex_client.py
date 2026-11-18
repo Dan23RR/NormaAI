@@ -2,7 +2,11 @@
 Tests for EUR-Lex SPARQL client.
 
 Run: pytest tests/test_eurlex_client.py -v
+With the network (EUR-Lex and CELLAR for real): NORMAAI_NETWORK_TESTS=1, see
+TestEurLexIntegration below.
 """
+
+import os
 
 import pytest
 
@@ -152,9 +156,18 @@ class TestChunker:
 
 
 # ─── Integration Tests (require network) ───────────────────────
+# The only tests that talk to the real EUR-Lex SPARQL endpoint and CELLAR. Off
+# by default (CI and a plain `pytest` stay offline); on with
+#   NORMAAI_NETWORK_TESTS=1 python -m pytest tests/test_eurlex_client.py -v
+# Run them before a seed or after a change of the client: they fail when the
+# publications office changes what it answers.
+
+NETWORK_TESTS = os.environ.get("NORMAAI_NETWORK_TESTS") == "1"
 
 
-@pytest.mark.skipif(True, reason="Requires network access to EUR-Lex SPARQL")
+@pytest.mark.skipif(
+    not NETWORK_TESTS, reason="talks to EUR-Lex and CELLAR: set NORMAAI_NETWORK_TESTS=1"
+)
 class TestEurLexIntegration:
     """Integration tests that hit the real EUR-Lex SPARQL endpoint."""
 

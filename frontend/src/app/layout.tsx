@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { Literata, Public_Sans, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { NextIntlClientProvider } from 'next-intl'
@@ -101,6 +102,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale()
   const messages = await getMessages()
   const t = await getTranslations('site.meta')
+  // The script nonce of this request (src/middleware.ts, src/lib/csp.ts): the
+  // policy allows no inline script without it. Next.js puts it on its own
+  // scripts; the theme script below is ours.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
 
   // Only what is true and published: no price is published, so there is no
   // Offer; the logo is the brand mark (src/app/icon.svg), not the share image.
@@ -131,7 +136,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={`${serif.variable} ${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Browsers hide a nonce from the DOM once the page is parsed, so the
+            attribute reads empty on hydration: the warning would be noise. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} suppressHydrationWarning />
       </head>
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

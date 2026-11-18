@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { CheckCircle2, FileText } from 'lucide-react'
 import { Button, ButtonLink } from '@/components/ui/Button'
-import { Field, Input, Select } from '@/components/ui/Field'
+import { Checkbox, Field, Input, Select, describedBy } from '@/components/ui/Field'
 
-// Lead submission target: always the same-origin serverless route. It emails
-// the Codex through Resend and never depends on the backend being up.
+// Lead submission target: always the same-origin serverless route. It
+// answers with the address of the Codex, shown here as a download button,
+// and never depends on the backend being up.
 const LEADS_ENDPOINT = '/api/leads'
 
 // The role travels to the founder's inbox as it always did (Italian values);
@@ -28,28 +29,38 @@ type FormStatus =
 export function CodexForm() {
   const t = useTranslations('site.codexForm')
   const [status, setStatus] = useState<FormStatus>({ kind: 'idle' })
+  // Consent to be written to about NormaAI (art. 130 Codice privacy): the box
+  // starts unticked, and the Codex downloads either way. Without it the form
+  // sends nothing that identifies the person, so the email is needed only
+  // when the box is ticked.
+  const [consent, setConsent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (status.kind === 'submitting') return
 
     const fd = new FormData(e.currentTarget)
+    const contactTime = String(fd.get('contact_time') || '') // honeypot (autofill-safe name)
     // Outreach emails land on /codex?lead=<id> (redirected to /?lead=<id>);
-    // forward that id so the founder notification ties back to the prospect.
+    // with consent, that id ties the founder notification back to the prospect.
     const leadRef =
       typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('lead') || undefined
         : undefined
-    const payload = {
-      email: String(fd.get('email') || '').trim(),
-      org_name: String(fd.get('org') || '').trim() || undefined,
-      role: String(fd.get('role') || '').trim() || undefined,
-      source: 'codex_download',
-      lead_ref: leadRef,
-      contact_time: String(fd.get('contact_time') || ''), // honeypot (autofill-safe name)
-    }
+    const email = String(fd.get('email') || '').trim()
+    const payload = consent
+      ? {
+          email,
+          org_name: String(fd.get('org') || '').trim() || undefined,
+          role: String(fd.get('role') || '').trim() || undefined,
+          source: 'codex_download',
+          lead_ref: leadRef,
+          marketing_consent: true,
+          contact_time: contactTime,
+        }
+      : { source: 'codex_download', marketing_consent: false, contact_time: contactTime }
 
-    if (!payload.email || !/.+@.+\..+/.test(payload.email)) {
+    if (consent && !/.+@.+\..+/.test(email)) {
       setStatus({ kind: 'error', message: t('invalidEmail') })
       return
     }
@@ -133,8 +144,18 @@ export function CodexForm() {
         className="absolute -left-[9999px] h-0 w-0 opacity-0"
       />
       <div className="space-y-4">
-        <Field label={t('email')} htmlFor="codex-email" required>
-          <Input id="codex-email" name="email" type="email" required autoComplete="email" inputMode="email" placeholder={t('emailPlaceholder')} disabled={busy} />
+        <Field label={t('email')} htmlFor="codex-email" required={consent} help={t('emailHelp')}>
+          <Input
+            id="codex-email"
+            name="email"
+            type="email"
+            required={consent}
+            autoComplete="email"
+            inputMode="email"
+            placeholder={t('emailPlaceholder')}
+            aria-describedby={describedBy('codex-email', { help: t('emailHelp') })}
+            disabled={busy}
+          />
         </Field>
         <Field label={t('org')} htmlFor="codex-org">
           <Input id="codex-org" name="org" autoComplete="organization" placeholder={t('orgPlaceholder')} disabled={busy} />
@@ -148,6 +169,15 @@ export function CodexForm() {
             ))}
           </Select>
         </Field>
+        <Checkbox
+          id="codex-consent"
+          name="marketing_consent"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+          disabled={busy}
+          label={t('consent')}
+          description={t('consentHelp')}
+        />
       </div>
       <Button type="submit" loading={busy} className="mt-5 w-full" size="lg">
         {t('submit')}

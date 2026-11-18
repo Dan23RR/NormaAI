@@ -153,6 +153,8 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
   .fine{ margin-top:14px; font-size:12px; line-height:1.4; color:var(--ink-2); }
   .fine.err{ color:var(--bad); }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+  .consent{ margin-top:16px; display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--ink-2); cursor:pointer; }
+  .consent input{ flex:none; width:18px; height:18px; margin:1px 0 0; accent-color:var(--union); }
   .lead-ok{ display:none; }
   .lead.done .lead-form{ display:none; }
   .lead.done .lead-ok{ display:block; }
@@ -334,10 +336,10 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
       var reason;
       if (empOver && !revOver) reason = "Superi la soglia dei dipendenti ma non quella dei ricavi. Le due soglie valgono insieme, quindi oggi sei fuori dall'obbligo: basta però una crescita dei ricavi o un cambio di perimetro per entrarci.";
       else if (revOver && !empOver) reason = "Superi la soglia dei ricavi ma non quella dei dipendenti. Le due soglie valgono insieme, quindi oggi sei fuori dall'obbligo: un aumento dell'organico o un consolidamento può farti entrare.";
-      else if (listed && !(emp>=850||rev>=380)) reason = "Sei sotto entrambe le soglie. Nella direttiva l'obbligo dipende ormai solo da quelle, anche per le società quotate (art. 19 bis, par. 1). Il D.Lgs. 125/2024 nomina però ancora le piccole e medie imprese quotate (art. 3, comma 1, e art. 17, comma 1, lettera c): finché l'Italia non recepisce la direttiva è un punto da verificare sul tuo caso.";
+      else if (listed && !(emp>=850||rev>=380)) reason = "Sei sotto entrambe le soglie. Nella direttiva l'obbligo dipende ormai solo da quelle, anche per le società quotate (art. 19 bis, par. 1). Il D.Lgs. 125/2024 nomina però ancora le piccole e medie imprese quotate (art. 3, comma 1, e art. 17, comma 1, lettera c): finché l'Italia non recepisce la direttiva, su questo punto il decreto e la direttiva non dicono la stessa cosa.";
       else reason = "Oggi sei fuori dall'obbligo, ma a ridosso di una soglia: piccole variazioni di organico, ricavi o perimetro di consolidamento possono farti entrare o uscire da un esercizio all'altro.";
       title = "Oggi sei fuori dall'obbligo CSRD, ma vicino al confine.";
-      body = reason + " È il caso in cui conviene una verifica puntuale sui dati di bilancio.";
+      body = reason;
       notes = '<ul class="notes">'
         + "<li><strong>Quando si misura.</strong> Le soglie si verificano alla data di chiusura del bilancio; per una capogruppo, su base consolidata (art. 19 bis, par. 1, e art. 29 bis, par. 1).</li>"
         + ITALY
@@ -366,10 +368,13 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
     var axisRev = '<div class="axis"><div class="k">Ricavi netti</div><div class="val">' + fmtRev(rev) + ' milioni di euro</div>'
       + '<div class="cmp' + (revOver?' over':'') + '">' + (revOver?'Oltre la soglia di 450 milioni':'Entro la soglia di 450 milioni') + '</div></div>';
 
+    // What a person writes back is the text in force, never an analysis of
+    // the case: saying whether a company is in scope or what it must do is
+    // legal advice (L. 247/2012, art. 2, c. 6), the consultant's job.
     var ctaH, ctaP;
-    if (band === 'in'){ ctaH = "Vuoi la mappa dei tuoi obblighi?"; ctaP = "Ti scrivo io con l'analisi di ambito della tua impresa. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
-    else if (band === 'filo'){ ctaH = "Vuoi chiarire il tuo caso?"; ctaP = "Il confine si scioglie solo sui dati reali. Ti scrivo io con l'analisi del tuo caso; se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
-    else { ctaH = "Vuoi sapere che cosa possono chiederti i clienti?"; ctaP = "Ti scrivo io con che cosa possono chiederti i clienti obbligati e che cosa puoi rifiutare. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
+    if (band === 'in'){ ctaH = "Vuoi i passaggi di legge sulle soglie e sulle date?"; ctaP = "Ti mando i passaggi della direttiva e del decreto italiano su soglie, gruppi e date di applicazione, nel testo vigente, e le domande da fare al tuo consulente o al revisore. Se vuoi, ti mostro NormaAI in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
+    else if (band === 'filo'){ ctaH = "Vuoi i passaggi di legge per valutare il confine?"; ctaP = "Il confine si valuta sui dati di bilancio, con il tuo consulente. Ti mando i passaggi di legge che servono, nel testo vigente (soglie, consolidamento, regime transitorio italiano), e le domande da fargli. Se vuoi, ti mostro NormaAI in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
+    else { ctaH = "Vuoi il testo su che cosa possono chiederti i clienti?"; ctaP = "Ti mando i passaggi di legge su che cosa un'impresa obbligata può chiedere alle imprese della sua catena del valore, nel testo vigente, e le domande da fare al tuo consulente. Se vuoi, ti mostro NormaAI in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus (PDF)."; }
 
     var html =
       '<div class="verdict">'
@@ -393,12 +398,16 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
               + '<div class="field"><label for="email">Email di lavoro</label><input type="email" id="email" autocomplete="email" placeholder="nome@impresa.it" required></div>'
             + '</div>'
             + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
+            // Consent to be written to about NormaAI (art. 130 Codice privacy):
+            // unticked, optional, and the reply asked for comes either way.
+            + '<label class="consent" for="marketing_consent"><input type="checkbox" id="marketing_consent" name="marketing_consent">'
+            + '<span>Potete scrivermi anche su NormaAI, oltre alla risposta che ho chiesto: un messaggio scritto a mano da Daniel Culotta, niente newsletter. Facoltativo; posso ritirare il consenso quando voglio scrivendo a info@normaai.org.</span></label>'
             + '<button class="btn btn-primary" type="submit">Invia la richiesta</button>'
-            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta. Niente newsletter e nessuna cessione a terzi: uso i tuoi dati solo per mandarti l\'analisi e il Codex e ricontattarti su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR). Vedi la <a href="/privacy">privacy policy</a>.</p>'
+            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta, con i passaggi di legge che hai chiesto. Niente newsletter e nessuna cessione a terzi: su NormaAI ti scrivo solo se spunti la casella. Vedi la <a href="/privacy">privacy policy</a>.</p>'
           + '</form>'
         + '</div>'
         + '<div class="lead-ok"><h3>Richiesta inviata</h3>'
-          + '<p>Ti scrivo al più presto. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus (PDF)</a>.</p></div>'
+          + '<p>Ti scrivo al più presto con i passaggi di legge. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus (PDF)</a>.</p></div>'
       + '</div>';
 
     resultEl.innerHTML = html;
@@ -413,13 +422,14 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
       var email = ($('email').value||'').trim();
       var org = ($('org').value||'').trim();
       var hp = ($('contact_time').value||'').trim();
+      var consent = !!($('marketing_consent') && $('marketing_consent').checked);
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.className = 'fine err'; return; }
       var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio in corso';
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', contact_time:hp })
+        body: JSON.stringify({ email:email, org_name:org, role:'scope_checker', source:'scope_checker:'+band, lead_ref:'scope-csrd', contact_time:hp, marketing_consent:consent })
       }).then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(data){
         $('cta').classList.add('done');

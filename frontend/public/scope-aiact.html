@@ -149,6 +149,8 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
   .fine{ margin-top:14px; font-size:12px; line-height:1.4; color:var(--ink-2); }
   .fine.err{ color:var(--bad); }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+  .consent{ margin-top:16px; display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--ink-2); cursor:pointer; }
+  .consent input{ flex:none; width:18px; height:18px; margin:1px 0 0; accent-color:var(--union); }
   .lead-ok{ display:none; }
   .lead.done .lead-form{ display:none; }
   .lead.done .lead-ok{ display:block; }
@@ -260,7 +262,7 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
         after: " a meno che ciò non risulti evidente dal punto di vista di una persona fisica ragionevolmente informata, attenta e avveduta, tenendo conto delle circostanze e del contesto di utilizzo.",
         ref: "art. 50, par. 1"
       }],
-      note: "L'obbligo non si applica ai sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati, salvo che siano a disposizione del pubblico per segnalare un reato. Se il chatbot lo acquisti da terzi, l'obbligo di progettarlo così è del fornitore: ti conviene verificare che lo rispetti."
+      note: "L'obbligo non si applica ai sistemi autorizzati dalla legge per accertare, prevenire, indagare o perseguire reati, salvo che siano a disposizione del pubblico per segnalare un reato. Se il chatbot è fornito da terzi, l'obbligo di progettarlo così è del suo fornitore."
     },
     gen: {
       who: "Obbligo del fornitore",
@@ -366,13 +368,16 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
         + '</ul>';
     }
 
+    // What a person writes back is the text in force, never a reading of the
+    // case: saying which exceptions apply to a company or what it must do is
+    // legal advice (L. 247/2012, art. 2, c. 6), the consultant's job.
     var ctaH, ctaP;
     if (band === 'in'){
-      ctaH = "Vuoi la lettura del tuo caso?";
-      ctaP = "Ti scrivo io con la lettura del tuo caso: a chi è rivolto ogni obbligo, quali eccezioni valgono per te, che cosa predisporre. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
+      ctaH = "Vuoi i passaggi di legge sulle situazioni che hai spuntato?";
+      ctaP = "Ti mando i passaggi di legge che riguardano le situazioni che hai spuntato e le domande da fare al tuo consulente. Non è un parere: è quello che dice il testo vigente. Se vuoi, ti mostro NormaAI in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
     } else {
-      ctaH = "Vuoi le date dell'AI Act che contano per te?";
-      ctaP = "Ti scrivo io con che cosa si applica già e che cosa arriva nel 2027 e nel 2028. Se vuoi, ne parliamo in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
+      ctaH = "Vuoi le date dell'AI Act nel testo vigente?";
+      ctaP = "Ti mando i passaggi di legge con le date di applicazione dell'AI Act, quelle già passate e quelle del 2027 e del 2028, e le domande da fare al tuo consulente. Se vuoi, ti mostro NormaAI in una chiamata di 30 minuti. Ricevi anche il Codex Post-Omnibus su CSRD e CSDDD (PDF).";
     }
 
     var html =
@@ -394,12 +399,16 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
               + '<div class="field"><label for="email">Email di lavoro</label><input type="email" id="email" autocomplete="email" placeholder="nome@impresa.it" required></div>'
             + '</div>'
             + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
+            // Consent to be written to about NormaAI (art. 130 Codice privacy):
+            // unticked, optional, and the reply asked for comes either way.
+            + '<label class="consent" for="marketing_consent"><input type="checkbox" id="marketing_consent" name="marketing_consent">'
+            + '<span>Potete scrivermi anche su NormaAI, oltre alla risposta che ho chiesto: un messaggio scritto a mano da Daniel Culotta, niente newsletter. Facoltativo; posso ritirare il consenso quando voglio scrivendo a info@normaai.org.</span></label>'
             + '<button class="btn btn-primary" type="submit">Invia la richiesta</button>'
-            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta. Niente newsletter e nessuna cessione a terzi: uso i tuoi dati solo per mandarti la lettura del caso e ricontattarti su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR). Vedi la <a href="/privacy">privacy policy</a>.</p>'
+            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta, con i passaggi di legge che hai chiesto. Niente newsletter e nessuna cessione a terzi: su NormaAI ti scrivo solo se spunti la casella. Vedi la <a href="/privacy">privacy policy</a>.</p>'
           + '</form>'
         + '</div>'
         + '<div class="lead-ok"><h3>Richiesta inviata</h3>'
-          + '<p>Ti scrivo al più presto. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus su CSRD e CSDDD (PDF)</a>.</p></div>'
+          + '<p>Ti scrivo al più presto con i passaggi di legge. Intanto puoi <a id="dl" href="/codex-post-omnibus-2025-2029.pdf" target="_blank" rel="noopener">scaricare il Codex Post-Omnibus su CSRD e CSDDD (PDF)</a>.</p></div>'
       + '</div>';
 
     resultEl.innerHTML = html;
@@ -414,24 +423,25 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
       var email = ($('email').value||'').trim();
       var org = ($('org').value||'').trim();
       var hp = ($('contact_time').value||'').trim();
+      var consent = !!($('marketing_consent') && $('marketing_consent').checked);
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.className = 'fine err'; return; }
       var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Invio in corso';
       // The selections travel in the source (e.g. aiact_checker:in:chat+gen) so
-      // the notification says WHICH obligations matter: the reading of the case
-      // promised above can be written without asking the questions again.
+      // the notification says which situations were ticked: the passages of
+      // law promised above can be sent without asking the questions again.
       var src = 'aiact_checker:' + band + ((keys && keys.length) ? ':' + keys.join('+') : '');
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email:email, org_name:org, role:'aiact_checker', source:src, lead_ref:'scope-aiact', contact_time:hp })
+        body: JSON.stringify({ email:email, org_name:org, role:'aiact_checker', source:src, lead_ref:'scope-aiact', contact_time:hp, marketing_consent:consent })
       }).then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(data){
         $('cta').classList.add('done');
         var dl = $('dl'); if (dl && data && data.download_url){ dl.setAttribute('href', data.download_url); }
       })
       .catch(function(){
-        msg.innerHTML = 'Invio non riuscito. Scrivimi a <a href="mailto:info@normaai.org?subject=Check%20AI%20Act%20(scope-aiact)&body=Vorrei%20la%20lettura%20del%20mio%20caso%20Art.%2050%20(' + encodeURIComponent(src) + ').">info@normaai.org</a>.';
+        msg.innerHTML = 'Invio non riuscito. Scrivimi a <a href="mailto:info@normaai.org?subject=Check%20AI%20Act%20(scope-aiact)&body=Vorrei%20i%20passaggi%20di%20legge%20dell%27art.%2050%20sulle%20situazioni%20spuntate%20(' + encodeURIComponent(src) + ').">info@normaai.org</a>.';
         msg.className = 'fine err'; btn.disabled = false; btn.textContent = 'Riprova a inviare';
       });
     });

@@ -110,8 +110,29 @@ describe('AI Act checker verdicts', () => {
     expect($('#lead #org')).not.toBeNull()
     expect($<HTMLInputElement>('#lead #email').type).toBe('email')
     expect($<HTMLInputElement>('#lead #contact_time').name).toBe('contact_time')
+    expect($<HTMLInputElement>('#lead #marketing_consent').type).toBe('checkbox')
+    expect($<HTMLInputElement>('#lead #marketing_consent').checked).toBe(false)
     expect(resultText()).toContain('30 minuti')
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('sends the consent as it is: false unless the box is ticked', async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({ download_url: '/codex-post-omnibus-2025-2029.pdf' })))
+    $('.chip[data-set="chat"]').click()
+    const send = () => {
+      $<HTMLInputElement>('#lead #email').value = 'ada@example.test'
+      $<HTMLFormElement>('#lead').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    }
+    send()
+    expect(JSON.parse(fetchSpy.mock.calls[0][1].body)).toMatchObject({
+      email: 'ada@example.test',
+      source: 'aiact_checker:in:chat',
+      marketing_consent: false,
+    })
+    $('.chip[data-set="chat"]').click()
+    $<HTMLInputElement>('#lead #marketing_consent').checked = true
+    send()
+    expect(JSON.parse(fetchSpy.mock.calls[1][1].body)).toMatchObject({ marketing_consent: true })
   })
 })
 

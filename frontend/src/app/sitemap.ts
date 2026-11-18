@@ -9,9 +9,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai.org'
  * it. Update the date of a page when its content changes; the four legal
  * pages share LEGAL_UPDATED_ON, the date printed on them.
  */
-const HOME_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
-const METHOD_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
-const CHECKERS_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
+const HOME_UPDATED_ON = new Date(Date.UTC(2026, 10, 18))
+const METHOD_UPDATED_ON = new Date(Date.UTC(2026, 10, 18))
+const CHECKERS_UPDATED_ON = new Date(Date.UTC(2026, 10, 18))
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

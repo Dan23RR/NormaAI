@@ -68,6 +68,15 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('non è firmato e non scade')
     expect(main).toHaveTextContent('Non esiste ancora una release pubblicata.')
     expect(main).not.toHaveTextContent('Gemini 2.5')
+    expect(main).toHaveTextContent('La configurazione misurata, e prevista per il server, è anthropic: Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Oggi il valore predefinito è gemini')
+    expect(main).toHaveTextContent('Il controllo dei documenti non manda nulla a un modello linguistico.')
+    expect(main).toHaveTextContent('solo con il nonce della richiesta, diverso a ogni richiesta')
+    expect(main).toHaveTextContent('niente unsafe-inline né unsafe-eval per gli script')
+    expect(main).toHaveTextContent('con tutte le capability Linux tolte salvo NET_BIND_SERVICE')
+    // the lead route writes to nobody but the operator, and limits each address
+    expect(main).toHaveTextContent('che non scrive mai all’indirizzo inserito nel modulo')
+    expect(main).toHaveTextContent('al massimo 10 richieste l’ora da uno stesso indirizzo IP')
     expect(main).toHaveTextContent('Il token di accesso dura 60 minuti')
     // what a document check keeps
     expect(main).toHaveTextContent('il file viene elaborato in memoria e non viene conservato')
@@ -79,9 +88,17 @@ describe('legal and method pages', () => {
     const main = screen.getByRole('main')
     expect(main).toHaveTextContent('Documenti controllati: il file che carichi per controllarne i riferimenti di legge viene elaborato in memoria e non viene conservato.')
     expect(main).toHaveTextContent('la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico')
-    expect(main).toHaveTextContent('Google LLC (API Gemini, USA)')
+    // the provider of the measured configuration receives the questions; the others are options
+    expect(main).toHaveTextContent('Anthropic PBC (USA): Claude, il modello linguistico che scrive le risposte')
+    expect(main).toHaveTextContent('il codice permette in alternativa Google (API Gemini, USA), Mistral AI')
+    expect(main).not.toHaveTextContent(/predefinit[oa]\W+Google|Google Gemini\) per scrivere/)
+    // commercial follow-up rests on an unticked box, not on legitimate interest
+    expect(main).toHaveTextContent('solo con il tuo consenso, dato spuntando nel modulo la casella che parte vuota')
+    expect(main).toHaveTextContent('art. 130 del Codice privacy')
+    expect(main).not.toHaveTextContent('Invio del Codex e ricontatto sullo stesso tema a chi lo ha richiesto: legittimo interesse')
+    expect(main).toHaveTextContent('Senza consenso, per il Codex non è registrato nulla che ti identifichi')
     expect(main).not.toHaveTextContent(/scade dopo 30 giorni|EUR-Lex e Normattiva/)
-    expect(main).toHaveTextContent('Ultimo aggiornamento: 11 novembre 2026')
+    expect(main).toHaveTextContent('Ultimo aggiornamento: 18 novembre 2026')
   })
 
   it('terms: carries the imprint, with no VAT line when none is configured', async () => {
@@ -93,6 +110,43 @@ describe('legal and method pages', () => {
     )
     expect(main).not.toHaveTextContent('Partita IVA')
     expect(main).toHaveTextContent('le verifiche di ambito applicano regole scritte a mano ai dati che inserisci')
+  })
+
+  it('terms: limit liability within the law and say price, duration, law and court', async () => {
+    await show(<TermsPage />)
+    const main = screen.getByRole('main')
+    const text = main.textContent ?? ''
+    // A blanket exclusion is void for wilful misconduct and gross negligence (art. 1229 c.c.),
+    // and a cap equal to the fees of a free service excludes everything.
+    expect(text).not.toMatch(/in alcun caso|corrispettivi pagati/)
+    expect(main).toHaveTextContent('Il gestore risponde dei danni causati con dolo o colpa grave: questa responsabilità non è esclusa né limitata.')
+    expect(main).toHaveTextContent('né i diritti che ti riconosce il Codice del consumo')
+    // who, price, duration and withdrawal
+    expect(main).toHaveTextContent('Il servizio è offerto dalla persona indicata qui sopra')
+    expect(main).toHaveTextContent('pilot gratuito e su invito')
+    expect(main).toHaveTextContent('non è richiesto né incassato alcun pagamento')
+    expect(main).toHaveTextContent('Puoi recedere in qualsiasi momento, senza costi')
+    // law and court
+    expect(main).toHaveTextContent('Questi termini sono regolati dalla legge italiana.')
+    expect(main).toHaveTextContent('art. 66-bis del Codice del consumo')
+    // the model provider of the measured configuration, and no AI claimed for the document check
+    expect(main).toHaveTextContent('Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Gemini')
+    expect(main).toHaveTextContent('il controllo dei documenti e i suoi avvisi confrontano le parole con il testo ufficiale senza modelli generativi')
+    const sections = within(main)
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent)
+    expect(sections.map((title) => Number.parseInt(title ?? '', 10))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  })
+
+  it('terms: say the same in English', async () => {
+    await show(<TermsPage />, 'en')
+    const main = screen.getByRole('main')
+    expect(main.textContent).not.toMatch(/in no case|fees paid/)
+    expect(main).toHaveTextContent('The operator is liable for damage caused by wilful misconduct or gross negligence')
+    expect(main).toHaveTextContent('free, invitation-only pilot')
+    expect(main).toHaveTextContent('These terms are governed by Italian law.')
+    expect(main).toHaveTextContent('Art. 66-bis of the Italian Consumer Code')
   })
 
   it('cookie: lists exactly the keys of storage-keys.ts', async () => {
@@ -122,6 +176,8 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('Da novembre 2026 una citazione conta come verificata solo se è letterale')
     expect(main).toHaveTextContent('Il corpus delle risposte contiene 18 atti dell’Unione')
     expect(main).toHaveTextContent('Oggi il corpus non contiene leggi nazionali italiane.')
+    expect(main).toHaveTextContent('nella configurazione misurata, Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Google Gemini')
     expect(main).not.toHaveTextContent(/lavoro in corso|In lavorazione/)
     // every step and every documented choice points at the code behind it
     expect(within(main).getAllByText('Nel codice:', { exact: false }).length).toBeGreaterThanOrEqual(6 + 5)

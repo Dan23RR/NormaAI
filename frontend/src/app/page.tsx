@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { SiteFooter } from '@/components/site/SiteFooter'
 import { CodexForm } from '@/components/site/CodexForm'
+import { EmailCopy } from '@/components/site/EmailCopy'
 import { AnswerExample } from '@/components/landing/AnswerExample'
 import { DocumentCheckExample } from '@/components/landing/DocumentCheckExample'
 import { ProvisionChangeExample } from '@/components/landing/ProvisionChangeExample'
@@ -12,8 +13,8 @@ import { FrameworkBadge } from '@/components/ui/Badge'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/Table'
 import { itemKeys } from '@/components/LegalLayout'
 import { eurlexLang } from '@/i18n/config'
-import { cn } from '@/lib/cn'
 import { CORPUS_ACTS, CORPUS_AREAS, actsOf, corpusActName } from '@/lib/corpus-acts'
+import { BACKEND_CONFIGURED } from '@/lib/service-status'
 import { eurlexUrl } from '@/lib/sources'
 
 // Public landing page. It opens with the document check, the thing NormaAI
@@ -24,19 +25,29 @@ import { eurlexUrl } from '@/lib/sources'
 // Every claim must be true of the code as it ships (DESIGN.md, "stati
 // onesti"). The sections say what each capability checks and on which text;
 // what a visitor cannot reach yet is said once, in the dated status line of
-// the hero (`landing.hero.status`): update that line when it changes.
+// the hero (`landing.hero.status`): update that line when it changes. Like
+// the status line of the sign-in, security and method pages, it is shown only
+// while this build has no backend (BACKEND_CONFIGURED), so it goes away by
+// itself when the server is back.
 
-/** The two actions that work today: the demo with sample data, and an email for a pilot. */
+/**
+ * The two actions that work today: the demo with sample data, and an email
+ * for a pilot. The email button is a mailto link, which does nothing without
+ * a mail client: the address follows in clear, with a button that copies it.
+ */
 function Actions({ className }: { className?: string }) {
   const t = useTranslations('landing.cta')
   return (
-    <div className={cn('flex flex-wrap gap-3', className)}>
-      <ButtonLink href="/demo" size="lg">
-        {t('tryDemo')}
-      </ButtonLink>
-      <ButtonLink href={t('mailto')} variant="secondary" size="lg">
-        {t('pilot')}
-      </ButtonLink>
+    <div className={className}>
+      <div className="flex flex-wrap gap-3">
+        <ButtonLink href="/demo" size="lg">
+          {t('tryDemo')}
+        </ButtonLink>
+        <ButtonLink href={t('mailto')} variant="secondary" size="lg">
+          {t('pilot')}
+        </ButtonLink>
+      </div>
+      <EmailCopy lead={t('pilotFree')} className="mt-3 max-w-prose" />
     </div>
   )
 }
@@ -108,11 +119,13 @@ export default function Home() {
               <p className="mt-5 max-w-prose text-h4 text-ink md:text-h3">{t('hero.support')}</p>
               <p className="mt-4 max-w-prose text-read text-ink-2">{t('hero.lead')}</p>
               <Actions className="mt-8" />
-              <p className="mt-6 max-w-prose border-l-2 border-rule-2 pl-3 text-small text-ink-2">
-                {t.rich('hero.status', {
-                  b: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
-                })}
-              </p>
+              {!BACKEND_CONFIGURED && (
+                <p className="mt-6 max-w-prose border-l-2 border-rule-2 pl-3 text-small text-ink-2">
+                  {t.rich('hero.status', {
+                    b: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
+                  })}
+                </p>
+              )}
             </div>
             <div className="lg:col-span-6">
               <DocumentCheckExample />
@@ -133,15 +146,13 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <div className="mt-12 grid gap-8 border-t border-rule pt-8 md:grid-cols-2 md:gap-12">
-              <div>
-                <h3 className="text-h4">{t('check.result.title')}</h3>
-                <p className="mt-2 text-body text-ink-2">{t('check.result.body')}</p>
-              </div>
-              <div>
-                <h3 className="text-h4">{t('check.limits.title')}</h3>
-                <p className="mt-2 text-body text-ink-2">{t('check.limits.body')}</p>
-              </div>
+            <div className="mt-12 grid gap-8 border-t border-rule pt-8 md:grid-cols-3 md:gap-12">
+              {(['result', 'privacy', 'limits'] as const).map((k) => (
+                <div key={k}>
+                  <h3 className="text-h4">{t(`check.${k}.title`)}</h3>
+                  <p className="mt-2 text-body text-ink-2">{t(`check.${k}.body`)}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

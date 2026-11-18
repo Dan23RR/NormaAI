@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { contentSecurityPolicy, newNonce } from '@/lib/csp';
 
 /**
  * Middleware for NormaAI dashboard routes.
@@ -7,11 +8,24 @@ import type { NextRequest } from 'next/server';
  * Since auth tokens are stored in localStorage (client-side),
  * the actual auth check happens in the dashboard layout component.
  * This middleware provides:
- * 1. Security headers for all routes
+ * 1. Security headers for all routes, with a Content-Security-Policy that
+ *    carries a fresh script nonce on every request (src/lib/csp.ts)
  * 2. API proxy protection (no direct access to internal paths)
  */
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  const nonce = newNonce();
+  const csp = contentSecurityPolicy({
+    nonce,
+    development: process.env.NODE_ENV === 'development',
+    apiOrigin: process.env.NEXT_PUBLIC_API_BASE_URL || undefined,
+  });
+
+  // On the request: Next.js reads the nonce from this header and puts it on
+  // the scripts it renders; the root layout reads `x-nonce` for its own.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -23,15 +37,7 @@ export function middleware(request: NextRequest) {
     'camera=(), microphone=(), geolocation=()'
   );
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none');
-  response.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'" +
-      // Vercel Analytics loads its debug script from this host in development only.
-      (process.env.NODE_ENV === 'development' ? ' https://va.vercel-scripts.com' : '') +
-      "; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'" +
-      (process.env.NEXT_PUBLIC_API_BASE_URL ? ' ' + process.env.NEXT_PUBLIC_API_BASE_URL : '') +
-      "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
-  );
+  response.headers.set('Content-Security-Policy', csp);
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
   // Prevent caching of application pages (they require auth)

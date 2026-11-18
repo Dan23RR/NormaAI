@@ -1,13 +1,17 @@
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { LogoMark, Wordmark } from '@/components/Logo'
+import { EmailCopy } from '@/components/site/EmailCopy'
 import { Imprint } from '@/components/site/Imprint'
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; key: string; external?: boolean }> }> = [
   {
     title: 'product',
+    // The document check first: it is what the product is; Ask follows.
     links: [
-      { href: '/#come-funziona', key: 'ask' },
+      { href: '/#come-funziona', key: 'check' },
+      { href: '/#sorveglia', key: 'watch' },
+      { href: '/#chiedi', key: 'ask' },
       { href: '/scope-csrd.html', key: 'scopeCsrd' },
       { href: '/scope-aiact.html', key: 'scopeAiAct' },
       { href: '/#codex', key: 'codex' },
@@ -44,11 +48,7 @@ export function SiteFooter() {
             <Wordmark className="text-h3" />
           </div>
           <p className="mt-4 max-w-sm text-small text-ink-2">{t('tagline')}</p>
-          <p className="mt-4 text-small text-ink-2">
-            <a href="mailto:info@normaai.org" className="text-union hover:underline">
-              info@normaai.org
-            </a>
-          </p>
+          <EmailCopy className="mt-4" />
         </div>
         {COLUMNS.map((col) => (
           <div key={col.title} className="md:col-span-2">

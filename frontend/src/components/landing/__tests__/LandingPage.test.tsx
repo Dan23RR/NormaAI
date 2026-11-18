@@ -75,6 +75,59 @@ describe('landing page', () => {
     for (const link of pilot) expect(link.getAttribute('href')).toMatch(/^mailto:info@normaai\.org\?subject=/)
   })
 
+  it('shows the address in clear, with a copy button, next to each mailto button, and no price', () => {
+    renderLanding()
+    const main = within(screen.getByRole('main'))
+    // A mailto link does nothing on a computer without a mail client.
+    expect(main.getAllByRole('link', { name: 'info@normaai.org' })).toHaveLength(2)
+    expect(main.getAllByRole('button', { name: 'Copia l’indirizzo' })).toHaveLength(2)
+    expect(main.getAllByText(/Il pilot è gratuito e su invito/).length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('main')).not.toHaveTextContent(/€|euro al mese|\/mese/)
+  })
+
+  it('gives the DPO the argument the check can back: no generative AI, no copy of the document', () => {
+    renderLanding()
+    const section = within(document.getElementById('come-funziona') as HTMLElement)
+    expect(section.getByRole('heading', { name: 'Per il DPO: niente IA generativa, niente copie' })).toBeInTheDocument()
+    expect(
+      section.getByText(
+        /Il controllo non usa l'IA generativa: cerca le parole nel testo ufficiale, quindi non può inventare un articolo\. Il documento è letto in memoria e non viene conservato/,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('promises the weekly re-check the server runs, and says the EU text comes late', () => {
+    renderLanding()
+    const watch = document.getElementById('sorveglia') as HTMLElement
+    expect(watch).toHaveTextContent('Una volta alla settimana, il lunedì mattina')
+    expect(watch).toHaveTextContent('di solito arriva settimane dopo la pubblicazione della modifica in Gazzetta ufficiale')
+    expect(watch).not.toHaveTextContent(/A ogni nuova versione/)
+  })
+
+  it('narrows the audience to what the check reads', () => {
+    renderLanding()
+    const main = screen.getByRole('main')
+    expect(main).not.toHaveTextContent(/commercialisti|consulenti del lavoro/)
+    expect(main).toHaveTextContent('Non legge circolari, CCNL, decreti ministeriali né provvedimenti del Garante.')
+    // The owner of a company is not set against the consultant who should buy.
+    expect(main).not.toHaveTextContent(/ti hanno consegnato un consulente/)
+  })
+
+  it('leads the footer with the document check', () => {
+    renderLanding()
+    const footer = within(screen.getByRole('contentinfo'))
+    const product = footer.getByRole('heading', { name: 'Prodotto' }).parentElement as HTMLElement
+    expect(within(product).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Controlla un documento',
+      'Avvisi sulle norme citate',
+      'Chiedi',
+      'Verifica ambito CSRD',
+      'Verifica AI Act, art. 50',
+      'Codex Post-Omnibus',
+    ])
+    expect(screen.getByRole('contentinfo')).toHaveTextContent('Il controllo dei documenti non usa l’IA generativa')
+  })
+
   it('opens the demo from the header too', () => {
     renderLanding()
     // Desktop bar and mobile menu: both render in the test, where no stylesheet hides either.
@@ -212,7 +265,7 @@ describe('landing page', () => {
 
   it('keeps the anchors the header, the footer and the /codex redirect point to', () => {
     renderLanding()
-    for (const id of ['come-funziona', 'fonti', 'codex', 'demo']) {
+    for (const id of ['come-funziona', 'sorveglia', 'chiedi', 'fonti', 'codex', 'demo']) {
       expect(document.getElementById(id), id).not.toBeNull()
     }
   })

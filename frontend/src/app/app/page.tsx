@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { ListChecks, CalendarClock, Building2, ArrowRight } from 'lucide-react'
+import { FileCheck2, ListChecks, CalendarClock, Building2, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { itemKeys } from '@/components/LegalLayout'
 
+// The first page after sign-in leads with the document check, the thing the
+// product is for; the question box of Chiedi follows, under its own heading.
 const TILES = [
+  { key: 'controlla', href: '/app/controlla', icon: FileCheck2 },
   { key: 'ambito', href: '/app/ambito', icon: ListChecks },
   { key: 'monitoraggio', href: '/app/monitoraggio', icon: CalendarClock },
   { key: 'clienti', href: '/app/clienti', icon: Building2 },
@@ -34,56 +37,16 @@ export default function AppHome() {
     <div className="mx-auto max-w-3xl py-6 md:py-12">
       <h1 className="text-h1 md:text-display">{firstName ? t('titleNamed', { name: firstName }) : t('title')}</h1>
       <p className="mt-3 max-w-prose text-read text-ink-2">{t('lead')}</p>
-
-      <form
-        className="mt-8"
-        onSubmit={(e) => {
-          e.preventDefault()
-          ask(question)
-        }}
+      <ButtonLink
+        href="/app/controlla"
+        size="lg"
+        className="mt-6"
+        iconLeft={<FileCheck2 className="h-4 w-4" aria-hidden="true" />}
       >
-        <label htmlFor="home-question" className="sr-only">
-          {t('questionLabel')}
-        </label>
-        <div className="flex flex-col gap-2 rounded-lg border border-rule-2 bg-surface p-2 focus-within:border-union focus-within:ring-2 focus-within:ring-union/20 sm:flex-row sm:items-end">
-          <textarea
-            id="home-question"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                ask(question)
-              }
-            }}
-            rows={2}
-            placeholder={t('placeholder')}
-            className="min-h-[56px] flex-1 resize-none bg-transparent px-2 py-1.5 text-read text-ink placeholder:text-ink-3 focus:outline-none"
-          />
-          <Button type="submit" disabled={!question.trim()} className="sm:mb-0.5">
-            {t('send')}
-          </Button>
-        </div>
-      </form>
+        {t('check')}
+      </ButtonLink>
 
-      <ul className="mt-4 flex flex-wrap gap-2" aria-label={t('examples')}>
-        {itemKeys(tc.raw('suggestions')).map((k) => {
-          const s = tc(`suggestions.${k}`)
-          return (
-            <li key={k}>
-              <button
-                type="button"
-                onClick={() => ask(s)}
-                className="rounded-md border border-rule bg-surface px-3 py-1.5 text-left text-small text-ink-2 hover:border-rule-2 hover:text-ink"
-              >
-                {s}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
-
-      <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-3">
+      <div className="mt-10 grid gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-2">
         {TILES.map((item) => (
           <Link
             key={item.href}
@@ -100,6 +63,61 @@ export default function AppHome() {
           </Link>
         ))}
       </div>
+
+      <section className="mt-14 border-t border-rule pt-8" aria-labelledby="home-ask">
+        <h2 id="home-ask" className="text-h3">
+          {t('askTitle')}
+        </h2>
+        <p className="mt-2 max-w-prose text-read text-ink-2">{t('askLead')}</p>
+
+        <form
+          className="mt-6"
+          onSubmit={(e) => {
+            e.preventDefault()
+            ask(question)
+          }}
+        >
+          <label htmlFor="home-question" className="sr-only">
+            {t('questionLabel')}
+          </label>
+          <div className="flex flex-col gap-2 rounded-lg border border-rule-2 bg-surface p-2 focus-within:border-union focus-within:ring-2 focus-within:ring-union/20 sm:flex-row sm:items-end">
+            <textarea
+              id="home-question"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  ask(question)
+                }
+              }}
+              rows={2}
+              placeholder={t('placeholder')}
+              className="min-h-[56px] flex-1 resize-none bg-transparent px-2 py-1.5 text-read text-ink placeholder:text-ink-3 focus:outline-none"
+            />
+            <Button type="submit" disabled={!question.trim()} className="sm:mb-0.5">
+              {t('send')}
+            </Button>
+          </div>
+        </form>
+
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label={t('examples')}>
+          {itemKeys(tc.raw('suggestions')).map((k) => {
+            const s = tc(`suggestions.${k}`)
+            return (
+              <li key={k}>
+                <button
+                  type="button"
+                  onClick={() => ask(s)}
+                  className="rounded-md border border-rule bg-surface px-3 py-1.5 text-left text-small text-ink-2 hover:border-rule-2 hover:text-ink"
+                >
+                  {s}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
     </div>
   )
 }

@@ -147,7 +147,12 @@ async def async_snc_governance_node(state: dict) -> dict:
         return state
     # Nor when the agent abstained before asking the model (no passage, or none
     # close enough): resampling would ask it anyway and replace the abstention.
-    if initial.get("abstention_reason"):
+    from src.agents.nodes import LOW_RELEVANCE_ABSTENTION_REASON, NO_SOURCES_ABSTENTION_REASON
+
+    if initial.get("abstention_reason") in (
+        NO_SOURCES_ABSTENTION_REASON,
+        LOW_RELEVANCE_ABSTENTION_REASON,
+    ):
         logger.info("snc_skipped_due_to_abstention")
         return state
 

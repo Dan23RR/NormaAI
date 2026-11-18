@@ -42,7 +42,9 @@ after them takes none of them.
 
 from __future__ import annotations
 
+import math
 import re
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -346,6 +348,10 @@ _IT_NAMES: tuple[tuple[re.Pattern[str], str, bool], ...] = (
 # "(di seguito «Regolamento» o «GDPR»)" right after an act: names the document defines.
 _DEFINITION_RE = re.compile(r"\s*\((?P<body>[^()]{0,200})\)")
 _DEFINED_NAME_RE = re.compile(r"[«“\"]\s*([^«»“”\"]{2,40}?)\s*[»”\"]")
+# Where a defined name can start (not inside a word, not right after a quotation
+# mark: the definition itself), and what may not follow it.
+_NAME_START_RE = re.compile(r"(?<![\w«“\"])\w+")
+_NAME_STOP_RE = re.compile(r"[\w»”\"]")
 
 NORMATTIVA_RESOLVER = "https://www.normattiva.it/uri-res/N2Ls?"
 
@@ -557,8 +563,14 @@ def _drop_overlaps(mentions: list[_Mention]) -> list[_Mention]:
 
 
 def _defined_names(text: str, mentions: list[_Mention]) -> list[_Mention]:
-    """Mentions of the names the document defines for an act, after the definition."""
-    found: list[_Mention] = []
+    """Mentions of the names the document defines for an act, after the definition.
+
+    A name stands for the act of its latest definition before it. The text is
+    read once, whatever the number of definitions: at each word that starts a
+    defined name, the names starting with that word are tried, longest first (a
+    name has at most 40 characters), and one mention is kept per place.
+    """
+    definitions: dict[str, tuple[list[int], list[Act]]] = {}
     for mention in mentions:
         d = _DEFINITION_RE.match(text, mention.end)
         if not d:
@@ -567,9 +579,31 @@ def _defined_names(text: str, mentions: list[_Mention]) -> list[_Mention]:
             name = name.strip()
             if not name or not name[0].isupper():
                 continue
-            pattern = re.compile(rf"(?<![\w«“\"]){re.escape(name)}(?![\w»”\"])")
-            for m in pattern.finditer(text, d.end()):
-                found.append(_Mention(mention.act, m.start(), m.end()))
+            positions, acts = definitions.setdefault(name, ([], []))
+            positions.append(d.end())
+            acts.append(mention.act)
+    if not definitions:
+        return []
+    # Names by the word they start with, longest first.
+    by_word: dict[str, list[str]] = {}
+    for name in definitions:
+        word = _NAME_START_RE.match(name)
+        if word:
+            by_word.setdefault(word.group(), []).append(name)
+    for names in by_word.values():
+        names.sort(key=len, reverse=True)
+    found: list[_Mention] = []
+    start = min(positions[0] for positions, _ in definitions.values())
+    for m in _NAME_START_RE.finditer(text, start):
+        for name in by_word.get(m.group(), ()):
+            end = m.start() + len(name)
+            if not text.startswith(name, m.start()) or _NAME_STOP_RE.match(text, end):
+                continue
+            positions, acts = definitions[name]
+            latest = bisect_right(positions, m.start()) - 1
+            if latest >= 0:
+                found.append(_Mention(acts[latest], m.start(), end))
+                break
     return found
 
 
@@ -790,7 +824,7 @@ def _references(text: str) -> list[Reference]:
             refs.append(Reference(m.start(), m.end(), [Provision(key, (paragraphs[0],), commi)]))
     taken = [(r.start, r.end) for r in refs]
     for m in _ARTICLE_RE.finditer(text):
-        if any(start <= m.start() < end for start, end in taken):
+        if _within(m.start(), taken):
             continue
         provisions = _article_provisions(m.group("items"))
         if provisions:
@@ -857,8 +891,30 @@ def _line_bounds(text: str, position: int) -> tuple[int, int]:
     return start, len(text) if end == -1 else end
 
 
-def _context(text: str, start: int, end: int, width: int = 160) -> str:
-    line_start, line_end = _line_bounds(text, start)
+class _Lines:
+    """The lines of a text: which line a position is on, and where that line starts and ends.
+
+    Found by bisection on the line breaks, so that asking for every reference
+    of a long text costs a logarithm each, not a scan of the text.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.breaks = [m.start() for m in re.finditer("\n", text)]
+        self.size = len(text)
+
+    def index(self, position: int) -> int:
+        """0-based line of ``position``."""
+        return bisect_left(self.breaks, position)
+
+    def bounds(self, position: int) -> tuple[int, int]:
+        """Like ``_line_bounds``: start of the line of ``position`` and its line break."""
+        i = bisect_left(self.breaks, position)
+        start = self.breaks[i - 1] + 1 if i else 0
+        return start, self.breaks[i] if i < len(self.breaks) else self.size
+
+
+def _context(text: str, start: int, end: int, width: int = 160, lines: _Lines | None = None) -> str:
+    line_start, line_end = lines.bounds(start) if lines else _line_bounds(text, start)
     left = max(line_start, start - width)
     right = min(line_end, end + width)
     snippet = text[left:right].strip()
@@ -876,7 +932,30 @@ def _listed(text: str, mentions: list[_Mention], stands_for: dict[str, str]) -> 
     return {m for g in groups if len({stands_for[x.act.key] for x in g}) > 1 for m in g}
 
 
-def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> None:
+def _last_before(flags: list[bool]) -> list[int]:
+    """For each index, the last index up to it whose flag is set (-1 when none)."""
+    out: list[int] = []
+    last = -1
+    for i, flag in enumerate(flags):
+        if flag:
+            last = i
+        out.append(last)
+    return out
+
+
+def _link_acts(
+    text: str, refs: list[Reference], mentions: list[_Mention], lines: _Lines | None = None
+) -> None:
+    """Give each reference its act.
+
+    ``mentions`` are in the document's order and do not overlap, so their ends
+    are in order too: the acts next to a reference are found by bisection, and
+    the act named earlier on its line through indexes built once (the last
+    mention up to each point that is not an amending act, and the last one an
+    amending act can stop at). The work grows with the references and the
+    mentions, not with their product.
+    """
+    lines = lines or _Lines(text)
     first: dict[str, Act] = {}
     for mention in mentions:
         first.setdefault(mention.act.key, mention.act)
@@ -910,26 +989,34 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         if only_act is None:
             only_by = next(m.act for m in mentions if stands_for[m.act.key] == key)
             only_act = amended(only_by)
+    starts = [m.start for m in mentions]
+    ends = [m.end for m in mentions]
+    # Walking back from a reference, amending acts are passed over; the walk stops
+    # at the first other act, unless an amending act was passed: then it stops
+    # only at an act of a list or at one of the acts that one amends.
+    plain = _last_before([m not in amending for m in mentions])
+    stops = {
+        key: _last_before(
+            [m not in amending and (m in listed or m.act.key in targets) for m in mentions]
+        )
+        for key, targets in AMENDS.items()
+    }
     for ref in refs:
-        line_start, _ = _line_bounds(text, ref.start)
-        after = next(
-            (
-                m
-                for m in mentions
-                if ref.end <= m.start <= ref.end + _AFTER_WINDOW
-                and not _crosses_sentence(text[ref.end : m.start])
-            ),
-            None,
-        )
-        before = next(
-            (
-                m
-                for m in reversed(mentions)
-                if ref.start - _BEFORE_WINDOW <= m.end <= ref.start
-                and re.fullmatch(r"[\s,(:\-–]*", text[m.end : ref.start])
-            ),
-            None,
-        )
+        line_start, _ = lines.bounds(ref.start)
+        after: _Mention | None = None
+        k = bisect_left(starts, ref.end)
+        while k < len(mentions) and starts[k] <= ref.end + _AFTER_WINDOW:
+            if not _crosses_sentence(text[ref.end : starts[k]]):
+                after = mentions[k]
+                break
+            k += 1
+        before: _Mention | None = None
+        k = bisect_right(ends, ref.start) - 1
+        while k >= 0 and ends[k] >= ref.start - _BEFORE_WINDOW:
+            if re.fullmatch(r"[\s,(:\-–]*", text[ends[k] : ref.start]):
+                before = mentions[k]
+                break
+            k -= 1
         # "Article 50(2), as amended by Regulation (EU) 2026/1744": the words say that
         # act amends the one the article belongs to.
         by = next((m.act for m in (after, before) if m in worded), None)
@@ -937,19 +1024,19 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         before = None if before in worded else before
         earlier: _Mention | None = None
         side_by_side = False
-        for m in reversed(mentions):
-            if m.end > ref.start:
-                continue
-            if m.end < line_start:
-                break
-            if m in amending:
-                by = by or m.act
-            elif m in listed:
+        last = bisect_right(ends, ref.start) - 1  # the last mention that ends before the reference
+        stop = plain[last] if last >= 0 else -1
+        if by is None and last >= 0 and stop < last and ends[last] >= line_start:
+            by = mentions[last].act  # the amending act nearest the reference
+        if stop >= 0 and by is not None and by.key in AMENDS:
+            m = mentions[stop]
+            if m not in listed and m.act.key not in AMENDS[by.key]:
+                stop = stops[by.key][stop]
+        if stop >= 0 and ends[stop] >= line_start:
+            if mentions[stop] in listed:
                 side_by_side = True
-                break
-            elif by is None or by.key not in AMENDS or m.act.key in AMENDS[by.key]:
-                earlier = m
-                break
+            else:
+                earlier = mentions[stop]
         # "Codice privacy, art. 2-ter, e la Direttiva ...": the closer act wins.
         if after and before and ref.start - before.end < after.start - ref.end:
             after = None
@@ -971,32 +1058,41 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         ref.raw = re.sub(r"\s+", " ", ref.raw).strip()
 
 
-def _link_quotes(text: str, refs: list[Reference]) -> list[tuple[int, int]]:
-    """Give each quote to the nearest reference of its line; the spans of the quotes given."""
+def _link_quotes(
+    text: str, refs: list[Reference], lines: _Lines | None = None
+) -> list[tuple[int, int]]:
+    """Give each quote to the nearest reference of its line; the spans of the quotes given.
+
+    A reference counts when it ends at most 300 characters before the quote or
+    starts at most 150 after it (twice as far: the reference before is
+    preferred); on a tie, the first in the document. Only the references in
+    those two windows are looked at, found by bisection.
+    """
+    lines = lines or _Lines(text)
+    order = sorted(range(len(refs)), key=lambda i: refs[i].start)
+    starts = [refs[i].start for i in order]
+    by_end = sorted(range(len(refs)), key=lambda i: refs[i].end)
+    ends = [refs[i].end for i in by_end]
     given: list[tuple[int, int]] = []
     for q in _QUOTE_RE.finditer(text):
         quote = next(g for g in q.groups() if g)
-        line = _line_bounds(text, q.start())
-        best: tuple[int, Reference] | None = None
-        for ref in refs:
-            if _line_bounds(text, ref.start) != line:
-                continue
-            if ref.end <= q.start() and q.start() - ref.end <= 300:
-                distance = q.start() - ref.end
-            elif ref.start >= q.end() and ref.start - q.end() <= 150:
-                distance = 2 * (ref.start - q.end())
-            else:
-                continue
-            if best is None or distance < best[0]:
-                best = (distance, ref)
-        if best:
-            best[1].quotes.append(quote.strip())
+        line = lines.index(q.start())
+        candidates: list[tuple[int, int]] = []  # (distance, position in refs)
+        for k in range(bisect_left(ends, q.start() - 300), bisect_right(ends, q.start())):
+            candidates.append((q.start() - ends[k], by_end[k]))
+        for k in range(bisect_left(starts, q.end()), bisect_right(starts, q.end() + 150)):
+            candidates.append((2 * (starts[k] - q.end()), order[k]))
+        best = min((c for c in candidates if lines.index(refs[c[1]].start) == line), default=None)
+        if best is not None:
+            refs[best[1]].quotes.append(quote.strip())
             given.append((q.start(), q.end()))
     return given
 
 
 def _within(position: int, spans: list[tuple[int, int]]) -> bool:
-    return any(start <= position < end for start, end in spans)
+    """True when ``position`` is inside one of ``spans`` (in order, not overlapping)."""
+    i = bisect_right(spans, (position, math.inf)) - 1
+    return i >= 0 and position < spans[i][1]
 
 
 def extract_references(text: str) -> list[Reference]:
@@ -1008,15 +1104,17 @@ def extract_references(text: str) -> list[Reference]:
     A quote that no reference outside it claims is read as the document's text.
     """
     mentions = _act_mentions(text)
-    refs = [r for r in _references(text) if not any(m.start <= r.start < m.end for m in mentions)]
+    lines = _Lines(text)
+    named = [(m.start, m.end) for m in mentions]
+    refs = [r for r in _references(text) if not _within(r.start, named)]
     quotes = [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
     outside = [r for r in refs if not _within(r.start, quotes)]
-    given = _link_quotes(text, outside)
+    given = _link_quotes(text, outside, lines)
     refs = [r for r in refs if not _within(r.start, given)]
-    _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)])
+    _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)], lines)
     for ref in refs:
-        ref.line = text.count("\n", 0, ref.start) + 1
-        ref.context = _context(text, ref.start, ref.end)
+        ref.line = lines.index(ref.start) + 1
+        ref.context = _context(text, ref.start, ref.end, lines=lines)
     return refs
 
 

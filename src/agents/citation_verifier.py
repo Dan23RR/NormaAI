@@ -266,6 +266,12 @@ _CHAR_MAP: dict[int, str | None] = {
     ord("\u2026"): "...",
 }
 
+# The markers EUR-Lex writes inside a consolidated text: "\u25bcB" and "\u25bcM6" open
+# the original wording and each amendment, "\u25baM2" opens an inserted passage and
+# "\u25c4" closes it. They are not part of the law, and the model quotes the wording
+# without them: both sides of the comparison read them as a space.
+_CONSOLIDATION_MARKER_RE = re.compile(r"[\u25bc\u25ba](?:[A-Z]{1,2}\d{0,3}(?![A-Za-z]))?|\u25c4")
+
 # Stripped from both ends of a quote: whitespace, quotes, sentence punctuation,
 # dashes; the bracketed omission markers are removed by _strip_edges too.
 _EDGE_CHARS = " '\".,;:!?-"
@@ -295,8 +301,22 @@ def _normalize_with_map(text: str) -> tuple[str, list[int], list[int]]:
     starts: list[int] = []
     ends: list[int] = []
     n = len(text)
+    # EUR-Lex consolidation markers count as whitespace (_CONSOLIDATION_MARKER_RE).
+    marker_end: dict[int, int] = {}
+    if "\u25bc" in text or "\u25ba" in text or "\u25c4" in text:
+        marker_end = {m.start(): m.end() for m in _CONSOLIDATION_MARKER_RE.finditer(text)}
     i = 0
     while i < n:
+        if i in marker_end:
+            j = marker_end[i]
+            if out and out[-1] != " ":
+                out.append(" ")
+                starts.append(i)
+                ends.append(j)
+            elif out:
+                ends[-1] = j
+            i = j
+            continue
         ch = text[i]
         j = i + 1
         while j < n and text[j] >= "\u0300" and unicodedata.combining(text[j]):
@@ -450,6 +470,9 @@ def article_label(key: str | None) -> str | None:
     return None
 
 
+_CELEX_PREFIX_RE = re.compile(r"(?i)celex\s*:?\s*(\S+)$")
+
+
 def normalize_framework(name: Any) -> str:
     """Canonical framework key: ``"AI Act"`` -> ``"AI_ACT"``, ``"nis 2"`` -> ``"NIS2"``.
 
@@ -460,6 +483,10 @@ def normalize_framework(name: Any) -> str:
     raw = str(name or "").strip()
     if not raw:
         return ""
+    # The model sometimes copies the label's "CELEX 32024R2847" as the framework.
+    prefixed = _CELEX_PREFIX_RE.match(raw)
+    if prefixed and celex_utils.parse_celex(prefixed.group(1).upper()) is not None:
+        raw = prefixed.group(1)
     if celex_utils.parse_celex(raw.upper()) is not None:
         return celex_utils.base_celex(raw.upper())
     key = re.sub(r"[^A-Z0-9]+", "_", raw.upper()).strip("_")
@@ -1207,10 +1234,17 @@ def _consolidated_as_of(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _official_piece(text: str) -> str:
+    """A span of the official text as shown to the user, without consolidation markers."""
+    if "\u25bc" in text or "\u25ba" in text or "\u25c4" in text:
+        text = re.sub(r"\s*(?:" + _CONSOLIDATION_MARKER_RE.pattern + r")\s*", " ", text)
+    return text.strip()
+
+
 def _result(
     chunk: _Chunk, spans: list[tuple[int, int]], match: str, level: str
 ) -> VerificationResult:
-    pieces = [chunk.text[chunk.starts[a] : chunk.ends[b - 1]].strip() for a, b in spans]
+    pieces = [_official_piece(chunk.text[chunk.starts[a] : chunk.ends[b - 1]]) for a, b in spans]
     data = chunk.data
     lang = celex_utils.normalize_lang(data.get("lang"), "") or None
     raw_article = str(data.get("article") or data.get("article_number") or "").strip()
@@ -1306,7 +1340,9 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
 def _near_result(found: _Found) -> VerificationResult:
     """Not verified, with the official wording that almost matched and what differs."""
     chunk = found.chunk
-    pieces = [chunk.text[chunk.starts[a] : chunk.ends[b - 1]].strip() for a, b in found.spans]
+    pieces = [
+        _official_piece(chunk.text[chunk.starts[a] : chunk.ends[b - 1]]) for a, b in found.spans
+    ]
     raw_article = str(chunk.data.get("article") or chunk.data.get("article_number") or "").strip()
     return VerificationResult(
         near_quote=" [...] ".join(pieces),

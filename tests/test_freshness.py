@@ -403,14 +403,23 @@ class TestScheduledActions:
         ingestion.assert_not_called()  # no embedding model, no document processor
         assert '"status": "ok"' in capsys.readouterr().out
 
-    def test_a_failing_job_fails_the_command(self):
-        job = MagicMock(side_effect=RuntimeError("database not reachable"))
+    def test_a_failing_job_fails_the_command_and_tells_the_operator(self):
+        job = MagicMock(side_effect=RuntimeError("database not reachable\nat line 2"))
         with (
             patch.dict(pipeline_mod.SCHEDULED_ACTIONS, {"recheck-documents": job}),
             patch.object(sys, "argv", ["pipeline", "--action", "recheck-documents"]),
-            pytest.raises(RuntimeError),
+            patch("src.ops_alerts.notify_failure") as notify,
+            pytest.raises(SystemExit) as stopped,
         ):
             pipeline_mod.main()
+        assert stopped.value.code == 1
+        assert isinstance(stopped.value.__cause__, RuntimeError)
+        notify.assert_called_once()
+        job_name, summary = notify.call_args.args[:2]
+        assert job_name == "pipeline recheck-documents"
+        assert summary == "RuntimeError: database not reachable"
+        # No DSN in the suite: the alert itself goes to Sentry when one is set.
+        assert notify.call_args.kwargs["sentry"] is True
 
     def test_recheck_documents_runs_the_surveillance_on_the_default_source(self):
         from src.document_check import surveillance

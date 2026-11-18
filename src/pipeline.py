@@ -941,6 +941,34 @@ SCHEDULED_ACTIONS: dict[str, Callable[[], dict]] = {
 }
 
 
+def run_scheduled(action: str) -> dict:
+    """Run a cron job; when it raises, tell the operator, then exit with 1.
+
+    Cron only keeps the output in /var/log/normaai-jobs.log, which nobody reads
+    unless something sends them there. With SENTRY_DSN set, every ERROR line of
+    the job becomes a Sentry event, the traceback of a failure included; with
+    OPS_ALERT_EMAIL (and RESEND_API_KEY) the failure is also emailed
+    (src/ops_alerts.py).
+    """
+    from src.observability import setup_sentry
+    from src.ops_alerts import failure_summary, notify_failure
+
+    settings = get_settings()
+    sentry_on = setup_sentry(settings)
+    try:
+        return SCHEDULED_ACTIONS[action]()
+    except Exception as e:
+        logger.exception(f"{action} failed")
+        notify_failure(
+            f"pipeline {action}",
+            failure_summary(e),
+            "See /var/log/normaai-jobs.log on the server for the traceback.",
+            sentry=not sentry_on,
+            settings=settings,
+        )
+        raise SystemExit(1) from e
+
+
 def main():
     # CLI entry point only: when imported by the API (data router, scheduler)
     # the application's own logging setup applies - a module-level basicConfig
@@ -997,7 +1025,7 @@ def main():
 
     if args.action in SCHEDULED_ACTIONS:
         # Before IngestionPipeline(): these jobs need no embedding model.
-        result = SCHEDULED_ACTIONS[args.action]()
+        result = run_scheduled(args.action)
         print("\n" + json.dumps(result, indent=2, ensure_ascii=False))
         return
 

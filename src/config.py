@@ -186,7 +186,14 @@ class Settings(BaseSettings):
     # ─── Sentry (optional error tracking) ─────────────────────
     # Set to enable sentry_sdk with the FastAPI integration at startup; the SDK
     # is an optional extra (`poetry install -E sentry`), never a hard dependency.
+    # The Docker image installs it.
     sentry_dsn: str | None = None
+
+    # ─── Operator alerts ──────────────────────────────────────
+    # Address told by email (through Resend, RESEND_API_KEY) when a scheduled
+    # job, the backup or the restore test fails (src/ops_alerts.py). Empty: the
+    # failure reaches Sentry (with SENTRY_DSN) and the log only.
+    ops_alert_email: str = ""
 
     # ─── Chain-of-Verification (CoVe) ────────────────────────
     cove_enabled: bool = False

@@ -13,10 +13,11 @@ Env vars (read via src.config.get_settings):
     RESEND_REPLY_TO        (default: info@normaai.org)
     NORMAAI_PUBLIC_URL     (used to build absolute URLs)
 
-Exposes three send paths:
+Exposes four send paths:
     send_codex_email()            - inbound (post-form Codex download)
     send_verification_email()     - account email verification link
     send_document_digest_email()  - "N documenti da rivedere" (document surveillance)
+    send_ops_alert_email()        - to the operator: a scheduled job failed (src/ops_alerts.py)
 
 Returns (success, error_message) without raising. Without RESEND_API_KEY every
 send is a no-op that logs ``resend_not_configured``.
@@ -414,6 +415,43 @@ def send_document_digest_email(
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         },
         tags=[{"name": "campaign", "value": "document_digest"}],
+    )
+
+
+def send_ops_alert_email(
+    *,
+    to_email: str,
+    job: str,
+    host: str,
+    when: str,
+    summary: str,
+    details: str = "",
+) -> tuple[bool, str | None]:
+    """To the operator (OPS_ALERT_EMAIL): a scheduled job failed (src/ops_alerts.py).
+
+    Plain and short: the job, where and when, the one-line summary and the last
+    messages of the job, escaped. No tracking, no marketing footer.
+    """
+    subject = f"NormaAI: {job} non riuscito su {host}"
+    lines = [
+        f"{job} non è riuscito su {host} ({when}).",
+        "",
+        summary,
+        "",
+        "Cosa fare: docs/RUNBOOK.md (sezione 1) e il log del job sul server.",
+    ]
+    text = "\n".join(lines) + (f"\n\nUltimi messaggi:\n{details}\n" if details else "\n")
+    html = f"<p>{escape(lines[0])}</p><p><b>{escape(summary)}</b></p><p>{escape(lines[4])}</p>" + (
+        f'<pre style="white-space:pre-wrap;font-size:12px">{escape(details)}</pre>'
+        if details
+        else ""
+    )
+    return _send_via_resend(
+        to_email=to_email,
+        subject=subject[:200],
+        html=html,
+        text=text,
+        tags=[{"name": "campaign", "value": "ops_alert"}],
     )
 
 

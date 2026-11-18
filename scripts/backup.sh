@@ -4,7 +4,10 @@
 # What it covers and what it does not: docs/BACKUP_STRATEGY.md.
 #
 #   bash scripts/backup.sh                  one backup run
-#   bash scripts/backup.sh --install-cron   install or replace the nightly cron line
+#   bash scripts/backup.sh --install-cron   install or replace the cron lines: the
+#                                           backup every night at 02:00, the restore
+#                                           test (scripts/restore_test.sh) on the 1st
+#                                           of every month at 05:00
 #
 # One run:
 #   1. dumps Postgres into backups/normaai_<stamp>.dump and checks that the
@@ -15,6 +18,8 @@
 #   3. deletes the local dumps past the retention.
 # Without restic it does 1 and 3 and says what is missing: the dump then stays
 # on this disk, unencrypted, and the index and .env are not backed up at all.
+# A run that fails tells the operator (Sentry and/or email, through the app
+# container: python -m src.ops_alerts, docs/RUNBOOK.md section 1).
 #
 # Configuration: environment variables, read from BACKUP_ENV_FILE when the file
 # exists (default /etc/normaai/backup.env, root only; the bootstrap writes it).
@@ -28,6 +33,12 @@
 #                          a service that warns when the fetch stops coming
 #   QDRANT_URL             default http://127.0.0.1:6333 (docker-compose.yml
 #                          publishes Qdrant on the loopback interface only)
+#   APP_CONTAINER          default normaai-app: where the failure alert is sent from
+#   BACKUP_ALERTS          default 1; 0 sends no alert
+# RESTIC_REPOSITORY must not live with the hosting provider of this server: when
+# the whole account was lost in September 2026, a copy in it would have gone
+# too. The run warns when the address is a Hetzner one (Storage Box, Object
+# Storage), unless BACKUP_SAME_PROVIDER_OK=1 (docs/BACKUP_STRATEGY.md, section 3).
 #
 # Exit status: 0 only when every step succeeded.
 # ============================================================================
@@ -53,12 +64,54 @@ RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 BACKUP_HOST="${BACKUP_HOST:-normaai}"
 BACKUP_TAG="normaai"
 CRON_LOG="/var/log/normaai-backup.log"
+RESTORE_TEST_LOG="/var/log/normaai-restore-test.log"
+APP_CONTAINER="${APP_CONTAINER:-normaai-app}"
+# Set for a backup run (not for --install-cron or --help): a failure is reported.
+ALERT_ON_FAILURE=0
+# What a failure report says: the warnings of the run, then the reason it stopped.
+REPORT=""
+FAILURE=""
+COLLECTION_POINTS=""
 
 log() { printf '[backup] %s\n' "$*"; }
-warn() { printf '[backup] WARNING: %s\n' "$*" >&2; }
+warn() {
+  printf '[backup] WARNING: %s\n' "$*" >&2
+  REPORT="${REPORT}WARNING: $*"$'\n'
+}
 die() {
   printf '[backup] FAIL: %s\n' "$*" >&2
+  FAILURE="$*"
   exit 1
+}
+
+# Tells the operator through the app container (src/ops_alerts.py): it holds the
+# Resend key and the Sentry DSN, which this host-side script does not read.
+alert_operator() {
+  local summary="${FAILURE:-the backup run failed}" runner=()
+  [ "${BACKUP_ALERTS:-1}" = "1" ] || return 0
+  command -v docker > /dev/null 2>&1 || return 0
+  if command -v timeout > /dev/null 2>&1; then runner=(timeout 120); fi
+  if ! printf '%s' "${REPORT}FAIL: $summary" |
+    "${runner[@]}" docker exec -i "$APP_CONTAINER" python -m src.ops_alerts backup "$summary" > /dev/null; then
+    printf '[backup] WARNING: the operator was not told of this failure (is %s running?)\n' \
+      "$APP_CONTAINER" >&2
+  fi
+}
+
+on_exit() {
+  local code=$?
+  cleanup
+  if [ "$code" -ne 0 ] && [ "$ALERT_ON_FAILURE" = "1" ]; then
+    alert_operator
+  fi
+}
+
+# Hetzner addresses (Storage Box, Object Storage): the provider of the server.
+same_provider_as_server() {
+  case "${RESTIC_REPOSITORY:-}" in
+    *your-storagebox.de* | *your-objectstorage.com* | *hetzner*) return 0 ;;
+  esac
+  return 1
 }
 
 # Reads JSON on stdin as `d` and runs the given Python expression statement.
@@ -68,19 +121,23 @@ d = json.load(sys.stdin)
 
 # ── Cron ─────────────────────────────────────────────────────────────────────
 install_cron() {
-  local line current
+  local line test_line current
   # Through `bash`, not by path: the script is not executable in git, and every
   # deploy (`git reset --hard`) would take the execute bit away again.
   line="0 2 * * * bash $REPO_ROOT/scripts/backup.sh >> $CRON_LOG 2>&1"
+  # The restore test once a month: a backup nobody reads back is a hope.
+  test_line="0 5 1 * * bash $REPO_ROOT/scripts/restore_test.sh >> $RESTORE_TEST_LOG 2>&1"
   current="$(crontab -l 2>/dev/null || true)"
   {
     if [ -n "$current" ]; then
-      # Keep every other job; drop the previous backup lines, old name included.
-      printf '%s\n' "$current" | grep -v -E 'scripts/backup(_postgres)?\.sh' || true
+      # Keep every other job; drop the previous lines of these two scripts, the
+      # old name of the backup included.
+      printf '%s\n' "$current" | grep -v -E 'scripts/(backup(_postgres)?|restore_test)\.sh' || true
     fi
-    printf '%s\n' "$line"
+    printf '%s\n' "$line" "$test_line"
   } | crontab -
   log "cron line installed: $line"
+  log "cron line installed: $test_line"
 }
 
 # ── Postgres ─────────────────────────────────────────────────────────────────
@@ -108,7 +165,7 @@ dump_postgres() {
 # name scripts/bootstrap_hetzner.sh restores from. Returns 1 when any
 # collection could not be saved.
 snapshot_qdrant() {
-  local names name created snapshot expected target actual failed=0
+  local names name created snapshot expected target actual points failed=0
   command -v python3 > /dev/null 2>&1 || {
     warn "python3 is needed to read Qdrant's answers"
     return 1
@@ -155,6 +212,9 @@ snapshot_qdrant() {
         failed=1
       else
         log "Qdrant snapshot: $name ($actual bytes)"
+        points="$(curl -fsS --max-time 30 "$QDRANT_URL/collections/$name" |
+          json 'print(int(d["result"].get("points_count") or 0))' 2>/dev/null || true)"
+        COLLECTION_POINTS="${COLLECTION_POINTS}collection $name: ${points:-unknown} points"$'\n'
       fi
     else
       warn "could not download the snapshot of the collection $name"
@@ -194,6 +254,8 @@ write_manifest() {
     # A Qdrant snapshot restores on the same minor version or on the next one.
     printf 'qdrant: %s\n' "$(curl -fsS --max-time 10 "$QDRANT_URL/" 2>/dev/null |
       json 'print(d.get("version", "unknown"))' 2>/dev/null || echo unknown)"
+    # What the restore test must find again in each collection it loads.
+    printf '%s' "$COLLECTION_POINTS"
     printf 'files (bytes):\n'
     (cd "$STAGE_DIR" && find . -type f ! -name MANIFEST.txt | sort) | while IFS= read -r file; do
       printf '%12s  %s\n' "$(wc -c < "$STAGE_DIR/$file" | tr -d '[:space:]')" "$file"
@@ -227,6 +289,15 @@ send_offsite() {
   fi
 }
 
+# The repository and its keys must survive the loss of the hosting account.
+check_repository_location() {
+  if same_provider_as_server && [ "${BACKUP_SAME_PROVIDER_OK:-0}" != "1" ]; then
+    warn "RESTIC_REPOSITORY is at Hetzner, like this server: a lost or closed account takes the"
+    warn "backups along. Use storage in another account, at another provider"
+    warn "(docs/BACKUP_STRATEGY.md, section 3), or set BACKUP_SAME_PROVIDER_OK=1."
+  fi
+}
+
 prune_local() {
   find "$BACKUP_DIR" -maxdepth 1 -type f -name 'normaai_*.dump' \
     -mmin "+$((KEEP_DAYS * 1440))" -print -delete | sed 's/^/[backup] pruned /'
@@ -246,12 +317,12 @@ main() {
     exec 9> "$BACKUP_DIR/.lock"
     flock -n 9 || die "another backup run holds the lock"
   fi
-  trap cleanup EXIT
 
   dump_postgres
 
   if [ -n "${RESTIC_REPOSITORY:-}" ] && [ -n "${RESTIC_PASSWORD_FILE:-}" ]; then
     mode="off-site"
+    check_repository_location
     rm -rf "$STAGE_DIR"
     mkdir -p "$STAGE_DIR/postgres"
     cp "$DUMP_FILE" "$STAGE_DIR/postgres/normaai.dump"
@@ -284,6 +355,13 @@ main() {
   log "done ($mode)"
 }
 
+if [ -z "${1:-}" ]; then
+  # A backup run: whatever stops it from here on is reported, the settings
+  # checked just below included (a wrong value would stop every night). The
+  # same handler removes the staging directory and any partial dump.
+  ALERT_ON_FAILURE=1
+  trap on_exit EXIT
+fi
 case "$RETENTION_DAYS" in
   '' | *[!0-9]*) die "BACKUP_RETENTION_DAYS must be a whole number of days" ;;
 esac
@@ -295,6 +373,6 @@ KEEP_DAYS=$((RETENTION_DAYS - 1))
 case "${1:-}" in
   '') main ;;
   --install-cron) install_cron ;;
-  -h | --help) sed -n '3,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+  -h | --help) sed -n '3,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
   *) die "unknown argument: $1 (see --help)" ;;
 esac

@@ -353,13 +353,15 @@ def test_the_locked_source_reads_italian_law_under_its_lock(italian):
     article = italian.article
 
     def spy(*args):
-        # RLock has no public "held" test: another thread must not get it now.
+        # RLock has no public "held" test: another thread must not get the
+        # lock of this article now.
+        lock = locked._locks("it", args[0], args[1])
         got = []
-        probe = threading.Thread(target=lambda: got.append(locked._lock.acquire(blocking=False)))
+        probe = threading.Thread(target=lambda: got.append(lock.acquire(blocking=False)))
         probe.start()
         probe.join()
         if got[0]:
-            locked._lock.release()
+            lock.release()
         seen.append(not got[0])
         return article(*args)
 

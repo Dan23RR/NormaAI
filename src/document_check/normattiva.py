@@ -45,6 +45,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 import time
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
@@ -575,8 +576,9 @@ def _counted_commi(lines: list[str]) -> list[tuple[int, str]]:
 class NormattivaClient:
     """The one call the document check needs: an article by URN.
 
-    One request at a time, a pause between requests, a couple of retries on a
-    network error or a 5xx, a timeout on every call.
+    One request at a time, also when several threads ask, a pause between
+    requests, a couple of retries on a network error or a 5xx, a timeout on
+    every call.
     """
 
     def __init__(
@@ -596,6 +598,8 @@ class NormattivaClient:
         )
         self._last = 0.0
         self.requests = 0
+        # One request at a time, even when several threads read different articles.
+        self._turn = threading.Lock()
 
     def close(self) -> None:
         self._http.close()
@@ -610,20 +614,21 @@ class NormattivaClient:
         """The API's ``atto`` object for an article URN (with ``!vig=`` or ``@originale``)."""
         url = self.base_url + ARTICLE_ENDPOINT
         problem = "nessuna risposta"
-        for attempt in range(self.retries + 1):
-            if attempt:
-                time.sleep(self.delay * 2 * attempt)
-            self._pause()
-            self.requests += 1
-            try:
-                response = self._http.post(url, json={"urn": urn})
-            except httpx.HTTPError as e:
-                problem = f"errore di rete ({type(e).__name__})"
-                continue
-            if response.status_code == 429 or response.status_code >= 500:
-                problem = f"HTTP {response.status_code}"
-                continue
-            return self._read(urn, response)
+        with self._turn:
+            for attempt in range(self.retries + 1):
+                if attempt:
+                    time.sleep(self.delay * 2 * attempt)
+                self._pause()
+                self.requests += 1
+                try:
+                    response = self._http.post(url, json={"urn": urn})
+                except httpx.HTTPError as e:
+                    problem = f"errore di rete ({type(e).__name__})"
+                    continue
+                if response.status_code == 429 or response.status_code >= 500:
+                    problem = f"HTTP {response.status_code}"
+                    continue
+                return self._read(urn, response)
         raise TextUnavailableError(f"Normattiva non ha risposto per {urn}: {problem}")
 
     @staticmethod
@@ -715,6 +720,8 @@ class NormattivaTextSource:
         self._parsed: dict[str, ParsedArticle] = {}
         # Acts Normattiva said it does not have: the message and when it said so.
         self._no_act: dict[str, tuple[str, datetime]] = {}
+        # The memories above are shared by the threads reading different articles.
+        self._memory = threading.Lock()
 
     # The cache ----------------------------------------------------------
 
@@ -724,7 +731,8 @@ class NormattivaTextSource:
 
     def _load(self, act_urn: str, key: str) -> dict[str, Any]:
         path = self._path(act_urn, key)
-        memo = self._files.get(path.name)
+        with self._memory:
+            memo = self._files.get(path.name)
         if memo is not None:
             return memo
         data: dict[str, Any] = {}
@@ -739,10 +747,10 @@ class NormattivaTextSource:
         data.setdefault("key", key)
         if not isinstance(data.get("answers"), list):
             data["answers"] = []
-        while len(self._files) >= self.MEMORY:
-            self._files.pop(next(iter(self._files)))
-        self._files[path.name] = data
-        return data
+        with self._memory:
+            while len(self._files) >= self.MEMORY:
+                self._files.pop(next(iter(self._files)))
+            return self._files.setdefault(path.name, data)
 
     def _save(self, act_urn: str, key: str, data: dict[str, Any]) -> None:
         """Write the article's file whole, then put it in place (no half-written file)."""
@@ -757,12 +765,14 @@ class NormattivaTextSource:
     def _parse(self, html: str) -> ParsedArticle:
         """The parsed article of an answer, parsed once per source."""
         memo = hashlib.sha256(html.encode("utf-8")).hexdigest()
-        parsed = self._parsed.get(memo)
+        with self._memory:
+            parsed = self._parsed.get(memo)
         if parsed is None:
             parsed = parse_article_html(html)
-            while len(self._parsed) >= self.MEMORY:
-                self._parsed.pop(next(iter(self._parsed)))
-            self._parsed[memo] = parsed
+            with self._memory:
+                while len(self._parsed) >= self.MEMORY:
+                    self._parsed.pop(next(iter(self._parsed)))
+                self._parsed[memo] = parsed
         return parsed
 
     @staticmethod

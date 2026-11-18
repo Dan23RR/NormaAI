@@ -398,7 +398,8 @@ class TestSharedSource:
         with pytest.raises(AttributeError):
             locked._private  # noqa: B018
 
-    def test_one_call_at_a_time(self):
+    def test_one_list_of_versions_at_a_time(self):
+        # The texts themselves are read in parallel: tests/test_document_check_locks.py.
         inside = []
         overlaps = []
 

@@ -200,6 +200,15 @@ non si può fermare, quindi è il lavoro stesso a dover finire presto.
   diversa dal testo ufficiale» se lì ci sono quasi le stesse parole, con una nota che dice
   che cosa non è stato cercato e consiglia di dividere il documento. La stessa citazione
   ripetuta si cerca una volta sola.
+- **Letture in parallelo.** Nel processo dell'API i controlli girano in più thread
+  (`document_check_workers`) e condividono la stessa fonte dei testi ufficiali, con una
+  serratura per ogni testo: una versione di un atto in una lingua, un articolo di un atto
+  italiano. Due controlli che chiedono lo stesso testo aspettano un solo scaricamento e una sola
+  analisi; testi di atti diversi si leggono nello stesso momento (prima una sola serratura
+  serializzava tutte le letture). Gli elenchi delle versioni passano per una serratura comune,
+  perché il client EUR-Lex interroga SPARQL con un solo oggetto che i thread non possono
+  condividere (dalla cache, un elenco si legge subito); a Normattiva va una richiesta alla
+  volta, come prima.
 
 ## Use
 

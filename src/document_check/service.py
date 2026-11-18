@@ -632,30 +632,53 @@ async def run_job(org_id: str, job: Callable[[], T]) -> T:
 # ─── The official texts ──────────────────────────────────────────────
 
 
-class _LockedSource:
-    """One text source for the threads of a process: one call at a time.
+class _TextLocks:
+    """One lock per official text, made the first time the text is asked for."""
 
-    A source keeps what it downloaded and parsed in plain dictionaries and
-    files; two checks reading the same act at once must not trip on each other.
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._locks: dict[tuple[str, ...], threading.RLock] = {}
+
+    def __call__(self, *key: str) -> threading.RLock:
+        with self._guard:
+            lock = self._locks.get(key)
+            if lock is None:
+                lock = self._locks[key] = threading.RLock()
+            return lock
+
+
+class _LockedSource:
+    """One text source for the threads of a process: one lock per official text.
+
+    A source keeps what it downloaded and parsed in dictionaries and files. Two
+    checks that need the same text (a version of an act in a language, an
+    Italian article) wait for one download and one parse; texts of different
+    acts are read at the same time. The lists of versions go through a lock of
+    their own: the EUR-Lex client asks CELLAR's SPARQL endpoint through one
+    SPARQLWrapper, which threads cannot share, and a list read from the cache
+    takes no time. Normattiva's client keeps its own pace (one request at a
+    time), as before.
     """
 
     def __init__(self, inner: Any) -> None:
         self._inner = inner
-        self._lock = threading.RLock()
+        self._locks = _TextLocks()
+        self._catalogue = threading.RLock()
 
     def versions(self, celex: str) -> Any:
-        with self._lock:
+        with self._catalogue:
             return self._inner.versions(celex)
 
     def articles(self, version: Any, lang: str) -> Any:
-        with self._lock:
+        text = str(getattr(version, "celex", version))
+        with self._locks("eu", text, str(lang).upper()):
             return self._inner.articles(version, lang)
 
     @property
     def italian(self) -> Any:
-        """The Italian side of the source (``sources.OfficialSources``), under the same lock."""
+        """The Italian side of the source (``sources.OfficialSources``), one lock per article."""
         inner = getattr(self._inner, "italian", None)
-        return None if inner is None else _LockedItalian(inner, self._lock)
+        return None if inner is None else _LockedItalian(inner, self._locks)
 
     def __getattr__(self, name: str) -> Any:
         # Whatever else the engine reads from a source (``stale``).
@@ -665,18 +688,22 @@ class _LockedSource:
 
 
 class _LockedItalian:
-    """``ItalianTextSource`` of a ``_LockedSource``: Normattiva's cache is shared too."""
+    """``ItalianTextSource`` of a ``_LockedSource``: one lock per article of an act.
 
-    def __init__(self, inner: Any, lock: Any) -> None:
+    Normattiva's cache keeps one file per article, with every wording read: the
+    readings of one article, whatever the day, go one at a time.
+    """
+
+    def __init__(self, inner: Any, locks: _TextLocks) -> None:
         self._inner = inner
-        self._lock = lock
+        self._locks = locks
 
     def article(self, act_urn: str, key: str, on: str) -> Any:
-        with self._lock:
+        with self._locks("it", act_urn, key):
             return self._inner.article(act_urn, key, on)
 
     def original(self, act_urn: str, key: str) -> Any:
-        with self._lock:
+        with self._locks("it", act_urn, key):
             return self._inner.original(act_urn, key)
 
     def __getattr__(self, name: str) -> Any:

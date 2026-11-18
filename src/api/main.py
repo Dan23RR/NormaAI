@@ -82,14 +82,18 @@ Frameworks of the Q&A corpus: CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR
 """
 
 # ─── App ──────────────────────────────────────────────────────────
+# The interactive docs and the OpenAPI schema describe every route of the API:
+# served in development and test, not in production (settings.api_docs_enabled).
+_docs = get_settings().api_docs_enabled
 app = FastAPI(
     title="NormaAI",
     description=DESCRIPTION,
     version="0.3.0",
     lifespan=lifespan,
     openapi_tags=tags_metadata,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
 # ─── Rate Limiter ─────────────────────────────────────────────────

@@ -376,6 +376,11 @@ class Settings(BaseSettings):
     # ═══ Document check: end ═══
 
     @property
+    def api_docs_enabled(self) -> bool:
+        """/docs, /redoc and /openapi.json: served everywhere but in production."""
+        return self.app_env != "production"
+
+    @property
     def corpus_language_list(self) -> list[str]:
         """Parse ``corpus_languages`` into upper-case 2-letter codes (EN first wins ties)."""
         seen: list[str] = []

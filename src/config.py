@@ -286,6 +286,14 @@ class Settings(BaseSettings):
     # password-reset request + confirm (mail flooding / token guessing)
     auth_rate_limit_password_reset: str = "5/hour"
 
+    # ─── Rate limits (all routes) ────────────────────────────
+    # Limit of the routes that declare none of their own (slowapi syntax).
+    rate_limit_default: str = "100/minute"
+    # Where the counters live, so that every API process shares them. Empty:
+    # REDIS_URL. "memory://" keeps them in each process. When the storage cannot
+    # be reached the limiter falls back to memory and logs a warning.
+    rate_limit_storage_uri: str = ""
+
     # ─── Staff (NormaAI personnel) ───────────────────────────
     # Staff is the users.is_staff flag (migration 010), set only with
     # scripts/staff.py and honoured only on a verified email: no setting, no

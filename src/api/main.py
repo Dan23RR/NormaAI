@@ -15,6 +15,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from src.config import get_settings
 from src.observability import setup_logging
@@ -99,6 +100,9 @@ app = FastAPI(
 # ─── Rate Limiter ─────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+# Routes without a limit of their own get RATE_LIMIT_DEFAULT. Added before CORS,
+# so it runs inside it and a 429 still carries the CORS headers.
+app.add_middleware(SlowAPIMiddleware)
 
 # ─── CORS ─────────────────────────────────────────────────────────
 _cors_settings = get_settings()

@@ -14,12 +14,20 @@ Key functions:
 The 429 handler (``rate_limit_exceeded_handler``) returns the FastAPI-standard
 ``detail`` field (the Italian UI renders ``detail``) plus a ``Retry-After``
 header computed from the limiter's window stats.
+
+Storage (``build_limiter``): the counters live in Redis (``RATE_LIMIT_STORAGE_URI``,
+else ``REDIS_URL``), so every API process and worker counts the same requests.
+When Redis cannot be reached the limiter keeps counting in each process's
+memory (slowapi's in-memory fallback, logged as a warning) and goes back to
+Redis when it answers again. ``RATE_LIMIT_DEFAULT`` is the limit of every route
+that declares none (applied by ``SlowAPIMiddleware``, registered in main.py).
 """
 
 import logging
 import math
 import time
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -27,7 +35,7 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 
 from src.audit import AuditAction, AuditOutcome, audit_log, get_client_ip
-from src.config import get_settings
+from src.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +102,73 @@ def settings_limit(attr: str) -> Callable[[], str]:
     return _provider
 
 
-limiter = Limiter(key_func=_rate_limit_key)
+_SHARED_SCHEMES = (
+    "redis://",
+    "rediss://",
+    "redis+unix://",
+    "redis+sentinel://",
+    "redis+cluster://",
+)
+# A Redis that does not answer must not hold a request for long: the limiter
+# then falls back to memory and retries Redis later (backing off up to 32 s).
+_REDIS_TIMEOUTS: dict[str, Any] = {"socket_connect_timeout": 2, "socket_timeout": 2}
+
+
+def rate_limit_storage_uri(settings: Settings) -> str:
+    """Where the counters live: RATE_LIMIT_STORAGE_URI, else REDIS_URL, else memory."""
+    explicit = settings.rate_limit_storage_uri.strip()
+    if explicit:
+        return explicit
+    redis_url = settings.redis_url.strip()
+    if redis_url.startswith(_SHARED_SCHEMES):
+        return redis_url
+    return "memory://"
+
+
+def build_limiter(settings: Settings | None = None) -> Limiter:
+    """The application's limiter, configured from ``settings``."""
+    settings = settings or get_settings()
+    uri = rate_limit_storage_uri(settings)
+    shared = uri.startswith(_SHARED_SCHEMES)
+    default = settings.rate_limit_default.strip()
+    return Limiter(
+        key_func=_rate_limit_key,
+        default_limits=[default] if default else [],
+        storage_uri=uri,
+        storage_options=dict(_REDIS_TIMEOUTS) if shared else {},
+        in_memory_fallback_enabled=shared,
+    )
+
+
+def check_limiter_storage(target: Limiter | None = None) -> bool:
+    """Log where the counters are kept; False (with a warning) when they are per process.
+
+    Called once at startup (src/api/lifespan.py). Blocking: run it off the loop.
+    """
+    target = target or limiter
+    uri = rate_limit_storage_uri(get_settings())
+    if not uri.startswith(_SHARED_SCHEMES):
+        logger.warning(
+            "rate_limit_storage_memory: counters are kept per process (%s); "
+            "each API worker counts its own requests",
+            uri.split("://", 1)[0],
+        )
+        return False
+    try:
+        reachable = bool(target._storage.check())
+    except Exception:  # noqa: BLE001 - a check never stops the startup
+        reachable = False
+    if not reachable:
+        logger.warning(
+            "rate_limit_storage_unreachable: Redis does not answer; the limits are "
+            "counted in each process's memory until it does"
+        )
+        return False
+    logger.info("rate_limit_storage_redis")
+    return True
+
+
+limiter = build_limiter()
 
 
 # ─── 429 response shaping ─────────────────────────────────────────

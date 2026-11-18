@@ -21,6 +21,13 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///test.db"
 # invites and exercise open self-service sign-up. Invite/closed-mode tests set
 # the mode explicitly (tests/test_invites.py).
 os.environ["REGISTRATION_MODE"] = "open"
+# Rate-limit counters in memory: a Redis on the machine (or the CI service)
+# must not carry counts from one run, or one test, to the next. No default
+# limit either: it would count the requests of unrelated tests to the same
+# route whenever one leaves the limiter on. tests/test_rate_limit_storage.py
+# covers both with limiters of its own.
+os.environ["RATE_LIMIT_STORAGE_URI"] = "memory://"
+os.environ["RATE_LIMIT_DEFAULT"] = ""
 
 from src.auth.security import create_access_token  # noqa: E402  (env must be set first)
 from src.config import get_settings  # noqa: E402

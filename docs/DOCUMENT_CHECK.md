@@ -14,7 +14,11 @@ AI Act", "artt. 15-17", "considerando 47", "Allegato III", "paragrafo 9 dell'art
 1. **Act.** The act written next to the reference, a name the document defines
    ("(di seguito «Regolamento»)"), or the act named earlier on the same line. Italian acts
    are resolved to their URN:NIR (see "Italian law" below); an act that cannot be resolved
-   without guessing is reported, not checked.
+   without guessing is reported, not checked. An act that amends another never takes the
+   article: "Article 50(2), as amended by Regulation (EU) 2026/1744" is checked in the
+   consolidated AI Act, and so is an article in a paragraph that names only the Omnibus.
+   Acts named side by side ("Regulation (EU) 2016/679, Regulation (EU) 2018/1725 or
+   Directive (EU) 2016/680") leave the article after them without act.
 2. **Provision.** The article, recital or annex must exist in the latest CELLAR consolidated
    text (for Italian law: the article in force today on Normattiva), and so must each cited
    paragraph or comma. A provision missing today but present in an earlier version is

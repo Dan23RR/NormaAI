@@ -28,6 +28,16 @@ same paragraph, marked as inferred; failing that, the only act the document
 names. An act is never guessed: "decreto 81/2008" without its type, or an
 article with two acts to choose from, stays without act. A quote («...», “...”,
 "...") belongs to the nearest reference in its paragraph.
+
+An act that amends another does not take the article. In "Article 50(2), as
+amended by Regulation (EU) 2026/1744", in "Regolamento (UE) 2024/1689, come
+modificato dal Regolamento (UE) 2026/1744, articolo 50" and in a paragraph that
+names only the amending act, the article is the amended act's, read in its
+consolidated text: the words around the act say it amends ("as amended by",
+"inserted by", "amending", "come modificato dal", "che modifica"), or ``AMENDS``
+knows it does. Acts named side by side ("Regulation (EU) 2016/679, Regulation
+(EU) 2018/1725 or Directive (EU) 2016/680") are acts to choose from: an article
+after them takes none of them.
 """
 
 from __future__ import annotations
@@ -58,6 +68,15 @@ ACT_NAMES: dict[str, str] = {
     "32019R2088": "SFDR",
     "32026R1744": "Omnibus digitale sull'IA",
     "32026L0470": "Omnibus I",
+}
+
+# Acts that amend others, with the acts they amend as their titles list them, the
+# act they are about first. An article cited next to one of them and not written
+# as its own ("Article 4 of Regulation (EU) 2026/1744") is an article of an act
+# it amends: the one the document names, failing that the first.
+AMENDS: dict[str, tuple[str, ...]] = {
+    # Digital Omnibus on AI: Articles 1 to 3 amend these acts, Article 4 is its entry into force.
+    "32026R1744": ("32024R1689", "32018R1139", "32023R1230"),
 }
 
 _SECTOR = {
@@ -697,6 +716,9 @@ class Reference:
     raw: str = ""  # the reference with its act, as written: "art. 13 del GDPR"
     line: int = 0  # 1-based line (paragraph) of the document
     context: str = ""  # the text around the reference
+    # The act named next to the reference that amends ``act``, when the article was
+    # given to the act amended: "Article 50(2), as amended by Regulation (EU) 2026/1744".
+    amended_by: Act | None = None
 
 
 def _numbers(text: str) -> list[str]:
@@ -792,6 +814,37 @@ _QUOTE_RE = re.compile(
 _AFTER_WINDOW = 90
 _BEFORE_WINDOW = 40
 
+# Words before an act that say it amends another: "as amended by", "following the
+# amendment by", "(inserted by", "the amending act,", "come modificato dal", "le
+# modifiche introdotte dal", "inserito dal"; the act's name may stand in between:
+# "as amended by the Digital Omnibus on AI (Regulation (EU) 2026/1744".
+_DA = r"(?:da|dal|dalla|dallo|dai|dagli|dalle|dall['’]|con)"
+_AMENDING_BEFORE_RE = re.compile(
+    r"(?:\bamended\s+by|\bamendments?\s+(?:(?:introduced|made)\s+)?by|\b(?:inserted|added)\s+by"
+    r"|\b(?:the|an?|this)\s+amending(?:\s+(?:act|regulation|directive))?"
+    rf"|\bmodificat[oaie]\s+{_DA}|\bmodifich?[ea]\s+(?:introdott|apportat)[ae]\s+{_DA}"
+    rf"|\b(?:inserit|aggiunt)[oaie]\s+{_DA}"
+    r"|\b(?:atto|regolamento|direttiva)\s+(?:modificativ[oa]|di\s+modifica))"
+    r"(?:\s*[^\s.,;:()]+(?:\s+[^\s.,;:()]+){0,6}\s*[(,])?[\s(]*$",
+    re.IGNORECASE,
+)
+# Words right after an act that say it amends another: "Regulation (EU) 2026/1744
+# amending", "(the Digital Omnibus on AI), which amended", "che modifica".
+_AMENDING_AFTER_RE = re.compile(
+    r"\s*(?:\([^()\n]{0,80}\)\s*)?,?\s*(?:(?:which|that)\s+(?:has\s+)?(?:amended|amends)\b"
+    r"|amending\b|amends\b|che\s+(?:ha\s+)?modific|recante\s+modific|di\s+modifica\b)",
+    re.IGNORECASE,
+)
+# What stands between acts named side by side: "Regulation (EU) 2016/679 [GDPR],
+# Regulation (EU) 2018/1725, or Directive (EU) 2016/680", "al GDPR e alla Direttiva".
+_LIST_GAP_RE = re.compile(
+    r"[^\S\n]*(?:[\[\]()][^\S\n]*)*(?:[,;/][^\S\n]*)?"
+    r"(?:(?:and/or|e/o|and|or|e|ed|o|od|nonché|as\s+well\s+as)[^\S\n]+)?"
+    r"(?:(?:the|il|lo|la|i|gli|le|l['’]|(?:a|da|de|ne|su)(?:l|llo|lla|i|gli|lle|ll['’]))"
+    r"[^\S\n]*)?",
+    re.IGNORECASE,
+)
+
 
 def _crosses_sentence(gap: str) -> bool:
     gap = _ABBREVIATIONS.sub(" ", gap)
@@ -812,13 +865,51 @@ def _context(text: str, start: int, end: int, width: int = 160) -> str:
     return ("… " if left > line_start else "") + snippet + (" …" if right < line_end else "")
 
 
+def _listed(text: str, mentions: list[_Mention], stands_for: dict[str, str]) -> set[_Mention]:
+    """The mentions of acts named side by side with another act."""
+    groups: list[list[_Mention]] = []
+    for m in mentions:
+        if groups and _LIST_GAP_RE.fullmatch(text, groups[-1][-1].end, m.start):
+            groups[-1].append(m)
+        else:
+            groups.append([m])
+    return {m for g in groups if len({stands_for[x.act.key] for x in g}) > 1 for m in g}
+
+
 def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> None:
+    first: dict[str, Act] = {}
+    for mention in mentions:
+        first.setdefault(mention.act.key, mention.act)
+
+    def amended(act: Act) -> Act | None:
+        """The act an article cited next to ``act`` belongs to, when ``act`` amends others."""
+        targets = AMENDS.get(act.key, ())
+        named = [t for t in targets if t in first]
+        target = named[0] if len(named) == 1 else next(iter(targets), None)
+        return (first.get(target) or eu_act(target)) if target else None
+
+    stands_for = {key: (amended(act) or act).key for key, act in first.items()}
+    # Acts the words before them say amend another ("as amended by Regulation (EU)
+    # 2026/1744"); with the words after them ("amending") and AMENDS, all acts that amend.
+    worded = {
+        m for m in mentions if _AMENDING_BEFORE_RE.search(text, max(0, m.start - 120), m.start)
+    }
+    amending = worded | {
+        m for m in mentions if m.act.key in AMENDS or _AMENDING_AFTER_RE.match(text, m.end)
+    }
+    listed = _listed(text, mentions, stands_for)
     # An article with no act near it belongs to the only act the document names:
     # one act that the check reads, and no other (with two, nothing is guessed).
-    named = {m.act.key for m in mentions if not m.act.not_read}
-    only_act = next((m.act for m in mentions if not m.act.not_read), None)
-    if len(named) != 1:
-        only_act = None
+    # An act that amends others stands for the act it amends.
+    named = {stands_for[m.act.key] for m in mentions if not m.act.not_read}
+    only_act: Act | None = None
+    only_by: Act | None = None  # the amending act that only_act stands in for
+    if len(named) == 1:
+        key = next(iter(named))
+        only_act = first.get(key)
+        if only_act is None:
+            only_by = next(m.act for m in mentions if stands_for[m.act.key] == key)
+            only_act = amended(only_by)
     for ref in refs:
         line_start, _ = _line_bounds(text, ref.start)
         after = next(
@@ -839,10 +930,26 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
             ),
             None,
         )
-        earlier = next(
-            (m for m in reversed(mentions) if line_start <= m.end <= ref.start),
-            None,
-        )
+        # "Article 50(2), as amended by Regulation (EU) 2026/1744": the words say that
+        # act amends the one the article belongs to.
+        by = next((m.act for m in (after, before) if m in worded), None)
+        after = None if after in worded else after
+        before = None if before in worded else before
+        earlier: _Mention | None = None
+        side_by_side = False
+        for m in reversed(mentions):
+            if m.end > ref.start:
+                continue
+            if m.end < line_start:
+                break
+            if m in amending:
+                by = by or m.act
+            elif m in listed:
+                side_by_side = True
+                break
+            elif by is None or by.key not in AMENDS or m.act.key in AMENDS[by.key]:
+                earlier = m
+                break
         # "Codice privacy, art. 2-ter, e la Direttiva ...": the closer act wins.
         if after and before and ref.start - before.end < after.start - ref.end:
             after = None
@@ -852,8 +959,13 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
             ref.act, ref.raw = before.act, text[before.start : ref.end]
         elif earlier:
             ref.act, ref.act_inferred = earlier.act, True
-        elif only_act:
+        elif by and amended(by):
+            ref.act, ref.act_inferred = amended(by), True
+        elif only_act and not side_by_side and not (by and by.key == only_act.key):
             ref.act, ref.act_inferred = only_act, True
+            by = by or only_by
+        if ref.act_inferred:
+            ref.amended_by = by
         if not ref.raw:
             ref.raw = text[ref.start : ref.end]
         ref.raw = re.sub(r"\s+", " ", ref.raw).strip()

@@ -270,6 +270,32 @@ def _capitalized(label: str) -> str:
     return label[:1].upper() + label[1:]
 
 
+def _inferred_note(ref: Reference, act: Act) -> str:
+    """ "Atto dedotto dal contesto: ...", with the act that amends it when that led there."""
+    by = f", come modificato da {ref.amended_by.label}" if ref.amended_by else ""
+    return f"Atto dedotto dal contesto: {act.label}{by}."
+
+
+def _paragraphs_it_has(paragraphs: tuple[str, ...]) -> str:
+    """ "ha i paragrafi da 1 a 6", or the ones it has when some are missing: "1-4 e 6"."""
+    if not paragraphs:
+        return "non ha paragrafi numerati"
+    numbers = sorted({int(p) for p in paragraphs if p.isdigit()})
+    runs: list[list[int]] = []
+    for n in numbers:
+        if runs and n == runs[-1][-1] + 1:
+            runs[-1].append(n)
+        else:
+            runs.append([n])
+    parts = [f"{r[0]}-{r[-1]}" if len(r) > 1 else str(r[0]) for r in runs]
+    parts += [paragraph_label(p) for p in dict.fromkeys(paragraphs) if not p.isdigit()]
+    if len(parts) == 1:
+        if len(runs) == 1 and len(runs[0]) > 1:
+            return f"ha i paragrafi da {runs[0][0]} a {runs[0][-1]}"
+        return f"ha solo il paragrafo {parts[0]}"
+    return f"ha i paragrafi {', '.join(parts[:-1])} e {parts[-1]}"
+
+
 def _check_provision(
     ref: Reference,
     provision: Provision,
@@ -309,16 +335,11 @@ def _check_provision(
         missing = [p for p in missing if p != "1"]
     if missing:
         finding.status = MISSING
-        have = (
-            f"ha i paragrafi da {article.paragraphs[0]} a {article.paragraphs[-1]}"
-            if article.paragraphs
-            else "non ha paragrafi numerati"
-        )
         word = "Il paragrafo" if len(missing) == 1 else "I paragrafi"
         verb = "non esiste" if len(missing) == 1 else "non esistono"
         finding.messages.append(
             f"{word} {', '.join(missing)} {verb} nel {current.label}: "
-            f"l'{Provision(provision.key).label} {have}."
+            f"l'{Provision(provision.key).label} {_paragraphs_it_has(article.paragraphs)}."
         )
     else:
         finding.messages.append(f"{_capitalized(provision.label)} esiste nel {current.label}.")
@@ -586,7 +607,7 @@ def _check_reference(
             )
     if ref.act_inferred:
         for finding in findings:
-            finding.messages.append(f"Atto dedotto dal contesto: {act.label}.")
+            finding.messages.append(_inferred_note(ref, act))
     return findings
 
 
@@ -1061,7 +1082,7 @@ def _check_italian(
         if reading is not None and reading.act_title:
             finding.messages.append(f"Atto letto su Normattiva: {reading.act_title}.")
         if ref.act_inferred:
-            finding.messages.append(f"Atto dedotto dal contesto: {act.label}.")
+            finding.messages.append(_inferred_note(ref, act))
     return findings
 
 

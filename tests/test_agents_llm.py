@@ -882,6 +882,56 @@ class TestAcallLLM:
         assert llm_circuit._failure_count == 0
         assert _json_retry_outcomes(caplog) == ["error"]
 
+    async def test_a_json_reply_without_the_answer_is_asked_once_more(self, caplog):
+        # 2026-11-19: a Q&A reply parsed to a JSON object with keys of its own
+        # and reached the user as an empty answer with no sources.
+        settings = _make_settings(provider="gemini", api_key="k")
+        own_keys = json.dumps({"risposta": "Sì.", "citazioni": [], "confidenza": 0.8})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=own_keys), MagicMock(content=JSON_REPLY)]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user", required=("answer",))
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.ainvoke.await_count == 2
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    async def test_two_replies_without_the_answer_are_an_error_not_an_empty_answer(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        empty = json.dumps({"answer": "  ", "citations": []})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=empty), MagicMock(content=json.dumps({"risposta": "x"}))]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user", required=("answer",))
+        assert result.get("error")
+        assert result.get("error_code")
+        assert _json_retry_outcomes(caplog) == ["missing_fields"]
+
+    async def test_without_required_fields_a_json_reply_is_kept_as_it_is(self):
+        # Gap analysis, monitor and CoVe replies have keys of their own.
+        settings = _make_settings(provider="gemini", api_key="k")
+        reply = json.dumps({"requirements": [], "summary": "ok"})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content=reply))
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == json.loads(reply)
+        assert fake_llm.ainvoke.await_count == 1
+
     async def test_temperature_propagates_to_get_llm(self):
         settings = _make_settings(provider="gemini", api_key="k")
         fake_llm = MagicMock()

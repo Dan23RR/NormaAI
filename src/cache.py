@@ -65,16 +65,24 @@ def corpus_version() -> str:
     return f"{settings.qdrant_collection}@{date.strip()}"
 
 
-def is_cacheable_result(result: object) -> tuple[bool, str]:
+def is_cacheable_result(result: object, task_type: str | None = None) -> tuple[bool, str]:
     """Decide whether an agent result may be cached.
 
     Returns ``(cacheable, reason)``; ``reason`` names the rule that rejected the
-    result (for logs) or is ``"ok"``.
+    result (for logs) or is ``"ok"``. A Q&A result (``task_type`` "qa") needs a
+    non-blank answer unless it is an abstention: an empty answer is never kept.
     """
     if not isinstance(result, dict):
         return False, "not_a_dict"
     if result.get("error") or result.get("error_code"):
         return False, "error_result"
+    answer = result.get("answer")
+    if (
+        task_type == "qa"
+        and not result.get("abstention_reason")
+        and not (isinstance(answer, str) and answer.strip())
+    ):
+        return False, "empty_answer"
     if result.get("parse_warning") or "raw_response" in result:
         # The LLM output could not be parsed: not a genuine structured answer.
         return False, "unparsed_llm_output"
@@ -243,7 +251,7 @@ class ResponseCache:
                 logger.info("cache_skip: %s reason=cache_ttl_zero", task_type)
                 return False
             # Only genuine answers / corpus-coverage abstentions are cached.
-            cacheable, why = is_cacheable_result(result)
+            cacheable, why = is_cacheable_result(result, task_type)
             if not cacheable:
                 logger.info("cache_skip: %s reason=%s", task_type, why)
                 return False

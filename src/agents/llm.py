@@ -349,9 +349,24 @@ _JSON_RETRY_PROMPT = (
 )
 
 
-def _needs_json_retry(result: dict[str, Any]) -> bool:
-    """Whether parse_json_response found no JSON object (its fallback to the text)."""
-    return isinstance(result, dict) and "parse_warning" in result
+def _missing_fields(result: Any, required: tuple[str, ...]) -> list[str]:
+    """The ``required`` fields that ``result`` lacks or leaves blank."""
+    if not isinstance(result, dict):
+        return list(required)
+    return [k for k in required if not (isinstance(result.get(k), str) and result[k].strip())]
+
+
+def _needs_json_retry(result: dict[str, Any], required: tuple[str, ...] = ()) -> bool:
+    """Whether the reply deserves a second attempt.
+
+    parse_json_response found no JSON object (its fallback to the text), or the
+    JSON object lacks a field the caller needs: on 2026-11-19 a Q&A reply of
+    2,495 tokens parsed to an object without "answer" and reached the user as
+    an empty answer with no sources.
+    """
+    if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
+        return False
+    return "parse_warning" in result or bool(_missing_fields(result, required))
 
 
 def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> list[BaseMessage]:
@@ -364,28 +379,44 @@ def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> l
 
 
 def _after_json_retry(
-    first: dict[str, Any], reply: str | None, error: Exception | None = None
+    first: dict[str, Any],
+    reply: str | None,
+    error: Exception | None = None,
+    required: tuple[str, ...] = (),
 ) -> dict[str, Any]:
-    """The second reply when it is JSON, else the first; logs the outcome."""
+    """The second reply when it is JSON with the required fields, else the first.
+
+    When neither reply has a required field (an empty answer), the result is an
+    error: an empty answer is never served, nor cached, as if it were one.
+    Logs the outcome.
+    """
     second = parse_json_response(reply) if reply is not None else None
     if second is None:
         outcome = "error"
-    elif _needs_json_retry(second):
-        outcome = "prose"
+    elif _needs_json_retry(second, required):
+        outcome = "prose" if "parse_warning" in second else "missing_fields"
     else:
         outcome = "json"
     extra = {"outcome": outcome}
     if error is not None:
         extra["error"] = str(error)
     logger.warning("llm_json_retry", extra=extra)
-    return second if second is not None and outcome == "json" else first
+    chosen = second if second is not None and outcome == "json" else first
+    missing = _missing_fields(chosen, required) if "parse_warning" not in chosen else []
+    if missing:
+        return _make_error_response(f"LLM reply without the field(s) {', '.join(missing)}")
+    return chosen
 
 
 # ─── Synchronous LLM Call (preserved for tests & scripts) ────────
 
 
-def call_llm(system_prompt: str, user_message: str) -> dict:
-    """Call LLM synchronously. Use acall_llm() in async FastAPI paths."""
+def call_llm(system_prompt: str, user_message: str, *, required: tuple[str, ...] = ()) -> dict:
+    """Call LLM synchronously. Use acall_llm() in async FastAPI paths.
+
+    ``required``: fields the JSON reply must carry as non-blank strings (the Q&A
+    needs "answer"); a reply without them gets the second attempt.
+    """
     from src.config import get_settings
 
     settings = get_settings()
@@ -413,15 +444,15 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         record_token_usage(response)
         content = message_text(response)
         result = parse_json_response(content)
-        if _needs_json_retry(result):
+        if _needs_json_retry(result, required):
             try:
                 second_reply = llm.invoke(
                     _json_retry_messages(system_prompt, user_message, content)
                 )
             except Exception as retry_error:
-                return _after_json_retry(result, None, retry_error)
+                return _after_json_retry(result, None, retry_error, required)
             record_token_usage(second_reply)
-            return _after_json_retry(result, message_text(second_reply))
+            return _after_json_retry(result, message_text(second_reply), required=required)
         return result
 
     except Exception as e:
@@ -458,7 +489,11 @@ async def _ainvoke_llm_with_retry(
 
 
 async def acall_llm(
-    system_prompt: str, user_message: str, temperature: float | None = None
+    system_prompt: str,
+    user_message: str,
+    temperature: float | None = None,
+    *,
+    required: tuple[str, ...] = (),
 ) -> dict:
     """Call LLM asynchronously using native .ainvoke().
 
@@ -496,7 +531,7 @@ async def acall_llm(
             )
         llm_circuit.record_success()
         result = parse_json_response(content)
-        if _needs_json_retry(result):
+        if _needs_json_retry(result, required):
             # One call, no backoff retries: at most one more request per answer.
             try:
                 async with get_llm_semaphore():
@@ -504,9 +539,9 @@ async def acall_llm(
                         _json_retry_messages(system_prompt, user_message, content)
                     )
             except Exception as retry_error:
-                return _after_json_retry(result, None, retry_error)
+                return _after_json_retry(result, None, retry_error, required)
             record_token_usage(second_reply)
-            return _after_json_retry(result, message_text(second_reply))
+            return _after_json_retry(result, message_text(second_reply), required=required)
         return result
 
     except NonRetryableLLMError as e:

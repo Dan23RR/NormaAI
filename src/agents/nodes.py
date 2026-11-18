@@ -252,11 +252,13 @@ def answer_language_instruction(language: str | None) -> str:
     if name is None:
         return (
             "Match the language of the user's question. If they ask in Italian, respond "
-            "in Italian. If in English, respond in English."
+            "in Italian. If in English, respond in English. The JSON field names stay "
+            "exactly as the response format gives them."
         )
     return (
         f"Write the answer, the caveats and every explanation in {name}, the language the "
-        f"user chose for the answers, even when the question is written in another language."
+        f"user chose for the answers, even when the question is written in another language. "
+        f"The JSON field names stay exactly as the response format gives them, in English."
     )
 
 
@@ -823,7 +825,7 @@ def qa_bot_node(state: AgentState) -> dict:
     if abstention is not None:
         return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
-    result = _with_relevance(call_llm(system_prompt, user_msg), state)
+    result = _with_relevance(call_llm(system_prompt, user_msg, required=("answer",)), state)
     return _pack_llm_result(result, state, verify_citations=True)
 
 
@@ -854,7 +856,7 @@ async def async_qa_bot_node(state: AgentState) -> dict:
     if abstention is not None:
         return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
-    result = _with_relevance(await acall_llm(system_prompt, user_msg), state)
+    result = _with_relevance(await acall_llm(system_prompt, user_msg, required=("answer",)), state)
     return _pack_llm_result(result, state, verify_citations=True)
 
 

@@ -358,6 +358,20 @@ class TestCacheability:
         )
         assert ok and why == "ok"
 
+    def test_an_empty_qa_answer_is_never_cached(self):
+        # 2026-11-19: an answer without text was cached for an hour.
+        for result in (
+            {"answer": "", "citations": []},
+            {"answer": "   ", "citations": []},
+            {"risposta": "Sì.", "citazioni": []},
+        ):
+            ok, why = is_cacheable_result(result, "qa")
+            assert not ok and why == "empty_answer", result
+
+    def test_other_tasks_have_no_answer_field_and_stay_cacheable(self):
+        ok, why = is_cacheable_result({"requirements": [], "confidence_score": 0.9}, "gap_analysis")
+        assert ok and why == "ok"
+
     def test_corpus_coverage_abstention_is_cacheable(self):
         for reason in CACHEABLE_ABSTENTION_REASONS:
             ok, _ = is_cacheable_result(

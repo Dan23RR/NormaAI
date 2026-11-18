@@ -1968,7 +1968,7 @@
           "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione tiene i dati quando è in funzione; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
           "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, con le funzioni lato server nella regione di Francoforte, compresa la funzione che riceve le richieste del Codex e delle verifiche gratuite. Statistiche di visita senza cookie.",
           "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito oggi: la scelta è una configurazione, e il codice supporta in alternativa Anthropic e OpenRouter.",
-          "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali (consegna del Codex, notifica delle nuove richieste).",
+          "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali: la notifica delle nuove richieste alla casella del gestore e, nell’applicazione, la conferma dell’indirizzo email e il riepilogo degli avvisi. Il sito non scrive all’indirizzo inserito nei moduli: il Codex si scarica dalla pagina.",
           "5": "<strong>Cloudflare, Inc.</strong> (USA): DNS del dominio normaai.org e instradamento della posta in arrivo: i messaggi scritti a info@normaai.org passano dai server di posta di Cloudflare prima di arrivare alla casella di destinazione. Il traffico del sito non passa dal proxy di Cloudflare."
         },
         "p": "Per i fornitori con sede negli Stati Uniti i trasferimenti si basano sulle clausole contrattuali standard previste dai loro accordi sul trattamento dei dati."
@@ -2232,7 +2232,7 @@
       },
       "links": {
         "title": "7. Download del Codex",
-        "p": "Il Codex è un file PDF pubblico del sito: chi lo richiede dal modulo riceve il suo indirizzo, che non è firmato e non scade. Le richieste passano da una funzione serverless sullo stesso dominio, con un campo esca che scarta in silenzio i moduli compilati da programmi automatici. L’API contiene anche un percorso con link firmati HMAC-SHA256 e validi 30 giorni, ma il sito oggi non lo usa."
+        "p": "Il Codex è un file PDF pubblico del sito: chi lo richiede dal modulo lo scarica dalla pagina, da un indirizzo che non è firmato e non scade. Le richieste passano da una funzione serverless sullo stesso dominio, che non scrive mai all’indirizzo inserito nel modulo: avvisa soltanto la casella del gestore. La funzione rifiuta i campi e i valori che i moduli non mandano, accetta al massimo 10 richieste l’ora da uno stesso indirizzo IP in ciascuna delle sue istanze attive e ha un campo esca che scarta in silenzio i moduli compilati da programmi automatici. L’API contiene anche un percorso con link firmati HMAC-SHA256 e validi 30 giorni, ma il sito oggi non lo usa."
       },
       "audit": {
         "title": "8. Registro degli eventi",

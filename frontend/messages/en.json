@@ -1968,7 +1968,7 @@
           "1": "<strong>Hetzner Online GmbH</strong> (Germany): the server planned for the API, the database and the search index. That is where the application keeps its data when it is running; the question and the retrieved passages go instead to the language-model provider (item 3).",
           "2": "<strong>Vercel Inc.</strong> (USA): hosting of the site and the interface, with the server-side functions in the Frankfurt region, including the function that receives the Codex and free-checker requests. Visit statistics without cookies.",
           "3": "<strong>Google LLC</strong> (Gemini API, USA): the language model that generates the answers. It receives the question, the company profile if entered and the retrieved passages of law. It is the default provider today: the choice is a configuration setting, and the code also supports Anthropic and OpenRouter.",
-          "4": "<strong>Resend, Inc.</strong> (USA): sending of transactional emails (Codex delivery, notification of new requests).",
+          "4": "<strong>Resend, Inc.</strong> (USA): sending of transactional emails: the notification of new requests to the operator’s inbox and, in the application, the confirmation of the email address and the digest of alerts. The site does not write to the address entered in its forms: the Codex is downloaded from the page.",
           "5": "<strong>Cloudflare, Inc.</strong> (USA): DNS of the normaai.org domain and routing of incoming mail: messages written to info@normaai.org pass through Cloudflare’s mail servers before reaching the destination mailbox. Site traffic does not go through Cloudflare’s proxy."
         },
         "p": "For providers based in the United States, transfers rely on the standard contractual clauses included in their data processing agreements."
@@ -2232,7 +2232,7 @@
       },
       "links": {
         "title": "7. Codex download",
-        "p": "The Codex is a public PDF file of the site: whoever requests it through the form receives its address, which is neither signed nor expiring. Requests go through a serverless function on the same domain, with a honeypot field that silently discards forms filled in by automated programs. The API also contains a route with HMAC-SHA256 signed links valid for 30 days, but the site does not use it today."
+        "p": "The Codex is a public PDF file of the site: whoever requests it through the form downloads it from the page, from an address that is neither signed nor expiring. Requests go through a serverless function on the same domain, which never writes to the address entered in the form: it only notifies the operator’s inbox. The function refuses fields and values the forms do not send, accepts at most 10 requests an hour from the same IP address in each of its running instances and has a honeypot field that silently discards forms filled in by automated programs. The API also contains a route with HMAC-SHA256 signed links valid for 30 days, but the site does not use it today."
       },
       "audit": {
         "title": "8. Event log",

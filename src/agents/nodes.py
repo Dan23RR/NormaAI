@@ -399,10 +399,12 @@ def _apply_citation_verification(
     Runs after the grounding guard (``grounded`` stays as it is). Each citation
     gets the deterministic verifier's fields (``verified``, ``match``,
     ``level``, ``chunk_id``, ``celex``, ``article``, ``paragraph``, ``lang``,
-    ``consolidated_as_of``, ``url``, ``official_quote``) on a COPY, the answer
-    gets ``verified_citations`` / ``citations_total``, and an answer with
-    citations but none verified is flagged or turned into an abstention
-    according to ``Settings.citation_verification``. Errors are left alone.
+    ``consolidated_as_of``, ``url``, ``official_quote``, and the ``found_*``
+    fields of a quote found in another act, article or paragraph, which is
+    not verified) on a COPY, the answer gets ``verified_citations`` /
+    ``citations_total``, and an answer with citations but none verified is
+    flagged or turned into an abstention according to
+    ``Settings.citation_verification``. Errors are left alone.
     """
     if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
         return result
@@ -413,12 +415,18 @@ def _apply_citation_verification(
     outcome = "ok"
     if unverified_policy_applies(result):
         outcome = "abstained" if mode == POLICY_STRICT else "flagged"
+    found_elsewhere = sum(
+        1
+        for cit in result.get("citations") or []
+        if isinstance(cit, dict) and cit.get("found_elsewhere") is True
+    )
     apply_unverified_policy(result, mode=mode, language=language)
     logger.info(
         "citation_verification",
         extra={
             "verified_citations": result.get("verified_citations"),
             "citations_total": result.get("citations_total"),
+            "found_elsewhere": found_elsewhere,
             "policy": mode,
             "outcome": outcome,
         },

@@ -439,6 +439,13 @@
       "goToSource": "Vai alla fonte {index}",
       "source": "Fonte {index}"
     },
+    "elsewhere": {
+      "act": "Testo trovato in un altro atto: {location}",
+      "article": "Testo trovato in un altro articolo dello stesso atto: {location}",
+      "paragraph": "Testo trovato in un altro paragrafo dello stesso articolo: {location}",
+      "open": "Apri il testo ufficiale",
+      "copy": "testo trovato altrove: {location}"
+    },
     "aiNotice": {
       "base": "Risposta generata da un sistema di IA.",
       "corpus": "Corpus al {date}.",

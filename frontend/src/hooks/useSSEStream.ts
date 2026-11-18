@@ -31,6 +31,14 @@ export interface CitationEvent {
   near_article?: string;
   /** The words that differ between the quote and that wording. */
   differences?: Array<{ quoted: string; official: string }>;
+  /** Not verified: the wording is in the official text, but in another act, article or paragraph. */
+  found_elsewhere?: boolean;
+  found_in?: 'act' | 'article' | 'paragraph';
+  found_celex?: string;
+  found_article?: string;
+  found_paragraph?: string;
+  found_quote?: string;
+  found_url?: string;
   grounded?: boolean;
 }
 

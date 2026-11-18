@@ -195,8 +195,9 @@ describe('verified citations from the deterministic verifier', () => {
     expect(s.url).toContain('CELEX:32024R1689')
   })
 
-  it('names the act where the passage really is when it sits in another act', () => {
-    const elsewhere: ChiediCitation = {
+  it('never shows as verified a passage an older answer found in another act', () => {
+    // Before the backend reported `found_elsewhere`, such a citation came "verified" at level "any".
+    const legacy: ChiediCitation = {
       ...verified,
       framework: 'GDPR',
       reference: 'Art. 13',
@@ -206,10 +207,24 @@ describe('verified citations from the deterministic verifier', () => {
       paragraph: null,
       url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32026R1744',
     }
-    const s = citationToSource(elsewhere, 1, 's', en)
-    expect(s.act).toBe('Regulation (EU) 2026/1744')
-    expect(s.article).toBe('Art. 1')
-    expect(s.status).toBe('verified')
+    const s = citationToSource(legacy, 1, 's', en)
+    expect(s.status).toBe('unverified')
+    expect(s.act).toBe('Regulation (EU) 2016/679 (GDPR)')
+    expect(s.article).toBe('Art. 13')
+    expect(s.quote).toBeUndefined()
+    expect(s.elsewhere).toEqual({
+      where: 'act',
+      location: 'Regulation (EU) 2026/1744, Art. 1',
+      quote: 'siano informate del fatto di stare interagendo con un sistema di IA',
+      url: 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32026R1744',
+    })
+    // ... and the same for another article of the act, at level "framework".
+    const article = citationToSource({ ...verified, reference: 'Art. 52', level: 'framework' }, 1, 's', it_)
+    expect(article.status).toBe('unverified')
+    expect(article.elsewhere?.where).toBe('article')
+    expect(article.elsewhere?.location).toBe('Art. 50, par. 1')
+    // A verified citation of an article in the act cited is not touched.
+    expect(citationToSource({ ...verified, level: 'framework', reference: 'Art. 50' }, 1, 's', it_).status).toBe('verified')
   })
 
   it('keeps the model quote and reference for an unverified citation', () => {
@@ -242,6 +257,77 @@ describe('verified citations from the deterministic verifier', () => {
     const s = citationToSource(c, 1, 's', en)
     expect(s.quote).toBe('It shall apply from 2 August 2026.')
     expect(s.status).toBe('verified')
+  })
+})
+
+describe('a quote found in another act, article or paragraph', () => {
+  // The backend (annotate_citations): not verified, with where the wording really is.
+  const elsewhere: ChiediCitation = {
+    framework: 'GDPR',
+    reference: 'Art. 6',
+    quote_snippet: 'garantiscono che gli output del sistema di IA siano marcati',
+    verified: false,
+    found_elsewhere: true,
+    found_in: 'act',
+    found_celex: '32024R1689',
+    found_article: 'Art. 50',
+    found_paragraph: '2',
+    found_quote: 'garantiscono che gli output del sistema di IA siano marcati',
+    found_url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+  }
+
+  it('is never verified and names the act the answer cites', () => {
+    const s = citationToSource(elsewhere, 1, 's', it_)
+    expect(s.status).toBe('unverified')
+    expect(s.act).toBe('Regolamento (UE) 2016/679 (GDPR)')
+    expect(s.article).toBe('Art. 6')
+    expect(s.celex).toBe('32016R0679')
+    expect(s.quote).toBeUndefined()
+  })
+
+  it('says where the text really is', () => {
+    expect(citationToSource(elsewhere, 1, 's', it_).elsewhere).toEqual({
+      where: 'act',
+      location: 'Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2',
+      quote: 'garantiscono che gli output del sistema di IA siano marcati',
+      url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+    })
+    const article = citationToSource({ ...elsewhere, found_in: 'article', found_paragraph: null }, 1, 's', en)
+    expect(article.elsewhere?.location).toBe('Art. 50')
+    expect(it_.t('chiedi.elsewhere.act', { location: 'X' })).toBe('Testo trovato in un altro atto: X')
+    expect(en.t('chiedi.elsewhere.paragraph', { location: 'X' })).toBe('Text found in another paragraph of the same article: X')
+  })
+
+  it('reads the place from a stream event that is not verified', () => {
+    const event = {
+      type: 'citation' as const,
+      framework: 'GDPR',
+      celex: '32016R0679',
+      article: 'Art. 6',
+      title: 'GDPR',
+      quote: elsewhere.quote_snippet,
+      verified: false,
+      found_elsewhere: true,
+      found_in: 'act' as const,
+      found_celex: '32024R1689',
+      found_article: 'Art. 50',
+      found_paragraph: '2',
+      found_quote: elsewhere.found_quote as string,
+      found_url: elsewhere.found_url as string,
+    }
+    const c = sseCitationToChiedi(event)
+    expect(c.found_elsewhere).toBe(true)
+    expect(c.found_celex).toBe('32024R1689')
+    expect(citationToSource(c, 1, 's', it_).elsewhere?.location).toBe('Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2')
+    expect(sseCitationToChiedi({ ...event, verified: true }).found_elsewhere).toBeUndefined()
+  })
+
+  it('copies the quote with where it was found', () => {
+    const text = buildCopyText({ answer: 'x [1]', sources: citationsToSources([elsewhere], 'm', it_) }, it_)
+    expect(text).toContain(
+      '1. Regolamento (UE) 2016/679 (GDPR), Art. 6: «garantiscono che gli output del sistema di IA siano marcati» ' +
+        '(da verificare; testo trovato altrove: Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2)',
+    )
   })
 })
 

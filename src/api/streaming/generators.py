@@ -36,12 +36,14 @@ from src.agents.citation_verifier import (
     apply_unverified_policy,
     citation_counters,
     policy_mode,
+    policy_requires_review,
     unverified_policy_applies,
 )
 from src.api.errors import ResultFailure, classify_result
 from src.api.streaming.sse import (
     CitationDifference,
     CitationEvent,
+    CitationFoundIn,
     CitationLevel,
     CitationMatch,
     DoneEvent,
@@ -102,6 +104,7 @@ def _primary_celex_for_framework(framework: str) -> str:
 
 _MATCH_VALUES: frozenset[str] = frozenset(get_args(CitationMatch))
 _LEVEL_VALUES: frozenset[str] = frozenset(get_args(CitationLevel))
+_FOUND_IN_VALUES: frozenset[str] = frozenset(get_args(CitationFoundIn))
 
 
 def _is_match(value: str) -> TypeGuard[CitationMatch]:
@@ -110,6 +113,10 @@ def _is_match(value: str) -> TypeGuard[CitationMatch]:
 
 def _is_level(value: str) -> TypeGuard[CitationLevel]:
     return value in _LEVEL_VALUES
+
+
+def _is_found_in(value: str) -> TypeGuard[CitationFoundIn]:
+    return value in _FOUND_IN_VALUES
 
 
 def _text_or_none(value: Any) -> str | None:
@@ -148,7 +155,8 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
     (``official_quote``), chunk, language and server-built URL. Otherwise the
     event carries the model's reference and quote, the link falls back to the
     primary act of the cited framework, and a passage that almost matched is
-    reported with the words that differ.
+    reported with the words that differ; a quote whose wording is in another
+    act, article or paragraph is reported with where it is (``found_*``).
     """
     framework = str(cit.get("framework") or "")
     verified = cit.get("verified")
@@ -168,6 +176,8 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
     )
     grounded = cit.get("grounded")
     match, level = str(cit.get("match") or ""), str(cit.get("level") or "")
+    elsewhere = not official and cit.get("found_elsewhere") is True
+    found_in = str(cit.get("found_in") or "")
     return CitationEvent(
         framework=framework or None,
         celex=celex,
@@ -188,6 +198,13 @@ def _citation_event(cit: dict[str, Any], language: str) -> CitationEvent:
         near_quote=None if official else _text_or_none(cit.get("near_quote")),
         near_article=None if official else _text_or_none(cit.get("near_article")),
         differences=None if official else _differences(cit.get("differences")),
+        found_elsewhere=True if elsewhere else None,
+        found_in=found_in if elsewhere and _is_found_in(found_in) else None,
+        found_celex=_text_or_none(cit.get("found_celex")) if elsewhere else None,
+        found_article=_text_or_none(cit.get("found_article")) if elsewhere else None,
+        found_paragraph=_text_or_none(cit.get("found_paragraph")) if elsewhere else None,
+        found_quote=_text_or_none(cit.get("found_quote")) if elsewhere else None,
+        found_url=_text_or_none(cit.get("found_url")) if elsewhere else None,
         grounded=grounded if isinstance(grounded, bool) else None,
     )
 
@@ -266,12 +283,15 @@ def _done_event(
 def _cove_done_event(done: DoneEvent, result: dict[str, Any], *, with_citations: bool) -> DoneEvent:
     """The CoVe orchestrator's own ``done``, completed with the answer's fields.
 
-    CoVe revises the text, not the citations: when none of them was verified
-    its score and review verdict cannot clear the unverified-citation flag.
+    CoVe revises the text, not the citations: its score and review verdict
+    cannot clear the review flag of the citation policy (all citations
+    unverified, or one found in another act, article or paragraph), nor lift
+    the confidence cap of an answer with no verified citation.
     """
     update = _result_fields(result, with_citations=with_citations)
-    if with_citations and unverified_policy_applies(result):
+    if with_citations and policy_requires_review(result):
         update["requires_review"] = True
+    if with_citations and unverified_policy_applies(result):
         update["confidence_score"] = min(done.confidence_score, UNVERIFIED_CONFIDENCE_CAP)
     return done.model_copy(update=update)
 

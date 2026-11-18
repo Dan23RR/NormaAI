@@ -334,4 +334,55 @@ describe('ChiediPage (demo mode)', () => {
       'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
     )
   })
+
+  it('shows a quote found in another act as not verified, with where it really is', async () => {
+    const quote = 'garantiscono che gli output del sistema di IA siano marcati'
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Gli output vanno marcati [GDPR, Art. 6].',
+        citations: [
+          {
+            framework: 'GDPR',
+            reference: 'Art. 6',
+            quote_snippet: quote,
+            verified: false,
+            found_elsewhere: true,
+            found_in: 'act',
+            found_celex: '32024R1689',
+            found_article: 'Art. 50',
+            found_paragraph: '2',
+            found_quote: quote,
+            found_url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+          },
+        ],
+        confidence_score: 0.6,
+        requires_expert_review: true,
+        related_frameworks: [],
+        caveats: [
+          'La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro atto, Regolamento (UE) 2024/1689, Art. 50, par. 2.',
+        ],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Gli output di un sistema di IA vanno marcati?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/Gli output vanno marcati/)
+
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2016/679 (GDPR)')).toBeInTheDocument()
+    expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
+    expect(within(margin).queryByText('Verificata')).not.toBeInTheDocument()
+    expect(
+      within(margin).getByText('Testo trovato in un altro atto: Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2'),
+    ).toBeInTheDocument()
+    expect(within(margin).getByRole('link', { name: /Apri il testo ufficiale/ })).toHaveAttribute(
+      'href',
+      'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+    )
+    // The caveat names the mismatch under the answer too.
+    expect(screen.getByText(/La citazione \[GDPR, Art. 6\] non è verificata/)).toBeInTheDocument()
+  })
 })

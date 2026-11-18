@@ -272,8 +272,28 @@ modified, and anything the model put in these keys is overwritten):
 | `official_quote` | the exact span of the official text that matched | `null` |
 | `amending_celex`, `amending_article` | only for an article verified in the text of the act that amends it (below): that act and article; `url` is its page | `null` |
 | `near_quote`, `near_article`, `differences` | `null` | set when a passage almost matched: its official wording, where it is, the words that differ |
+| `found_elsewhere` | `false` | `true` when the wording is in the official text, but not where the citation points (below) |
+| `found_in`, `found_celex`, `found_article`, `found_paragraph`, `found_quote`, `found_url` | `null` | for such a citation: `"act"`, `"article"` or `"paragraph"`, where the wording is and its EUR-Lex page |
 
 The answer carries `verified_citations` and `citations_total`.
+
+**A quote found elsewhere is not a verified citation** (2026-11-18, Q&A only).
+"[GDPR, Art. 6]" with the wording of Article 50 of the AI Act used to come out
+`verified` with `level: "any"`, while the answer kept saying "GDPR, Art. 6".
+`annotate_citations` now turns into an unverified citation a quote found in
+another act (level `"any"`, or another act of the framework cited), in another
+article of the act cited (level `"framework"`, when the citation names an
+article) or in another paragraph of the article cited (when the citation names
+a paragraph, "Art. 50(2)", and the passage is in another known one; an unknown
+paragraph is accepted, and the cited paragraph is searched first). It counts as
+unverified in `verified_citations` and in the policy, its verification fields
+stay `null`, and the `found_*` fields keep where the wording really is. The
+answer gets `requires_expert_review = true` and a caveat per such citation
+that names it: *"La citazione [GDPR, Art. 6] non è verificata: il testo citato
+si trova in un altro atto, Regolamento (UE) 2024/1689, Art. 50, par. 2."*
+(English twin for an English request). `verify_citation` itself keeps its
+levels: the document check reads `level` and reports "Citazione in un altro
+articolo" on its own.
 
 **Articles quoted by amending acts** (decided 2026-10-27,
 `src/agents/quoted_articles.py`, run by `retrieve_node` on the chunks it keeps).
@@ -298,8 +318,9 @@ such a passage with the amending act's own article and records the quoted one
 verified: `flag` serves it with `requires_expert_review = true`, confidence
 capped at 0.6 and the caveat *"Nessuno dei passaggi citati è stato ritrovato
 testualmente nei testi del corpus: verifica le fonti prima di usarla."* (its
-English twin when the request language is English); such an answer may be
-cached. `strict` replaces it with an abstention
+English twin when the request language is English; when some quote was found
+elsewhere, *"... nella disposizione che la risposta indica ..."*, since it was
+found); such an answer may be cached. `strict` replaces it with an abstention
 (`abstention_reason = "unverified_citations"`, citations emptied, counters
 kept), which is never cached and skips CoVe. The policy is idempotent and is
 re-applied where an answer is delivered (`POST /qa`, fresh and cached; the SSE

@@ -727,6 +727,72 @@ class TestQaCitationVerification:
             "grounded": False,
         }
 
+    def test_a_quote_found_elsewhere_is_streamed_unverified_with_its_place(self):
+        from src.api.streaming.generators import _citation_event
+        from src.api.streaming.sse import format_sse
+
+        quote = "garantiscono che gli output del sistema di IA siano marcati"
+        url = "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+        elsewhere = {
+            **_unverified_citation(),
+            "framework": "GDPR",
+            "reference": "Art. 6",
+            "quote_snippet": quote,
+            "found_elsewhere": True,
+            "found_in": "act",
+            "found_celex": "32024R1689",
+            "found_article": "Art. 50",
+            "found_paragraph": "2",
+            "found_quote": quote,
+            "found_url": url,
+        }
+        wire = json.loads(format_sse(_citation_event(elsewhere, "it"))[6:])
+        assert wire["verified"] is False
+        assert "match" not in wire and "level" not in wire
+        # The source is the act the answer cites; where the wording is travels apart.
+        assert (wire["celex"], wire["article"]) == ("32016R0679", "Art. 6")
+        assert {k: v for k, v in wire.items() if k.startswith("found_")} == {
+            "found_elsewhere": True,
+            "found_in": "act",
+            "found_celex": "32024R1689",
+            "found_article": "Art. 50",
+            "found_paragraph": "2",
+            "found_quote": quote,
+            "found_url": url,
+        }
+        odd = _citation_event({**elsewhere, "found_in": "somewhere"}, "it")
+        assert odd.found_elsewhere is True and odd.found_in is None
+        verified = _citation_event({**_verified_citation(), "found_elsewhere": True}, "it")
+        assert verified.found_elsewhere is None and verified.found_celex is None
+
+    async def test_cove_cannot_clear_the_review_of_a_quote_found_elsewhere(self):
+        cove_done = DoneEvent(
+            total_tokens=3, confidence_score=0.97, requires_review=False, cove_applied=True
+        )
+        cove_patch, _cls = _patch_cove([cove_done])
+        elsewhere = {
+            **_unverified_citation(),
+            "found_elsewhere": True,
+            "found_in": "article",
+            "found_article": "Art. 29a",
+        }
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation(), elsewhere],
+            "verified_citations": 1,
+            "citations_total": 2,
+            "confidence_score": 0.7,
+        }
+        with cove_patch:
+            events, _ = await self._stream(result, enable_cove=True)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.requires_review is True
+        assert done.confidence_score == pytest.approx(0.97)  # one citation is verified
+        assert done.caveats == [
+            "La citazione [CSRD, Art. 19a(1)] non è verificata: il testo citato si trova in un "
+            "altro articolo dello stesso atto, Art. 29a."
+        ]
+
     def test_verified_passage_without_celex_gets_no_guessed_link(self):
         # Found in a chunk with no CELEX (e.g. an uploaded document): the event
         # must not borrow the cited framework's primary act as its source.

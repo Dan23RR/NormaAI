@@ -15,12 +15,18 @@ import pytest
 
 from src.agents.citation_verifier import (
     CITATION_FIELDS,
+    ELSEWHERE_FIELDS,
     UNVERIFIED_ABSTENTION_EN,
     UNVERIFIED_ABSTENTION_IT,
     UNVERIFIED_ABSTENTION_REASON,
     UNVERIFIED_CAVEAT_EN,
     UNVERIFIED_CAVEAT_IT,
+    UNVERIFIED_ELSEWHERE_ABSTENTION_EN,
+    UNVERIFIED_ELSEWHERE_ABSTENTION_IT,
+    UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+    UNVERIFIED_ELSEWHERE_CAVEAT_IT,
     VerificationResult,
+    act_name,
     annotate_citations,
     apply_unverified_policy,
     article_label,
@@ -31,7 +37,9 @@ from src.agents.citation_verifier import (
     normalize,
     normalize_framework,
     parse_article,
+    parse_paragraph,
     policy_mode,
+    policy_requires_review,
     same_article,
     unverified_policy_applies,
     verify_citation,
@@ -1203,6 +1211,142 @@ class TestAnnotateCitations:
         out = annotate_citations({"citations": [_cite("I fornitori garantiscono che")]}, None)
         assert out["citations"][0]["verified"] is False
         assert (out["verified_citations"], out["citations_total"]) == (0, 1)
+
+
+# ─── A quote found elsewhere (Chiedi) ────────────────────────────────
+
+MARCATI = "garantiscono che gli output del sistema di IA siano marcati"
+
+
+def _annotated(citation, chunks=None):
+    return annotate_citations({"answer": "x", "citations": [citation]}, chunks or _corpus())
+
+
+class TestFoundElsewhere:
+    """B3.2: a quote from another act, article or paragraph is not a verified citation."""
+
+    def test_verify_citation_keeps_its_levels_for_the_document_check(self):
+        # src/document_check reads level "article" itself: the levels do not change.
+        out = verify_citation(_cite(MARCATI, framework="GDPR", reference="Art. 6"), _corpus())
+        assert out.verified and out.level == "any"
+
+    def test_another_act(self):
+        out = _annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6"))
+        cit = out["citations"][0]
+        assert cit["verified"] is False
+        assert all(cit[f] is None for f in CITATION_FIELDS if f != "verified")
+        assert cit["found_elsewhere"] is True and cit["found_in"] == "act"
+        assert (cit["found_celex"], cit["found_article"], cit["found_paragraph"]) == (
+            "32024R1689",
+            "Art. 50",
+            "2",
+        )
+        assert cit["found_quote"] == MARCATI
+        assert cit["found_url"] == (
+            "https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689"
+        )
+        assert (out["verified_citations"], out["citations_total"]) == (0, 1)
+
+    def test_another_article_of_the_act(self):
+        cit = _annotated(_cite(MARCATI, reference="Art. 52"))["citations"][0]
+        assert cit["verified"] is False
+        assert cit["found_in"] == "article" and cit["found_article"] == "Art. 50"
+
+    def test_another_known_paragraph_of_the_article(self):
+        cit = _annotated(_cite(MARCATI, reference="Art. 50(1)"))["citations"][0]
+        assert cit["verified"] is False
+        assert (cit["found_in"], cit["found_paragraph"]) == ("paragraph", "2")
+        right = _annotated(_cite(MARCATI, reference="Art. 50(2)"))["citations"][0]
+        assert right["verified"] is True and right["found_elsewhere"] is False
+        assert all(right[f] is None for f in ELSEWHERE_FIELDS if f != "found_elsewhere")
+
+    def test_an_unknown_paragraph_is_accepted(self):
+        chunk = _chunk("Il fornitore conserva la documentazione tecnica per dieci anni.")
+        cit = _annotated(
+            _cite("Il fornitore conserva la documentazione tecnica", reference="Art. 50(4)"),
+            [chunk],
+        )["citations"][0]
+        assert cit["verified"] is True and cit["found_elsewhere"] is False
+        # A chunk that covers paragraphs 3-4 holds paragraph 4.
+        chunk = _chunk("Il fornitore conserva la documentazione tecnica.", paragraph="3-4")
+        cit = _annotated(
+            _cite("Il fornitore conserva la documentazione tecnica", reference="Art. 50(4)"),
+            [chunk],
+        )["citations"][0]
+        assert cit["verified"] is True
+
+    def test_the_cited_paragraph_is_searched_first(self):
+        sentence = "Il fornitore conserva la documentazione tecnica per dieci anni."
+        chunk = _chunk(f"Articolo 18\n1. {sentence}\n2. {sentence}", article="Art. 18")
+        out = verify_citation(_cite(sentence, reference="Art. 18(2)"), [chunk])
+        assert out.verified and out.paragraph == "2"
+        cit = _annotated(_cite(sentence, reference="Art. 18(2)"), [chunk])["citations"][0]
+        assert cit["verified"] is True
+
+    def test_a_framework_cited_without_an_article_is_not_contradicted(self):
+        cit = _annotated(_cite(MARCATI, reference=""))["citations"][0]
+        assert cit["verified"] is True and cit["level"] == "framework"
+
+    def test_the_policy_names_the_mismatch_and_flags_the_answer(self):
+        result = {
+            **_annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6")),
+            "confidence_score": 0.9,
+            "caveats": ["Nota del modello."],
+        }
+        out = apply_unverified_policy(result, mode="flag", language="it")
+        assert out["requires_expert_review"] is True and out["confidence_score"] == 0.6
+        assert out["caveats"] == [
+            "Nota del modello.",
+            "La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro "
+            "atto, Regolamento (UE) 2024/1689, Art. 50, par. 2.",
+            UNVERIFIED_ELSEWHERE_CAVEAT_IT,
+        ]
+        again = apply_unverified_policy(json.loads(json.dumps(out)), mode="flag", language="en")
+        assert again["caveats"] == [
+            "Nota del modello.",
+            "The citation [GDPR, Art. 6] is not verified: the quoted text is in another act, "
+            "Regulation (EU) 2024/1689, Art. 50, para. 2.",
+            UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+        ]
+        assert apply_unverified_policy(json.loads(json.dumps(again)), language="en") == again
+
+    def test_a_verified_citation_next_to_one_found_elsewhere(self):
+        citations = [_cite(MARCATI, reference="Art. 50(2)"), _cite(MARCATI, reference="Art. 52")]
+        result = annotate_citations(
+            {"answer": "x", "citations": citations, "confidence_score": 0.9}, _corpus()
+        )
+        assert (result["verified_citations"], result["citations_total"]) == (1, 2)
+        out = apply_unverified_policy(result, language="it")
+        assert out["requires_expert_review"] is True
+        assert out["confidence_score"] == 0.9  # one citation is verified: no cap
+        assert out["caveats"] == [
+            "La citazione [AI_ACT, Art. 52] non è verificata: il testo citato si trova in un "
+            "altro articolo dello stesso atto, Art. 50, par. 2."
+        ]
+        assert policy_requires_review(out) is True
+        assert unverified_policy_applies(out) is False
+
+    def test_strict_mode_abstains_when_every_citation_is_elsewhere(self):
+        result = _annotated(_cite(MARCATI, framework="GDPR", reference="Art. 6"))
+        out = apply_unverified_policy(result, mode="strict", language="it")
+        assert out["abstention_reason"] == "unverified_citations"
+        assert out["answer"] == UNVERIFIED_ELSEWHERE_ABSTENTION_IT
+        assert out["citations"] == [] and out["caveats"] == []
+        english = apply_unverified_policy(json.loads(json.dumps(out)), mode="strict", language="en")
+        assert english["answer"] == UNVERIFIED_ELSEWHERE_ABSTENTION_EN
+
+    def test_act_names_and_paragraphs(self):
+        assert act_name("32024R1689") == "Regolamento (UE) 2024/1689"
+        assert act_name("32026R1744", english=True) == "Regulation (EU) 2026/1744"
+        assert act_name("32013L0034") == "Direttiva 2013/34/UE"
+        assert act_name("32013R0575") == "CELEX 32013R0575"
+        assert act_name(None) is None
+        assert parse_paragraph("Art. 50(2)") == "2"
+        assert parse_paragraph("art. 50, par. 2") == "2"
+        assert parse_paragraph("articolo 12-bis, comma 2") == "2"
+        assert parse_paragraph("Art. 6(1)(f)") == "1"
+        assert parse_paragraph("Art. 50") is None
+        assert parse_paragraph("Recital 12") is None
 
 
 # ─── Policy ──────────────────────────────────────────────────────────

@@ -2,10 +2,44 @@
 
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ExternalLink } from 'lucide-react'
 import { SourceRow } from '@/components/ui/LawQuote'
-import type { ChiediSource, NearMatch } from '@/lib/chiedi/sources'
+import type { ChiediSource, Elsewhere, NearMatch } from '@/lib/chiedi/sources'
 import { changedSpan } from '@/lib/word-diff'
+
+/**
+ * Under a source whose quote is in the official text, but not where the
+ * citation points: where it really is, its wording there and a link to it.
+ */
+export function ElsewhereNote({ elsewhere }: { elsewhere: Elsewhere }) {
+  const t = useTranslations('chiedi.elsewhere')
+  return (
+    <div className="pb-2 pl-10 pr-2">
+      <div className="border-l-2 border-warn/60 pl-3">
+        <p className="flex items-start gap-1 text-caption font-medium text-warn">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="break-words">{t(elsewhere.where, { location: elsewhere.location })}</span>
+        </p>
+        {elsewhere.quote && (
+          <p className="mt-1 break-words font-serif text-small leading-relaxed text-ink">
+            <mark>{elsewhere.quote}</mark>
+          </p>
+        )}
+        {elsewhere.url && (
+          <a
+            href={elsewhere.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex items-center gap-1 text-caption text-union hover:underline"
+          >
+            {t('open')}
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
 
 /**
  * Under a source whose quote is not in the official text as written: that
@@ -75,6 +109,7 @@ export function SourcesList({
         <li key={s.id}>
           <SourceRow source={s} active={activeIndex === s.index} onSelect={onSelect ? () => onSelect(s.index) : undefined} />
           {s.near && <NearMatchNote near={s.near} />}
+          {s.elsewhere && <ElsewhereNote elsewhere={s.elsewhere} />}
         </li>
       ))}
     </ol>

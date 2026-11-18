@@ -20,11 +20,14 @@ export function buildCopyText(
     for (const s of opts.sources) {
       let line = `${s.index}. ${s.act}`
       if (s.article) line += `, ${s.article}`
-      // A quote that differs from the official text travels with the official wording next to it.
-      const quoted = s.quote || s.near?.quoted
+      // A quote that differs from the official text travels with the official wording next to it;
+      // a quote found elsewhere, with the place where it is.
+      const quoted = s.quote || s.near?.quoted || s.elsewhere?.quote
       if (quoted) line += `: «${quoted}»`
       const status = t(`chiedi.copy.status.${s.status}`)
-      line += s.near ? ` (${status}; ${t('chiedi.copy.near', { official: s.near.official })})` : ` (${status})`
+      if (s.near) line += ` (${status}; ${t('chiedi.copy.near', { official: s.near.official })})`
+      else if (s.elsewhere) line += ` (${status}; ${t('chiedi.elsewhere.copy', { location: s.elsewhere.location })})`
+      else line += ` (${status})`
       if (s.url) line += ` ${s.url}`
       lines.push(line)
     }

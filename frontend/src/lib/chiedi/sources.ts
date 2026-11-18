@@ -20,9 +20,28 @@ export interface NearMatch {
   differences: CitationDifference[]
 }
 
-/** A source of the Chiedi margin: the shared `Source`, plus the near match of an unverified quote. */
+/**
+ * A quote found word for word in the official text, but not where the citation
+ * points: in another act, in another article of the act cited or in another
+ * paragraph of the article cited. Never a verified source.
+ */
+export interface Elsewhere {
+  where: 'act' | 'article' | 'paragraph'
+  /** Where the wording is, e.g. "Regolamento (UE) 2024/1689 (AI Act), Art. 50". */
+  location: string
+  /** The official wording found there. */
+  quote?: string
+  /** EUR-Lex link to the act where it is. */
+  url?: string
+}
+
+/**
+ * A source of the Chiedi margin: the shared `Source`, plus the near match of an
+ * unverified quote or the place where a quote found elsewhere really is.
+ */
 export interface ChiediSource extends Source {
   near?: NearMatch
+  elsewhere?: Elsewhere
 }
 
 /**
@@ -148,11 +167,78 @@ export function actOfCelex(celex: string, t: Translate): string {
   return key ? actLabel(key, undefined, t) : actNameFromCelex(celex, t)
 }
 
+interface FoundElsewhere {
+  where: Elsewhere['where']
+  celex?: string | null
+  article?: string | null
+  paragraph?: string | null
+  quote?: string | null
+  url?: string | null
+}
+
+const FOUND_IN: ReadonlyArray<Elsewhere['where']> = ['act', 'article', 'paragraph']
+
+/** The number an article reference names, with its letter: "Art. 19a(1)" -> "19a". */
+function articleNumber(ref: string | null | undefined): string {
+  const m = /(\d{1,4})\s*([a-z])?(?![a-z])/i.exec(ref ?? '')
+  return m ? `${m[1]}${(m[2] ?? '').toLowerCase()}` : ''
+}
+
+/**
+ * Where the wording of a citation really is, when that is not where the citation
+ * points: the verifier's `found_*` fields. An answer kept from before the backend
+ * reported them carries the old form, a passage "verified" in another act
+ * (`level: 'any'`) or in another article of the act (`level: 'framework'`):
+ * it is read the same way.
+ */
+function foundElsewhere(c: ChiediCitation): FoundElsewhere | undefined {
+  if (c.found_elsewhere === true) {
+    const where = c.found_in && FOUND_IN.includes(c.found_in) ? c.found_in : 'act'
+    return {
+      where,
+      celex: c.found_celex,
+      article: c.found_article,
+      paragraph: c.found_paragraph,
+      quote: c.found_quote,
+      url: c.found_url,
+    }
+  }
+  if (c.verified !== true) return undefined
+  const legacy = { celex: c.celex, article: c.article, paragraph: c.paragraph, quote: c.official_quote, url: c.url }
+  if (c.level === 'any') return { where: 'act', ...legacy }
+  if (c.level === 'framework') {
+    const cited = articleNumber(c.reference)
+    const found = articleNumber(c.article)
+    if (cited && found && cited !== found) return { where: 'article', ...legacy }
+  }
+  return undefined
+}
+
+/** The place where a quote found elsewhere really is, as the margin shows it. */
+export function elsewhereOf(c: ChiediCitation, ctx: TextContext): Elsewhere | undefined {
+  const found = foundElsewhere(c)
+  if (!found) return undefined
+  const celex = isCelex(found.celex) ? found.celex.trim() : undefined
+  const article = (found.article ?? '').trim()
+  const paragraph = String(found.paragraph ?? '').trim()
+  const place = article && paragraph ? `${article}, ${ctx.t('ui.paragraphShort')} ${paragraph}` : article
+  const parts = found.where === 'act' && celex ? [actOfCelex(celex, ctx.t)] : []
+  if (place) parts.push(place)
+  const quote = (found.quote ?? '').trim()
+  return {
+    where: found.where,
+    location: parts.join(', ') || ctx.t('ui.source'),
+    quote: quote || undefined,
+    url: isUsefulUrl(found.url) ? found.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined,
+  }
+}
+
 /** Resolve the framework key of a citation, falling back to its CELEX. */
 export function frameworkOf(c: ChiediCitation): string {
-  // A verified passage may sit in another act than the one cited (level "any"):
-  // the verifier's CELEX is where it really is, so it wins over the model.
-  if (c.verified === true && isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) {
+  // The backend verifies a citation only in the act it cites, so a verified
+  // CELEX names that act and wins over the model's label. A quote found in
+  // another act keeps the label the answer gives it.
+  if (c.verified === true && !foundElsewhere(c) && isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) {
     return FRAMEWORK_BY_CELEX[c.celex.trim()]
   }
   const fromField = normalizeFramework(c.framework)
@@ -199,14 +285,19 @@ export function nearMatchOf(c: ChiediCitation): NearMatch | undefined {
  */
 export function citationToSource(c: ChiediCitation, index: number, idPrefix: string, ctx: TextContext): ChiediSource {
   const key = frameworkOf(c)
-  const verified = c.verified === true
-  const ownCelex = isCelex(c.celex) ? c.celex.trim() : undefined
+  const elsewhere = elsewhereOf(c, ctx)
+  // Found in another act, article or paragraph: never verified, whatever the flag says.
+  const verified = c.verified === true && !elsewhere
+  // The CELEX and link of a quote found elsewhere are those of the place it was found:
+  // they go with `elsewhere`, and the source names the act the answer cites.
+  const ownCelex = !elsewhere && isCelex(c.celex) ? c.celex.trim() : undefined
   const celex = ownCelex ?? CELEX_BY_FRAMEWORK[key]
-  const url = isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
+  const url = !elsewhere && isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
   const near = nearMatchOf(c)
   // Verified: show the official wording, never the model's paraphrase. A quote known to
-  // differ from the official text is not shown as the passage of law: it goes with `near`.
-  const quote = near ? '' : ((verified && c.official_quote) || c.quote_snippet || '').trim()
+  // differ from the official text is not shown as the passage of law: it goes with `near`,
+  // and the wording of a quote found elsewhere goes with `elsewhere`.
+  const quote = near || elsewhere ? '' : ((verified && c.official_quote) || c.quote_snippet || '').trim()
   const baseArticle = ((verified && c.article) || c.reference || c.article || '').trim()
   const paragraph = verified && c.paragraph ? String(c.paragraph).trim() : ''
   const article =
@@ -231,6 +322,7 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
     origin: originOf(url),
     note,
     near,
+    elsewhere,
   }
 }
 
@@ -274,5 +366,16 @@ export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
     near_quote: !verified && typeof ev.near_quote === 'string' && ev.near_quote.trim() ? ev.near_quote.trim() : undefined,
     near_article: !verified && typeof ev.near_article === 'string' && ev.near_article.trim() ? ev.near_article.trim() : undefined,
     differences: !verified && Array.isArray(ev.differences) ? asDifferences(ev.differences) : undefined,
+    ...(!verified && ev.found_elsewhere === true
+      ? {
+          found_elsewhere: true,
+          found_in: ev.found_in,
+          found_celex: isCelex(ev.found_celex) ? ev.found_celex.trim() : undefined,
+          found_article: ev.found_article,
+          found_paragraph: ev.found_paragraph,
+          found_quote: ev.found_quote,
+          found_url: isUsefulUrl(ev.found_url) ? ev.found_url : undefined,
+        }
+      : {}),
   }
 }

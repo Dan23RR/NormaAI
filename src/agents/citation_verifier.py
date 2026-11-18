@@ -62,10 +62,32 @@ A literal quote can still leave out context that changes its meaning (the
 skips): the interface shows the official passage so the reader sees it in
 place.
 
-``annotate_citations`` writes the result on COPIES of the citations and adds
-the ``verified_citations`` / ``citations_total`` counters;
-``apply_unverified_policy`` decides what happens to an answer whose citations
-were all left unverified (``flag`` or ``strict``, see ``src.config``).
+When the citation names a paragraph ("Art. 50(2)"), the article level looks
+in that paragraph first; ``paragraph`` reports where the quote starts.
+``verify_citation`` keeps reporting a quote found at the "framework" or "any"
+level, or in another paragraph, as verified: the document check
+(src/document_check) reads ``level`` and tells "Citazione in un altro
+articolo" itself.
+
+``annotate_citations`` (the Q&A path) writes the result on COPIES of the
+citations and adds the ``verified_citations`` / ``citations_total`` counters.
+There a quote found word for word but not where its citation points is NOT a
+verified citation: in another act (level "any", or another act of the cited
+framework), in another article of the act cited, when the citation names an
+article, or in another known paragraph than the one it names. Such a citation
+gets ``verified`` False with every field above empty, and says where the
+wording really is in fields of its own (``ELSEWHERE_FIELDS``), written on
+every citation:
+
+- ``found_elsewhere``: True for such a citation, False otherwise;
+- ``found_in``: ``"act"``, ``"article"`` or ``"paragraph"``;
+- ``found_celex``, ``found_article``, ``found_paragraph``: where it is;
+- ``found_quote``: the official wording there; ``found_url``: its EUR-Lex page.
+
+``apply_unverified_policy`` gives each such citation a caveat that names it
+and flags the answer for expert review, and decides what happens to an answer
+whose citations were all left unverified (``flag`` or ``strict``, see
+``src.config``).
 """
 
 from __future__ import annotations
@@ -133,6 +155,50 @@ UNVERIFIED_ABSTENTION_EN = (
     "I cannot provide a verified answer: none of the cited passages was found verbatim "
     "in the corpus texts. Please consult the official sources directly or request an "
     "expert review."
+)
+# The same, when some quote was found, but not where its citation points.
+UNVERIFIED_ELSEWHERE_CAVEAT_IT = (
+    "Nessuno dei passaggi citati è stato ritrovato testualmente nella disposizione che la "
+    "risposta indica: verifica le fonti prima di usarla."
+)
+UNVERIFIED_ELSEWHERE_CAVEAT_EN = (
+    "None of the cited passages was found verbatim in the provision the answer names: "
+    "check the sources before using this answer."
+)
+UNVERIFIED_ELSEWHERE_ABSTENTION_IT = (
+    "Non posso fornire una risposta verificata: nessuno dei passaggi citati è stato "
+    "ritrovato testualmente nella disposizione che la risposta indica. Consulta direttamente "
+    "le fonti ufficiali oppure richiedi una revisione esperta."
+)
+UNVERIFIED_ELSEWHERE_ABSTENTION_EN = (
+    "I cannot provide a verified answer: none of the cited passages was found verbatim in "
+    "the provision the answer names. Please consult the official sources directly or "
+    "request an expert review."
+)
+# Each of our abstentions, in Italian and English.
+_ABSTENTION_TWINS: dict[str, tuple[str, str]] = {
+    text: twins
+    for twins in (
+        (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN),
+        (UNVERIFIED_ELSEWHERE_ABSTENTION_IT, UNVERIFIED_ELSEWHERE_ABSTENTION_EN),
+    )
+    for text in twins
+}
+
+# Where a quote found word for word, but not where its citation points, is
+# (annotate_citations): in another act, another article, another paragraph.
+FOUND_IN_ACT = "act"
+FOUND_IN_ARTICLE = "article"
+FOUND_IN_PARAGRAPH = "paragraph"
+# The fields annotate_citations writes on every citation next to CITATION_FIELDS.
+ELSEWHERE_FIELDS: tuple[str, ...] = (
+    "found_elsewhere",
+    "found_in",
+    "found_celex",
+    "found_article",
+    "found_paragraph",
+    "found_quote",
+    "found_url",
 )
 
 # Framework keys of the seeded registry (src.crawler.eurlex.client.FRAMEWORK_ORDER)
@@ -286,6 +352,10 @@ _ANNEX_RE = re.compile(
 _BARE_NUMBER_RE = re.compile(rf"^\s*{_NUMBER}(?![\d/.])", re.IGNORECASE)
 # A numbered paragraph at the start of a line of an article: "2. Providers ...".
 _PARAGRAPH_LINE_RE = re.compile(r"(?m)^[ \t]*(\d{1,3})\.[ \t]+\S")
+# The paragraph a reference names after the article: ", par. 2", "paragrafo 2".
+_PARAGRAPH_REF_RE = re.compile(
+    r"[\s,;]*\b(?:par(?:agrafo|agraph|a)?|comma)\b\.?\s*(\d{1,3})\b", re.IGNORECASE
+)
 
 
 def _article_number(match: re.Match[str]) -> str:
@@ -962,9 +1032,9 @@ def _search(
     caches: dict[int, dict[tuple[str, bool], list[_Span]]] = {}
     for chunk in candidates:
         cache = caches.setdefault(id(chunk), {})
-        spans = _place(segments, chunk, first(chunk), cache=cache)
-        if spans:
-            return _Found(chunk, [(s.start, s.end) for s in spans], MATCH_EXACT, [])
+        exact = _place(segments, chunk, first(chunk), cache=cache)
+        if exact:
+            return _Found(chunk, [(s.start, s.end) for s in exact], MATCH_EXACT, [])
     literal: tuple[_Found, float] | None = None
     near: tuple[_Found, float] | None = None
     for chunk in candidates:
@@ -973,8 +1043,8 @@ def _search(
         if placed is not None:
             ratio = min(s.ratio for s in placed)
             if literal is None or ratio > literal[1]:
-                spans = [(s.start, s.end) for s in placed]
-                literal = (_Found(chunk, spans, MATCH_FUZZY, []), ratio)
+                where = [(s.start, s.end) for s in placed]
+                literal = (_Found(chunk, where, MATCH_FUZZY, []), ratio)
             continue
         if literal is not None:
             continue  # a literal match wins over any near one
@@ -984,11 +1054,81 @@ def _search(
         ratio = min(s.ratio for s in placed)
         if near is None or ratio > near[1]:
             differences = [d for s in placed for d in s.differences]
-            spans = [(s.start, s.end) for s in placed]
-            near = (_Found(chunk, spans, MATCH_FUZZY, differences), ratio)
+            where = [(s.start, s.end) for s in placed]
+            near = (_Found(chunk, where, MATCH_FUZZY, differences), ratio)
     if literal is not None:
         return literal[0]
     return near[0] if near is not None else None
+
+
+def parse_paragraph(reference: Any) -> str | None:
+    """Number of the paragraph an article reference names, or None.
+
+    ``"Art. 50(2)"``, ``"art. 50, par. 2"``, ``"articolo 50, paragrafo 2"`` and
+    ``"50(2)"`` give ``"2"``; ``"Art. 6(1)(f)"`` gives ``"1"``. A recital, an
+    annex or an article named without a paragraph gives None.
+    """
+    text = str(reference or "").strip()
+    key = parse_article(text)
+    if not key or not key.startswith("art:"):
+        return None
+    m = _ARTICLE_RE.search(text) or _BARE_NUMBER_RE.match(text)
+    if m is None:
+        return None
+    rest = text[m.end() :]
+    p = re.match(r"\s*\((\d{1,3})\)", rest) or _PARAGRAPH_REF_RE.match(rest)
+    return p.group(1) if p else None
+
+
+def _paragraph_range(value: Any) -> tuple[int, int] | None:
+    """``"2"`` -> (2, 2), ``"3-4"`` -> (3, 4); None when the paragraph is not known."""
+    m = re.fullmatch(r"\s*(\d{1,3})\s*(?:-\s*(\d{1,3})\s*)?", str(value or ""))
+    if not m:
+        return None
+    lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
+    return (lo, hi) if lo <= hi else None
+
+
+def _covers(value: Any, paragraph: str) -> bool:
+    """True unless ``value`` is a known paragraph (or range) that excludes ``paragraph``."""
+    span = _paragraph_range(value)
+    return span is None or span[0] <= int(paragraph) <= span[1]
+
+
+def _paragraph_window(chunk: _Chunk, paragraph: str) -> tuple[int, int] | None:
+    """Where in the chunk the cited paragraph is, as a window for the first part.
+
+    The numbered lines of an article chunk ("2. ...") mark its paragraphs; the
+    text before the first one belongs to the chunk's own ``paragraph`` field.
+    A chunk whose paragraph is not known is searched whole. None when the
+    chunk does not hold the paragraph.
+    """
+    whole = (0, len(chunk.norm))
+    if not (chunk.article_key and chunk.article_key.startswith("art:")):
+        return whole
+    lines = [
+        (m.group(1), bisect.bisect_left(chunk.starts, m.start(1)))
+        for m in _PARAGRAPH_LINE_RE.finditer(chunk.text)
+    ]
+    own = chunk.data.get("paragraph")
+    if not lines:
+        return whole if _covers(own, paragraph) else None
+    for index, (number, start) in enumerate(lines):
+        if number == paragraph:
+            end = lines[index + 1][1] if index + 1 < len(lines) else len(chunk.norm)
+            return (start, end)
+    if lines[0][1] > 0 and _paragraph_range(own) is not None and _covers(own, paragraph):
+        return (0, lines[0][1])
+    return None
+
+
+def _paragraph_windows(chunks: list[_Chunk], paragraph: str) -> dict[int, tuple[int, int]]:
+    windows: dict[int, tuple[int, int]] = {}
+    for chunk in chunks:
+        window = _paragraph_window(chunk, paragraph)
+        if window is not None:
+            windows[id(chunk)] = window
+    return windows
 
 
 def _paragraph_at(chunk: _Chunk, position: int) -> str | None:
@@ -1058,7 +1198,9 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
         return _UNVERIFIED
 
     framework = normalize_framework(citation.get("framework"))
-    article = parse_article(_reference_of(citation))
+    reference = _reference_of(citation)
+    article = parse_article(reference)
+    paragraph = parse_paragraph(reference)
     levels: list[tuple[str, list[_Chunk]]] = []
     if framework:
         of_framework = [
@@ -1078,7 +1220,14 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
         searched.update(id(c) for c in fresh)
         if not fresh:
             continue
-        found = _search(segments, fresh)
+        found = None
+        if level == LEVEL_ARTICLE and paragraph:
+            # The cited paragraph first: the same words may stand in two of them.
+            found = _search(segments, fresh, _paragraph_windows(fresh, paragraph))
+        if found is None or found.differences:
+            anywhere = _search(segments, fresh)
+            if anywhere is not None and (found is None or not anywhere.differences):
+                found = anywhere
         if found is None:
             continue
         if not found.differences:
@@ -1126,22 +1275,85 @@ def count_verified(citations: Any) -> tuple[int, int]:
     return verified, len(items)
 
 
+def _is_celex(value: Any) -> bool:
+    return isinstance(value, str) and celex_utils.parse_celex(value) is not None
+
+
+def _found_in(citation: dict[str, Any], outcome: VerificationResult) -> str | None:
+    """Where a verified quote is, when that is not where its citation points.
+
+    ``"act"``: in another act than the one cited (level "any", or another act
+    of the cited framework); ``"article"``: in another article of the act
+    cited, when the citation names one; ``"paragraph"``: in the article cited,
+    but in another paragraph than the one it names, when both are known. None
+    when the quote is where the citation says, or nothing contradicts it.
+    """
+    if not outcome.verified:
+        return None
+    framework = normalize_framework(citation.get("framework"))
+    if not framework:
+        return None
+    reference = _reference_of(citation)
+    if outcome.level == LEVEL_ARTICLE:
+        cited = parse_paragraph(reference)
+        found = _paragraph_range(outcome.paragraph)
+        if cited and found and not found[0] <= int(cited) <= found[1]:
+            return FOUND_IN_PARAGRAPH
+        return None
+    cited_act = framework if _is_celex(framework) else None
+    found_act = outcome.celex if _is_celex(outcome.celex) else None
+    if cited_act and found_act and cited_act != found_act:
+        return FOUND_IN_ACT
+    if outcome.level == LEVEL_ANY and not (cited_act and found_act == cited_act):
+        return FOUND_IN_ACT
+    return FOUND_IN_ARTICLE if parse_article(reference) else None
+
+
+def _annotated(citation: dict[str, Any], outcome: VerificationResult) -> dict[str, Any]:
+    where = _found_in(citation, outcome)
+    if where is None:
+        return {
+            **citation,
+            **outcome.as_fields(),
+            "found_elsewhere": False,
+            **dict.fromkeys(ELSEWHERE_FIELDS[1:]),
+        }
+    return {
+        **citation,
+        **_UNVERIFIED.as_fields(),
+        "found_elsewhere": True,
+        "found_in": where,
+        "found_celex": outcome.celex,
+        "found_article": outcome.article,
+        "found_paragraph": outcome.paragraph,
+        "found_quote": outcome.official_quote,
+        "found_url": outcome.url,
+    }
+
+
 def annotate_citations(result: dict[str, Any], chunks: list[Any] | None) -> dict[str, Any]:
     """Write the verification fields on COPIES of the citations, plus the counters.
 
     The citation dicts may be shared (e.g. with the SNC samples), so they are
     never modified in place. Non-dict citations are kept as they are and count
-    as unverified. Sets ``verified_citations`` and ``citations_total``.
+    as unverified. A quote found word for word, but not where its citation
+    points (see ``_found_in``), is not a verified citation: it gets
+    ``verified`` False with the other fields of ``verify_citation`` empty, and
+    ``found_elsewhere`` True with where the wording really is (module
+    docstring). Sets ``verified_citations`` and ``citations_total``.
     """
     citations = result.get("citations")
     items = citations if isinstance(citations, list) else []
     outcomes = verify_citations(items, chunks or [])
+    annotated = [
+        _annotated(cit, outcome) if isinstance(cit, dict) else cit
+        for cit, outcome in zip(items, outcomes, strict=True)
+    ]
     if isinstance(citations, list):
-        result["citations"] = [
-            {**cit, **outcome.as_fields()} if isinstance(cit, dict) else cit
-            for cit, outcome in zip(items, outcomes, strict=True)
-        ]
-    result["verified_citations"] = sum(1 for outcome in outcomes if outcome.verified)
+        result["citations"] = annotated
+    result["verified_citations"] = sum(
+        1 for cit in annotated if isinstance(cit, dict) and cit.get("verified") is True
+    )
     result["citations_total"] = len(items)
     return result
 
@@ -1169,6 +1381,25 @@ def unverified_policy_applies(result: Any) -> bool:
     return total > 0 and verified == 0
 
 
+def _elsewhere(result: dict[str, Any]) -> list[dict[str, Any]]:
+    citations = result.get("citations")
+    items = citations if isinstance(citations, list) else []
+    return [c for c in items if isinstance(c, dict) and c.get("found_elsewhere") is True]
+
+
+def policy_requires_review(result: Any) -> bool:
+    """True when the citation policy flags a real answer for expert review.
+
+    All its citations unverified, or one of them found in another act, article
+    or paragraph than the one cited.
+    """
+    if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
+        return False
+    if result.get("abstention_reason"):
+        return False
+    return unverified_policy_applies(result) or bool(_elsewhere(result))
+
+
 def policy_mode(settings: Any) -> str:
     """The configured policy (``Settings.citation_verification``); ``flag`` if unset/unknown."""
     mode = getattr(settings, "citation_verification", POLICY_FLAG)
@@ -1190,22 +1421,89 @@ def _cap_confidence(result: dict[str, Any]) -> None:
         result["confidence_score"] = UNVERIFIED_CONFIDENCE_CAP
 
 
+def act_name(celex: str | None, english: bool = False) -> str | None:
+    """How a caveat names an act, from its CELEX: "Regolamento (UE) 2024/1689".
+
+    From 2015 on acts are numbered year/number with "(UE)"; the directives of
+    2010-2014 read "Direttiva 2013/34/UE"; anything else is named by its
+    CELEX. None without a CELEX.
+    """
+    if not celex:
+        return None
+    m = re.fullmatch(r"3(\d{4})([RLD])(\d{4})", celex)
+    if m is None:
+        return f"CELEX {celex}"
+    year, kind, number = m.group(1), m.group(2), str(int(m.group(3)))
+    if int(year) >= 2015:
+        it, en = {
+            "R": ("Regolamento", "Regulation"),
+            "L": ("Direttiva", "Directive"),
+            "D": ("Decisione", "Decision"),
+        }[kind]
+        return f"{en} (EU) {year}/{number}" if english else f"{it} (UE) {year}/{number}"
+    if kind == "L" and int(year) >= 2010:
+        return f"Directive {year}/{number}/EU" if english else f"Direttiva {year}/{number}/UE"
+    return f"CELEX {celex}"
+
+
+def _elsewhere_caveat(citation: dict[str, Any], english: bool) -> str:
+    """The caveat that names a citation whose wording is in another act, article or paragraph."""
+    label = ", ".join(
+        part
+        for part in (str(citation.get("framework") or "").strip(), _reference_of(citation).strip())
+        if part
+    )
+    article = str(citation.get("found_article") or "").strip()
+    paragraph = str(citation.get("found_paragraph") or "").strip()
+    if article and paragraph:
+        article = f"{article}, {'para.' if english else 'par.'} {paragraph}"
+    where = citation.get("found_in")
+    places = [article] if article else []
+    if where == FOUND_IN_ACT:
+        name = act_name(str(citation.get("found_celex") or "") or None, english)
+        places = [name, *places] if name else places
+    place = f", {', '.join(places)}" if places else ""
+    if english:
+        kind = {
+            FOUND_IN_ARTICLE: "in another article of the same act",
+            FOUND_IN_PARAGRAPH: "in another paragraph of the same article",
+        }.get(str(where), "in another act")
+        return f"The citation [{label}] is not verified: the quoted text is {kind}{place}."
+    kind = {
+        FOUND_IN_ARTICLE: "in un altro articolo dello stesso atto",
+        FOUND_IN_PARAGRAPH: "in un altro paragrafo dello stesso articolo",
+    }.get(str(where), "in un altro atto")
+    return f"La citazione [{label}] non è verificata: il testo citato si trova {kind}{place}."
+
+
+def _caveat_list(result: dict[str, Any]) -> list[Any]:
+    caveats = result.get("caveats")
+    if isinstance(caveats, str):
+        return [caveats] if caveats.strip() else []
+    return list(caveats) if isinstance(caveats, list) else []
+
+
 def apply_unverified_policy(
     result: Any, *, mode: str = POLICY_FLAG, language: str | None = None
 ) -> Any:
     """Apply the unverified-citation policy; idempotent, safe on cached answers.
 
     Always makes sure ``verified_citations`` / ``citations_total`` are present
-    (computed from the ``verified`` flags when an answer predates them). When
-    the answer is not an error nor an abstention and none of its citations is
-    verified:
+    (computed from the ``verified`` flags when an answer predates them). On an
+    answer that is not an error nor an abstention:
 
-    - ``flag``: ``requires_expert_review = True``, confidence capped at 0.6 and
-      the caveat added to ``caveats`` (Italian, or English when ``language``
-      is English; the other twin is removed);
-    - ``strict``: the answer becomes an abstention with ``abstention_reason =
+    - each citation whose wording was found in another act, article or
+      paragraph (``found_elsewhere``) gets a caveat that names it and where
+      the wording is, and the answer ``requires_expert_review = True``;
+    - when none of its citations is verified, ``flag`` also caps the
+      confidence at 0.6 and adds the unverified caveat (the "elsewhere"
+      variant when some quote was found elsewhere); ``strict`` turns the
+      answer into an abstention with ``abstention_reason =
       "unverified_citations"``: the text says why, citations and caveats are
       emptied, the counters keep how many citations were rejected.
+
+    The caveats are in Italian, or English when ``language`` is English; the
+    ones this policy added in the other language are removed.
     """
     if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
         return result
@@ -1216,28 +1514,45 @@ def apply_unverified_policy(
 
     if result.get("abstention_reason"):
         # Already an abstention. Our own one is re-worded in the request language.
-        if result.get("abstention_reason") == UNVERIFIED_ABSTENTION_REASON and result.get(
-            "answer"
-        ) in (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN):
-            result["answer"] = UNVERIFIED_ABSTENTION_EN if english else UNVERIFIED_ABSTENTION_IT
+        twins = _ABSTENTION_TWINS.get(str(result.get("answer")))
+        if result.get("abstention_reason") == UNVERIFIED_ABSTENTION_REASON and twins:
+            result["answer"] = twins[1] if english else twins[0]
         return result
-    if total == 0 or verified > 0:
+    elsewhere = _elsewhere(result)
+    unverified = total > 0 and verified == 0
+    if not (elsewhere or unverified):
         return result
 
     result["requires_expert_review"] = True
-    _cap_confidence(result)
-    if mode == POLICY_STRICT:
-        result["answer"] = UNVERIFIED_ABSTENTION_EN if english else UNVERIFIED_ABSTENTION_IT
-        result["citations"] = []
-        result["caveats"] = []
-        result["abstention_reason"] = UNVERIFIED_ABSTENTION_REASON
-        return result
+    if unverified:
+        _cap_confidence(result)
+        if mode == POLICY_STRICT:
+            twins = (
+                (UNVERIFIED_ELSEWHERE_ABSTENTION_IT, UNVERIFIED_ELSEWHERE_ABSTENTION_EN)
+                if elsewhere
+                else (UNVERIFIED_ABSTENTION_IT, UNVERIFIED_ABSTENTION_EN)
+            )
+            result["answer"] = twins[1] if english else twins[0]
+            result["citations"] = []
+            result["caveats"] = []
+            result["abstention_reason"] = UNVERIFIED_ABSTENTION_REASON
+            return result
 
-    caveats = result.get("caveats")
-    if isinstance(caveats, str):
-        caveats = [caveats] if caveats.strip() else []
-    elif not isinstance(caveats, list):
-        caveats = []
-    kept = [c for c in caveats if c not in (UNVERIFIED_CAVEAT_IT, UNVERIFIED_CAVEAT_EN)]
-    result["caveats"] = [*kept, UNVERIFIED_CAVEAT_EN if english else UNVERIFIED_CAVEAT_IT]
+    added = [_elsewhere_caveat(c, english) for c in elsewhere]
+    if unverified:
+        if elsewhere:
+            added.append(
+                UNVERIFIED_ELSEWHERE_CAVEAT_EN if english else UNVERIFIED_ELSEWHERE_CAVEAT_IT
+            )
+        else:
+            added.append(UNVERIFIED_CAVEAT_EN if english else UNVERIFIED_CAVEAT_IT)
+    ours = {
+        UNVERIFIED_CAVEAT_IT,
+        UNVERIFIED_CAVEAT_EN,
+        UNVERIFIED_ELSEWHERE_CAVEAT_IT,
+        UNVERIFIED_ELSEWHERE_CAVEAT_EN,
+        *(_elsewhere_caveat(c, lang) for c in elsewhere for lang in (False, True)),
+    }
+    kept = [c for c in _caveat_list(result) if c not in ours]
+    result["caveats"] = [*kept, *added]
     return result

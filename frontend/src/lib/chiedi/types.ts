@@ -46,6 +46,24 @@ export interface ChiediCitation extends Citation {
   near_quote?: string | null
   near_article?: string | null
   differences?: CitationDifference[] | null
+  /**
+   * Set by the verifier when the quoted wording IS in the official text, but not
+   * where the citation points: in another act (`found_in: 'act'`), in another
+   * article of the act cited (`'article'`) or in another paragraph of the
+   * article cited (`'paragraph'`). Such a citation is not verified (`verified`
+   * false); the other `found_*` fields say where the wording really is.
+   */
+  found_elsewhere?: boolean | null
+  found_in?: 'act' | 'article' | 'paragraph' | null
+  /** CELEX of the act where the wording is (base act). */
+  found_celex?: string | null
+  /** Article where the wording is, e.g. "Art. 50". */
+  found_article?: string | null
+  found_paragraph?: string | null
+  /** The official wording found there. */
+  found_quote?: string | null
+  /** EUR-Lex link to that act. */
+  found_url?: string | null
   grounded?: boolean
   /** Document title as the SSE event names it (may be just a framework key). */
   title?: string

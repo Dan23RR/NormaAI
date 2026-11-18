@@ -137,6 +137,8 @@ export default async function SecurityPage() {
       <LegalSection title={t('backup.title')}>
         <p>{rich('backup.p1')}</p>
         <p>{t('backup.p2')}</p>
+        {/* True only while this build has no backend, like the status line above. */}
+        {!BACKEND_CONFIGURED && <p>{tl('backupOff')}</p>}
         <InCode paths={['scripts/backup_postgres.sh', 'docs/BACKUP_STRATEGY.md']} />
       </LegalSection>
 

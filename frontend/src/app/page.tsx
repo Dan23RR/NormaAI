@@ -14,6 +14,7 @@ import { itemKeys } from '@/components/LegalLayout'
 import { eurlexLang } from '@/i18n/config'
 import { cn } from '@/lib/cn'
 import { CORPUS_ACTS, CORPUS_AREAS, actsOf, corpusActName } from '@/lib/corpus-acts'
+import { BACKEND_CONFIGURED } from '@/lib/service-status'
 import { eurlexUrl } from '@/lib/sources'
 
 // Public landing page. It opens with the document check, the thing NormaAI
@@ -24,7 +25,10 @@ import { eurlexUrl } from '@/lib/sources'
 // Every claim must be true of the code as it ships (DESIGN.md, "stati
 // onesti"). The sections say what each capability checks and on which text;
 // what a visitor cannot reach yet is said once, in the dated status line of
-// the hero (`landing.hero.status`): update that line when it changes.
+// the hero (`landing.hero.status`): update that line when it changes. Like
+// the status line of the sign-in, security and method pages, it is shown only
+// while this build has no backend (BACKEND_CONFIGURED), so it goes away by
+// itself when the server is back.
 
 /** The two actions that work today: the demo with sample data, and an email for a pilot. */
 function Actions({ className }: { className?: string }) {
@@ -108,11 +112,13 @@ export default function Home() {
               <p className="mt-5 max-w-prose text-h4 text-ink md:text-h3">{t('hero.support')}</p>
               <p className="mt-4 max-w-prose text-read text-ink-2">{t('hero.lead')}</p>
               <Actions className="mt-8" />
-              <p className="mt-6 max-w-prose border-l-2 border-rule-2 pl-3 text-small text-ink-2">
-                {t.rich('hero.status', {
-                  b: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
-                })}
-              </p>
+              {!BACKEND_CONFIGURED && (
+                <p className="mt-6 max-w-prose border-l-2 border-rule-2 pl-3 text-small text-ink-2">
+                  {t.rich('hero.status', {
+                    b: (chunks) => <span className="font-medium text-ink">{chunks}</span>,
+                  })}
+                </p>
+              )}
             </div>
             <div className="lg:col-span-6">
               <DocumentCheckExample />

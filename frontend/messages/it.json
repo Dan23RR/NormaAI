@@ -214,7 +214,7 @@
         },
         "it": {
           "title": "Diritto italiano",
-          "body": "Decreti legislativi e leggi, letti articolo per articolo da Normattiva nel testo vigente. Le leggi regionali non sono lette: il report le segna come da controllare a mano."
+          "body": "Leggi, decreti legislativi, decreti-legge, decreti del Presidente della Repubblica, regi decreti, i codici e la Costituzione, letti articolo per articolo da Normattiva nel testo vigente. Leggi regionali, decreti ministeriali, d.P.C.M. e circolari non sono letti: il report li mette tra i riferimenti non coperti, da controllare sulla fonte. Non legge nemmeno CCNL né provvedimenti del Garante."
         }
       },
       "authentic": "I testi consolidati di EUR-Lex sono uno strumento di documentazione: fanno fede le versioni pubblicate nella Gazzetta ufficiale dell'Unione europea. Ogni esito porta al testo, così puoi controllarlo tu."
@@ -1919,6 +1919,7 @@
     "lastUpdated": "Ultimo aggiornamento: {date}",
     "inCode": "Nel codice: ",
     "status": "Gli account sono sospesi mentre il server dell’applicazione viene spostato. Il sito pubblico, le due verifiche gratuite e la demo con dati di esempio funzionano. Ultimo aggiornamento di questo stato: {date}.",
+    "backupOff": "Finché il server di produzione è spento nessun backup è in corso: riprenderanno quando il nuovo server sarà attivo.",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "Come NormaAI tratta i dati personali di chi usa l’applicazione, di chi visita il sito e di chi ci scrive, ai sensi del Regolamento (UE) 2016/679 (GDPR).",
@@ -1964,7 +1965,7 @@
       "processors": {
         "title": "4. Sub-responsabili e fornitori",
         "items": {
-          "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione conserva i dati; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
+          "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione tiene i dati quando è in funzione; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
           "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, con le funzioni lato server nella regione di Francoforte, compresa la funzione che riceve le richieste del Codex e delle verifiche gratuite. Statistiche di visita senza cookie.",
           "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito oggi: la scelta è una configurazione, e il codice supporta in alternativa Anthropic e OpenRouter.",
           "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali (consegna del Codex, notifica delle nuove richieste).",
@@ -1976,7 +1977,7 @@
         "title": "5. Conservazione",
         "items": {
           "1": "Dati dell’applicazione: per tutta la durata del rapporto. Non esiste una cancellazione automatica a scadenza. L’amministratore dell’organizzazione può in qualsiasi momento esportare i dati e cancellare clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati dall’applicazione; ogni utente può cancellare le proprie conversazioni. Per chiudere gli account e l’organizzazione scrivi a info@normaai.org.",
-          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni. Quando il gestore configura un archivio esterno con restic, la copia lascia anche il server, cifrata prima dell'invio, ed è conservata per lo stesso periodo. Un dato cancellato può restare in una copia di backup fino a 30 giorni. Oggi il server di produzione è spento e nessun backup è in corso: riprenderanno quando il nuovo server sarà attivo.",
+          "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni. Quando il gestore configura un archivio esterno con restic, la copia lascia anche il server, cifrata prima dell'invio, ed è conservata per lo stesso periodo. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
           "3": "Richieste del Codex e delle verifiche gratuite: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
           "4": "Registro degli eventi: nei log del server, con la loro rotazione.",
           "5": "Dati nel browser: vedi la <cookie>cookie policy</cookie>."
@@ -2220,12 +2221,12 @@
       "audit": {
         "title": "8. Registro degli eventi",
         "p1": "Accessi riusciti e falliti, logout, rinnovi e riusi di token, creazione e cancellazione di clienti e conversazioni, domande, caricamenti di documenti, esportazioni e cancellazioni sono registrati come eventi strutturati con utente, organizzazione, indirizzo IP, data e ora ed esito.",
-        "p2": "Oggi questi eventi finiscono nei log dell’applicazione sul server. Non esistono ancora un archivio separato a lungo termine né un’esportazione pronta per i revisori: la conservazione è quella dei log del server."
+        "p2": "Questi eventi finiscono nei log dell’applicazione sul server. Non esistono ancora un archivio separato a lungo termine né un’esportazione pronta per i revisori: la conservazione è quella dei log del server."
       },
       "backup": {
         "title": "9. Backup",
         "p1": "Il repository contiene lo script di backup, pensato per essere avviato da cron ogni notte alle 02:00: esegue <code>pg_dump</code> del database PostgreSQL in formato compresso, verifica che l'archivio sia leggibile con <code>pg_restore --list</code> e conserva le copie per 30 giorni nella cartella <code>backups/</code> del server.",
-        "p2": "Se il gestore configura un archivio restic, lo script invia ogni notte fuori dal server il dump del database, le snapshot dell'indice Qdrant e la configurazione del server, cifrati da restic prima dell'invio, e conserva anche quelle copie per 30 giorni. Senza archivio restic resta solo il dump sul disco del server, non cifrato. Redis non viene salvato: la cache è effimera per costruzione. Gli script sono provati su simulazioni: nessuna copia è ancora stata inviata a un archivio reale e nessun ripristino è stato fatto. Il server di produzione oggi è spento, quindi nessun backup è in corso. La procedura di ripristino è documentata nel repository."
+        "p2": "Se il gestore configura un archivio restic, lo script invia ogni notte fuori dal server il dump del database, le snapshot dell'indice Qdrant e la configurazione del server, cifrati da restic prima dell'invio, e conserva anche quelle copie per 30 giorni. Senza archivio restic resta solo il dump sul disco del server, non cifrato. Redis non viene salvato: la cache è effimera per costruzione. Gli script sono provati su simulazioni: nessuna copia è ancora stata inviata a un archivio reale e nessun ripristino è stato fatto. La procedura di ripristino è documentata nel repository."
       },
       "supplyChain": {
         "title": "10. Sviluppo e catena di fornitura",

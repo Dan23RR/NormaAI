@@ -214,7 +214,7 @@
         },
         "it": {
           "title": "Italian law",
-          "body": "Legislative decrees and laws, read article by article from Normattiva in the text in force. Regional laws are not read: the report marks them to be checked by hand."
+          "body": "Laws, legislative decrees, decree-laws, decrees of the President of the Republic, royal decrees, the codes and the Constitution, read article by article from Normattiva in the text in force. Regional laws, ministerial decrees, prime-ministerial decrees (d.P.C.M.) and circulars are not read: the report lists them among the references not covered, to check at the source. Nor does it read collective labour agreements (CCNL) or decisions of the Garante."
         }
       },
       "authentic": "The consolidated texts on EUR-Lex are a documentation tool: the authentic versions are those published in the Official Journal of the European Union. Every outcome links to the text, so you can check it yourself."
@@ -1919,6 +1919,7 @@
     "lastUpdated": "Last updated: {date}",
     "inCode": "In the code: ",
     "status": "Accounts are suspended while the application server is being moved. The public site, the two free checkers and the demo with sample data work. This status was last updated on {date}.",
+    "backupOff": "While the production server is off no backup is running: backups will start again when the new server is up.",
     "privacy": {
       "title": "Privacy Policy",
       "intro": "How NormaAI handles the personal data of the people who use the application, visit the site or write to us, under Regulation (EU) 2016/679 (GDPR).",
@@ -1964,7 +1965,7 @@
       "processors": {
         "title": "4. Sub-processors and providers",
         "items": {
-          "1": "<strong>Hetzner Online GmbH</strong> (Germany): the server planned for the API, the database and the search index. That is where the application keeps its data; the question and the retrieved passages go instead to the language-model provider (item 3).",
+          "1": "<strong>Hetzner Online GmbH</strong> (Germany): the server planned for the API, the database and the search index. That is where the application keeps its data when it is running; the question and the retrieved passages go instead to the language-model provider (item 3).",
           "2": "<strong>Vercel Inc.</strong> (USA): hosting of the site and the interface, with the server-side functions in the Frankfurt region, including the function that receives the Codex and free-checker requests. Visit statistics without cookies.",
           "3": "<strong>Google LLC</strong> (Gemini API, USA): the language model that generates the answers. It receives the question, the company profile if entered and the retrieved passages of law. It is the default provider today: the choice is a configuration setting, and the code also supports Anthropic and OpenRouter.",
           "4": "<strong>Resend, Inc.</strong> (USA): sending of transactional emails (Codex delivery, notification of new requests).",
@@ -1976,7 +1977,7 @@
         "title": "5. Retention",
         "items": {
           "1": "Application data: for the whole duration of the relationship. There is no automatic deletion on expiry. The organisation’s administrator can export the data and delete clients, conversations, assessments, alerts and indexed chunks from the application at any time; every user can delete their own conversations. To close the accounts and the organisation write to info@normaai.org.",
-          "2": "Backups: the backup script copies the database every night and keeps the copies for 30 days. When the operator configures an external repository with restic, the copy also leaves the server, encrypted before it is sent, and is kept for the same period. Deleted data may remain in a backup for up to 30 days. Today the production server is off and no backup is running: they will start again when the new server is up.",
+          "2": "Backups: the backup script copies the database every night and keeps the copies for 30 days. When the operator configures an external repository with restic, the copy also leaves the server, encrypted before it is sent, and is kept for the same period. Deleted data may remain in a backup for up to 30 days.",
           "3": "Codex and free-checker requests: they stay in the info@normaai.org mailbox until you ask for deletion, and in the serverless function logs for Vercel’s retention period. The Codex is a public file: its address does not expire.",
           "4": "Event log: in the server logs, with their rotation.",
           "5": "Data in the browser: see the <cookie>cookie policy</cookie>."
@@ -2220,12 +2221,12 @@
       "audit": {
         "title": "8. Event log",
         "p1": "Successful and failed sign-ins, sign-outs, token renewals and reuses, creation and deletion of clients and conversations, questions, document uploads, exports and erasures are recorded as structured events with user, organisation, IP address, date and time and outcome.",
-        "p2": "Today these events end up in the application logs on the server. There is no separate long-term archive yet and no export ready for auditors: retention is that of the server logs."
+        "p2": "These events end up in the application logs on the server. There is no separate long-term archive yet and no export ready for auditors: retention is that of the server logs."
       },
       "backup": {
         "title": "9. Backups",
         "p1": "The repository contains the backup script, meant to be started by cron every night at 02:00: it runs <code>pg_dump</code> of the PostgreSQL database in compressed format, checks that the archive is readable with <code>pg_restore --list</code> and keeps the copies for 30 days in the <code>backups/</code> folder of the server.",
-        "p2": "When the operator configures a restic repository, the script sends the database dump, the snapshots of the Qdrant index and the server's configuration off the server every night, encrypted by restic before they are sent, and keeps those copies for 30 days too. Without a restic repository only the dump on the server's disk remains, unencrypted. Redis is not backed up: the cache is ephemeral by design. The scripts are tested against stand-ins: no copy has been sent to a real repository yet and no restore has been done. The production server is off today, so no backup is running. The restore procedure is documented in the repository."
+        "p2": "When the operator configures a restic repository, the script sends the database dump, the snapshots of the Qdrant index and the server's configuration off the server every night, encrypted by restic before they are sent, and keeps those copies for 30 days too. Without a restic repository only the dump on the server's disk remains, unencrypted. Redis is not backed up: the cache is ephemeral by design. The scripts are tested against stand-ins: no copy has been sent to a real repository yet and no restore has been done. The restore procedure is documented in the repository."
       },
       "supplyChain": {
         "title": "10. Development and supply chain",

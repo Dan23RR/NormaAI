@@ -118,6 +118,12 @@ async def lifespan(app: FastAPI):
         logger.warning("llm_api_key_missing", provider=settings.llm_provider, key=key_name)
     else:
         logger.info("llm_ready", provider=settings.llm_provider, model=settings.active_model)
+        # Ask the provider once now (src/llm_probe.py, what /readyz reads): a
+        # revoked key or a model id it does not serve is logged at ERROR at
+        # startup, and so reaches Sentry, instead of failing the first question.
+        from src.llm_probe import llm_readiness
+
+        await llm_readiness(settings)
 
     # Check local LLM (Ollama)
     if settings.local_llm_enabled:

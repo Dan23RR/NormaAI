@@ -211,13 +211,39 @@ async def health_check():
     }
 
 
+async def llm_check() -> tuple[bool, str]:
+    """Is the model provider usable now? ``(up, reason)`` for /readyz.
+
+    Up when the key is configured, the provider accepts it for the configured
+    model (src.llm_probe, cached) and the LLM circuit breaker is not open
+    (five failed answers in a row: an exhausted credit shows up there).
+    """
+    from src.llm_probe import MISSING_KEY, llm_readiness
+    from src.resilience import CircuitState, llm_circuit
+
+    if not app_state.llm_available:
+        return False, MISSING_KEY
+    probe = await llm_readiness(get_settings())
+    if not probe.ok:
+        return False, probe.reason
+    if llm_circuit.state is CircuitState.OPEN:
+        return False, "circuit_open"
+    return True, probe.reason
+
+
 @router.get("/readyz")
 async def readiness_check():
     """Readiness probe: the instance can serve meaningful traffic.
 
     Returns 503 when core dependencies are unavailable so a load
     balancer can drain this instance without killing it (liveness
-    stays green, readiness goes red).
+    stays green, readiness goes red). No container healthcheck reads it:
+    a provider that refuses the key makes /readyz red (and the external
+    uptime check open an issue), it does not restart the app.
+
+    ``llm`` says why the model check is up or down: ok, not_checked
+    (APP_ENV=testing), missing_key, key_rejected, model_not_found, no_credit,
+    rate_limited, provider_error, unreachable or circuit_open.
     """
     from fastapi.responses import JSONResponse
 
@@ -235,14 +261,16 @@ async def readiness_check():
             logger.warning("readyz_corpus_check_failed", error=str(e))
             corpus_ok = False
 
+    llm_up, llm_reason = await llm_check()
     checks = {
         "qdrant": app_state.qdrant_available,
-        "llm": app_state.llm_available,
+        "llm": llm_up,
         "corpus": corpus_ok,
     }
     ready = all(checks.values())
     body = {
         "status": "ready" if ready else "not_ready",
         "checks": {k: ("up" if v else "down") for k, v in checks.items()},
+        "llm": llm_reason,
     }
     return JSONResponse(status_code=200 if ready else 503, content=body)

@@ -92,6 +92,36 @@ is needed; the data are licensed CC BY 4.0. The whole act is never downloaded.
   and update notes are removed from the text; rulings of the Constitutional Court that sit
   only in the notes are flagged.
 
+## Limiti di dimensione e di tempo
+
+Un documento costruito apposta non deve tenere occupato il server: il controllo gira in un
+thread con un tempo massimo di 120 secondi (`document_check_timeout_seconds`), ma un thread
+non si può fermare, quindi è il lavoro stesso a dover finire presto.
+
+- **File e testo.** Il file caricato pesa al massimo 10 MB (`document_check_max_bytes`), il
+  suo testo ha al massimo 400.000 caratteri (`document_check_max_chars`) e il documento cita
+  al massimo 300 disposizioni (`document_check_max_references`). Un .docx è un archivio zip:
+  prima di leggerlo, viene rifiutato se le sue parti aperte (testo, stili, immagini) superano
+  in tutto 20 MB, o se una parte di più di 1 MB è compressa più di 100 volte (un documento
+  vero comprime il testo da 5 a 15 volte, una «bomba zip» migliaia di volte). La risposta è
+  «Non riesco a leggere il file». Le dimensioni sono quelle che l'archivio dichiara: il
+  lettore zip non dà mai più byte di quelli dichiarati e rifiuta una parte che non torna.
+- **Lettura dei riferimenti.** Il tempo cresce con la lunghezza del testo, non con il suo
+  quadrato. Un testo di 400.000 caratteri fatto per essere lento (migliaia di atti con nomi
+  definiti, riferimenti, citazioni e atti modificativi sulla stessa riga) si legge in uno o
+  due secondi; prima ne servivano da 40 a più di 150. Un nome definito («di seguito
+  "Regolamento"») indica l'atto della sua ultima definizione che lo precede.
+  `tests/test_document_check_scale.py` lo controlla in CI con un limite di 15 secondi per
+  testo.
+- **Citazioni.** Una citazione si cerca prima nella disposizione citata, in pochi millesimi
+  di secondo. Solo se lì non c'è si cerca nel resto dell'atto e nelle versioni precedenti, e
+  ognuna di queste ricerche rilegge l'intero atto (da un decimo a qualche decimo di
+  secondo). Un controllo ne fa al massimo 60 (`check.WIDE_SEARCHES`); una citazione oltre
+  questo numero risulta «Citazione non trovata» nella disposizione citata, o «Citazione
+  diversa dal testo ufficiale» se lì ci sono quasi le stesse parole, con una nota che dice
+  che cosa non è stato cercato e consiglia di dividere il documento. La stessa citazione
+  ripetuta si cerca una volta sola.
+
 ## Use
 
 ```bash

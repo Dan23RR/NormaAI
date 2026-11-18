@@ -16,7 +16,9 @@ provisions the document cites.
 Limits
 ------
 The size of the file, the length of its text and the number of provisions it
-cites are capped (``Settings``, "Document check"). The engine reads the official
+cites are capped (``Settings``, "Document check"); a .docx may unpack to at
+most 20 MB (``_check_zip``), and the searches of quotes outside the provisions
+cited are capped by ``check.WIDE_SEARCHES``. The engine reads the official
 texts over the network with blocking calls: ``run_job`` runs it in a small
 thread pool, away from the event loop, with a time limit and with a cap on the
 jobs one organisation has running. A job that outlives its time limit ends by
@@ -72,8 +74,13 @@ SUPPORTED_EXTENSIONS = (*TEXT_EXTENSIONS, *HTML_EXTENSIONS, ".docx", ".pdf")
 LANGUAGES = ("IT", "EN")
 DEFAULT_FILENAME = "documento.txt"
 
-# A .docx is a zip: refuse one that unpacks to far more than any real document.
-_DOCX_MAX_UNPACKED = 200 * 1024 * 1024
+# A .docx is a zip: refuse one that unpacks to far more than any real document
+# (all of its parts, text, styles and images, at most 20 MB), and one with a
+# part of more than a megabyte packed more than a hundred times (a real document
+# packs its text five to fifteen times; a zip bomb, thousands of times).
+_DOCX_MAX_UNPACKED = 20 * 1024 * 1024
+_ZIP_MAX_RATIO = 100
+_ZIP_RATIO_FROM = 1024 * 1024
 
 UNSUBSCRIBE_PURPOSE = "document-digest-unsubscribe"
 _UNSUBSCRIBE_VALIDITY = timedelta(days=5 * 365)
@@ -303,16 +310,29 @@ def _html_text(data: bytes) -> str:
     return re.sub(r"\n{3,}", "\n\n", soup.get_text("\n"))
 
 
+def _check_zip(data: bytes) -> None:
+    """Refuse a zip-based document (.docx) that unpacks to too much, before reading it.
+
+    The sizes are those the archive declares: the zip reader never gives more
+    than the declared size of a part and refuses a part that does not match it.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            parts = archive.infolist()
+    except (zipfile.BadZipFile, ValueError):
+        raise unreadable_file() from None
+    if sum(info.file_size for info in parts) > _DOCX_MAX_UNPACKED:
+        raise unreadable_file()
+    for info in parts:
+        packed = max(info.compress_size, 1)
+        if info.file_size > _ZIP_RATIO_FROM and info.file_size > _ZIP_MAX_RATIO * packed:
+            raise unreadable_file()
+
+
 def _docx_text(data: bytes) -> str:
     import docx
 
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            unpacked = sum(info.file_size for info in archive.infolist())
-    except zipfile.BadZipFile:
-        raise unreadable_file() from None
-    if unpacked > _DOCX_MAX_UNPACKED:
-        raise unreadable_file()
+    _check_zip(data)
     try:
         document = docx.Document(io.BytesIO(data))
         parts = [paragraph.text for paragraph in document.paragraphs]

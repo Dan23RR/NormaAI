@@ -15,7 +15,10 @@ For every reference ``extract`` finds:
    versions, newest first. A quote found only in an earlier version is
    outdated, and the report shows the provision then and now. A quote that is
    in no version but differs from the text in force only by a few words (a
-   number, a "non") is altered: the report shows the words that differ.
+   number, a "non") is altered: the report shows the words that differ. The
+   searches outside the cited provisions read a whole version of the act each:
+   a check makes at most ``WIDE_SEARCHES`` of them, and a quote past them is
+   reported with what was not read.
 4. When the document's date is known, the provision in force on that date is
    compared with today's: a change means the document rests on the old text.
 5. CELLAR does not give every consolidated version as text. The check reads
@@ -248,6 +251,50 @@ def _specific_enough(quote: str) -> bool:
     return len(text) >= MIN_QUOTE_CHARS and len(text.split()) >= MIN_QUOTE_WORDS
 
 
+# Searches of a quote in a whole version of an act that one check may make. A
+# quote is first looked for in the provision it cites, a few milliseconds; only
+# a quote that is not there is looked for in the rest of the act and in its
+# earlier versions, and each of those searches reads the whole act again (a
+# tenth of a second, more when the quote shares many words with the act). The
+# budget keeps a document with thousands of such quotes from holding a worker
+# for an hour: a quote past it is reported as not found in the cited provision,
+# with the parts of the act that were not searched.
+WIDE_SEARCHES = 60
+
+
+@dataclass
+class _Searches:
+    """The searches in whole versions of acts left to a check, and those already made."""
+
+    left: int = field(default_factory=lambda: WIDE_SEARCHES)
+    done: dict[tuple[str, str, str, str, str], VerificationResult] = field(default_factory=dict)
+
+    def run(
+        self,
+        quote: str,
+        provision: Provision,
+        act: Act,
+        version: Version,
+        articles: list[ArticleText],
+        lang: str,
+    ) -> VerificationResult | None:
+        """The verifier on a whole version; None when the check has no searches left."""
+        key = (quote, provision.label, act.key, version.celex, lang)
+        if key not in self.done:
+            if self.left <= 0:
+                return None
+            self.left -= 1
+            self.done[key] = _verify(quote, provision, act, version, articles)
+        return self.done[key]
+
+
+def _unsearched(what: str) -> str:
+    return (
+        f"{what}: il documento ha più di {WIDE_SEARCHES} ricerche da fare fuori dalle "
+        "disposizioni citate. Per un controllo completo, dividilo in parti."
+    )
+
+
 def _verify(
     quote: str, provision: Provision, act: Act, version: Version, articles: list[ArticleText]
 ) -> VerificationResult:
@@ -405,21 +452,30 @@ def _check_quotes(
     in_force: list[ArticleText],
     source: TextSource,
     lang: str,
+    searches: _Searches | None = None,
 ) -> None:
+    searches = searches if searches is not None else _Searches()
     current = versions[-1]
     first = findings[0]
     for quote in ref.quotes:
         if not _specific_enough(quote):
             first.messages.append("Citazione troppo breve per una verifica parola per parola.")
             continue
+        # In the provisions cited first: the verifier reads one article, not the act.
         exact: tuple[Finding, VerificationResult] | None = None
+        near_cited: VerificationResult | None = None
         for f in findings:
             if f.provision is None:
                 continue
-            r = _verify(quote, f.provision, act, current, in_force)
-            if r.verified and r.level == "article":
+            cited = [a for a in in_force if same_article(a.key, f.provision.key)]
+            if not cited:
+                continue
+            r = _verify(quote, f.provision, act, current, cited)
+            if r.verified:
                 exact = (f, r)
                 break
+            if r.differences and near_cited is None:
+                near_cited = r
         if exact is not None:
             finding, result = exact
             if finding.status is VALID:
@@ -432,7 +488,17 @@ def _check_quotes(
             )
             continue
         provision = first.provision or Provision("art:0")
-        result = _verify(quote, provision, act, current, in_force)
+        result = searches.run(quote, provision, act, current, in_force, lang)
+        if result is None:
+            _not_placed(
+                first,
+                quote,
+                near_cited,
+                provision,
+                "La citazione non è nella disposizione citata.",
+                "Il resto dell'atto e le versioni precedenti non sono stati cercati",
+            )
+            continue
         if result.verified:
             first.status = _worse(first.status, ELSEWHERE)
             first.official_quote = result.official_quote
@@ -443,7 +509,7 @@ def _check_quotes(
             continue
         # Close to the text in force but with different words: kept for the
         # end, an earlier version may have the quote word for word.
-        near = result if result.differences else None
+        near = near_cited or (result if result.differences else None)
         # The quote stopped matching at the oldest newer version that lacks it.
         newer_without = current
         for version in reversed(versions[:-1]):
@@ -451,7 +517,17 @@ def _check_quotes(
                 articles = source.articles(version, lang)
             except TextUnavailableError:
                 continue
-            old = _verify(quote, provision, act, version, articles)
+            old = searches.run(quote, provision, act, version, articles, lang)
+            if old is None:
+                _not_placed(
+                    first,
+                    quote,
+                    near,
+                    provision,
+                    "La citazione non è nel testo vigente.",
+                    "Le versioni precedenti non sono state cercate",
+                )
+                break
             if not old.verified:
                 newer_without = version
                 continue
@@ -478,6 +554,23 @@ def _check_quotes(
                 "La citazione non è nel testo vigente né nelle versioni precedenti: può essere "
                 "una parafrasi o un errore."
             )
+
+
+def _not_placed(
+    finding: Finding,
+    quote: str,
+    near: VerificationResult | None,
+    provision: Provision,
+    where: str,
+    unsearched: str,
+) -> None:
+    """A quote the check could not look for everywhere: what it found, and what it did not read."""
+    if near is not None:
+        _mark_altered(finding, quote, near, provision)
+    else:
+        finding.status = _worse(finding.status, NOT_FOUND)
+        finding.messages.append(where)
+    finding.messages.append(_unsearched(unsearched))
 
 
 def _describe_differences(differences: list[dict[str, str]]) -> str:
@@ -544,7 +637,12 @@ def _note_unread(findings: list[Finding], read: Version, unread: list[Version]) 
 
 
 def _check_reference(
-    ref: Reference, source: TextSource, lang: str, document_date: str | None, today: str
+    ref: Reference,
+    source: TextSource,
+    lang: str,
+    document_date: str | None,
+    today: str,
+    searches: _Searches | None = None,
 ) -> list[Finding]:
     act = ref.act
     if act is None:
@@ -595,7 +693,7 @@ def _check_reference(
         for provision in ref.provisions
     ]
     findings[0].shows_quotes = True
-    _check_quotes(ref, findings, act, versions, in_force, source, lang)
+    _check_quotes(ref, findings, act, versions, in_force, source, lang, searches)
     if unread:
         _note_unread(findings, versions[-1], unread)
     stale = getattr(source, "stale", {}).get(act.key)
@@ -1099,8 +1197,9 @@ def check_text(
     lang = (lang or detect_language(text)).upper()
     today = today or date.today().isoformat()
     findings: list[Finding] = []
+    searches = _Searches()
     for ref in extract_references(text):
-        findings.extend(_check_reference(ref, source, lang, document_date, today))
+        findings.extend(_check_reference(ref, source, lang, document_date, today, searches))
     return DocumentCheck(
         document=document,
         checked_on=today,

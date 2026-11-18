@@ -1600,9 +1600,9 @@ def apply_unverified_policy(
         return result
     if total == 0:
         result["requires_expert_review"] = True
-        ours = (NO_CITATIONS_CAVEAT_IT, NO_CITATIONS_CAVEAT_EN)
-        kept = [c for c in _caveat_list(result) if c not in ours]
-        result["caveats"] = [*kept, NO_CITATIONS_CAVEAT_EN if english else NO_CITATIONS_CAVEAT_IT]
+        twins = (NO_CITATIONS_CAVEAT_IT, NO_CITATIONS_CAVEAT_EN)
+        kept = [c for c in _caveat_list(result) if c not in twins]
+        result["caveats"] = [*kept, twins[1] if english else twins[0]]
         return result
     elsewhere = _elsewhere(result)
     unverified = verified == 0

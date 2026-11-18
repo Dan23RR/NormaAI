@@ -311,11 +311,16 @@ fi
 # NORMAAI_IMAGE names the image CI built (ghcr.io/...@sha256:...): pulled, not
 # built. Without it, the image is built here, as the deploys did before GHCR.
 NORMAAI_IMAGE="${NORMAAI_IMAGE:-}"
-if [ -n "$NORMAAI_IMAGE" ]; then
+if [ -n "$NORMAAI_IMAGE" ] && docker image inspect "$NORMAAI_IMAGE" >/dev/null 2>&1; then
+  log "4/9" "Immagine $NORMAAI_IMAGE (gia' presente) e chiavi JWT RS256"
+  BUILD_FLAG="--no-build"
+elif [[ "$NORMAAI_IMAGE" == *@sha256:* ]]; then
   log "4/9" "Immagine $NORMAAI_IMAGE (da GHCR) e chiavi JWT RS256"
-  docker pull -q "$NORMAAI_IMAGE" >/dev/null || die "impossibile scaricare $NORMAAI_IMAGE (pacchetto privato? docker login ghcr.io)"
+  docker pull -q "$NORMAAI_IMAGE" >/dev/null \
+    || die "impossibile scaricare $NORMAAI_IMAGE (pacchetto privato? docker login ghcr.io, oppure NORMAAI_IMAGE= vuoto nel .env per costruirla qui)"
   BUILD_FLAG="--no-build"
 else
+  # Empty: normaai-app:local; a local tag that is gone (scripts/deploy.sh ... build): rebuilt.
   log "4/9" "Build dell'immagine (scarica $EMBEDDING_MODEL, circa 2,2 GB con e5) e chiavi JWT RS256"
   $COMPOSE_BASE build app
   BUILD_FLAG="--build"

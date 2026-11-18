@@ -192,8 +192,7 @@ open data API (below); `src/crawler/normattiva/` keeps the URN validator it uses
 
 ```
 Request → Agent Graph → Draft PhaseChangeEvent
-    → TokenEvents (the finished answer cut into 80-char blocks: not token by token;
-                   src/agents/streaming_llm.py exists but nothing calls it)
+    → TokenEvents (the finished answer cut into 80-char blocks: not token by token)
     → CitationEvents (per-citation, with the verifier's fields)
     → [CoVe] → ThinkingEvents → VerificationEvents
     → DoneEvent (confidence, token count, review flag, citation counters,

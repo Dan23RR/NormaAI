@@ -348,6 +348,30 @@ async def run_suite(
 # ─── Report Generation ────────────────────────────────────────────
 
 
+def _golden_v2_lines(suite_result: SuiteResult) -> list[str]:
+    """The golden v2 measures, each on its own (metrics._golden_v2_breakdown)."""
+    s = suite_result
+    if s.answerable_cases is None or s.abstain_cases is None:
+        return []
+    rows = [
+        ("Answerable: expected article cited", s.answerable_article_cited, s.answerable_cases),
+        ("Answerable: answered, no abstention", s.answerable_answered, s.answerable_cases),
+        ("Answerable: content checks passed", s.answerable_content_passed, s.answerable_cases),
+        ("Answerable: article and content", s.answerable_article_and_content, s.answerable_cases),
+        ("Abstain cases: abstained", s.abstain_abstained, s.abstain_cases),
+        ("Abstain cases: content checks passed", s.abstain_content_passed, s.abstain_cases),
+        ("Content checks passed, all cases", s.content_checks_passed, s.content_checks_total),
+    ]
+    lines = ["║  GOLDEN V2, EACH MEASURE ON ITS OWN                      ║"]
+    lines += [f"║  {label}: {got} / {total}".ljust(59) + "║" for label, got, total in rows]
+    lines += [
+        "║  Passed above = recall >= threshold: the abstain cases   ║",
+        "║  expect no citation, so they pass it whatever happens.   ║",
+        "╠══════════════════════════════════════════════════════════╣",
+    ]
+    return lines
+
+
 def generate_report(suite_result: SuiteResult, mode: str = "demo") -> str:
     """Generate a human-readable report from suite results."""
     mode_label = {"demo": "DEMO", "api": "API", "direct": "DIRECT"}.get(mode, mode.upper())
@@ -389,7 +413,15 @@ def generate_report(suite_result: SuiteResult, mode: str = "demo") -> str:
             f"{suite_result.avg_verified_citation_rate:.1%} (n={n_scored})".ljust(59)
             + "║"
         )
+        if suite_result.citations_scored:
+            lines.append(
+                f"║  all answers together: {suite_result.citations_verified} of "
+                f"{suite_result.citations_scored} citations".ljust(59)
+                + "║"
+            )
         lines.append("╠══════════════════════════════════════════════════════════╣")
+
+    lines.extend(_golden_v2_lines(suite_result))
 
     calibration = suite_result.relevance_calibration
     if calibration:

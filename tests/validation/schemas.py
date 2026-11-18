@@ -244,6 +244,25 @@ class SuiteResult(BaseModel):
     # The best_dense_score of the golden v2 answers, to calibrate QA_MIN_DENSE_SCORE
     # (metrics.relevance_calibration): None when no answer carries it.
     relevance_calibration: dict | None = None
+    # Citations of all answers together (metrics.verified_citation_counts):
+    # verified word for word, and scored. None when no answer carries verdicts.
+    citations_verified: int | None = None
+    citations_scored: int | None = None
+
+    # Golden v2, each measure on its own (metrics._golden_v2_breakdown); None for
+    # a suite without answer checks. passed_cases counts recall >= recall_threshold,
+    # which every record that expects an abstention meets by definition: these
+    # say what it is made of. A case that ended in an error counts as failed.
+    answerable_cases: int | None = None  # records that expect an answer
+    answerable_article_cited: int | None = None  # ... the expected article among the citations
+    answerable_answered: int | None = None  # ... the answer is not an abstention
+    answerable_content_passed: int | None = None  # ... every answer check passed
+    answerable_article_and_content: int | None = None  # ... article cited and checks passed
+    abstain_cases: int | None = None  # records that expect an abstention
+    abstain_abstained: int | None = None  # ... the system abstained
+    abstain_content_passed: int | None = None  # ... abstained and said nothing forbidden
+    content_checks_passed: int | None = None  # answer checks passed, all records
+    content_checks_total: int | None = None
 
     # Per-framework breakdown
     framework_metrics: dict[str, dict] = Field(default_factory=dict)

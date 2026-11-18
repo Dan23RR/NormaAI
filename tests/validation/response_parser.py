@@ -204,6 +204,9 @@ def _parse_qa(data: dict, metadata: dict) -> dict:
     # The retrieval score QA_MIN_DENSE_SCORE is compared with (metrics.relevance_calibration).
     if isinstance(data.get("best_dense_score"), int | float):
         parsed["best_dense_score"] = data["best_dense_score"]
+    # The pipeline's own word that it abstained (golden_v2.looks_like_abstention).
+    if isinstance(data.get("abstention_reason"), str) and data["abstention_reason"]:
+        parsed["abstention_reason"] = data["abstention_reason"]
     return parsed
 
 

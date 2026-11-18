@@ -4,11 +4,11 @@ Every Q&A answer reports ``best_dense_score``, the score the threshold is
 compared with; the run says up to which value no answerable record abstains.
 """
 
+from tests.validation import schemas
 from tests.validation.golden_v2 import load_golden_v2_test_cases
 from tests.validation.metrics import aggregate_suite_results, relevance_calibration
 from tests.validation.response_parser import _parse_qa
 from tests.validation.runner import generate_report
-from tests.validation.schemas import TestResult
 
 
 def _cases():
@@ -22,7 +22,7 @@ def _result(case_id, score):
     output = {"answer": "x", "citations": []}
     if score is not None:
         output["best_dense_score"] = score
-    return TestResult(test_case_id=case_id, normaai_output=output)
+    return schemas.TestResult(test_case_id=case_id, normaai_output=output)
 
 
 def test_the_lowest_answerable_score_and_the_abstentions_below_it():

@@ -1,22 +1,20 @@
-"""Data endpoints: EUR-Lex crawl, document upload, document processing."""
+"""Data endpoints: EUR-Lex crawl, the closed legacy upload, document processing."""
 
 import asyncio
-import re
 from enum import Enum
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user, require_staff
+from src.auth.dependencies import CurrentUser, require_staff
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1", tags=["Data"])
 
 from src.api.rate_limit import limiter
-from src.api.schemas import FrameworkEnum
 
 
 class CrawlTypeEnum(str, Enum):
@@ -31,16 +29,6 @@ class CrawlRequest(BaseModel):
         default=CrawlTypeEnum.amendment_check, description="full_crawl or amendment_check"
     )
     days_back: int = Field(default=7, ge=1, le=90, description="Days to look back")
-
-
-# ─── Dependency checks ────────────────────────────────────────────
-
-
-def _require_qdrant():
-    from src.api.app_state import app_state
-
-    if not app_state.qdrant_available:
-        raise HTTPException(status_code=503, detail="Qdrant vector database is not available.")
 
 
 # ─── Endpoints ────────────────────────────────────────────────────
@@ -119,100 +107,30 @@ async def trigger_crawl(
         )
 
 
-@router.post("/documents/upload")
-@limiter.limit("5/minute")
-async def upload_document(
-    request: Request,
-    file: UploadFile = File(..., description="Document to process (PDF, HTML, PNG, JPEG)"),
-    framework: FrameworkEnum | None = None,
-    user: CurrentUser = Depends(get_current_user),
-):
+LEGACY_UPLOAD_GONE_DETAIL = (
+    "Questo indirizzo non è più attivo: i documenti non vengono più caricati e indicizzati. "
+    "Per controllare i riferimenti di legge di un documento usa POST /api/v1/documents/check: "
+    "il file è letto in memoria e non viene conservato."
+)
+
+
+@router.post(
+    "/documents/upload",
+    status_code=410,
+    deprecated=True,
+    responses={410: {"description": "Gone: use POST /api/v1/documents/check."}},
+)
+async def upload_document(request: Request):
     """
-    **Upload and process a compliance document.**
+    **Gone (410).** This route used to index an uploaded document into the
+    search index of the organisation, where it stayed until the organisation
+    was erased. It is closed: nothing is read, nothing is stored.
 
-    Supports PDF, HTML, PNG, JPEG, TIFF files.
-    The document will be processed through the NLP pipeline:
-    1. Text extraction (dots.ocr / Docling / BeautifulSoup)
-    2. Legal chunking (article/section-aware)
-    3. Contextual enrichment
-    4. Vector indexing into Qdrant
-
-    Requires authentication.
+    To check the legal references of a document use `POST /api/v1/documents/check`:
+    the file is read in memory and not kept. Text indexed by this route before it
+    closed is deleted by the GDPR erasure (`POST /api/v1/gdpr/erase`).
     """
-    _require_qdrant()
-
-    allowed_extensions = {".pdf", ".html", ".htm", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
-    safe_filename = (
-        re.sub(r"[^\w.\-]", "_", file.filename or "upload") if file.filename else "upload"
-    )
-    file_ext = ""
-    if safe_filename and "." in safe_filename:
-        file_ext = "." + safe_filename.rsplit(".", 1)[-1].lower()
-
-    if file_ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file_ext}. Allowed: {', '.join(sorted(allowed_extensions))}",
-        )
-
-    max_size = 50 * 1024 * 1024
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(status_code=400, detail="Empty file uploaded.")
-    if len(content) > max_size:
-        raise HTTPException(status_code=413, detail="File too large. Maximum size: 50MB")
-
-    audit_log(
-        AuditAction.DOCUMENT_UPLOAD,
-        user_id=str(user.user_id),
-        org_id=str(user.org_id),
-        ip_address=get_client_ip(request),
-        resource="/api/v1/documents/upload",
-        detail=f"{safe_filename} ({len(content)} bytes)",
-        extra={"content_type": file.content_type},
-    )
-
-    try:
-        import os
-        import tempfile
-
-        suffix = file_ext or ".pdf"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
-        try:
-            from src.pipeline import IngestionPipeline
-
-            pipeline = IngestionPipeline()
-            fw_value = framework.value if framework else None
-            result = await asyncio.to_thread(
-                pipeline.process_document,
-                tmp_path,
-                framework=fw_value,
-                org_id=str(user.org_id),  # tenant-scope the upload (SEC-01)
-            )
-
-            return {
-                "status": "success",
-                "message": f"Document processed: {safe_filename}",
-                "data": {
-                    "filename": safe_filename,
-                    "size_bytes": len(content),
-                    "chunks_indexed": result.get("chunks_indexed", 0)
-                    if isinstance(result, dict)
-                    else 0,
-                    "framework": fw_value,
-                },
-            }
-        finally:
-            os.unlink(tmp_path)
-
-    except Exception as e:
-        logger.error("document_upload_error", error=str(e), filename=safe_filename)
-        raise HTTPException(
-            status_code=500, detail="Document processing failed. Check server logs for details."
-        )
+    raise HTTPException(status_code=410, detail=LEGACY_UPLOAD_GONE_DETAIL)
 
 
 @router.get("/processors")

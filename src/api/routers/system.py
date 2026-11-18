@@ -150,6 +150,10 @@ async def get_stats(user: CurrentUser | None = Depends(get_optional_user)):
     else:
         stats["qdrant"] = {"status": "unavailable"}
 
+    # Without a date in the collection, the CORPUS_AS_OF setting, as the answers do.
+    if not stats.get("corpus_as_of"):
+        stats["corpus_as_of"] = get_settings().corpus_as_of or None
+
     # Is the corpus the law in force? {"status", "checked_at", "outdated": [{"celex",
     # "indexed", "latest"}], ...}; "unknown" until the nightly job has run.
     stats["freshness"] = await corpus_freshness()

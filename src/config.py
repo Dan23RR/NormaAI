@@ -125,11 +125,11 @@ class Settings(BaseSettings):
     # whose endpoints answer HTTP 409, was removed); the seed says so.
     data_source: str = "eurlex"
 
-    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD). Set this to
-    # the last seed/refresh date at deploy time. Surfaced in API metadata and PDF
-    # footers so a reader can tell how fresh the law is - the corpus is frozen
-    # between manual re-seeds and superseded_by is only set at seed time, so an
-    # honest staleness signal is the interim mitigation for serving repealed law.
+    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD): the fallback.
+    # The API shows the date the seed and `--action update` record in the
+    # collection (src.api.app_state.corpus_as_of); this one only when the
+    # collection holds none. Surfaced in API metadata and PDF footers so a reader
+    # can tell how fresh the law is.
     corpus_as_of: str = ""
 
     # ─── Embedding ────────────────────────────────────────────

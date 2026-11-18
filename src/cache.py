@@ -46,18 +46,23 @@ MIN_CACHEABLE_CONFIDENCE = 0.1
 # entries written by an older build are never served. 2: Q&A citations carry
 # the citation verifier's fields and the answer its verified_citations /
 # citations_total counters.
-CACHE_KEY_VERSION = 2
+CACHE_KEY_VERSION = 3
 
 
 def corpus_version() -> str:
     """What identifies the indexed corpus in a cache key.
 
-    Today the Qdrant collection and the CORPUS_AS_OF setting (empty when not
-    set). When the pipeline records the date of the corpus it indexed, read it
-    here: the cache key, and with it every cached answer, follows this function.
+    The Qdrant collection and the corpus date the API shows: the date the
+    pipeline recorded in the collection (src.api.app_state.corpus_as_of), or
+    the CORPUS_AS_OF setting when none is recorded (empty when neither is
+    there). A re-indexed corpus has a new date, so the cache key, and with it
+    every cached answer, changes with it.
     """
+    from src.api.app_state import corpus_as_of  # local: the API state imports late
+
     settings = get_settings()
-    return f"{settings.qdrant_collection}@{str(settings.corpus_as_of or '').strip()}"
+    date = corpus_as_of(str(settings.corpus_as_of or "").strip() or None) or ""
+    return f"{settings.qdrant_collection}@{date.strip()}"
 
 
 def is_cacheable_result(result: object) -> tuple[bool, str]:

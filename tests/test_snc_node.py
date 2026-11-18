@@ -295,6 +295,40 @@ class TestAsyncNodeHappyPath:
         assert out["snc_decision"]["n_clusters"] == 1
         mocked_gov.assert_awaited_once()
 
+    async def test_an_abstention_before_the_model_is_not_resampled(self):
+        # The Q&A abstained without asking the model (no passage, or none close
+        # enough): resampling would ask it anyway and replace the abstention.
+        cfg = SNCConfig(enabled=True)
+        mocked_gov = AsyncMock(return_value=_make_decision())
+        draft = {"answer": "Non posso rispondere", "abstention_reason": "low_relevance"}
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
+            patch.object(snc_node, "snc_governance", mocked_gov),
+        ):
+            state = {"result_json": json.dumps(draft)}
+            out = await async_snc_governance_node(state)
+        mocked_gov.assert_not_awaited()
+        assert json.loads(out["result_json"]) == draft
+
+    async def test_the_served_sample_keeps_the_retrieval_score(self):
+        cfg = SNCConfig(enabled=True)
+        mocked_gov = AsyncMock(return_value=_make_decision(action="ADMIT_MID", trust=0.7))
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
+            patch.object(snc_node, "snc_governance", mocked_gov),
+        ):
+            state = {
+                "result_json": json.dumps(
+                    {"answer": "draft", "confidence_score": 0.7, "best_dense_score": 0.8712}
+                )
+            }
+            out = await async_snc_governance_node(state)
+        assert json.loads(out["result_json"])["best_dense_score"] == 0.8712
+
     async def test_abstain_sets_requires_expert_review(self):
         cfg = SNCConfig(enabled=True)
         decision = _make_decision(action="ABSTAIN", trust=0.1)

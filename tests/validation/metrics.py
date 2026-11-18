@@ -6,6 +6,7 @@ Includes article-level matching with fuzzy logic for partial matches.
 """
 
 import re
+import statistics
 
 from .golden_v2 import check_answer
 from .schemas import (
@@ -55,6 +56,52 @@ def verified_citation_rate(output: dict) -> float | None:
     if not any(isinstance(c.get("verified"), bool) for c in citations):
         return None
     return sum(1 for c in citations if c.get("verified") is True) / len(citations)
+
+
+def relevance_calibration(results: list[TestResult], test_cases: list[TestCase]) -> dict | None:
+    """What QA_MIN_DENSE_SCORE can be set to without an abstention on an answerable question.
+
+    Reads ``best_dense_score``, the score the threshold is compared with, from
+    each golden v2 answer (records that carry ``expected_answer``). The
+    threshold abstains below its value, so any value up to ``answerable_min``
+    keeps every answerable record; ``abstain_below_answerable_min`` are the
+    abstention records such a value would catch. None when no answer carries
+    the score (a run of an API without it, or a demo run).
+    """
+    case_map = {tc.id: tc for tc in test_cases}
+    answerable: list[tuple[float, str]] = []
+    abstain: list[tuple[float, str]] = []
+    for r in results:
+        tc = case_map.get(r.test_case_id)
+        output = r.normaai_output if isinstance(r.normaai_output, dict) else {}
+        score = output.get("best_dense_score")
+        if (
+            tc is None
+            or tc.expected_answer is None
+            or not isinstance(score, int | float)
+            or isinstance(score, bool)
+        ):
+            continue
+        (abstain if tc.expected_answer.get("abstain") else answerable).append(
+            (float(score), r.test_case_id)
+        )
+    if not answerable and not abstain:
+        return None
+    calibration: dict = {"answerable_scored": len(answerable), "abstain_scored": len(abstain)}
+    if answerable:
+        lowest, lowest_case = min(answerable)
+        calibration["answerable_min"] = lowest
+        calibration["answerable_min_case"] = lowest_case
+        calibration["answerable_median"] = statistics.median(s for s, _ in answerable)
+    if abstain:
+        highest, highest_case = max(abstain)
+        calibration["abstain_max"] = highest
+        calibration["abstain_max_case"] = highest_case
+        if answerable:
+            calibration["abstain_below_answerable_min"] = sorted(
+                case for score, case in abstain if score < calibration["answerable_min"]
+            )
+    return calibration
 
 
 _LATIN_TO_LETTER = {
@@ -333,6 +380,8 @@ def aggregate_suite_results(
         ]
         if rates:
             suite.avg_verified_citation_rate = sum(rates) / len(rates)
+
+        suite.relevance_calibration = relevance_calibration(valid_results, test_cases)
 
     # Per-framework breakdown
     case_map = {tc.id: tc for tc in test_cases}

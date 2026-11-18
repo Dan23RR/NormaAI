@@ -1083,6 +1083,129 @@ class TestNoPassageNoAnswer:
         llm.assert_called_once()
 
 
+def _settings(**update):
+    from src.config import get_settings
+
+    return get_settings().model_copy(update=update)
+
+
+class TestBestDenseScore:
+    def test_the_highest_dense_score_of_the_results(self):
+        chunks = [
+            {"id": "a", "score": 0.03, "dense_score": 0.71},
+            {"id": "b", "score": 0.02, "dense_score": None},  # sparse only
+            {"id": "c", "score": 0.01, "dense_score": 0.83},
+            "not a chunk",
+            {"id": "d", "dense_score": True},
+        ]
+        assert nodes.best_dense_score(chunks) == 0.83
+
+    def test_none_without_dense_scores(self):
+        assert nodes.best_dense_score([{"id": "a", "score": 0.03}]) is None
+        assert nodes.best_dense_score([]) is None
+        assert nodes.best_dense_score(None) is None
+
+    def test_retrieve_node_measures_it_before_reranking(self):
+        # The reranker may leave the closest passage out of the 15 the model
+        # reads: the threshold compares the closest one the search found.
+        chunks = [
+            {"id": str(i), "text": f"t{i}", "score": 1.0 - i / 100, "dense_score": 0.5}
+            for i in range(30)
+        ]
+        chunks[29]["dense_score"] = 0.88
+        scorer = MagicMock()
+        scorer.score.side_effect = lambda query, passages: [-float(i) for i in range(30)]
+        with (
+            patch("src.api.app_state.app_state.indexer", _indexer_returning(chunks)),
+            patch("src.api.app_state.app_state.reranker", scorer),
+        ):
+            out = retrieve_node({"query": "What does CSRD require?"})
+        assert "29" not in [c["id"] for c in out["retrieved_chunks"]]
+        assert out["retrieval_best_dense_score"] == 0.88
+
+    def test_retrieve_node_leaves_it_out_when_no_result_has_one(self):
+        with patch("src.api.app_state.app_state.indexer", _indexer_returning([_A_PASSAGE])):
+            out = retrieve_node({"query": "What does the GDPR require?"})
+        assert "retrieval_best_dense_score" not in out
+
+
+class TestLowRelevanceAbstention:
+    """QA_MIN_DENSE_SCORE: below it the Q&A abstains without asking the model."""
+
+    @staticmethod
+    def _state(best, language=""):
+        return {
+            "query": "Qual è l'aliquota IVA ordinaria?",
+            "language": language,
+            "retrieved_chunks": [_A_PASSAGE],
+            "retrieval_best_dense_score": best,
+        }
+
+    def test_off_by_default(self):
+        from src.config import Settings
+
+        assert Settings.model_fields["qa_min_dense_score"].default == 0.0
+
+    def test_below_the_threshold_abstains_without_calling_the_model(self):
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "call_llm") as llm,
+        ):
+            out = qa_bot_node(self._state(0.7512345))
+        llm.assert_not_called()
+        result = json.loads(out["result_json"])
+        assert result["abstention_reason"] == nodes.LOW_RELEVANCE_ABSTENTION_REASON
+        assert result["abstention_reason"] == "low_relevance"
+        assert result["answer"] == nodes.LOW_RELEVANCE_ABSTENTION_IT
+        assert result["best_dense_score"] == 0.7512
+        assert result["citations"] == [] and result["citations_total"] == 0
+        assert out["confidence_score"] == 0.0 and out["requires_review"] is True
+
+    async def test_async_node_abstains_in_the_request_language(self):
+        llm = AsyncMock()
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "acall_llm", llm),
+        ):
+            out = await async_qa_bot_node(self._state(0.42, language="en"))
+        llm.assert_not_awaited()
+        assert json.loads(out["result_json"])["answer"] == nodes.LOW_RELEVANCE_ABSTENTION_EN
+
+    @pytest.mark.parametrize("threshold, best", [(0.8, 0.8), (0.8, 0.86), (0.0, 0.1), (0.8, None)])
+    def test_the_model_answers_otherwise(self, threshold, best, sample_qa_response):
+        # At or above the threshold, with the threshold off, or with no dense
+        # score to compare (nothing measured), the model is asked as before.
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=threshold)),
+            patch.object(nodes, "call_llm", return_value=sample_qa_response) as llm,
+        ):
+            out = qa_bot_node(self._state(best))
+        llm.assert_called_once()
+        result = json.loads(out["result_json"])
+        assert "abstention_reason" not in result
+        if best is None:
+            assert "best_dense_score" not in result
+        else:
+            assert result["best_dense_score"] == best
+
+    def test_the_abstention_is_never_cached(self):
+        from src.cache import is_cacheable_result
+
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "call_llm"),
+        ):
+            out = qa_bot_node(self._state(0.5))
+        cacheable, _ = is_cacheable_result(json.loads(out["result_json"]))
+        assert cacheable is False
+
+    def test_an_llm_error_gets_no_score(self):
+        error = {"error": "LLM timed out", "error_code": "llm_timeout", "confidence_score": 0.0}
+        with patch.object(nodes, "call_llm", return_value=error):
+            out = qa_bot_node(self._state(0.9))
+        assert "best_dense_score" not in json.loads(out["result_json"])
+
+
 # ─── confidence_check_node ────────────────────────────────────────
 
 

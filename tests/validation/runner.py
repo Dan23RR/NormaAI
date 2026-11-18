@@ -391,6 +391,35 @@ def generate_report(suite_result: SuiteResult, mode: str = "demo") -> str:
         )
         lines.append("╠══════════════════════════════════════════════════════════╣")
 
+    calibration = suite_result.relevance_calibration
+    if calibration:
+        lines.append("║  RELEVANCE: best_dense_score (QA_MIN_DENSE_SCORE)       ║")
+        if "answerable_min" in calibration:
+            lines.append(
+                f"║  Answerable (n={calibration['answerable_scored']}): min "
+                f"{calibration['answerable_min']:.4f} ({calibration['answerable_min_case']}), "
+                f"median {calibration['answerable_median']:.4f}".ljust(59)
+                + "║"
+            )
+        if "abstain_max" in calibration:
+            lines.append(
+                f"║  Abstain (n={calibration['abstain_scored']}): max "
+                f"{calibration['abstain_max']:.4f} ({calibration['abstain_max_case']})".ljust(59)
+                + "║"
+            )
+        if "abstain_below_answerable_min" in calibration:
+            caught = calibration["abstain_below_answerable_min"]
+            lines.append(
+                f"║  Up to {calibration['answerable_min']:.4f} no answerable case abstains; "
+                f"{len(caught)} of {calibration['abstain_scored']} abstain cases are below it".ljust(
+                    59
+                )
+                + "║"
+            )
+            if caught:
+                lines.append(f"║  Below it: {', '.join(caught)}".ljust(59) + "║")
+        lines.append("╠══════════════════════════════════════════════════════════╣")
+
     if suite_result.framework_metrics:
         lines.append("║  PER-FRAMEWORK BREAKDOWN                                ║")
         for fw, m in sorted(suite_result.framework_metrics.items()):

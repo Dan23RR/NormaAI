@@ -235,6 +235,16 @@ class Settings(BaseSettings):
     #              abstention_reason="unverified_citations" (never cached).
     citation_verification: Literal["flag", "strict"] = "flag"
 
+    # ─── Q&A relevance threshold ─────────────────────────────
+    # Chiedi abstains without calling the LLM (abstention_reason "low_relevance")
+    # when no passage the hybrid search found has a dense (cosine) score of at
+    # least this value. Every Q&A answer reports the score it is compared with
+    # as best_dense_score. 0 disables the threshold (default): the scale depends
+    # on the embedding model (multilingual-e5-large gives every passage a score
+    # in a narrow, high band, docs/MODELS.md section 6) and it is not calibrated
+    # yet. Answers cached before a change are served until their TTL ends.
+    qa_min_dense_score: float = 0.0
+
     # ─── Streaming ────────────────────────────────────────────
     sse_keepalive_interval: int = 15
     sse_enabled: bool = True

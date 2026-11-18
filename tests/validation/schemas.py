@@ -241,6 +241,9 @@ class SuiteResult(BaseModel):
     # quote was found word for word in the official text (the "Verificata" rate).
     # Informational: it is not part of suite_passed and has no threshold.
     avg_verified_citation_rate: float | None = None
+    # The best_dense_score of the golden v2 answers, to calibrate QA_MIN_DENSE_SCORE
+    # (metrics.relevance_calibration): None when no answer carries it.
+    relevance_calibration: dict | None = None
 
     # Per-framework breakdown
     framework_metrics: dict[str, dict] = Field(default_factory=dict)

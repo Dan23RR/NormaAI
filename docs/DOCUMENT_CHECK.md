@@ -46,6 +46,7 @@ read has no `fonte`: its entries are EU provisions.
 | Non esiste nel testo vigente | da correggere | Article, paragraph or comma not in the text in force: never existed, repealed (the card shows the last wording), or not yet in force |
 | Citazione diversa dal testo ufficiale | da correggere | The quote almost matches but words differ (a number, a negation, a short word); the card lists the differing words |
 | Citazione non trovata | da correggere | The quote is in no wording of the cited provision |
+| Citazione in un altro paragrafo, Citazione in un altro comma | da correggere | La citazione è nell'articolo citato, parola per parola, ma non nel paragrafo o comma indicato dal riferimento: il messaggio dice in quale è |
 | Citazione in un altro articolo | da controllare | EU law: the quote is in another article of the act |
 | Testo ufficiale non raggiungibile | da controllare | CELLAR or Normattiva did not answer and nothing is cached |
 | Versione più recente non leggibile | da controllare | EU law: a later consolidated text exists but could not be read; the check used an older one |
@@ -91,6 +92,19 @@ is needed; the data are licensed CC BY 4.0. The whole act is never downloaded.
   case of discrepancy. The report says so and credits Normattiva (CC BY 4.0). Editorial marks
   and update notes are removed from the text; rulings of the Constitutional Court that sit
   only in the notes are flagged.
+
+## Paragrafo e comma citati
+
+Quando il riferimento indica un paragrafo o un comma («art. 33, par. 2», «Article 6(1)», «art.
+13, comma 2»), una citazione trovata parola per parola nell'articolo deve stare in quel
+paragrafo o comma; altrimenti l'esito è «Citazione in un altro paragrafo» (o «in un altro
+comma»), da correggere, con il messaggio «La citazione è nel testo vigente, parola per parola,
+ma nel par. 1, non nel par. 2 citato». Per il diritto UE il paragrafo è quello che il
+verificatore indica (la riga numerata «1.», «2.» in cui la citazione comincia: un paragrafo
+citato come «1-bis» vale come «1»); per il diritto italiano è il comma, tra quelli che
+Normattiva dà, che contiene le prime parole del passo trovato. Se il riferimento non indica
+paragrafi, o il paragrafo non si capisce (articoli senza paragrafi numerati, commi non
+distinguibili), la citazione resta «Citazione verificata».
 
 ## Limiti di dimensione e di tempo
 

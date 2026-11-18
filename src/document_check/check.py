@@ -105,6 +105,10 @@ CHANGED = Status("cambiato", "Cambiato dopo la data del documento", "correggere"
 MISSING = Status("inesistente", "Non esiste nel testo vigente", "correggere")
 ALTERED = Status("alterata", "Citazione diversa dal testo ufficiale", "correggere")
 NOT_FOUND = Status("non_trovata", "Citazione non trovata", "correggere")
+# The quote is in the article cited, word for word, but not in the paragraph (or
+# comma) the reference names: the reference is wrong.
+OTHER_PARAGRAPH = Status("altro_paragrafo", "Citazione in un altro paragrafo", "correggere")
+OTHER_COMMA = Status("altro_comma", "Citazione in un altro comma", "correggere")
 ELSEWHERE = Status("altro_articolo", "Citazione in un altro articolo", "controllare")
 UNAVAILABLE = Status("non_disponibile", "Testo ufficiale non raggiungibile", "controllare")
 UNREAD = Status("versione_non_letta", "Versione più recente non leggibile", "controllare")
@@ -127,6 +131,8 @@ _ORDER = (
     MISSING,
     ALTERED,
     NOT_FOUND,
+    OTHER_PARAGRAPH,
+    OTHER_COMMA,
     ELSEWHERE,
     UNAVAILABLE,
     UNREAD,
@@ -478,14 +484,7 @@ def _check_quotes(
                 near_cited = r
         if exact is not None:
             finding, result = exact
-            if finding.status is VALID:
-                finding.status = VERIFIED
-            finding.official_quote = result.official_quote
-            finding.messages.append(
-                "La citazione è nel testo vigente, parola per parola."
-                if result.match == "exact"
-                else "La citazione è nel testo vigente, con piccole differenze di punteggiatura."
-            )
+            _mark_verified(finding, result, _other_paragraph(finding.provision, result.paragraph))
             continue
         provision = first.provision or Provision("art:0")
         result = searches.run(quote, provision, act, current, in_force, lang)
@@ -554,6 +553,54 @@ def _check_quotes(
                 "La citazione non è nel testo vigente né nelle versioni precedenti: può essere "
                 "una parafrasi o un errore."
             )
+
+
+def _parts(provision: Provision, parts: list[str] | tuple[str, ...]) -> str:
+    """ "par. 2", "parr. 2 e 3", "comma 1-bis", "commi 1 e 2", as the reference calls them."""
+    one = len(parts) == 1
+    word = ("comma" if one else "commi") if provision.commi else ("par." if one else "parr.")
+    labels = [paragraph_label(p) for p in parts]
+    listed = labels[0] if one else f"{', '.join(labels[:-1])} e {labels[-1]}"
+    return f"{word} {listed}"
+
+
+def _other_paragraph(provision: Provision | None, found: str | None) -> str | None:
+    """The numbered paragraph a quote was found in, when the reference cites others.
+
+    The verifier tells only plain numbers ("1", not "1-bis"): a paragraph cited
+    as "1-bis" is matched by its number.
+    """
+    if provision is None or not provision.paragraphs or not found:
+        return None
+    cited = {m.group() for m in (re.match(r"\d+", p) for p in provision.paragraphs) if m}
+    return found if cited and found not in cited else None
+
+
+def _mark_verified(finding: Finding, result: VerificationResult, found_in: str | None) -> None:
+    """A quote found in the article the finding cites: verified, unless in another paragraph.
+
+    ``found_in`` is the paragraph or comma that has the quote when the reference
+    names others: the quote is right, the reference is to be corrected.
+    """
+    finding.official_quote = result.official_quote
+    words = (
+        "parola per parola"
+        if result.match == "exact"
+        else "con piccole differenze di punteggiatura"
+    )
+    provision = finding.provision
+    if found_in and provision is not None:
+        cited = provision.paragraphs
+        finding.status = _worse(finding.status, OTHER_COMMA if provision.commi else OTHER_PARAGRAPH)
+        finding.messages.append(
+            f"La citazione è nel testo vigente, {words}, ma nel {_parts(provision, [found_in])}, "
+            f"non {'nel' if len(cited) == 1 else 'nei'} {_parts(provision, cited)} "
+            f"{'citato' if len(cited) == 1 else 'citati'}."
+        )
+        return
+    if finding.status is VALID:
+        finding.status = VERIFIED
+    finding.messages.append(f"La citazione è nel testo vigente, {words}.")
 
 
 def _not_placed(
@@ -779,6 +826,23 @@ def _verify_in(quote: str, act: Act, article: ArticleText) -> VerificationResult
     }
     citation = {"framework": act.key, "reference": article.label, "quote_snippet": quote}
     return verify_citation(citation, [chunk])
+
+
+def _other_comma(
+    provision: Provision | None, article: ItalianArticle, result: VerificationResult
+) -> str | None:
+    """The comma that has a quote found in an Italian article, when the reference cites others.
+
+    The comma is the one whose text holds the first words of the official
+    passage found; when none or more than one does, nothing is said.
+    """
+    if provision is None or not provision.paragraphs or not result.official_quote:
+        return None
+    first = normalize(result.official_quote.split(" [...] ")[0])
+    holding = [c for c, text in article.comma_texts.items() if first and first in normalize(text)]
+    if len(holding) != 1 or holding[0] in provision.paragraphs:
+        return None
+    return holding[0]
 
 
 def _wording_before(italian: ItalianTextSource, article: ItalianArticle) -> ItalianArticle | None:
@@ -1090,14 +1154,7 @@ def _check_italian_quotes(
         for finding, now in in_force:
             result = _verify_in(quote, act, now.article)
             if result.verified:
-                if finding.status is VALID:
-                    finding.status = VERIFIED
-                finding.official_quote = result.official_quote
-                finding.messages.append(
-                    "La citazione è nel testo vigente, parola per parola."
-                    if result.match == "exact"
-                    else "La citazione è nel testo vigente, con piccole differenze di punteggiatura."
-                )
+                _mark_verified(finding, result, _other_comma(finding.provision, now, result))
                 done = True
                 break
             if result.differences and near is None:

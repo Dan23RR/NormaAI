@@ -45,7 +45,7 @@ esiti:
                   Cambiato dopo la data del documento (con --data);
                   Non esiste nel testo vigente (articolo, paragrafo o comma);
                   Citazione diversa dal testo ufficiale (con le parole diverse);
-                  Citazione non trovata
+                  Citazione non trovata; Citazione in un altro paragrafo (o comma)
   da controllare  Citazione in un altro articolo; Testo ufficiale non raggiungibile;
                   Versione più recente non leggibile; Estremi dell'atto da controllare;
                   Articolo letto solo in parte; Modifica pubblicata, non ancora in vigore;

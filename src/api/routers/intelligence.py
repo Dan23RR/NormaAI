@@ -100,7 +100,10 @@ class QARequest(BaseModel):
         },
     )
     company_profile: CompanyProfile | None = None
-    language: LanguageEnum = Field(default=LanguageEnum.EN, description="Response language")
+    language: LanguageEnum | None = Field(
+        default=None,
+        description="Response language; when omitted, the language of the question (it or en)",
+    )
     conversation_id: str | None = Field(
         default=None,
         max_length=64,
@@ -244,6 +247,22 @@ def _build_metadata(
     return meta
 
 
+def _answer_language(payload: QARequest) -> str:
+    """The language of the answer: the one the request names, else the question's.
+
+    ``language`` is optional. A client that omits it gets the answer, the
+    caveats and the cache entry in the language of its question, as before the
+    field reached the prompt: Italian and English are told apart by their short
+    words (the document check's quote_language); a question that tells neither
+    is answered in Italian, the language of the interface.
+    """
+    if payload.language is not None:
+        return payload.language.value
+    from src.document_check.extract import quote_language
+
+    return "en" if quote_language(payload.question) == "EN" else "it"
+
+
 def _finalize_qa_result(result: dict, language: str) -> dict:
     """The citation-verification contract at the delivery point of ``/qa``.
 
@@ -339,11 +358,11 @@ async def ask_question(
                     payload.question,
                     profile_dict,
                     org_id=org_id,
-                    language=payload.language.value,
+                    language=_answer_language(payload),
                 )
             )
             if cached:
-                data = _finalize_qa_result(cached, payload.language.value)
+                data = _finalize_qa_result(cached, _answer_language(payload))
                 response_body = {
                     "status": "success",
                     "data": data,
@@ -370,12 +389,12 @@ async def ask_question(
             profile_dict,
             cove_enabled=payload.enable_cove,
             org_id=org_id,
-            language=payload.language.value,
+            language=_answer_language(payload),
         )
         # A failed analysis is an HTTP error (503/502/504/500), never a 200
         # "success" envelope wrapping an error payload - and it is never cached.
         raise_for_result(result, endpoint="qa")
-        result = _finalize_qa_result(result, payload.language.value)
+        result = _finalize_qa_result(result, _answer_language(payload))
 
         # Cache with org isolation (skip when CoVe ran - see cache-read note above)
         try:
@@ -388,7 +407,7 @@ async def ask_question(
                     result,
                     profile_dict,
                     org_id=org_id,
-                    language=payload.language.value,
+                    language=_answer_language(payload),
                 )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="qa", error=str(cache_err))
@@ -675,7 +694,7 @@ async def ask_question_stream(
                     profile_dict,
                     user,
                     payload.enable_cove,
-                    language=payload.language.value,
+                    language=_answer_language(payload),
                 )
             ),
             media_type="text/event-stream",

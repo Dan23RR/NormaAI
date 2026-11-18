@@ -371,8 +371,9 @@ async def _run_cove(
         from src.api.app_state import app_state
 
         indexer = getattr(app_state, "indexer", None)
-        # Wire the Normattiva client so CoVe actually validates Italian URN
-        # citations; without it _validate_citations silently skips them.
+        # The old Normattiva client was removed, so this stays None and CoVe
+        # skips Italian URN citations (src/api/lifespan.py). Italian law is
+        # read by the document check, src/document_check/normattiva.py.
         normattiva_client = getattr(app_state, "normattiva_client", None)
     except (ImportError, AttributeError):
         pass

@@ -167,6 +167,28 @@ export function actOfCelex(celex: string, t: Translate): string {
   return key ? actLabel(key, undefined, t) : actNameFromCelex(celex, t)
 }
 
+/**
+ * A bracketed reference of the answer as the reader sees it. The backend labels
+ * an act other than the main one of its framework with its CELEX (the Digital
+ * Omnibus on AI is no article of the AI Act): "[32026R1744, Art. 1]" reads
+ * "[Regolamento (UE) 2026/1744, Art. 1]". Any other label is left as it is.
+ */
+export function markerLabel(label: string, t: Translate): string {
+  const comma = label.indexOf(',')
+  const head = (comma >= 0 ? label.slice(0, comma) : label).trim()
+  if (!isCelex(head)) return label
+  const rest = comma >= 0 ? label.slice(comma + 1).trim() : ''
+  return rest ? `${actOfCelex(head, t)}, ${rest}` : actOfCelex(head, t)
+}
+
+/** The answer text with every bracketed CELEX reference named as markerLabel does. */
+export function withActNames(text: string, t: Translate): string {
+  return text.replace(/\[([^[\]\n]+)\]/g, (all, inner: string) => {
+    const shown = markerLabel(inner, t)
+    return shown === inner ? all : `[${shown}]`
+  })
+}
+
 interface FoundElsewhere {
   where: Elsewhere['where']
   celex?: string | null
@@ -243,6 +265,8 @@ export function frameworkOf(c: ChiediCitation): string {
   }
   const fromField = normalizeFramework(c.framework)
   if (fromField && (CELEX_BY_FRAMEWORK[fromField] || FRAMEWORK_META[fromField])) return fromField
+  // An act cited by its CELEX: the framework key when it is a main act, else the CELEX itself.
+  if (isCelex(fromField)) return FRAMEWORK_BY_CELEX[fromField] ?? fromField
   if (isCelex(c.celex) && FRAMEWORK_BY_CELEX[c.celex.trim()]) return FRAMEWORK_BY_CELEX[c.celex.trim()]
   const fromTitle = normalizeFramework(c.title)
   if (fromTitle && (CELEX_BY_FRAMEWORK[fromTitle] || FRAMEWORK_META[fromTitle])) return fromTitle
@@ -291,7 +315,7 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
   // The CELEX and link of a quote found elsewhere are those of the place it was found:
   // they go with `elsewhere`, and the source names the act the answer cites.
   const ownCelex = !elsewhere && isCelex(c.celex) ? c.celex.trim() : undefined
-  const celex = ownCelex ?? CELEX_BY_FRAMEWORK[key]
+  const celex = ownCelex ?? (isCelex(key) ? key : CELEX_BY_FRAMEWORK[key])
   const url = !elsewhere && isUsefulUrl(c.url) ? c.url : celex ? eurlexUrl(celex, eurlexLang(ctx.locale)) : undefined
   const near = nearMatchOf(c)
   // Verified: show the official wording, never the model's paraphrase. A quote known to
@@ -302,9 +326,14 @@ export function citationToSource(c: ChiediCitation, index: number, idPrefix: str
   const paragraph = verified && c.paragraph ? String(c.paragraph).trim() : ''
   const article =
     paragraph && !/par/i.test(baseArticle) ? `${baseArticle}, ${ctx.t('ui.paragraphShort')} ${paragraph}` : baseArticle
-  // An act outside the framework table (a delegated act, an amending act) is named from its CELEX.
+  // An act outside the framework table (a delegated act, an amending act) is named from its CELEX,
+  // also when the citation names it by its CELEX, as the backend labels it.
   const act =
-    verified && ownCelex && !FRAMEWORK_BY_CELEX[ownCelex] ? actNameFromCelex(ownCelex, ctx.t) : actLabel(key, c.title, ctx.t)
+    verified && ownCelex && !FRAMEWORK_BY_CELEX[ownCelex]
+      ? actNameFromCelex(ownCelex, ctx.t)
+      : isCelex(key)
+        ? actOfCelex(key, ctx.t)
+        : actLabel(key, c.title, ctx.t)
   // An article verified in the text of the act that amends it: say so (the link goes there).
   const note =
     verified && isCelex(c.amending_celex)
@@ -344,7 +373,14 @@ export function sseCitationToChiedi(ev: CitationEvent): ChiediCitation {
   const fieldKey = normalizeFramework(ev.framework)
   const titleKey = normalizeFramework(ev.title)
   const known = (k: string) => Boolean(k && (CELEX_BY_FRAMEWORK[k] || FRAMEWORK_META[k]))
-  const framework = known(fieldKey) ? fieldKey : known(titleKey) ? titleKey : celex ? (FRAMEWORK_BY_CELEX[celex] ?? '') : ''
+  // A framework given as a CELEX (an act other than the main one of its framework) is kept.
+  const framework = known(fieldKey) || isCelex(fieldKey)
+    ? fieldKey
+    : known(titleKey)
+      ? titleKey
+      : celex
+        ? (FRAMEWORK_BY_CELEX[celex] ?? '')
+        : ''
   const article = (ev.article ?? '').trim()
   const quote = (ev.quote ?? '').trim()
   return {

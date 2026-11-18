@@ -98,6 +98,7 @@ import re
 import unicodedata
 from dataclasses import asdict, dataclass, fields
 from difflib import SequenceMatcher
+from functools import lru_cache
 from typing import Any
 
 from src.crawler.eurlex import celex as celex_utils
@@ -228,8 +229,14 @@ _FRAMEWORK_ALIASES: dict[str, str] = {
     "GENERAL_DATA_PROTECTION_REGULATION": "GDPR",
     "RGPD": "GDPR",
     "CS3D": "CSDDD",
-    # ESRS Set 1 (Delegated Regulation 2023/2772) is seeded under CSRD.
-    "ESRS": "CSRD",
+    # ESRS Set 1 is seeded under CSRD, but it is an act of its own: Delegated
+    # Regulation (EU) 2023/2772, cited by its CELEX (see principal_celex).
+    "ESRS": "32023R2772",
+}
+# How a caveat names the framework of a principal act: "(AI Act)".
+_FRAMEWORK_NAMES: dict[str, tuple[str, str]] = {
+    "AI_ACT": ("AI Act", "AI Act"),
+    "TAXONOMY": ("Tassonomia", "Taxonomy"),
 }
 
 # ─── Normalization ───────────────────────────────────────────────────
@@ -461,6 +468,36 @@ def normalize_framework(name: Any) -> str:
         if f"_{known}_" in padded:
             return known
     return key
+
+
+@lru_cache(maxsize=1)
+def _principal_acts() -> dict[str, str]:
+    """Framework key -> CELEX of its principal act: its first basic act in TRACKED_ACTS."""
+    from src.crawler.eurlex.client import TRACKED_ACTS
+
+    principals: dict[str, str] = {}
+    for act in TRACKED_ACTS:
+        if act.kind == "basic":
+            principals.setdefault(act.framework, act.celex)
+    return principals
+
+
+def principal_celex(framework: Any) -> str | None:
+    """CELEX of the act a framework key names, or None for a CELEX or an unknown key.
+
+    A framework groups acts (src.crawler.eurlex.client.TRACKED_ACTS): CSRD
+    holds the CSRD, the Accounting Directive, ESRS Set 1 and the Omnibus
+    directives; AI_ACT the AI Act and the Digital Omnibus on AI. The key names
+    the first basic act of the group (CSRD: 32022L2464, AI_ACT: 32024R1689),
+    its principal act; every other act of the group is cited by its CELEX.
+    """
+    return _principal_acts().get(normalize_framework(framework))
+
+
+def _tracked_act(celex: str) -> Any:
+    from src.crawler.eurlex.client import get_tracked_act
+
+    return get_tracked_act(celex)
 
 
 def base_celex(chunk: dict[str, Any]) -> str | None:
@@ -1188,6 +1225,15 @@ def _result(
     )
 
 
+def _of_act(chunk: _Chunk, celex: str | None) -> bool:
+    """True when the chunk may belong to the act ``celex`` (always true when it is None).
+
+    A chunk of another act (its CELEX, base or quoted, says so) does not; a
+    chunk without a CELEX cannot be told apart and stays.
+    """
+    return celex is None or not _is_celex(chunk.celex) or chunk.celex == celex
+
+
 def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
     if not isinstance(citation, dict) or not chunks:
         return _UNVERIFIED
@@ -1207,8 +1253,18 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
             c for c in chunks if framework in c.frameworks or (c.celex and framework == c.celex)
         ]
         if article:
+            # A framework key names its principal act: the article of another act
+            # of the group (an amending or delegated act) is another article.
+            principal = principal_celex(framework)
             levels.append(
-                (LEVEL_ARTICLE, [c for c in of_framework if same_article(c.article_key, article)])
+                (
+                    LEVEL_ARTICLE,
+                    [
+                        c
+                        for c in of_framework
+                        if same_article(c.article_key, article) and _of_act(c, principal)
+                    ],
+                )
             )
         levels.append((LEVEL_FRAMEWORK, of_framework))
     levels.append((LEVEL_ANY, chunks))
@@ -1300,7 +1356,7 @@ def _found_in(citation: dict[str, Any], outcome: VerificationResult) -> str | No
         if cited and found and not found[0] <= int(cited) <= found[1]:
             return FOUND_IN_PARAGRAPH
         return None
-    cited_act = framework if _is_celex(framework) else None
+    cited_act = framework if _is_celex(framework) else principal_celex(framework)
     found_act = outcome.celex if _is_celex(outcome.celex) else None
     if cited_act and found_act and cited_act != found_act:
         return FOUND_IN_ACT
@@ -1422,11 +1478,13 @@ def _cap_confidence(result: dict[str, Any]) -> None:
 
 
 def act_name(celex: str | None, english: bool = False) -> str | None:
-    """How a caveat names an act, from its CELEX: "Regolamento (UE) 2024/1689".
+    """How a caveat names an act, from its CELEX: "Regolamento (UE) 2024/1689 (AI Act)".
 
-    From 2015 on acts are numbered year/number with "(UE)"; the directives of
-    2010-2014 read "Direttiva 2013/34/UE"; anything else is named by its
-    CELEX. None without a CELEX.
+    From 2015 on acts are numbered year/number with "(UE)", a tracked
+    delegated or implementing act says so ("Regolamento delegato (UE)
+    2023/2772") and the principal act of a framework adds its name; the
+    directives of 2010-2014 read "Direttiva 2013/34/UE"; anything else is
+    named by its CELEX. None without a CELEX.
     """
     if not celex:
         return None
@@ -1435,12 +1493,23 @@ def act_name(celex: str | None, english: bool = False) -> str | None:
         return f"CELEX {celex}"
     year, kind, number = m.group(1), m.group(2), str(int(m.group(3)))
     if int(year) >= 2015:
+        act = _tracked_act(celex)
+        eli_type = getattr(act, "eli_type", "")
         it, en = {
             "R": ("Regolamento", "Regulation"),
             "L": ("Direttiva", "Directive"),
             "D": ("Decisione", "Decision"),
         }[kind]
-        return f"{en} (EU) {year}/{number}" if english else f"{it} (UE) {year}/{number}"
+        if eli_type in ("reg_del", "dir_del"):
+            it, en = f"{it} delegat{'o' if kind == 'R' else 'a'}", f"Delegated {en}"
+        elif eli_type in ("reg_impl", "dir_impl"):
+            it, en = f"{it} di esecuzione", f"Implementing {en}"
+        name = f"{en} (EU) {year}/{number}" if english else f"{it} (UE) {year}/{number}"
+        framework = next((k for k, v in _principal_acts().items() if v == celex), None)
+        if framework:
+            label = _FRAMEWORK_NAMES.get(framework, (framework, framework))[1 if english else 0]
+            name = f"{name} ({label})"
+        return name
     if kind == "L" and int(year) >= 2010:
         return f"Directive {year}/{number}/EU" if english else f"Direttiva {year}/{number}/UE"
     return f"CELEX {celex}"

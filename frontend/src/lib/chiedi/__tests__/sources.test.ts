@@ -6,9 +6,11 @@ import {
   citationsToSources,
   isCelex,
   isUsefulUrl,
+  markerLabel,
   nearMatchOf,
   normalizeFramework,
   sseCitationToChiedi,
+  withActNames,
 } from '../sources'
 import { buildCopyText } from '../copy'
 import type { ChiediCitation } from '../types'
@@ -399,6 +401,51 @@ describe('actOfCelex', () => {
   it('uses the framework table first, the CELEX number otherwise', () => {
     expect(actOfCelex('32024R1689', en.t)).toBe('Regulation (EU) 2024/1689 (AI Act)')
     expect(actOfCelex('32026R1744', it_.t)).toBe('Regolamento (UE) 2026/1744')
+  })
+})
+
+describe('an act cited by its CELEX', () => {
+  // The backend labels an act other than the main one of its framework with its
+  // CELEX (src/agents/llm.py, _citation_key): the Digital Omnibus on AI is no
+  // article of the AI Act, the Accounting Directive none of the CSRD.
+  it('names the act in the source, with its CELEX and link, verified or not', () => {
+    const omnibus: ChiediCitation = { framework: '32026R1744', reference: 'Art. 1', quote_snippet: 'il regolamento è così modificato' }
+    const s = citationToSource(omnibus, 1, 's', it_)
+    expect(s.act).toBe('Regolamento (UE) 2026/1744')
+    expect(s.celex).toBe('32026R1744')
+    expect(s.url).toBe('https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32026R1744')
+    expect(s.status).toBe('unverified')
+    const verifiedOmnibus = citationToSource({ ...omnibus, verified: true, celex: '32026R1744', article: 'Art. 1' }, 1, 's', en)
+    expect(verifiedOmnibus.act).toBe('Regulation (EU) 2026/1744')
+    expect(verifiedOmnibus.status).toBe('verified')
+    expect(citationToSource({ framework: '32013L0034', reference: 'Art. 3', quote_snippet: '' }, 1, 's', it_).act).toBe('Direttiva 2013/34/UE')
+    // The CELEX of a main act stays that act, with its short name.
+    const aiAct = citationToSource({ framework: '32024R1689', reference: 'Art. 4', quote_snippet: '' }, 1, 's', it_)
+    expect(aiAct.act).toBe('Regolamento (UE) 2024/1689 (AI Act)')
+  })
+
+  it('shows the act name in the bracketed references of the answer', () => {
+    expect(markerLabel('32026R1744, Art. 1', it_.t)).toBe('Regolamento (UE) 2026/1744, Art. 1')
+    expect(markerLabel('32026R1744, Recital 38', en.t)).toBe('Regulation (EU) 2026/1744, Recital 38')
+    expect(markerLabel('32013L0034, Art. 3(4)', en.t)).toBe('Directive 2013/34/EU, Art. 3(4)')
+    expect(markerLabel('AI_ACT, Art. 50', it_.t)).toBe('AI_ACT, Art. 50')
+    expect(markerLabel('1', it_.t)).toBe('1')
+    expect(withActNames('Si applica [32026R1744, Art. 1] e [GDPR, Art. 6].', it_.t)).toBe(
+      'Si applica [Regolamento (UE) 2026/1744, Art. 1] e [GDPR, Art. 6].',
+    )
+  })
+
+  it('keeps the CELEX of a stream event as the framework', () => {
+    const c = sseCitationToChiedi({ type: 'citation', framework: '32026R1744', celex: '32026R1744', article: 'Art. 1', title: '32026R1744', verified: false })
+    expect(c.framework).toBe('32026R1744')
+    expect(citationToSource(c, 1, 's', it_).act).toBe('Regolamento (UE) 2026/1744')
+  })
+
+  it('copies the answer with the act names', () => {
+    const sources = citationsToSources([{ framework: '32026R1744', reference: 'Art. 1', quote_snippet: '' }], 'm', it_)
+    const text = buildCopyText({ answer: 'Il calendario cambia [32026R1744, Art. 1].', sources }, it_)
+    expect(text.startsWith('Il calendario cambia [Regolamento (UE) 2026/1744, Art. 1].')).toBe(true)
+    expect(text).toContain('1. Regolamento (UE) 2026/1744, Art. 1')
   })
 })
 

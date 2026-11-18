@@ -793,6 +793,19 @@ class TestQaCitationVerification:
             "altro articolo dello stesso atto, Art. 29a."
         ]
 
+    def test_fallback_link_names_the_act_the_citation_names(self):
+        # The principal act of a framework key (for CSDDD not the Stop-the-Clock
+        # directive, the first act seeded under it), the act itself for a CELEX.
+        from src.api.streaming.generators import _primary_celex_for_framework
+
+        assert _primary_celex_for_framework("CSDDD") == "32024L1760"
+        assert _primary_celex_for_framework("AI Act") == "32024R1689"
+        assert _primary_celex_for_framework("32026R1744") == "32026R1744"
+        assert _primary_celex_for_framework("02024R1689-20260727") == "32024R1689"
+        assert _primary_celex_for_framework("ESRS") == "32023R2772"
+        assert _primary_celex_for_framework("Unknown") == ""
+        assert _primary_celex_for_framework("") == ""
+
     def test_verified_passage_without_celex_gets_no_guessed_link(self):
         # Found in a chunk with no CELEX (e.g. an uploaded document): the event
         # must not borrow the cited framework's primary act as its source.

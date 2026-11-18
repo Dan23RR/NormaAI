@@ -385,4 +385,39 @@ describe('ChiediPage (demo mode)', () => {
     // The caveat names the mismatch under the answer too.
     expect(screen.getByText(/La citazione \[GDPR, Art. 6\] non è verificata/)).toBeInTheDocument()
   })
+
+  it('names an act cited by its CELEX, in the answer and in the margin', async () => {
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Il regolamento modifica il calendario [32026R1744, Art. 1].',
+        citations: [
+          {
+            framework: '32026R1744',
+            reference: 'Art. 1',
+            quote_snippet: 'Il regolamento (UE) 2024/1689 è così modificato',
+            verified: true,
+            celex: '32026R1744',
+            article: 'Art. 1',
+            official_quote: 'Il regolamento (UE) 2024/1689 è così modificato',
+          },
+        ],
+        confidence_score: 0.9,
+        requires_expert_review: false,
+        related_frameworks: [],
+        caveats: [],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Cosa cambia il regolamento 2026/1744?')
+    await user.keyboard('{Enter}')
+    // The marker reads the act's name, not "[32026R1744, Art. 1]", and still leads to its source.
+    const marker = await screen.findByRole('button', { name: 'Vai alla fonte 1' })
+    expect(marker).toHaveTextContent('[Regolamento (UE) 2026/1744, Art. 1]')
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2026/1744')).toBeInTheDocument()
+    expect(within(margin).getByText('Verificata')).toBeInTheDocument()
+  })
 })

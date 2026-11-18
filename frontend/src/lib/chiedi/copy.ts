@@ -1,7 +1,7 @@
 import { formatCorpusDate } from '@/i18n/format'
 import type { TextContext } from '@/i18n/types'
 import { answerToPlainText } from './answer-text'
-import type { ChiediSource } from './sources'
+import { withActNames, type ChiediSource } from './sources'
 
 /** The answer plus its numbered sources, as plain text for the clipboard. */
 export function buildCopyText(
@@ -14,7 +14,7 @@ export function buildCopyText(
   ctx: TextContext,
 ): string {
   const { t } = ctx
-  const lines: string[] = [answerToPlainText(opts.answer)]
+  const lines: string[] = [withActNames(answerToPlainText(opts.answer), t)]
   if (opts.sources.length) {
     lines.push('', t('chiedi.copy.sources'))
     for (const s of opts.sources) {

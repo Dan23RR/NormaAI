@@ -560,6 +560,63 @@ class TestFormatRetrievedChunks:
             in out
         )
 
+    def test_another_act_of_a_framework_is_labelled_with_its_celex(self):
+        # B3.8: the Digital Omnibus on AI is no article of the AI Act, the Accounting
+        # Directive none of the CSRD: each act other than the principal one of its
+        # framework (citation_verifier.principal_celex) is labelled with its CELEX.
+        out = format_retrieved_chunks(
+            [
+                {"framework": "AI_ACT", "article": "Art. 1", "celex": "32026R1744", "text": "a"},
+                {
+                    "framework": "AI_ACT",
+                    "article": "Recital 38",
+                    "celex": "32026R1744",
+                    "text": "b",
+                },
+                {"framework": "CSRD", "article": "Art. 3", "celex": "32013L0034", "text": "c"},
+                {
+                    "framework": "CSRD",
+                    "article": "Art. 19a",
+                    "celex": "02022L2464-20260318",
+                    "text": "d",
+                },
+                {
+                    "framework": "AI_ACT",
+                    "article": "Art. 50",
+                    "celex": "02024R1689-20260727",
+                    "text": "e",
+                },
+            ]
+        )
+        assert "[32026R1744, Art. 1] | CELEX 32026R1744" in out
+        assert "[32026R1744, Recital 38]" in out
+        assert "[32013L0034, Art. 3] | CELEX 32013L0034" in out
+        assert "[AI_ACT, Art. 1]" not in out and "[CSRD, Art. 3]" not in out
+        # The principal act, in any consolidated version, keeps the framework key.
+        assert "[CSRD, Art. 19a] | CELEX 32022L2464" in out
+        assert "[AI_ACT, Art. 50] | CELEX 32024R1689" in out
+
+    def test_every_tracked_act_is_labelled_by_key_or_celex(self):
+        from src.agents.citation_verifier import principal_celex
+        from src.crawler.eurlex.client import TRACKED_ACTS
+
+        for act in TRACKED_ACTS:
+            out = format_retrieved_chunks(
+                [{"framework": act.framework, "article": "Art. 2", "celex": act.celex, "text": "x"}]
+            )
+            key = act.framework if act.celex == principal_celex(act.framework) else act.celex
+            assert out.startswith(f"--- Source 1 [{key}, Art. 2] | CELEX {act.celex}"), act.celex
+        principals = {
+            act.framework for act in TRACKED_ACTS if act.celex == principal_celex(act.framework)
+        }
+        assert principals == {"CSRD", "CSDDD", "AI_ACT", "DORA", "NIS2", "TAXONOMY", "GDPR", "CRA"}
+
+    def test_a_chunk_with_no_known_framework_keeps_its_label(self):
+        out = format_retrieved_chunks(
+            [{"framework": "OTHER", "article": "Art. 1", "celex": "32026R1744", "text": "x"}]
+        )
+        assert "[OTHER, Art. 1]" in out
+
     def test_long_act_title_is_shortened(self):
         out = format_retrieved_chunks([{"framework": "GDPR", "act_title": "T" * 300, "text": "b"}])
         assert "T" * 100 + "..." in out and "T" * 101 not in out

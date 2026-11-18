@@ -35,8 +35,10 @@ from src.agents.citation_verifier import (
     UNVERIFIED_CONFIDENCE_CAP,
     apply_unverified_policy,
     citation_counters,
+    normalize_framework,
     policy_mode,
     policy_requires_review,
+    principal_celex,
     unverified_policy_applies,
 )
 from src.api.errors import ResultFailure, classify_result
@@ -54,6 +56,7 @@ from src.api.streaming.sse import (
 )
 from src.auth.dependencies import CurrentUser
 from src.config import get_settings
+from src.crawler.eurlex import celex as celex_utils
 
 logger = structlog.get_logger()
 
@@ -91,15 +94,21 @@ def eurlex_celex_url(celex: str, language: str = "it") -> str:
 
 
 def _primary_celex_for_framework(framework: str) -> str:
-    """CELEX of the primary act of a framework (first seeded entry), or ''."""
+    """CELEX of the act a citation's framework names, or ''.
+
+    The framework's principal act for a framework key (principal_celex: not
+    the first act seeded under it, which for CSDDD is the Stop-the-Clock
+    directive), the act itself for a CELEX.
+    """
     if not framework:
         return ""
+    key = normalize_framework(framework)
+    if celex_utils.parse_celex(key) is not None:
+        return key
     try:
-        from src.crawler.eurlex.client import CORE_FRAMEWORKS
+        return principal_celex(key) or ""
     except Exception:  # noqa: BLE001 - citation link is best-effort
         return ""
-    celex_map = CORE_FRAMEWORKS.get(str(framework).upper()) or {}
-    return next(iter(celex_map), "")
 
 
 _MATCH_VALUES: frozenset[str] = frozenset(get_args(CitationMatch))

@@ -290,7 +290,7 @@ unverified in `verified_citations` and in the policy, its verification fields
 stay `null`, and the `found_*` fields keep where the wording really is. The
 answer gets `requires_expert_review = true` and a caveat per such citation
 that names it: *"La citazione [GDPR, Art. 6] non è verificata: il testo citato
-si trova in un altro atto, Regolamento (UE) 2024/1689, Art. 50, par. 2."*
+si trova in un altro atto, Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2."*
 (English twin for an English request). `verify_citation` itself keeps its
 levels: the document check reads `level` and reports "Citazione in un altro
 articolo" on its own.
@@ -334,6 +334,22 @@ served.
 `src/agents/llm.py`, which also names the amending act when there is one); the model is
 told to cite the article exactly as labelled and to copy `quote_snippet`
 verbatim from the labelled source, marking omissions with `[...]`.
+
+**A framework key names one act** (2026-11-18). `TRACKED_ACTS` groups acts by
+framework: CSRD holds the CSRD, the Accounting Directive 2013/34/EU, ESRS Set 1
+and the Omnibus directives; AI_ACT the AI Act and the Digital Omnibus on AI
+(2026/1744). Under the key, the Omnibus articles reached the answers as "[AI_ACT,
+Art. 1]" and the thresholds of the Accounting Directive as "[CSRD, Art. 3(4)]",
+which a jurist reads as articles of the AI Act and of the CSRD. The key now
+names the principal act of the framework (`principal_celex`: its first basic
+act in `TRACKED_ACTS`, e.g. 32024R1689 for AI_ACT, 32022L2464 for CSRD), in any
+consolidated version; every other act is labelled with its CELEX,
+`[32026R1744, Art. 1]`, which the model is told to copy, and the interface
+shows as "[Regolamento (UE) 2026/1744, Art. 1]". A citation that names a
+framework key matches at the article level only chunks of the principal act
+(with its consolidated versions and the articles an amending act quotes, case
+2 above): "[AI_ACT, Art. 1]" with the Omnibus wording is a quote found in
+another act. "ESRS" names Delegated Regulation 2023/2772 itself.
 
 **Golden set.** `tests/validation/metrics.py::verified_citation_rate` reports
 the share of verified citations per case (`SuiteResult.avg_verified_citation_rate`);

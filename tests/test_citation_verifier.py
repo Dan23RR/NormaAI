@@ -40,6 +40,7 @@ from src.agents.citation_verifier import (
     parse_paragraph,
     policy_mode,
     policy_requires_review,
+    principal_celex,
     same_article,
     unverified_policy_applies,
     verify_citation,
@@ -235,7 +236,7 @@ class TestNormalizeFramework:
             ("EU AI Act", "AI_ACT"),
             ("nis 2", "NIS2"),
             ("EU Taxonomy", "TAXONOMY"),
-            ("ESRS", "CSRD"),
+            ("ESRS", "32023R2772"),
             ("CSRD Directive", "CSRD"),
             ("02024R1689-20260727", "32024R1689"),
             ("Some Other Act", "SOME_OTHER_ACT"),
@@ -679,6 +680,8 @@ class TestLevels:
         assert out.celex is None and out.url is None and out.lang is None
 
     def test_act_listed_under_several_frameworks(self):
+        # Omnibus I is listed under CSRD and CSDDD; it is cited by its CELEX. Under a
+        # framework key its Art. 4 is another act's article (see TestPrincipalActs).
         chunk = _chunk(
             "Gli Stati membri recepiscono la presente direttiva entro il termine stabilito.",
             framework="CSRD",
@@ -687,15 +690,11 @@ class TestLevels:
             celex="32026L0470",
             source_celex="32026L0470",
         )
-        out = verify_citation(
-            _cite(
-                "recepiscono la presente direttiva entro il termine",
-                framework="CSDDD",
-                reference="Art. 4",
-            ),
-            [chunk],
-        )
+        quote = "recepiscono la presente direttiva entro il termine"
+        out = verify_citation(_cite(quote, framework="32026L0470", reference="Art. 4"), [chunk])
         assert out.verified and out.level == "article"
+        out = verify_citation(_cite(quote, framework="CSDDD", reference="Art. 4"), [chunk])
+        assert out.verified and out.level == "framework"
 
     def test_english_letter_matches_italian_latin_suffix(self):
         # "Article 19a" in English is "articolo 19 bis" in Italian: same provision.
@@ -707,8 +706,9 @@ class TestLevels:
             framework="CSRD",
             celex="32013L0034",
         )
+        # Art. 19a is an article of the Accounting Directive: cited by its CELEX.
         out = verify_citation(
-            {"framework": "CSRD", "reference": "Art. 19a(1)", "quote": sentence}, [chunk]
+            {"framework": "32013L0034", "reference": "Art. 19a(1)", "quote": sentence}, [chunk]
         )
         assert out.verified and out.level == "article" and out.article == "Art. 19 bis"
 
@@ -1127,8 +1127,12 @@ class TestGoldenSetPassages:
                 .replace("\N{RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK}", '"')
                 .replace("\N{EM DASH}", "-")
             )
+            # Cited as the prompt labels it: the framework key for its principal
+            # act, the CELEX for any other (the Accounting Directive, the Omnibus).
+            act = base_celex(chunk)
+            key = rec["framework"] if act == principal_celex(rec["framework"]) else act
             citation = {
-                "framework": rec["framework"],
+                "framework": key,
                 "reference": f"Art. {exp['article']}",
                 "quote_snippet": model_quote,
             }
@@ -1298,14 +1302,14 @@ class TestFoundElsewhere:
         assert out["caveats"] == [
             "Nota del modello.",
             "La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro "
-            "atto, Regolamento (UE) 2024/1689, Art. 50, par. 2.",
+            "atto, Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2.",
             UNVERIFIED_ELSEWHERE_CAVEAT_IT,
         ]
         again = apply_unverified_policy(json.loads(json.dumps(out)), mode="flag", language="en")
         assert again["caveats"] == [
             "Nota del modello.",
             "The citation [GDPR, Art. 6] is not verified: the quoted text is in another act, "
-            "Regulation (EU) 2024/1689, Art. 50, para. 2.",
+            "Regulation (EU) 2024/1689 (AI Act), Art. 50, para. 2.",
             UNVERIFIED_ELSEWHERE_CAVEAT_EN,
         ]
         assert apply_unverified_policy(json.loads(json.dumps(again)), language="en") == again
@@ -1336,8 +1340,11 @@ class TestFoundElsewhere:
         assert english["answer"] == UNVERIFIED_ELSEWHERE_ABSTENTION_EN
 
     def test_act_names_and_paragraphs(self):
-        assert act_name("32024R1689") == "Regolamento (UE) 2024/1689"
+        assert act_name("32024R1689") == "Regolamento (UE) 2024/1689 (AI Act)"
+        assert act_name("32020R0852", english=True) == "Regulation (EU) 2020/852 (Taxonomy)"
         assert act_name("32026R1744", english=True) == "Regulation (EU) 2026/1744"
+        assert act_name("32023R2772") == "Regolamento delegato (UE) 2023/2772"
+        assert act_name("32024R2956", english=True) == "Implementing Regulation (EU) 2024/2956"
         assert act_name("32013L0034") == "Direttiva 2013/34/UE"
         assert act_name("32013R0575") == "CELEX 32013R0575"
         assert act_name(None) is None
@@ -1347,6 +1354,90 @@ class TestFoundElsewhere:
         assert parse_paragraph("Art. 6(1)(f)") == "1"
         assert parse_paragraph("Art. 50") is None
         assert parse_paragraph("Recital 12") is None
+
+
+# ─── Framework keys name their principal act ─────────────────────────
+
+# The principal act of each framework key: its first basic act in TRACKED_ACTS.
+PRINCIPAL_ACTS = {
+    "CSRD": "32022L2464",
+    "CSDDD": "32024L1760",
+    "AI_ACT": "32024R1689",
+    "DORA": "32022R2554",
+    "NIS2": "32022L2555",
+    "TAXONOMY": "32020R0852",
+    "GDPR": "32016R0679",
+    "CRA": "32024R2847",
+}
+OMNIBUS_1 = (
+    "Articolo 1\nModifiche del regolamento (UE) 2024/1689\nIl regolamento (UE) 2024/1689 è "
+    "così modificato: l'articolo 4 è sostituito dal seguente testo."
+)
+
+
+def _omnibus_chunk():
+    return _chunk(
+        OMNIBUS_1,
+        chunk_id="pt-omnibus-1",
+        article="Art. 1",
+        celex="32026R1744",
+        source_celex="32026R1744",
+        consolidated_as_of=None,
+    )
+
+
+class TestPrincipalActs:
+    """B3.8: a framework key names its principal act, every other act its CELEX."""
+
+    def test_every_framework_has_its_principal_act(self):
+        from src.crawler.eurlex.client import FRAMEWORK_ORDER, TRACKED_ACTS
+
+        assert {fw: principal_celex(fw) for fw in FRAMEWORK_ORDER} == PRINCIPAL_ACTS
+        for fw, celex in PRINCIPAL_ACTS.items():
+            act = next(a for a in TRACKED_ACTS if a.celex == celex)
+            assert act.framework == fw and act.kind == "basic"
+        assert principal_celex("AI Act") == "32024R1689"
+        assert principal_celex("32024R1689") is None  # a CELEX is no framework key
+        assert principal_celex("ESRS") is None  # Delegated Regulation 2023/2772 itself
+        assert principal_celex("Some other act") is None
+
+    def test_a_framework_key_does_not_cite_the_article_of_another_act(self):
+        # "[AI_ACT, Art. 1]" with the Omnibus wording: not an article of the AI Act.
+        quote = "Il regolamento (UE) 2024/1689 è così modificato"
+        out = verify_citation(_cite(quote, reference="Art. 1"), [_omnibus_chunk()])
+        assert out.verified and out.level == "framework" and out.celex == "32026R1744"
+        cit = _annotated(_cite(quote, reference="Art. 1"), [_omnibus_chunk()])["citations"][0]
+        assert cit["verified"] is False
+        assert (cit["found_in"], cit["found_celex"], cit["found_article"]) == (
+            "act",
+            "32026R1744",
+            "Art. 1",
+        )
+        # Cited by its CELEX, as the prompt labels it, it is verified.
+        by_celex = _annotated(
+            _cite(quote, framework="32026R1744", reference="Art. 1"), [_omnibus_chunk()]
+        )["citations"][0]
+        assert by_celex["verified"] is True and by_celex["level"] == "article"
+
+    def test_the_principal_act_its_consolidated_text_and_its_quoted_articles_match(self):
+        consolidated = _chunk(ART_50_IT, celex="02024R1689-20260727")
+        out = verify_citation(_cite(MARCATI), [consolidated])
+        assert out.verified and out.level == "article"
+        # Case B of quoted_articles.py: Art. 4 of the AI Act as the Omnibus quotes it.
+        quoted = _chunk(
+            "Articolo 1\nI fornitori e i deployer adottano misure per l'alfabetizzazione in "
+            "materia di IA.",
+            article="Art. 1",
+            celex="32026R1744",
+            citation_celex="32024R1689",
+            citation_article="Art. 4",
+        )
+        quote = "I fornitori e i deployer adottano misure per l'alfabetizzazione"
+        out = verify_citation(_cite(quote, reference="Art. 4"), [quoted])
+        assert out.verified and out.level == "article" and out.amending_celex == "32026R1744"
+        # A chunk without a CELEX cannot be told apart and still matches.
+        bare = {"framework": "AI_ACT", "article": "Art. 50", "text": ART_50_IT}
+        assert verify_citation(_cite(MARCATI), [bare]).level == "article"
 
 
 # ─── Policy ──────────────────────────────────────────────────────────

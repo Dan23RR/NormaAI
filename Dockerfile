@@ -30,9 +30,11 @@ RUN poetry export -f requirements.txt --without-hashes --no-interaction --only m
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
 
-# Build-time version stamp. docker-compose.prod.yml passes the git SHA
-# (`GIT_SHA` exported by bootstrap_hetzner.sh / the deploy workflow) and
-# GET /health reports it as "version", so a deploy can be verified end to end.
+# Build-time version stamp: the short git SHA, passed by the image job of
+# .github/workflows/deploy.yml, or by docker-compose.prod.yml from the GIT_SHA
+# that scripts/deploy.sh and bootstrap_hetzner.sh export when they build here.
+# GET /health reports it as "version", and scripts/deploy.sh checks it against
+# the commit it deploys.
 ARG GIT_SHA=dev
 ENV APP_VERSION=${GIT_SHA}
 LABEL org.opencontainers.image.revision=${GIT_SHA}
@@ -78,6 +80,9 @@ RUN set -e; \
 # model the API reads from its own EMBEDDING_MODEL (docker-compose.yml passes it):
 # intfloat/multilingual-e5-large adds ~2.1 GB (docs/MODELS.md, section 6).
 ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+# scripts/deploy.sh refuses an image whose model is not the EMBEDDING_MODEL of
+# the server's .env: offline, the API could not load another one.
+LABEL org.normaai.embedding-model=${EMBEDDING_MODEL}
 ENV FASTEMBED_CACHE_DIR=/app/models
 RUN python -c "from fastembed import TextEmbedding; \
     TextEmbedding(model_name='${EMBEDDING_MODEL}', cache_dir='/app/models')"

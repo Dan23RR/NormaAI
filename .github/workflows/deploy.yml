@@ -1,31 +1,57 @@
 name: Deploy
 
 # Production deploy of the backend to the Hetzner host bootstrapped by
-# scripts/bootstrap_hetzner.sh. Runs on every push to main (after the code is
-# already on main) and on demand.
+# scripts/bootstrap_hetzner.sh. It runs only:
+#   - after "NormaAI CI" succeeded on a push to main of this repository
+#     (workflow_run), for exactly the commit that CI run tested, and only while
+#     that commit is still the head of main: when main has moved on, the newer
+#     commit's own CI run deploys it;
+#   - on demand (workflow_dispatch from main), for a commit of main on which a
+#     CI push run succeeded: the head of main by default, an older one for a
+#     rollback.
+# A failed, cancelled or pull-request CI run, or one from a fork, never deploys.
 #
-# On the server it does, in this order:
-#   1. git reset --hard origin/main in /opt/normaai
-#   2. docker compose build app   (GIT_SHA baked in -> GET /health "version")
-#   3. alembic upgrade head       as the `normaai` OWNER role (base compose
-#      files: under the RLS overlay the app connects as normaai_app, which
-#      cannot ALTER tables, so `exec app alembic upgrade head` would fail)
-#   4. docker compose up -d app caddy with the prod + RLS overlays
-#   5. docker image prune -f        (the previous, now dangling, image)
-# then waits until https://api.normaai.org/health answers 200 and reports the
-# deployed SHA.
+# Jobs:
+#   gate    picks the commit and checks the conditions above
+#   image   builds that commit here, with the search model the server uses
+#           (repository variable DEPLOY_EMBEDDING_MODEL, default
+#           intfloat/multilingual-e5-large, the measured configuration), and
+#           pushes it to GHCR as ghcr.io/<owner>/<repo>:deploy-<commit>; the
+#           server never builds, so a deploy no longer downloads the 2.1 GB
+#           model there. Release images (release.yml) keep their own tags.
+#   deploy  over SSH as the non-root deploy user, whose key can run only
+#           scripts/deploy.sh (forced command in its authorized_keys): checkout
+#           of the commit, pull of the image by digest, migrations as the owner
+#           in the one-shot migrate service, recreation of the app alone,
+#           healthcheck, the previous image back when the new one is not
+#           healthy; then waits until https://api.normaai.org/health reports
+#           the commit.
+# build_on_server (manual runs only) skips the image job: the server builds
+# the image itself, as before (fallback).
 #
-# Required repository secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
-# (private key of a user allowed to run docker on the host). Optional:
-# DEPLOY_PORT (default 22), DEPLOY_KNOWN_HOSTS (the host's `ssh-keyscan`
-# line; without it the key is trusted on first use, with a warning).
-# When the required secrets are missing (forks, dry runs) the job succeeds
-# with a notice instead of failing.
+# Repository secrets: DEPLOY_HOST, DEPLOY_USER (deploy), DEPLOY_SSH_KEY (the
+# private key whose public half is in ~deploy/.ssh/authorized_keys with the
+# forced command), DEPLOY_KNOWN_HOSTS (the host's `ssh-keyscan` line, required:
+# the host key is pinned); optional DEPLOY_PORT (default 22). Without
+# DEPLOY_HOST, DEPLOY_USER or DEPLOY_SSH_KEY (forks, dry runs) the workflow
+# skips with a notice. Setup: docs/DEPLOY_CHECKLIST.md, step 6.
 
 on:
-  push:
+  workflow_run:
+    workflows: ["NormaAI CI"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit of main to deploy (40 hexadecimal characters). Empty: the head of main. CI must have passed on it."
+        required: false
+        default: ""
+      build_on_server:
+        description: "Build the image on the server instead of GHCR (fallback)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,14 +62,24 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DIR: /opt/normaai
   HEALTH_URL: https://api.normaai.org/health
 
 jobs:
-  deploy:
-    name: Deploy to production
+  gate:
+    name: Pick the tested commit
     runs-on: ubuntu-latest
-    environment: production
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+      deploy: ${{ steps.pick.outputs.deploy }}
     steps:
       - name: Check deploy secrets
         id: cfg
@@ -51,74 +87,166 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
             echo "::notice::DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY not configured - skipping the deploy."
             echo "configured=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::DEPLOY_KNOWN_HOSTS is not set: add the output of 'ssh-keyscan -p <port> <host>' as a secret (docs/DEPLOY_CHECKLIST.md, step 6)."
+            exit 1
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set up SSH
-        if: steps.cfg.outputs.configured == 'true'
+      - name: Pick the commit CI tested
+        id: pick
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+          CONFIGURED: ${{ steps.cfg.outputs.configured }}
+        run: |
+          set -euo pipefail
+          skip() { echo "::notice::$1"; echo "deploy=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          [ "$CONFIGURED" = "true" ] || skip "deploy secrets not configured"
+          head="$(gh api "repos/$REPO/commits/main" --jq .sha)"
+          if [ "$EVENT" = "workflow_run" ]; then
+            sha="$RUN_SHA"
+            [ "$sha" = "$head" ] || skip "main moved on to $head: its own CI run deploys it, $sha is not deployed"
+          else
+            [ "$REF" = "refs/heads/main" ] || { echo "::error::run the deploy from main"; exit 1; }
+            sha="${INPUT_SHA:-$head}"
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::sha must be a full commit SHA (40 hexadecimal characters)"; exit 1
+            fi
+            # On main: main is that commit or a descendant of it.
+            status="$(gh api "repos/$REPO/compare/$sha...$head" --jq .status)"
+            case "$status" in
+              identical | ahead) ;;
+              *) echo "::error::$sha is not a commit of main ($status)"; exit 1 ;;
+            esac
+            # Tested: a CI run on a push of exactly this commit succeeded.
+            passed="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&status=success" --jq .total_count)"
+            if [ "${passed:-0}" -lt 1 ]; then
+              echo "::error::no successful CI push run on $sha"; exit 1
+            fi
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "deploying $sha"
+
+  image:
+    name: Build the image and push it to GHCR
+    needs: gate
+    if: needs.gate.outputs.deploy == 'true' && !inputs.build_on_server
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          persist-credentials: false
+
+      - name: Names
+        id: names
+        env:
+          SHA: ${{ needs.gate.outputs.sha }}
+        run: |
+          # Docker refuses the uppercase of Dan23RR/NormaAI.
+          echo "repo=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the tested commit
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.names.outputs.repo }}:deploy-${{ needs.gate.outputs.sha }}
+          # The source label links the package to this repository.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: |
+            GIT_SHA=${{ steps.names.outputs.short }}
+            EMBEDDING_MODEL=${{ vars.DEPLOY_EMBEDDING_MODEL || 'intfloat/multilingual-e5-large' }}
+          # Its own cache scope: the model layer differs from the CI image's.
+          cache-from: type=gha,scope=deploy
+          cache-to: type=gha,scope=deploy,mode=max
+
+      - name: Image reference by digest
+        id: ref
+        env:
+          REPO_NAME: ${{ steps.names.outputs.repo }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no digest from the build"; exit 1; }
+          echo "image=$REPO_NAME@$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "pushed $REPO_NAME@$DIGEST"
+
+  deploy:
+    name: Deploy to production
+    needs: [gate, image]
+    if: >-
+      always() && needs.gate.outputs.deploy == 'true' &&
+      (needs.image.result == 'success' ||
+       (needs.image.result == 'skipped' && inputs.build_on_server))
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Set up SSH, host key pinned
+        env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
-            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          else
-            echo "::warning::DEPLOY_KNOWN_HOSTS not set - trusting the host key on first use. Add the output of 'ssh-keyscan -p <port> <host>' as a secret."
-            ssh-keyscan -p "${DEPLOY_PORT:-22}" -H "$DEPLOY_HOST" > ~/.ssh/known_hosts 2>/dev/null
-          fi
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy over SSH (pull, build, migrate as owner, restart)
-        if: steps.cfg.outputs.configured == 'true'
+      - name: Run scripts/deploy.sh on the server
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          SHA: ${{ needs.gate.outputs.sha }}
+          IMAGE: ${{ needs.image.outputs.image }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
         run: |
-          # The script travels on stdin (`bash -s`): it is wrapped in a function
-          # so bash parses it completely before running it, and the docker
-          # commands get stdin from /dev/null, otherwise they could consume the
-          # rest of the script.
-          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
-              -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
-              "$DEPLOY_USER@$DEPLOY_HOST" "APP_DIR='$APP_DIR' bash -s" <<'REMOTE'
-          deploy() {
-            set -euo pipefail
-            cd "$APP_DIR"
-            git fetch --prune origin
-            git reset --hard origin/main
-            export GIT_SHA="$(git rev-parse --short=7 HEAD)"
-            echo "deploying $GIT_SHA"
-            BASE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
-            $BASE build app < /dev/null
-            # Migrations run as the `normaai` owner: the base files' DATABASE_URL.
-            $BASE run --rm -T app alembic upgrade head < /dev/null
-            # The long-lived app connects as the non-superuser role (RLS overlay).
-            $BASE -f docker-compose.rls.yml up -d app caddy < /dev/null
-            # Each build leaves the previous image dangling, and after a dependency
-            # update its own layers weigh gigabytes: drop the images no container
-            # uses, or the disk fills after a few deploys.
-            docker image prune -f < /dev/null
-          }
-          deploy
-          REMOTE
+          # The key's forced command runs scripts/deploy.sh whatever is sent:
+          # these words become its arguments (SSH_ORIGINAL_COMMAND). The job's
+          # token, to pull the image from GHCR, travels on stdin, not in a
+          # command line; it expires with this job.
+          printf '%s\n' "$GHCR_TOKEN" | ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy $SHA ${IMAGE:-build} $ACTOR"
 
       - name: Wait for the deployed build to answer on /health
-        if: steps.cfg.outputs.configured == 'true'
         env:
-          EXPECTED_SHA: ${{ github.sha }}
+          SHA: ${{ needs.gate.outputs.sha }}
         run: |
-          expected="${EXPECTED_SHA:0:7}"
+          expected="${SHA:0:7}"
           for i in $(seq 1 36); do
             if body="$(curl -fsS --max-time 10 "$HEALTH_URL")"; then
               version="$(printf '%s' "$body" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))')"

@@ -1,14 +1,22 @@
 # Production overlay - Hetzner deploy (G10).
-# Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage: on the server .env sets COMPOSE_FILE to this file between the base file
+# and docker-compose.rls.yml, so a plain `docker compose ...` uses all three.
 #
 # What it changes vs the base file:
 #   - Caddy terminates TLS on 80/443 (automatic Let's Encrypt for API_DOMAIN)
 #     and is the ONLY publicly exposed service
+#   - the app runs NORMAAI_IMAGE: the image .github/workflows/deploy.yml built
+#     in CI from the tested commit and pushed to GHCR, pinned by digest
+#     (scripts/deploy.sh writes it to .env); unset, the image built on this
+#     server (normaai-app:local, or the tag scripts/deploy.sh ... build gives)
+#   - the app container receives no password of the database owner: it
+#     connects as normaai_app (docker-compose.rls.yml), and POSTGRES_PASSWORD,
+#     which .env holds for the postgres and migrate services, is blanked in its
+#     environment; migrations run as the owner in the one-shot `migrate` service
 #   - the app is reachable only on the internal network (no host port)
 #   - APP_ENV forced to production (fail-fast config validation, HS256 blocked)
 #   - observability UIs stay bound to 127.0.0.1 -> reach them via SSH tunnel:
-#     ssh -L 3001:localhost:3001 -L 9090:localhost:9090 root@<server>
+#     ssh -L 3001:localhost:3001 -L 9090:localhost:9090 <user>@<server>
 
 services:
   caddy:
@@ -34,23 +42,59 @@ services:
       - normaai-network
 
   app:
+    # With both image and build, `docker compose build app` tags the local
+    # build with this name, and `up` runs whatever image the name points to.
+    image: ${NORMAAI_IMAGE:-normaai-app:local}
     build:
       args:
         # Git SHA baked into the image (Dockerfile ARG GIT_SHA) and reported by
-        # GET /health as "version". bootstrap_hetzner.sh and the deploy
-        # workflow export GIT_SHA before building; "dev" otherwise.
+        # GET /health as "version". scripts/deploy.sh and the bootstrap export
+        # GIT_SHA before building here; deploy.yml passes it to the CI build.
         GIT_SHA: ${GIT_SHA:-dev}
     # No public port in production - Caddy proxies to it on the internal
     # network. `ports: []` would not override the base mapping, hence !override.
     ports: !override []
     environment:
       APP_ENV: production
+      # .env is the app's env_file and holds the owner's password, for the
+      # postgres and migrate services: blanked here, so a compromised app cannot
+      # log in as the owner, who bypasses Row-Level Security. An .env written
+      # before 2026-11 also holds an owner DATABASE_URL_SYNC; DATABASE_URL is
+      # the normaai_app role's (docker-compose.rls.yml).
+      POSTGRES_PASSWORD: ""
+      DATABASE_URL_SYNC: ""
+      GRAFANA_PASSWORD: ""
     # JWT RS256 keys: bootstrap_hetzner.sh writes ./data/jwt_private.pem and
     # ./data/jwt_public.pem on the host, the base file bind-mounts ./data at
     # /app/data, and .env points JWT_PRIVATE_KEY_PATH / JWT_PUBLIC_KEY_PATH
     # there (src/config.py -> src/auth/security.py). APP_ENV=production refuses
     # to start without them (no HS256 fallback). The Codex PDF is baked into
     # the image (Dockerfile, CODEX_PDF_PATH) - no mount needed.
+
+  # Alembic as the owner of the schema: `docker compose run --rm migrate`
+  # (scripts/deploy.sh, bootstrap step 5). One-shot, never started by `up`
+  # (profile tools); the same image as the app. Only DATABASE_URL: it needs
+  # nothing else of .env.
+  migrate:
+    image: ${NORMAAI_IMAGE:-normaai-app:local}
+    profiles:
+      - tools
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://normaai:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/normaai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - normaai-network
 
 volumes:
   caddy_data:

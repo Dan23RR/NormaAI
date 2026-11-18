@@ -121,8 +121,8 @@ controllati». L'API e l'interfaccia per ora non li mostrano: non sono salvati c
   d'uso)»; «del contratto» (non «del contratto collettivo»); «dell'accordo» (non «dell'accordo
   di», «sul», «quadro»); «of this Agreement», «of this Contract», «of this Addendum» (anche con
   «the»), «of this Policy», «of these Terms», «of the Terms and Conditions», «hereof», «herein»,
-  «hereunder», «hereto». Vale anche se dopo è nominato un atto. «Del Regolamento» da solo non conta: è il
-  modo in cui un documento chiama il GDPR definito come «Regolamento».
+  «hereunder», «hereto». Vale anche se dopo è nominato un atto. «Del Regolamento» da solo non
+  conta: è il modo in cui un documento chiama il GDPR definito come «Regolamento».
 - **Titoli degli articoli**: una riga che comincia con un articolo seguito solo da un titolo
   («Art. 5 - Durata», «Articolo 5 (Durata)», «Art. 5. Durata», «ARTICOLO 5 - OGGETTO», «Article
   5 - Term»), senza un atto scritto accanto. Conta solo in un documento che ha articoli propri:
@@ -188,10 +188,9 @@ non si può fermare, quindi è il lavoro stesso a dover finire presto.
   definiti, riferimenti, citazioni e atti modificativi sulla stessa riga, oppure lunghe file
   di spazi dopo un riferimento o dopo le virgolette che aprono una citazione) si legge in uno o
   due secondi; prima ne servivano da 40 secondi a più di 19 minuti, e 20 KB fatti di spazi
-  bastavano per 55 secondi. Un nome definito («di seguito
-  "Regolamento"») indica l'atto della sua ultima definizione che lo precede.
-  `tests/test_document_check_scale.py` lo controlla in CI con un limite di 15 secondi per
-  testo.
+  bastavano per 55 secondi. Un nome definito («di seguito "Regolamento"») indica l'atto della
+  sua ultima definizione che lo precede. `tests/test_document_check_scale.py` lo controlla in
+  CI con un limite di 15 secondi per testo.
 - **Citazioni.** Una citazione si cerca prima nella disposizione citata, in pochi millesimi
   di secondo. Solo se lì non c'è si cerca nel resto dell'atto e nelle versioni precedenti, e
   ognuna di queste ricerche rilegge l'intero atto (da un decimo a qualche decimo di
@@ -209,6 +208,13 @@ non si può fermare, quindi è il lavoro stesso a dover finire presto.
   perché il client EUR-Lex interroga SPARQL con un solo oggetto che i thread non possono
   condividere (dalla cache, un elenco si legge subito); a Normattiva va una richiesta alla
   volta, come prima.
+
+Misurato il 18/11/2026 senza rete, con i testi ufficiali già in cache (GDPR in italiano): una
+nota con 20 citazioni giuste passa da 3,3 a 0,1 secondi; una nota di 4 KB con 50 citazioni
+inventate da 26,6 a 12,6 secondi, una di 27 KB con 300 da 88 a 11 secondi; un documento di 317
+KB con 290 riferimenti e quasi 3.500 citazioni inventate finisce in 24 secondi. Un testo di
+400 KB costruito per essere lento viene rifiutato per i troppi riferimenti in meno di un
+secondo, dopo averlo letto.
 
 ## Use
 

@@ -342,12 +342,10 @@ and repeat it every month.
 
 ## Known limits
 
-- **PDF uploads index nothing.** `POST /api/v1/documents/upload` with a PDF answers 200, "Document
-  processed", with `chunks_indexed: 0`. The PDF goes to docling, which needs its layout models from
-  Hugging Face; the image does not have them and the runtime is offline with a read-only root, so
-  docling fails ("Cannot find an appropriate cached snapshot folder") and the log says "No PDF
-  processor available". The user sees no error. HTML uploads and the corpus are not affected.
-  Seen in the dress rehearsal with the Codex PDF; not fixed.
+- **The legacy upload is closed.** `POST /api/v1/documents/upload` answers 410 and reads
+  nothing: it used to put a document's text in the organisation's search index for good. Documents
+  go to `POST /api/v1/documents/check`, which reads them in memory and keeps only the outcome.
+  Text indexed before the route closed goes with the GDPR erasure (`POST /api/v1/gdpr/erase`).
 
 ## If something fails
 

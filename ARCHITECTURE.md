@@ -111,8 +111,11 @@ previous tenant's value.
 **Context:** The API needs stateless authentication with support for token revocation and multi-device sessions.
 
 **Decision:** Use RS256 (RSA asymmetric) JWT with:
-- 60-minute access token TTL (`ACCESS_TOKEN_EXPIRE_MINUTES`)
-- 7-day refresh token with family tracking
+- 15-minute access token TTL (`ACCESS_TOKEN_TTL`, seconds); on every request the account is
+  read from the database (active, organisation, role, staff, ended sessions;
+  `AUTH_ACCOUNT_CACHE_SECONDS`), so the token alone grants nothing
+- 7-day refresh token (`REFRESH_TOKEN_TTL`) with family tracking, rotated at every use; no
+  refresh past `SESSION_MAX_LIFETIME_DAYS` (30) from the sign-in; logout revokes the family
 - Redis-backed blacklist for immediate revocation (fail-closed with `APP_ENV=production`)
 - Replay attack detection via token family chains
 
@@ -443,13 +446,16 @@ when the app connects as a non-superuser role (ADR-2).
                     └──────────────────────────┘
 ```
 
-- **Rate limits** are per route (`@limiter.limit`); the auth routes and the unsubscribe link
-  count per client IP behind the trusted proxy, the others per user when a token is sent and
-  per IP otherwise (`src/api/rate_limit.py`).
-- **Roles.** `require_role("admin")` guards invites, GDPR export and erasure and
-  `/api/v1/metrics`; `require_staff` (`STAFF_EMAILS`) guards the corpus crawl. The `viewer`
-  role is refused only on the routes of the documents API that check, re-check or delete;
-  on every other route a viewer can do what a member can.
+- **Rate limits** are per route (`@limiter.limit`), with `RATE_LIMIT_DEFAULT` on the routes
+  that declare none; the auth routes and the unsubscribe link count per client IP behind the
+  trusted proxy, the others per user when a token is sent and per IP otherwise. The counters
+  are in Redis, shared by the API processes, with an in-memory fallback
+  (`src/api/rate_limit.py`).
+- **Roles.** `require_role("admin")` / `require_admin` guard invites, members, client
+  deletion, GDPR export and erasure and `/api/v1/metrics`; `require_editor` refuses the
+  `viewer` role on every write (clients, alerts, documents). `require_staff` guards the
+  corpus crawl: staff is the `users.is_staff` flag, set only with `scripts/staff.py` and
+  honoured only on a verified email.
 - **Prompt injection.** `src/agents/sanitization.py` only logs suspicious phrasing; it does
   not change the input. What limits the damage is structural: a fixed instruction at the top
   of every agent prompt to treat the passages, the profile and the question as data, and,

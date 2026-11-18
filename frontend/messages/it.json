@@ -2247,7 +2247,7 @@
       "headers": {
         "title": "6. Intestazioni HTTP, CORS e indirizzi IP",
         "items": {
-          "1": "Il sito invia Content-Security-Policy, X-Content-Type-Options, X-Frame-Options (DENY), Referrer-Policy, Permissions-Policy e Strict-Transport-Security. L’API invia le stesse intestazioni (HSTS in produzione) e non espone il nome del server.",
+          "1": "Il sito invia Content-Security-Policy, X-Content-Type-Options, X-Frame-Options (DENY), Referrer-Policy, Permissions-Policy e Strict-Transport-Security. La Content-Security-Policy accetta script solo dal sito stesso e, se scritti nella pagina, solo con il nonce della richiesta, diverso a ogni richiesta, o con un’impronta SHA-256 dichiarata: niente <code>unsafe-inline</code> né <code>unsafe-eval</code> per gli script. Gli stili scritti nella pagina restano ammessi. L’API invia le stesse intestazioni (HSTS in produzione) e non espone il nome del server.",
           "2": "Il CORS accetta solo le origini elencate in configurazione. In produzione un’origine jolly impedisce l’avvio.",
           "3": "L’indirizzo IP del client, usato per i limiti di frequenza e per il registro degli eventi, è letto dalla posizione aggiunta dal nostro proxy e non dal primo valore di X-Forwarded-For, che chiunque può falsificare."
         }

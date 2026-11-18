@@ -2247,7 +2247,7 @@
       "headers": {
         "title": "6. HTTP headers, CORS and IP addresses",
         "items": {
-          "1": "The site sends Content-Security-Policy, X-Content-Type-Options, X-Frame-Options (DENY), Referrer-Policy, Permissions-Policy and Strict-Transport-Security. The API sends the same headers (HSTS in production) and does not expose the server name.",
+          "1": "The site sends Content-Security-Policy, X-Content-Type-Options, X-Frame-Options (DENY), Referrer-Policy, Permissions-Policy and Strict-Transport-Security. The Content-Security-Policy accepts scripts only from the site itself and, when written in the page, only with the nonce of the request, different at every request, or with a declared SHA-256 hash: no <code>unsafe-inline</code> or <code>unsafe-eval</code> for scripts. Styles written in the page are still allowed. The API sends the same headers (HSTS in production) and does not expose the server name.",
           "2": "CORS accepts only the origins listed in the configuration. In production a wildcard origin prevents start-up.",
           "3": "The client IP address, used for rate limits and for the event log, is read from the position added by our proxy and not from the first value of X-Forwarded-For, which anyone can forge."
         }

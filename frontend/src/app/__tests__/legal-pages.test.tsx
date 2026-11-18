@@ -71,6 +71,8 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('La configurazione misurata, e prevista per il server, è anthropic: Claude di Anthropic')
     expect(main).not.toHaveTextContent('Oggi il valore predefinito è gemini')
     expect(main).toHaveTextContent('Il controllo dei documenti non manda nulla a un modello linguistico.')
+    expect(main).toHaveTextContent('solo con il nonce della richiesta, diverso a ogni richiesta')
+    expect(main).toHaveTextContent('niente unsafe-inline né unsafe-eval per gli script')
     expect(main).toHaveTextContent('con tutte le capability Linux tolte salvo NET_BIND_SERVICE')
     // the lead route writes to nobody but the operator, and limits each address
     expect(main).toHaveTextContent('che non scrive mai all’indirizzo inserito nel modulo')

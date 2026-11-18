@@ -115,6 +115,7 @@ export default async function SecurityPage() {
         <InCode
           paths={[
             'frontend/src/middleware.ts',
+            'frontend/src/lib/csp.ts',
             'frontend/next.config.js',
             'src/api/middleware.py',
             'src/config.py',

@@ -215,11 +215,25 @@ ellipses). A quote shorter than 20 characters or 4 words is never verified (too
 generic). Chunks are searched by level: the cited framework and article
 (`"article"`; `Art. 50`, `articolo 50`, `50`, `50(1)`, `art. 50, par. 1` all
 name article 50), then any chunk of the framework (`"framework"`), then every
-chunk (`"any"`). Within a level the quote must be a substring of one chunk
-(`"exact"`); a quote with omissions (`[...]`, `...`, the ellipsis character U+2026) is split there and
-every segment of at least 12 characters must appear in the same chunk, in
-order. Failing that, a span of the chunk whose difflib ratio with the quote is
-at least 0.92 is accepted (`"fuzzy"`) only when the words agree
+chunk (`"any"`). Within a level the quote must be found in one chunk, starting
+and ending on word boundaries (`"exact"`): "lecito" is not found inside
+"illecito", nor "72 ore" inside "172 ore". A quote with omissions (`[...]`,
+`...`, the ellipsis character U+2026) is split there into parts, and every part,
+however short, must be found in the same chunk, in order, on word boundaries
+("non" is not found inside "nonché"). A part made only of function words,
+numbers or a list marker ("non", "not", "shall not", "72") is never verified: its
+meaning comes from the words the omission removed. An omission may skip at most
+600 characters of the chunk (`MAX_OMISSION_CHARS`), or 2,000
+(`MAX_SKIPPED_POINTS_CHARS`) when the part after it starts a point or a
+paragraph, so words stitched together from distant sentences are not a quote.
+The bounds come from the ten live golden v2 runs of 24/10-18/11/2026: the
+longest omission inside running text in a verified quote was 524 characters,
+skips to the next point of a list reached 980. Re-verified offline against the
+cached official texts (whole articles, not the corpus chunks), the 3,490
+citations of nine of those runs verify as often with this rule as with the
+previous one (3,268 citations; 378 of the 400 of the 18/11 run). Failing an
+exact match, a span of the chunk whose difflib ratio with a part is at least 0.92 is accepted
+(`"fuzzy"`), under the same rules, only when the words agree
 (`wording_differences`): every number, every number word and every word under
 five letters ("non", "o", "e", "may", "not") must be identical. What is
 forgiven: punctuation, accents, a word split or joined at a line break, and one
@@ -233,7 +247,8 @@ matched: `near_quote` (the official wording), `near_article` (where it is) and
 after a near match: the literal wording may be in another provision. A chunk
 that carries an `org_id` is a document uploaded by a tenant and never verifies
 a quote. A literal quote can still leave out context that changes its meaning
-(the "non" just before it): the interface shows the official passage in place.
+(the "non" just before it, a clause an omission skips): the interface shows the
+official passage in place.
 The effect of the stricter rule on the golden-set share of verified citations
 has not been measured yet (it needs a live run); it can only lower it.
 

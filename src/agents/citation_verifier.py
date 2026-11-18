@@ -28,16 +28,25 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
    (``"article"``), then any chunk of the cited framework (``"framework"``),
    then every chunk (``"any"``). The first level where the quote is found is
    recorded in ``level``.
-4. Within a level the quote must be a substring of one chunk (``"exact"``). A
-   quote with omissions (``[...]``, ``...``, ``…``) is split there and every
-   segment of at least 12 characters must appear in the same chunk, in order.
-   Failing that, a tolerant comparison looks for a span of the chunk whose
-   difflib ratio with the quote is at least 0.92 and accepts it (``"fuzzy"``)
-   only when the WORDS agree (``wording_differences``): every number, every
-   number word and every word under five letters ("non", "o", "e", "may",
-   "not") must be identical. The differences forgiven are punctuation,
-   accents, a word split or joined at a line break, and one wrong, missing or
-   extra letter inside a longer ordinary word.
+4. Within a level the quote must be found in one chunk, starting and ending
+   on word boundaries (``"exact"``): "lecito" is not found inside "illecito",
+   nor "72 ore" inside "172 ore". A quote with omissions (``[...]``, ``...``,
+   ``…``) is split there into parts, and EVERY part must be found in the same
+   chunk, in order, on word boundaries: "non" is not found inside "nonché".
+   Each part must hold a word of its own (``_has_content``): a part made only
+   of function words, numbers or a list marker ("non", "not", "shall not",
+   "72") takes its meaning from the words the omission removed, so it cannot
+   be checked. An omission may skip at most ``MAX_OMISSION_CHARS`` characters
+   of the chunk, or ``MAX_SKIPPED_POINTS_CHARS`` when the part after it starts
+   a point or a paragraph (it skips whole points of a list): words stitched
+   together from distant sentences are not a quote. Failing an exact match, a
+   tolerant comparison, under the same rules, accepts a span whose difflib
+   ratio with a part is at least 0.92 (``"fuzzy"``) only when the WORDS agree
+   (``wording_differences``): every number, every number word and every word
+   under five letters ("non", "o", "e", "may", "not") must be identical. The
+   differences forgiven are punctuation, accents, a word split or joined at a
+   line break, and one wrong, missing or extra letter inside a longer
+   ordinary word.
 5. A span that is close but differs in a word that matters ("48 ore" where the
    law says "72 ore") is not a verification. The result stays unverified and
    says what was almost matched: ``near_quote`` (the official wording),
@@ -46,8 +55,9 @@ The rule (ARCHITECTURE.md, "Verifica deterministica delle citazioni"):
    an official text: it never verifies a quote.
 
 A literal quote can still leave out context that changes its meaning (the
-"non" just before it, an exception in the next sentence): the interface shows
-the official passage so the reader sees it in place.
+"non" just before it, an exception in the next sentence, a clause the omission
+skips): the interface shows the official passage so the reader sees it in
+place.
 
 ``annotate_citations`` writes the result on COPIES of the citations and adds
 the ``verified_citations`` / ``citations_total`` counters;
@@ -57,6 +67,7 @@ were all left unverified (``flag`` or ``strict``, see ``src.config``).
 
 from __future__ import annotations
 
+import bisect
 import math
 import re
 import unicodedata
@@ -70,11 +81,25 @@ from src.crawler.eurlex import celex as celex_utils
 
 MIN_QUOTE_CHARS = 20
 MIN_QUOTE_WORDS = 4
+# A part of a quote shorter than this is matched only word for word, never
+# fuzzily: there are too few letters to tell a slip from another word.
 MIN_SEGMENT_CHARS = 12
 FUZZY_MIN_RATIO = 0.92
 # A one-letter slip is forgiven only in words at least this long: shorter words
 # ("non", "o", "e", "deve", "may", "not", "June") carry too much meaning per letter.
 MIN_SLIP_WORD_CHARS = 5
+# How much of the official text an omission may skip (see _place). Measured on
+# the ten live golden v2 runs of 24/10-18/11/2026 (152 distinct quotes with an
+# omission, each placed in the cached official text): inside running text the
+# longest omission of a verified quote was 524 characters (NIS2, Art. 23(11)),
+# the median about 95; an omission that skips to the next point of a list
+# reached 980 (AI Act, Art. 14(4): "... di: [...] e) intervenire ..."). 600
+# keeps the first kind and stops a part from being fetched from sentences
+# further away. A skip that lands on the start of a point or a paragraph
+# leaves out whole points: it may reach 2000 characters, the largest Q&A
+# chunk (EURLexHTMLChunker.MAX_CHUNK_SIZE).
+MAX_OMISSION_CHARS = 600
+MAX_SKIPPED_POINTS_CHARS = 2000
 
 MATCH_EXACT = "exact"
 MATCH_FUZZY = "fuzzy"
@@ -438,6 +463,8 @@ class _Chunk:
     frameworks: frozenset[str]
     article_key: str | None
     celex: str | None
+    # Normalized positions where a point or a paragraph starts (_point_starts).
+    points: frozenset[int] | None = None
 
 
 def _prepare(chunks: Any) -> list[_Chunk]:
@@ -483,11 +510,11 @@ def _reference_of(citation: dict[str, Any]) -> str:
 
 
 def _segments(quote: str) -> list[str]:
-    """The parts of a normalized quote that must be found, in order."""
+    """Every part of a normalized quote, split at its omission marks: all must be found."""
     parts = _OMISSION_RE.split(quote)
     if len(parts) == 1:
         return [quote] if quote else []
-    return [p for p in (_strip_edges(part) for part in parts) if len(p) >= MIN_SEGMENT_CHARS]
+    return [p for p in (_strip_edges(part) for part in parts) if p]
 
 
 def _specific_enough(segments: list[str]) -> bool:
@@ -495,37 +522,93 @@ def _specific_enough(segments: list[str]) -> bool:
     return len(content) >= MIN_QUOTE_CHARS and len(content.split()) >= MIN_QUOTE_WORDS
 
 
-def _find_in_order(segments: list[str], text: str) -> list[tuple[int, int]] | None:
-    """Spans of every segment, each after the previous one (greedy is optimal)."""
-    spans: list[tuple[int, int]] = []
-    pos = 0
-    for seg in segments:
-        k = text.find(seg, pos)
-        if k < 0:
-            return None
-        spans.append((k, k + len(seg)))
-        pos = k + len(seg)
-    return spans
+# Words that carry no meaning of their own, in Italian and English (accents
+# removed): articles, prepositions, conjunctions, pronouns, auxiliary and modal
+# verbs, negations and the adverbs that set the scope of a rule ("solo", "only",
+# "senza", "unless"). A part between omissions made only of these, of numbers
+# or of a list marker ("non", "not", "shall not", "72", "(a)") takes its
+# meaning from the text the omission removed, so it is never verified.
+_FUNCTION_WORDS = frozenset(
+    "il lo la i gli le l un uno una di d a da in con su per tra fra del dello della dei "
+    "degli delle dell al allo alla ai agli alle all dal dallo dalla dai dagli dalle dall nel "
+    "nello nella nei negli nelle nell sul sullo sulla sui sugli sulle sull col coi e ed o od "
+    "ma ne se che anche oppure ovvero ossia nonche inoltre pero perche poiche come quando "
+    "mentre sia non piu meno gia solo soltanto sempre mai almeno ancora cosi quindi dunque "
+    "pure senza salvo tranne eccetto si ci vi li mi ti esso essa essi esse cio cui chi quale "
+    "quali questo questa questi queste quello quella quelli quelle tale tali ogni ciascun "
+    "ciascuno ciascuna nessun nessuno nessuna alcun alcuno alcuna alcuni alcune altro altra "
+    "altri altre stesso stessa stessi stesse loro suo sua suoi sue sono siano sara saranno "
+    "era erano essere stato stata stati state ha hanno abbia abbiano avere avuto puo possono "
+    "possa possano potra potranno deve devono debba debbano dovra dovranno viene vengono "
+    "venga vengano "
+    "the an of to on at by for with from as into onto upon about under over between "
+    "within without and or nor but if that which who whom whose this these those it its "
+    "they them their he she his her there here is are be been being was were am shall "
+    "should may might must will would can could do does did done not no never neither "
+    "either has have had having any all each every such so than then where when what also "
+    "only more less other same own both unless except".split()
+)
+
+
+def _has_content(part: str) -> bool:
+    """True when a part of a quote holds a word of its own (see _FUNCTION_WORDS)."""
+    return any(
+        len(word) >= 3 and not word.isdigit() and _without_marks(word) not in _FUNCTION_WORDS
+        for word in _WORD_RE.findall(part)
+    )
+
+
+def _on_word_boundaries(text: str, start: int, end: int) -> bool:
+    """True when ``text[start:end]`` neither starts nor ends inside a word."""
+    if 0 < start < len(text) and text[start - 1].isalnum() and text[start].isalnum():
+        return False
+    return not (0 < end < len(text) and text[end - 1].isalnum() and text[end].isalnum())
+
+
+# A line that starts a point or a paragraph: before the text, at most a number
+# or a letter that numbers it ("4.", "e)", "(iv)", a dash or a bullet), opening
+# quotation marks and the markers of a consolidated text (a black pointer or
+# triangle with its code, "M1", "B").
+_CONSOLIDATION_MARK = (
+    r"[\N{BLACK RIGHT-POINTING POINTER}\N{BLACK LEFT-POINTING POINTER}"
+    r"\N{BLACK DOWN-POINTING TRIANGLE}\N{BLACK UP-POINTING TRIANGLE}]\s*(?:[A-Z]\d{0,3})?\s*"
+)
+_POINT_START_RE = re.compile(
+    r"[\s'\"\N{LEFT SINGLE QUOTATION MARK}\N{RIGHT SINGLE QUOTATION MARK}"
+    r"\N{LEFT DOUBLE QUOTATION MARK}\N{RIGHT DOUBLE QUOTATION MARK}"
+    r"\N{LEFT-POINTING DOUBLE ANGLE QUOTATION MARK}"
+    r"\N{RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK}]*"
+    rf"(?:{_CONSOLIDATION_MARK})*"
+    r"(?:\(?(?:\d{1,3}[a-z]?|[a-z]{1,2}|[ivxlc]{1,6})[.)]"
+    r"|[\-\N{HYPHEN}-\N{HORIZONTAL BAR}\N{BULLET}])?"
+    rf"\s*(?:{_CONSOLIDATION_MARK})*",
+    re.IGNORECASE,
+)
 
 
 def _gram_size(length: int) -> int:
     return 8 if length >= 32 else max(4, length // 4)
 
 
-def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float] | None:
-    """Best span of ``text[start:]`` whose difflib ratio with ``needle`` is >= 0.92.
+# How many places of a chunk a part is aligned with, at most, when it is not
+# found word for word (the best-supported offsets, see _fuzzy_spans).
+_FUZZY_PLACES = 8
+
+
+def _fuzzy_spans(needle: str, text: str) -> list[tuple[int, int, float]]:
+    """Spans of ``text`` whose difflib ratio with ``needle`` is >= 0.92, best first.
 
     Comparing every window of the needle's length is quadratic, so the windows
     worth comparing are located first: each k-gram of the needle that occurs in
     the text votes for the offset where the needle would start, and only the
-    best-supported offsets (at least a quarter of the k-grams, at most three
-    places) are aligned with difflib. A near-copy with a few scattered
-    differences (punctuation, a mistyped letter) keeps most k-grams intact and
-    collects the votes; a paraphrase or a fabricated quote does not.
+    best-supported offsets (at least a quarter of the k-grams, at most
+    _FUZZY_PLACES places) are aligned with difflib. A near-copy with a few
+    scattered differences (punctuation, a mistyped letter) keeps most k-grams
+    intact and collects the votes; a paraphrase or a fabricated quote does not.
     """
     length = len(needle)
-    if length < MIN_SEGMENT_CHARS or len(text) - start < length * FUZZY_MIN_RATIO:
-        return None
+    if length < MIN_SEGMENT_CHARS or len(text) < length * FUZZY_MIN_RATIO:
+        return []
     gram = _gram_size(length)
     stride = max(1, gram // 2)
     votes: dict[int, int] = {}
@@ -533,12 +616,12 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
     for i in range(0, length - gram + 1, stride):
         n_grams += 1
         piece = needle[i : i + gram]
-        k = text.find(piece, start)
+        k = text.find(piece)
         while k != -1:
             votes[k - i] = votes.get(k - i, 0) + 1
             k = text.find(piece, k + 1)
     if not votes:
-        return None
+        return []
 
     width = max(3, math.ceil(length * (1 - FUZZY_MIN_RATIO)))
     offsets = sorted(votes)
@@ -556,14 +639,14 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
 
     centers: list[int] = []
     for offset in sorted(support, key=lambda o: (-support[o], o)):
-        if support[offset] < needed or len(centers) == 3:
+        if support[offset] < needed or len(centers) == _FUZZY_PLACES:
             break
         if all(abs(offset - c) > width for c in centers):
             centers.append(offset)
 
-    best: tuple[int, int, float] | None = None
+    found: list[tuple[int, int, float]] = []
     for center in centers:
-        r_start = max(start, center - width)
+        r_start = max(0, center - width)
         r_end = min(len(text), center + length + width)
         region = text[r_start:r_end]
         blocks = [
@@ -582,9 +665,9 @@ def _fuzzy_span(needle: str, text: str, start: int = 0) -> tuple[int, int, float
         if matcher.real_quick_ratio() < FUZZY_MIN_RATIO or matcher.quick_ratio() < FUZZY_MIN_RATIO:
             continue
         ratio = matcher.ratio()
-        if ratio >= FUZZY_MIN_RATIO and (best is None or ratio > best[2]):
-            best = (s, e, ratio)
-    return best
+        if ratio >= FUZZY_MIN_RATIO:
+            found.append((s, e, ratio))
+    return sorted(found, key=lambda span: -span[2])
 
 
 # ─── Do the words agree? ─────────────────────────────────────────────
@@ -675,34 +758,171 @@ def _whole_words(text: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _find_tolerant(
-    segments: list[str], text: str
-) -> tuple[list[tuple[int, int]], float, list[tuple[str, str]]] | None:
-    """Like _find_in_order, but a segment may also match fuzzily.
+# How far into a line the start of a point may be: "(viii) " and a consolidation
+# marker before it.
+_POINT_PREFIX_MAX = 24
 
-    Returns the spans, the lowest ratio and the words that differ in the
-    segments matched fuzzily (empty when the wording is the same).
+
+def _point_starts(chunk: _Chunk) -> frozenset[int]:
+    """Normalized positions where a point or a paragraph of the chunk starts.
+
+    A position counts when its line holds nothing before it but what
+    _POINT_START_RE allows: "e) intervenire" starts a point both at "e" and at
+    "intervenire". Computed once per chunk, the first time an omission longer
+    than MAX_OMISSION_CHARS asks for it.
     """
-    spans: list[tuple[int, int]] = []
-    differences: list[tuple[str, str]] = []
-    pos = 0
-    worst = 1.0
-    for seg in segments:
-        k = text.find(seg, pos)
-        if k >= 0:
-            spans.append((k, k + len(seg)))
-            pos = k + len(seg)
-            continue
-        found = _fuzzy_span(seg, text, pos)
-        if found is None:
+    if chunk.points is None:
+        found: set[int] = set()
+        text = chunk.text
+        line = 0
+        while line <= len(text):
+            newline = text.find("\n", line)
+            end = len(text) if newline == -1 else newline
+            for orig in range(line, min(end, line + _POINT_PREFIX_MAX) + 1):
+                if _POINT_START_RE.fullmatch(text, line, orig) is None:
+                    continue
+                k = bisect.bisect_left(chunk.starts, orig)
+                if k < len(chunk.starts) and chunk.starts[k] == orig:
+                    found.add(k)
+            line = end + 1
+        chunk.points = frozenset(found)
+    return chunk.points
+
+
+def _gap_allowed(chunk: _Chunk, previous_end: int, start: int) -> bool:
+    """The omission rule between two parts (MAX_OMISSION_CHARS, MAX_SKIPPED_POINTS_CHARS)."""
+    gap = start - previous_end
+    if gap < 0:
+        return False
+    return gap <= MAX_OMISSION_CHARS or (
+        gap <= MAX_SKIPPED_POINTS_CHARS and start in _point_starts(chunk)
+    )
+
+
+@dataclass(frozen=True)
+class _Span:
+    """Where one part of a quote may be; a fuzzy span carries its ratio and differences."""
+
+    start: int
+    end: int
+    ratio: float = 1.0
+    differences: tuple[tuple[str, str], ...] = ()
+
+
+def _spans_of(
+    part: str, chunk: _Chunk, tolerant: bool, cache: dict[tuple[str, bool], list[_Span]]
+) -> list[_Span]:
+    """Every place of the chunk where a part may be, in order.
+
+    Its occurrences on word boundaries; with ``tolerant``, for a part of at
+    least MIN_SEGMENT_CHARS, also the spans that match it fuzzily, widened to
+    whole words, with the words that differ (empty when they agree).
+    """
+    key = (part, tolerant)
+    if key in cache:
+        return cache[key]
+    text = chunk.norm
+    spans: list[_Span] = []
+    k = text.find(part)
+    while k != -1:
+        if _on_word_boundaries(text, k, k + len(part)):
+            spans.append(_Span(k, k + len(part)))
+        k = text.find(part, k + 1)
+    if tolerant:
+        exact = {(span.start, span.end) for span in spans}
+        for start, end, ratio in _fuzzy_spans(part, text):
+            start, end = _whole_words(text, start, end)
+            if (start, end) not in exact:
+                exact.add((start, end))
+                differences = tuple(wording_differences(part, text[start:end]))
+                spans.append(_Span(start, end, ratio, differences))
+        spans.sort(key=lambda span: (span.start, -span.ratio))
+    cache[key] = spans
+    return spans
+
+
+def _place(
+    parts: list[str],
+    chunk: _Chunk,
+    first: tuple[int, int] | None = None,
+    *,
+    tolerant: bool = False,
+    literal: bool = True,
+    cache: dict[tuple[str, bool], list[_Span]] | None = None,
+) -> list[_Span] | None:
+    """Where every part of a quote is in one chunk, in order, under the omission rules.
+
+    Each part stands on word boundaries; part i+1 starts after part i ends, at
+    most MAX_OMISSION_CHARS later, or at most MAX_SKIPPED_POINTS_CHARS later
+    when it starts a point or a paragraph. ``first`` bounds where the first
+    part may start (the cited paragraph). A part may occur several times and
+    its first occurrence may leave no room for the next parts while a later
+    one does, so the first occurrences do not always make a placement. The
+    places of each part are listed (_spans_of), then kept, from the last part
+    back to the first, only when some place of the next part can follow them;
+    the placement then takes, part by part, the first place that follows the
+    previous one, and moves each part, from the last back to the first, as
+    close as it can go to the next ("Il titolare del trattamento [...]
+    documenta": the words that open paragraph 5, not the same words earlier).
+    Steps: places x log(places). With ``tolerant`` the fuzzy spans count too;
+    ``literal`` keeps only those whose words agree (else a near match may come
+    out). None when the parts cannot be placed.
+    """
+    cache = {} if cache is None else cache
+    lists: list[list[_Span]] = []
+    for i, part in enumerate(parts):
+        spans = _spans_of(part, chunk, tolerant, cache)
+        if literal:
+            spans = [span for span in spans if not span.differences]
+        if i == 0 and first is not None:
+            spans = [span for span in spans if first[0] <= span.start <= first[1]]
+        if not spans:
             return None
-        s, e, ratio = found
-        s, e = _whole_words(text, s, e)
-        differences.extend(wording_differences(seg, text[s:e]))
-        spans.append((s, e))
-        pos = e
-        worst = min(worst, ratio)
-    return spans, worst, differences
+        lists.append(spans)
+
+    points = _point_starts(chunk) if len(parts) > 1 else frozenset()
+    feasible: list[list[_Span]] = [[] for _ in parts]
+    feasible[-1] = lists[-1]
+    for i in range(len(parts) - 2, -1, -1):
+        after = feasible[i + 1]
+        starts = [span.start for span in after]
+        point_starts = [start for start in starts if start in points]
+        kept = []
+        for span in lists[i]:
+            j = bisect.bisect_left(starts, span.end)
+            if j < len(starts) and starts[j] - span.end <= MAX_OMISSION_CHARS:
+                kept.append(span)
+                continue
+            j = bisect.bisect_right(point_starts, span.end + MAX_OMISSION_CHARS)
+            if j < len(point_starts) and point_starts[j] - span.end <= MAX_SKIPPED_POINTS_CHARS:
+                kept.append(span)
+        if not kept:
+            return None
+        feasible[i] = kept
+
+    placed = [feasible[0][0]]
+    for i in range(1, len(parts)):
+        previous = placed[-1]
+        starts = [span.start for span in feasible[i]]
+        j = bisect.bisect_left(starts, previous.end)
+        placed.append(
+            next(span for span in feasible[i][j:] if _gap_allowed(chunk, previous.end, span.start))
+        )
+
+    for i in range(len(parts) - 2, -1, -1):
+        following = placed[i + 1]
+        starts = [span.start for span in lists[i]]
+        j = bisect.bisect_left(starts, following.start)
+        for span in reversed(lists[i][:j]):
+            if span.start <= placed[i].start:
+                break
+            if span.end > following.start or not _gap_allowed(chunk, span.end, following.start):
+                continue
+            if i > 0 and not _gap_allowed(chunk, placed[i - 1].end, span.start):
+                continue
+            placed[i] = span
+            break
+    return placed
 
 
 @dataclass
@@ -715,25 +935,49 @@ class _Found:
     differences: list[tuple[str, str]]
 
 
-def _search(segments: list[str], candidates: list[_Chunk]) -> _Found | None:
-    """An exact match, else the best literal fuzzy match, else the best near match."""
+def _search(
+    segments: list[str],
+    candidates: list[_Chunk],
+    windows: dict[int, tuple[int, int]] | None = None,
+) -> _Found | None:
+    """An exact match, else the best literal fuzzy match, else the best near match.
+
+    With ``windows`` (chunk id -> where the first part may start) only the
+    chunks it lists are searched, each within its window.
+    """
+    if windows is not None:
+        candidates = [c for c in candidates if id(c) in windows]
+
+    def first(chunk: _Chunk) -> tuple[int, int] | None:
+        return windows[id(chunk)] if windows is not None else None
+
+    caches: dict[int, dict[tuple[str, bool], list[_Span]]] = {}
     for chunk in candidates:
-        spans = _find_in_order(segments, chunk.norm)
+        cache = caches.setdefault(id(chunk), {})
+        spans = _place(segments, chunk, first(chunk), cache=cache)
         if spans:
-            return _Found(chunk, spans, MATCH_EXACT, [])
+            return _Found(chunk, [(s.start, s.end) for s in spans], MATCH_EXACT, [])
     literal: tuple[_Found, float] | None = None
     near: tuple[_Found, float] | None = None
     for chunk in candidates:
-        found = _find_tolerant(segments, chunk.norm)
-        if found is None:
+        cache = caches.setdefault(id(chunk), {})
+        placed = _place(segments, chunk, first(chunk), tolerant=True, cache=cache)
+        if placed is not None:
+            ratio = min(s.ratio for s in placed)
+            if literal is None or ratio > literal[1]:
+                spans = [(s.start, s.end) for s in placed]
+                literal = (_Found(chunk, spans, MATCH_FUZZY, []), ratio)
             continue
-        spans, ratio, differences = found
-        candidate = _Found(chunk, spans, MATCH_FUZZY, differences)
-        if differences:
-            if near is None or ratio > near[1]:
-                near = (candidate, ratio)
-        elif literal is None or ratio > literal[1]:
-            literal = (candidate, ratio)
+        if literal is not None:
+            continue  # a literal match wins over any near one
+        placed = _place(segments, chunk, first(chunk), tolerant=True, literal=False, cache=cache)
+        if placed is None:
+            continue
+        ratio = min(s.ratio for s in placed)
+        if near is None or ratio > near[1]:
+            differences = [d for s in placed for d in s.differences]
+            spans = [(s.start, s.end) for s in placed]
+            near = (_Found(chunk, spans, MATCH_FUZZY, differences), ratio)
     if literal is not None:
         return literal[0]
     return near[0] if near is not None else None
@@ -801,6 +1045,8 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
         return _UNVERIFIED
     segments = _segments(normalize(_quote_of(citation)))
     if not segments or not _specific_enough(segments):
+        return _UNVERIFIED
+    if len(segments) > 1 and not all(_has_content(part) for part in segments):
         return _UNVERIFIED
 
     framework = normalize_framework(citation.get("framework"))

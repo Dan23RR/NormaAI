@@ -373,19 +373,238 @@ class TestOmissions:
         )
         assert verify_citation(_cite(quote), _corpus()).verified is False
 
-    def test_segments_shorter_than_12_characters_are_not_required(self):
-        # "di IA xyz" (9 chars) is not in the text, but it is too short to check.
+    def test_every_part_is_required_however_short(self):
+        # "di IA xyz" (9 chars) is not in the text: the quote is not verified.
         quote = (
             "I fornitori garantiscono che i sistemi [...] di IA xyz [...] "
             "stare interagendo con un sistema di IA"
         )
-        assert verify_citation(_cite(quote), _corpus()).verified is True
+        assert verify_citation(_cite(quote), _corpus()).verified is False
+        present = (
+            "I fornitori garantiscono che i sistemi [...] destinati [...] "
+            "stare interagendo con un sistema di IA"
+        )
+        assert verify_citation(_cite(present), _corpus()).verified is True
 
     def test_only_short_segments_is_too_generic(self):
         assert (
             verify_citation(_cite("I fornitori [...] di IA [...] sono"), _corpus()).verified
             is False
         )
+
+
+# GDPR, Art. 33, as published (Italian, then paragraph 1 in English).
+GDPR_33_IT_FULL = (
+    "Articolo 33\n"
+    "Notifica di una violazione dei dati personali all'autorità di controllo\n"
+    "1. In caso di violazione dei dati personali, il titolare del trattamento notifica la "
+    "violazione all'autorità di controllo competente a norma dell'articolo 55 senza "
+    "ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a "
+    "conoscenza, a meno che sia improbabile che la violazione dei dati personali presenti un "
+    "rischio per i diritti e le libertà delle persone fisiche. Qualora la notifica "
+    "all'autorità di controllo non sia effettuata entro 72 ore, è corredata dei motivi del "
+    "ritardo.\n"
+    "2. Il responsabile del trattamento informa il titolare del trattamento senza "
+    "ingiustificato ritardo dopo essere venuto a conoscenza della violazione.\n"
+    "3. La notifica di cui al paragrafo 1 deve almeno:\n"
+    "a) descrivere la natura della violazione dei dati personali compresi, ove possibile, le "
+    "categorie e il numero approssimativo di interessati in questione nonché le categorie e il "
+    "numero approssimativo di registrazioni dei dati personali in questione;\n"
+    "b) comunicare il nome e i dati di contatto del responsabile della protezione dei dati o "
+    "di altro punto di contatto presso cui ottenere più informazioni;\n"
+    "c) descrivere le probabili conseguenze della violazione dei dati personali;\n"
+    "d) descrivere le misure adottate o di cui si propone l'adozione da parte del titolare del "
+    "trattamento per porre rimedio alla violazione dei dati personali e anche, se del caso, per "
+    "attenuarne i possibili effetti negativi.\n"
+    "4. Qualora e nella misura in cui non sia possibile fornire le informazioni "
+    "contestualmente, le informazioni possono essere fornite in fasi successive senza "
+    "ulteriore ingiustificato ritardo.\n"
+    "5. Il titolare del trattamento documenta qualsiasi violazione dei dati personali, "
+    "comprese le circostanze a essa relative, le sue conseguenze e i provvedimenti adottati "
+    "per porvi rimedio. Tale documentazione consente all'autorità di controllo di verificare "
+    "il rispetto del presente articolo."
+)
+GDPR_33_EN_1 = (
+    "Article 33\n"
+    "Notification of a personal data breach to the supervisory authority\n"
+    "1. In the case of a personal data breach, the controller shall without undue delay and, "
+    "where feasible, not later than 72 hours after having become aware of it, notify the "
+    "personal data breach to the supervisory authority competent in accordance with Article "
+    "55, unless the personal data breach is unlikely to result in a risk to the rights and "
+    "freedoms of natural persons. Where the notification to the supervisory authority is not "
+    "made within 72 hours, it shall be accompanied by reasons for the delay."
+)
+
+
+def _gdpr_33_full(text=GDPR_33_IT_FULL, lang="IT"):
+    return [
+        _chunk(
+            text,
+            chunk_id=f"pt-gdpr-33-{lang.lower()}",
+            article="Art. 33",
+            framework="GDPR",
+            celex="32016R0679",
+            source_celex="02016R0679-20160504",
+            consolidated_as_of="2016-05-04",
+            lang=lang,
+        )
+    ]
+
+
+class TestPartsBetweenOmissions:
+    """B3.1 of the pre-launch evaluation: every word between omissions counts."""
+
+    def test_a_negation_between_omissions_is_not_verified(self):
+        # It reverses the obligation; "non" alone was dropped as too short and
+        # the quote was shown as an exact match.
+        quote = (
+            "il titolare del trattamento [...] non [...] notifica la violazione all'autorità di "
+            "controllo competente"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out == VerificationResult()
+
+    def test_the_english_twin_is_not_verified(self):
+        # Here "not" does stand between the two parts ("not later than 72
+        # hours"): a part made only of a negation is never verified.
+        quote = (
+            "the controller [...] not [...] notify the personal data breach to the supervisory "
+            "authority"
+        )
+        chunks = _gdpr_33_full(GDPR_33_EN_1, "EN")
+        assert verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), chunks) == (
+            VerificationResult()
+        )
+
+    def test_parts_out_of_order_are_not_verified_even_with_words_of_their_own(self):
+        # "non sia effettuata" is in the article, but after the words that follow it here.
+        quote = (
+            "il titolare del trattamento [...] non sia effettuata [...] notifica la violazione "
+            "all'autorità di controllo competente"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified is False
+
+    def test_a_legitimate_omission_still_verifies(self):
+        quote = (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.match == "exact" and out.level == "article"
+        assert out.official_quote == (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        assert out.paragraph == "1"
+
+    def test_a_short_part_present_in_order_still_verifies(self):
+        quote = "Il titolare del trattamento [...] documenta [...] le sue conseguenze"
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.match == "exact"
+        # The words that open paragraph 5, not the same words earlier in the article.
+        assert out.paragraph == "5"
+        assert out.official_quote == (
+            "Il titolare del trattamento [...] documenta [...] le sue conseguenze"
+        )
+
+    def test_a_short_part_must_be_a_whole_word(self):
+        # "stante" stands only inside "nonostante": it is not in the text.
+        chunk = _chunk(
+            "Articolo 7\n1. Il fornitore conserva i dati nonostante la richiesta di cancellazione "
+            "e li comunica all'autorità.",
+            article="Art. 7",
+        )
+        quote = "Il fornitore conserva i dati [...] stante [...] la richiesta di cancellazione"
+        assert verify_citation(_cite(quote, reference="Art. 7"), [chunk]).verified is False
+        whole = "Il fornitore conserva i dati [...] nonostante [...] la richiesta di cancellazione"
+        assert verify_citation(_cite(whole, reference="Art. 7"), [chunk]).verified
+
+    def test_a_part_of_function_words_only_is_not_verified(self):
+        # Its meaning comes from the words the omission removed: "e" is in the text,
+        # in order ("ritardo e, ove possibile"), but nothing in the part says what it joins.
+        for part in ("e", "non è", "shall not", "72", "(a)"):
+            quote = (
+                f"il titolare del trattamento notifica la violazione [...] {part} [...] entro 72 "
+                "ore dal momento in cui ne è venuto a conoscenza"
+            )
+            out = verify_citation(_cite(quote, framework="GDPR"), _gdpr_33_full())
+            assert out.verified is False, part
+
+    def test_a_long_part_must_start_and_end_on_word_boundaries(self):
+        # "lecito" is inside "illecito", "72 ore" inside "172 ore".
+        chunk = _chunk(
+            "Articolo 9\n1. È illecito il trattamento dei dati raccolti oltre 172 ore dopo la "
+            "richiesta.",
+            article="Art. 9",
+        )
+        for quote in (
+            "lecito il trattamento dei dati raccolti",
+            "dei dati raccolti oltre 72 ore dopo la richiesta",
+        ):
+            assert verify_citation(_cite(quote, reference="Art. 9"), [chunk]).verified is False
+        assert verify_citation(
+            _cite("illecito il trattamento dei dati raccolti", reference="Art. 9"), [chunk]
+        ).verified
+
+    def test_a_part_found_only_far_away_is_not_verified(self):
+        # "documenta qualsiasi violazione" is 1500 characters after the first
+        # part and does not start a point: words stitched from distant sentences.
+        quote = (
+            "il titolare del trattamento notifica la violazione [...] documenta qualsiasi "
+            "violazione dei dati personali"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified is False
+
+    def test_an_omission_may_skip_whole_points_up_to_the_next_one(self):
+        # From the opening of paragraph 3 to point d), over points a) to c).
+        quote = (
+            "La notifica di cui al paragrafo 1 deve almeno: [...] d) descrivere le misure adottate"
+        )
+        out = verify_citation(_cite(quote, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.paragraph == "3"
+        # A longer skip is accepted only when it lands on the start of a point or paragraph.
+        far = (
+            "il titolare del trattamento notifica la violazione all'autorità di controllo "
+            "competente [...] 5. Il titolare del trattamento documenta qualsiasi violazione"
+        )
+        out = verify_citation(_cite(far, framework="GDPR", reference="Art. 33"), _gdpr_33_full())
+        assert out.verified and out.level == "article"
+
+    def test_the_fuzzy_path_follows_the_same_rules(self):
+        # A slip in a part ("violazzione") does not let the parts be reordered or
+        # fetched from far away.
+        cite = {"framework": "GDPR", "reference": "Art. 33"}
+        reordered = (
+            "il titolare del trattamento notifica la violazzione [...] non sia effettuata [...] "
+            "a norma dell'articolo 55"
+        )
+        assert verify_citation({**cite, "quote_snippet": reordered}, _gdpr_33_full()).verified is (
+            False
+        )
+        far = (
+            "il titolare del trattamento notifica la violazzione [...] documenta qualsiasi "
+            "violazione dei dati personali"
+        )
+        assert verify_citation({**cite, "quote_snippet": far}, _gdpr_33_full()).verified is False
+        near_enough = (
+            "il titolare del trattamento notifica la violazzione all'autorità di controllo "
+            "competente [...] entro 72 ore"
+        )
+        out = verify_citation({**cite, "quote_snippet": near_enough}, _gdpr_33_full())
+        assert out.verified and out.match == "fuzzy" and out.level == "article"
+
+    def test_many_occurrences_stay_fast(self):
+        import time
+
+        text = "Articolo 1\n" + " ".join(["il dato e il dato non e il dato"] * 400)
+        quote = "il dato [...] e il dato [...] non e il dato [...] parola assente"
+        start = time.perf_counter()
+        assert verify_citation(
+            _cite(quote, reference="Art. 1"), [_chunk(text, article="Art. 1")]
+        ) == (VerificationResult())
+        assert time.perf_counter() - start < 2.0
 
 
 class TestLevels:
@@ -861,16 +1080,26 @@ class TestGoldenSetPassages:
             assert normalize(out.official_quote) == normalize(model_quote), rec["id"]
 
     def test_real_passages_shortened_with_an_omission(self):
+        # Four words left out between the first six and the next six. A part
+        # with no word of its own ("b) a meno che non siano") is never verified.
+        from src.agents.citation_verifier import _has_content
+
+        checked = 0
         for rec in _golden_quotes():
             words = rec["expected"]["quote"].split()
             if len(words) < 16:
                 continue
-            head, tail = " ".join(words[:6]), " ".join(words[-6:])
+            head, tail = " ".join(words[:6]), " ".join(words[10:16])
             chunk = {"framework": rec["framework"], "text": rec["expected"]["quote"]}
             out = verify_citation(
                 {"framework": rec["framework"], "quote_snippet": f"{head} [...] {tail}"}, [chunk]
             )
+            if not (_has_content(normalize(head)) and _has_content(normalize(tail))):
+                assert out.verified is False, rec["id"]
+                continue
+            checked += 1
             assert out.verified and out.official_quote.count("[...]") == 1, rec["id"]
+        assert checked >= 70
 
 
 # ─── annotate_citations ──────────────────────────────────────────────

@@ -3,6 +3,10 @@
 An alert belongs to an organisation through its client or, for the alerts the
 document surveillance writes (``src/document_check``), through its document
 check: such an alert has ``document_check_id`` and may have no client.
+
+Access: reading, any signed-in user of the organisation; creating an alert and
+marking one read or dismissed (state every member sees), not the read-only
+``viewer`` role (``require_editor``).
 """
 
 import uuid
@@ -15,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user
+from src.auth.dependencies import CurrentUser, get_current_user, require_editor
 from src.db.engine import db_manager
 from src.db.models import Alert, Client, DocumentCheck
 
@@ -296,7 +300,7 @@ async def get_alert(
 async def create_alert(
     request: Request,
     payload: AlertCreate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_editor),
 ) -> AlertResponse:
     """
     **Create a new compliance alert.**
@@ -345,7 +349,7 @@ async def create_alert(
 async def mark_alert_read(
     request: Request,
     alert_id: uuid.UUID,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_editor),
 ) -> AlertResponse:
     """
     **Mark an alert as read.**
@@ -366,7 +370,7 @@ async def mark_alert_read(
 async def dismiss_alert(
     request: Request,
     alert_id: uuid.UUID,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_editor),
 ) -> AlertResponse:
     """
     **Dismiss an alert.**

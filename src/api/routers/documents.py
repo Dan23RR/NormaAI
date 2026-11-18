@@ -49,7 +49,8 @@ from starlette.formparsers import MultiPartException, MultiPartParser
 
 from src.api.rate_limit import client_ip_key, limiter, settings_limit
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user, require_verified_email
+from src.auth.dependencies import READ_ONLY_DETAIL as READ_ONLY_DETAIL  # still importable here
+from src.auth.dependencies import CurrentUser, get_current_user, require_editor
 from src.config import get_settings
 from src.db.engine import db_manager
 from src.db.models import User
@@ -61,7 +62,6 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
 
-READ_ONLY_DETAIL = "Il tuo ruolo consente solo la lettura."
 INVALID_REQUEST_DETAIL = (
     "Richiesta non valida: invia un file (multipart/form-data, campo file) "
     "oppure un testo (application/json, campo text)."
@@ -86,13 +86,6 @@ def get_text_source() -> Any:
         return service.shared_source()
     except DocumentCheckError as error:
         raise _http(error) from None
-
-
-async def require_editor(user: CurrentUser = Depends(require_verified_email)) -> CurrentUser:
-    """Who may check, re-check and delete: everyone but the read-only ``viewer`` role."""
-    if user.is_viewer:
-        raise HTTPException(status_code=403, detail=READ_ONLY_DETAIL)
-    return user
 
 
 # ─── The request of POST /check ──────────────────────────────────────

@@ -318,7 +318,13 @@ async def ask_question(
             cached = (
                 None
                 if payload.enable_cove
-                else await response_cache.get("qa", payload.question, profile_dict, org_id=org_id)
+                else await response_cache.get(
+                    "qa",
+                    payload.question,
+                    profile_dict,
+                    org_id=org_id,
+                    language=payload.language.value,
+                )
             )
             if cached:
                 response_body = {
@@ -358,7 +364,12 @@ async def ask_question(
 
             if not payload.enable_cove:
                 await response_cache.set(
-                    "qa", payload.question, result, profile_dict, org_id=org_id
+                    "qa",
+                    payload.question,
+                    result,
+                    profile_dict,
+                    org_id=org_id,
+                    language=payload.language.value,
                 )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="qa", error=str(cache_err))

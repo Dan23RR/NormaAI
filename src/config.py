@@ -94,6 +94,9 @@ class Settings(BaseSettings):
 
     # ─── Redis ────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
+    # Seconds a Q&A answer stays in the answer cache; gap analyses keep half of
+    # it and monitor checks a quarter (src/cache.py, ResponseCache.ttl_seconds).
+    # 0 turns the answer cache off.
     cache_ttl_seconds: int = 3600
 
     # ─── EUR-Lex ──────────────────────────────────────────────
@@ -231,6 +234,16 @@ class Settings(BaseSettings):
     #   "strict" - the answer is replaced by an abstention with
     #              abstention_reason="unverified_citations" (never cached).
     citation_verification: Literal["flag", "strict"] = "flag"
+
+    # ─── Q&A relevance threshold ─────────────────────────────
+    # Chiedi abstains without calling the LLM (abstention_reason "low_relevance")
+    # when no passage the hybrid search found has a dense (cosine) score of at
+    # least this value. Every Q&A answer reports the score it is compared with
+    # as best_dense_score. 0 disables the threshold (default): the scale depends
+    # on the embedding model (multilingual-e5-large gives every passage a score
+    # in a narrow, high band, docs/MODELS.md section 6) and it is not calibrated
+    # yet. Answers cached before a change are served until their TTL ends.
+    qa_min_dense_score: float = 0.0
 
     # ─── Streaming ────────────────────────────────────────────
     sse_keepalive_interval: int = 15

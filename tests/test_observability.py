@@ -202,7 +202,7 @@ class TestTrackLLMCall:
 class TestRecordLLMTokens:
     def test_degraded_is_noop(self):
         # No LLM_TOKENS collector defined; must not raise.
-        assert obs.record_llm_tokens("gemini", 10, 20) is None
+        assert obs.record_llm_tokens("gemini", "gemini-3.6-flash", 10, 20) is None
 
     def test_available_records_input_and_output_directions(self):
         tokens = MagicMock()
@@ -210,12 +210,12 @@ class TestRecordLLMTokens:
             patch.object(obs, "_metrics_available", True),
             patch.object(obs, "LLM_TOKENS", tokens, create=True),
         ):
-            obs.record_llm_tokens("gemini", 100, 250)
+            obs.record_llm_tokens("gemini", "gemini-3.6-flash", 100, 250)
 
-        # Two distinct labelled series: input and output.
+        # Two distinct labelled series per model: input and output.
         assert tokens.labels.call_args_list == [
-            ({"provider": "gemini", "direction": "input"},),
-            ({"provider": "gemini", "direction": "output"},),
+            ({"provider": "gemini", "model": "gemini-3.6-flash", "direction": "input"},),
+            ({"provider": "gemini", "model": "gemini-3.6-flash", "direction": "output"},),
         ]
         # Each incremented by its respective token count (not by 1).
         assert tokens.labels.return_value.inc.call_args_list == [
@@ -229,7 +229,7 @@ class TestRecordLLMTokens:
             patch.object(obs, "_metrics_available", True),
             patch.object(obs, "LLM_TOKENS", tokens, create=True),
         ):
-            obs.record_llm_tokens("anthropic", 0, 0)
+            obs.record_llm_tokens("anthropic", "claude-haiku-5-5", 0, 0)
 
         assert tokens.labels.return_value.inc.call_args_list == [((0,),), ((0,),)]
 

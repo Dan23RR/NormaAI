@@ -122,6 +122,86 @@ def message_text(message) -> str:
     return str(content)
 
 
+# ─── Token usage ──────────────────────────────────────────────────
+
+# Where a reply reports its tokens when LangChain's usage_metadata is missing:
+# (block in response_metadata, input key, output key) for Anthropic, the
+# OpenAI dialect (OpenRouter, Mistral) and Gemini.
+_USAGE_BLOCKS = (
+    ("usage", "input_tokens", "output_tokens"),
+    ("token_usage", "prompt_tokens", "completion_tokens"),
+    ("usage_metadata", "prompt_token_count", "candidates_token_count"),
+)
+
+
+def _count(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def token_counts(message: Any) -> tuple[int, int] | None:
+    """(input, output) tokens an LLM reply reports, or None when it reports none.
+
+    LangChain's ``usage_metadata`` first (every chat model of LangChain 0.3
+    fills it), else the provider's own block in ``response_metadata``.
+    """
+    usage = getattr(message, "usage_metadata", None)
+    if isinstance(usage, dict):
+        counts = (_count(usage.get("input_tokens")), _count(usage.get("output_tokens")))
+        if counts[0] is not None and counts[1] is not None:
+            return counts[0], counts[1]
+    metadata = getattr(message, "response_metadata", None)
+    if isinstance(metadata, dict):
+        for block_name, input_key, output_key in _USAGE_BLOCKS:
+            block = metadata.get(block_name)
+            if isinstance(block, dict):
+                counts = (_count(block.get(input_key)), _count(block.get(output_key)))
+                if counts[0] is not None and counts[1] is not None:
+                    return counts[0], counts[1]
+    return None
+
+
+def record_token_usage(message: Any) -> None:
+    """Log the tokens one LLM call used, with provider and model, and count them.
+
+    One ``llm_token_usage`` log line per reply: provider, configured model,
+    input and output tokens (``usage_reported`` False when the reply carries no
+    count), and ``served_model`` when the provider names another model. The
+    prompt and the answer are never logged. The Prometheus counter
+    ``normaai_llm_tokens_total`` is fed when prometheus_client is installed.
+    Never raises: accounting must not break an answer.
+    """
+    try:
+        from src.config import get_settings
+
+        settings = get_settings()
+        provider, model = settings.llm_provider, settings.active_model
+        extra: dict[str, Any] = {"provider": provider, "model": model}
+        metadata = getattr(message, "response_metadata", None)
+        if isinstance(metadata, dict):
+            served = metadata.get("model") or metadata.get("model_name")
+            if isinstance(served, str) and served and served != model:
+                extra["served_model"] = served
+        counts = token_counts(message)
+        if counts is None:
+            logger.info("llm_token_usage", extra={**extra, "usage_reported": False})
+            return
+        input_tokens, output_tokens = counts
+        logger.info(
+            "llm_token_usage",
+            extra={
+                **extra,
+                "usage_reported": True,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
+        )
+        from src.observability import record_llm_tokens
+
+        record_llm_tokens(provider, model, input_tokens, output_tokens)
+    except Exception:  # noqa: BLE001 - see docstring
+        logger.debug("llm_token_usage_not_recorded", exc_info=True)
+
+
 def get_llm(temperature: float | None = None):
     """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter/Mistral).
 
@@ -329,6 +409,7 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         ]
         response = llm.invoke(messages)
         llm_circuit.record_success()
+        record_token_usage(response)
         content = message_text(response)
         result = parse_json_response(content)
         if _needs_json_retry(result):
@@ -338,6 +419,7 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
                 )
             except Exception as retry_error:
                 return _after_json_retry(result, None, retry_error)
+            record_token_usage(second_reply)
             return _after_json_retry(result, message_text(second_reply))
         return result
 
@@ -368,6 +450,7 @@ async def _ainvoke_llm_with_retry(
             HumanMessage(content=user_message),
         ]
         response = await llm.ainvoke(messages)
+        record_token_usage(response)
         return message_text(response)
     except Exception as e:
         raise _classify_error(e) from e
@@ -421,6 +504,7 @@ async def acall_llm(
                     )
             except Exception as retry_error:
                 return _after_json_retry(result, None, retry_error)
+            record_token_usage(second_reply)
             return _after_json_retry(result, message_text(second_reply))
         return result
 

@@ -92,6 +92,141 @@ class TestDetectFrameworks:
     def test_case_insensitive(self):
         assert detect_frameworks_in_query("CSRD AND csrd") == ["CSRD"]
 
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "La burocrazia per i fornitori è eccessiva?",
+            "Chi adora i registri dei trattamenti?",
+            "Lo scraping di immagini dal web è lecito?",
+            "In una democrazia chi controlla le autorità?",
+        ],
+    )
+    def test_a_name_inside_another_word_does_not_count(self, question):
+        # Matched as substrings, "burocrazia" and "democrazia" named the CRA,
+        # "adora" DORA and "scraping" the CRA.
+        assert detect_frameworks_in_query(question) == []
+
+    def test_the_same_names_as_whole_words_count(self):
+        assert detect_frameworks_in_query("La burocrazia del CRA") == ["CRA"]
+        assert detect_frameworks_in_query("Chi adora il DORA?") == ["DORA"]
+
+    @pytest.mark.parametrize(
+        "question, framework",
+        [
+            ("Cosa prevede l'AI Act?", "AI_ACT"),
+            ("Obblighi dell'AI-Act per i deployer", "AI_ACT"),
+            ("Il Regolamento IA si applica alle PMI?", "AI_ACT"),
+            ("Cosa dice il regolamento sull’IA?", "AI_ACT"),
+            ("Il DORA si applica agli intermediari?", "DORA"),
+            ("La direttiva NIS 2 e i soggetti importanti", "NIS2"),
+            ("NIS-2: termini di notifica", "NIS2"),
+            ("NIS2 incident reporting", "NIS2"),
+            ("Le RGPD s'applique-t-il ?", "GDPR"),
+            ("Il GDPR e i cookie", "GDPR"),
+            ("CS3D scope after Omnibus I", "CSDDD"),
+            ("Il regolamento sulla ciberresilienza", "CRA"),
+        ],
+    )
+    def test_known_names_and_spellings(self, question, framework):
+        assert detect_frameworks_in_query(question) == [framework]
+
+    def test_accents_and_apostrophes_do_not_matter(self):
+        for spelling in (
+            "rendicontazione di sostenibilità",
+            "rendicontazione di sostenibilita",
+            "rendicontazione di sostenibilita'",
+            "RENDICONTAZIONE DI SOSTENIBILITÀ",
+        ):
+            assert detect_frameworks_in_query(f"Chi deve fare la {spelling}?") == ["CSRD"]
+
+    @pytest.mark.parametrize(
+        "question, framework",
+        [
+            ("Come si protegge un dato personale?", "GDPR"),
+            ("Come si proteggono i dati personali?", "GDPR"),
+            ("Chi gestisce i rischi informatici?", "DORA"),
+            ("Chi gestisce il rischio informatico?", "DORA"),
+            ("È un'infrastruttura critica?", "NIS2"),
+            ("Un prodotto con elementi digitali va marcato?", "CRA"),
+            ("Le catene di fornitura extra UE", "CSDDD"),
+        ],
+    )
+    def test_singular_and_plural(self, question, framework):
+        assert detect_frameworks_in_query(question) == [framework]
+
+    def test_nis3_is_not_nis2(self):
+        assert detect_frameworks_in_query("Cosa cambia con la NIS3?") == []
+
+    @pytest.mark.parametrize(
+        "golden_id, question, expected",
+        [
+            (
+                "aiact-005-002",
+                "È consentito creare o ampliare una banca dati di riconoscimento facciale "
+                "tramite scraping non mirato di immagini dal web secondo l'AI Act?",
+                ["AI_ACT"],  # was ["AI_ACT", "CRA"]: "scraping" contains "cra"
+            ),
+            (
+                "refuse-009",
+                "What does the NIS3 Directive change compared to NIS2?",
+                ["NIS2"],
+            ),
+            (
+                "dora-005-001",
+                "Chi ha la responsabilità finale della gestione dei rischi informatici in "
+                "un'entità finanziaria secondo il DORA?",
+                ["DORA"],
+            ),
+            (
+                "cra-014-001",
+                "A chi deve notificare un fabbricante una vulnerabilità attivamente sfruttata "
+                "in un prodotto con elementi digitali ai sensi dell'art. 14 del Cyber "
+                "Resilience Act?",
+                ["CRA"],
+            ),
+            (
+                "gdpr-033-001",
+                "Entro quanto tempo il titolare deve notificare una violazione dei dati "
+                "personali all'autorità di controllo?",
+                ["GDPR"],
+            ),
+            (
+                "tax-003-002",
+                "Quale condizione relativa alle «garanzie minime di salvaguardia» deve "
+                "rispettare un'attività per essere ecosostenibile secondo il regolamento "
+                "Tassonomia?",
+                ["TAXONOMY"],
+            ),
+            (
+                "nis2-021-003",
+                "La direttiva NIS2 richiede l'uso dell'autenticazione a più fattori?",
+                ["NIS2"],
+            ),
+            (
+                "csddd-002-003",
+                "La CSDDD si applica a una società che supera le soglie dell'art. 2 per un "
+                "solo esercizio?",
+                ["CSDDD"],
+            ),
+            (
+                "csrd-19a-002",
+                "After Omnibus I, which size thresholds trigger individual sustainability "
+                "reporting under Article 19a(1) of the Accounting Directive?",
+                [],  # names the act by its common name only: no framework, as before
+            ),
+            (
+                "aiact-026-001",
+                "Per quanto tempo il deployer di un sistema di IA ad alto rischio deve "
+                "conservare i log generati automaticamente dal sistema?",
+                [],
+            ),
+        ],
+    )
+    def test_golden_v2_questions(self, golden_id, question, expected):
+        # Real questions of tests/validation/test_cases/golden_v2.jsonl: of the 101,
+        # only aiact-005-002 is detected differently from the substring matching.
+        assert detect_frameworks_in_query(question) == expected, golden_id
+
 
 # ─── _load_prompt (real prompts dir) ──────────────────────────────
 
@@ -660,6 +795,43 @@ class TestPromptBuilders:
         system_prompt, _ = _build_qa_prompt({"query": "Q", "company_profile": {}})
         assert "Not available" in system_prompt
 
+    @pytest.mark.parametrize(
+        "language, name", [("en", "English"), ("it", "Italian"), ("de", "German"), ("fr", "French")]
+    )
+    def test_qa_prompt_asks_for_the_request_language(self, language, name):
+        # The Chiedi page lets the user pick the answer language, which may differ
+        # from the language of the question: the request's language decides.
+        system_prompt, _ = _build_qa_prompt({"query": "Entro quando?", "language": language})
+        assert f"every explanation in {name}, the language the user chose" in system_prompt
+        assert "Match the language of the user's question" not in system_prompt
+
+    @pytest.mark.parametrize("language", ["", None, "xx"])
+    def test_qa_prompt_without_a_known_language_follows_the_question(self, language):
+        system_prompt, _ = _build_qa_prompt({"query": "Q", "language": language})
+        assert "Match the language of the user's question" in system_prompt
+
+    def test_qa_prompt_fills_every_placeholder(self):
+        system_prompt, _ = _build_qa_prompt({"query": "Q", "language": "en"})
+        assert "{answer_language}" not in system_prompt
+        assert "6. Language: Write the answer" in system_prompt
+
+    def test_qa_node_sends_the_language_instruction_to_the_model(self, sample_qa_response):
+        with patch.object(nodes, "call_llm", return_value=sample_qa_response) as llm:
+            qa_bot_node({"query": "When?", "language": "it", "retrieved_chunks": [_A_PASSAGE]})
+        system_prompt, _ = llm.call_args.args
+        assert "every explanation in Italian" in system_prompt
+
+    async def test_async_qa_node_sends_the_language_instruction_to_the_model(
+        self, sample_qa_response
+    ):
+        llm = AsyncMock(return_value=sample_qa_response)
+        with patch.object(nodes, "acall_llm", llm):
+            await async_qa_bot_node(
+                {"query": "Quando?", "language": "en", "retrieved_chunks": [_A_PASSAGE]}
+            )
+        system_prompt, _ = llm.await_args.args
+        assert "every explanation in English" in system_prompt
+
     def test_monitor_prompt_defaults_for_missing_profile(self):
         # No profile -> default tokens ("Unknown", "All", etc.) and no crash.
         system_prompt, user_msg = _build_monitor_prompt({"query": "Q"})
@@ -909,6 +1081,129 @@ class TestNoPassageNoAnswer:
         with patch.object(nodes, "call_llm", return_value=sample_gap_response) as llm:
             gap_analyst_node({"query": "CSRD", "retrieved_chunks": []})
         llm.assert_called_once()
+
+
+def _settings(**update):
+    from src.config import get_settings
+
+    return get_settings().model_copy(update=update)
+
+
+class TestBestDenseScore:
+    def test_the_highest_dense_score_of_the_results(self):
+        chunks = [
+            {"id": "a", "score": 0.03, "dense_score": 0.71},
+            {"id": "b", "score": 0.02, "dense_score": None},  # sparse only
+            {"id": "c", "score": 0.01, "dense_score": 0.83},
+            "not a chunk",
+            {"id": "d", "dense_score": True},
+        ]
+        assert nodes.best_dense_score(chunks) == 0.83
+
+    def test_none_without_dense_scores(self):
+        assert nodes.best_dense_score([{"id": "a", "score": 0.03}]) is None
+        assert nodes.best_dense_score([]) is None
+        assert nodes.best_dense_score(None) is None
+
+    def test_retrieve_node_measures_it_before_reranking(self):
+        # The reranker may leave the closest passage out of the 15 the model
+        # reads: the threshold compares the closest one the search found.
+        chunks = [
+            {"id": str(i), "text": f"t{i}", "score": 1.0 - i / 100, "dense_score": 0.5}
+            for i in range(30)
+        ]
+        chunks[29]["dense_score"] = 0.88
+        scorer = MagicMock()
+        scorer.score.side_effect = lambda query, passages: [-float(i) for i in range(30)]
+        with (
+            patch("src.api.app_state.app_state.indexer", _indexer_returning(chunks)),
+            patch("src.api.app_state.app_state.reranker", scorer),
+        ):
+            out = retrieve_node({"query": "What does CSRD require?"})
+        assert "29" not in [c["id"] for c in out["retrieved_chunks"]]
+        assert out["retrieval_best_dense_score"] == 0.88
+
+    def test_retrieve_node_leaves_it_out_when_no_result_has_one(self):
+        with patch("src.api.app_state.app_state.indexer", _indexer_returning([_A_PASSAGE])):
+            out = retrieve_node({"query": "What does the GDPR require?"})
+        assert "retrieval_best_dense_score" not in out
+
+
+class TestLowRelevanceAbstention:
+    """QA_MIN_DENSE_SCORE: below it the Q&A abstains without asking the model."""
+
+    @staticmethod
+    def _state(best, language=""):
+        return {
+            "query": "Qual è l'aliquota IVA ordinaria?",
+            "language": language,
+            "retrieved_chunks": [_A_PASSAGE],
+            "retrieval_best_dense_score": best,
+        }
+
+    def test_off_by_default(self):
+        from src.config import Settings
+
+        assert Settings.model_fields["qa_min_dense_score"].default == 0.0
+
+    def test_below_the_threshold_abstains_without_calling_the_model(self):
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "call_llm") as llm,
+        ):
+            out = qa_bot_node(self._state(0.7512345))
+        llm.assert_not_called()
+        result = json.loads(out["result_json"])
+        assert result["abstention_reason"] == nodes.LOW_RELEVANCE_ABSTENTION_REASON
+        assert result["abstention_reason"] == "low_relevance"
+        assert result["answer"] == nodes.LOW_RELEVANCE_ABSTENTION_IT
+        assert result["best_dense_score"] == 0.7512
+        assert result["citations"] == [] and result["citations_total"] == 0
+        assert out["confidence_score"] == 0.0 and out["requires_review"] is True
+
+    async def test_async_node_abstains_in_the_request_language(self):
+        llm = AsyncMock()
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "acall_llm", llm),
+        ):
+            out = await async_qa_bot_node(self._state(0.42, language="en"))
+        llm.assert_not_awaited()
+        assert json.loads(out["result_json"])["answer"] == nodes.LOW_RELEVANCE_ABSTENTION_EN
+
+    @pytest.mark.parametrize("threshold, best", [(0.8, 0.8), (0.8, 0.86), (0.0, 0.1), (0.8, None)])
+    def test_the_model_answers_otherwise(self, threshold, best, sample_qa_response):
+        # At or above the threshold, with the threshold off, or with no dense
+        # score to compare (nothing measured), the model is asked as before.
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=threshold)),
+            patch.object(nodes, "call_llm", return_value=sample_qa_response) as llm,
+        ):
+            out = qa_bot_node(self._state(best))
+        llm.assert_called_once()
+        result = json.loads(out["result_json"])
+        assert "abstention_reason" not in result
+        if best is None:
+            assert "best_dense_score" not in result
+        else:
+            assert result["best_dense_score"] == best
+
+    def test_the_abstention_is_never_cached(self):
+        from src.cache import is_cacheable_result
+
+        with (
+            patch("src.config.get_settings", return_value=_settings(qa_min_dense_score=0.8)),
+            patch.object(nodes, "call_llm"),
+        ):
+            out = qa_bot_node(self._state(0.5))
+        cacheable, _ = is_cacheable_result(json.loads(out["result_json"]))
+        assert cacheable is False
+
+    def test_an_llm_error_gets_no_score(self):
+        error = {"error": "LLM timed out", "error_code": "llm_timeout", "confidence_score": 0.0}
+        with patch.object(nodes, "call_llm", return_value=error):
+            out = qa_bot_node(self._state(0.9))
+        assert "best_dense_score" not in json.loads(out["result_json"])
 
 
 # ─── confidence_check_node ────────────────────────────────────────

@@ -29,7 +29,7 @@ Configuration measured on golden v2 (101 questions, see
 
 | Measure | Result | Command |
 |---|---|---|
-| Golden v2 end to end: questions passed | 84 / 101 | `python -m tests.validation.runner --suite golden_v2 --api` |
+| Golden v2 end to end: questions "passed" (expected article cited; the 11 abstention questions count as passed by definition, §2.4) | 84 / 101 | `python -m tests.validation.runner --suite golden_v2 --api` |
 | Recall of the expected citation | 0.83 | same run |
 | Citations verified word for word | 99.6 % | same run |
 | Retrieval only: expected article in the top 15 | 80 / 90 | `python -m tests.validation.retrieval_eval --label <name>` |
@@ -191,7 +191,10 @@ own (Postgres, Redis, a copy of the local Qdrant volume).
 
 - **The gate of month 1 is met** by the final run: at least 90 / 101 questions passed (96)
   with at least 99.5 % of citations verified (99.79 %, 406 of 407), and on the retrieval
-  side 89 / 90 without a reranker and Art. 50 9th for the chatbot question (§3.1).
+  side 89 / 90 without a reranker and Art. 50 9th for the chatbot question (§3.1). The
+  gate counts the 11 abstention questions, which pass by definition: 96 / 101 is 85 of
+  the 90 answerable questions with the expected article cited, and 81 of them also pass
+  every content check as re-scored on 2026-11-18 (§2.4).
 - **Against 2026-10-27** the final run gains nine questions (aiact-113-003, gdpr-035-003,
   nis2-021-003, csrd-19a-001, csrd-19a-002, csrd-29a-001, tax-003-002, tax-008-001,
   cra-071-002) and loses two (aiact-113-005, aiact-003-004). Against the second run of
@@ -226,6 +229,66 @@ own (Postgres, Redis, a copy of the local Qdrant volume).
 - **Mean time** of the two runs of 2026-11-03 is not comparable with §2.2: the laptop ran
   the test suite during the first, and the second ran on the API process of the first. The
   final run had the laptop to itself.
+
+### 2.4 What the golden v2 numbers measure, and the runs re-scored on 2026-11-18
+
+"Questions passed" in the tables above is the runner's `passed_cases`: the questions whose
+expected article is among the citations of the answer (recall at the threshold,
+`tests/validation/metrics.py`). It says nothing of what the answer says. The 11 questions
+that expect an abstention (10 refusals and inj-006) expect no article, so they score recall
+1.0 and count as passed whatever the system answers. **96 / 101 is not 96 % of right
+answers**: on 2026-11-09 it was 85 of the 90 answerable questions with the expected article
+cited, plus the 11 abstention questions.
+
+What the answer says is checked by the "answer checks" (the facts a record requires, the
+strings it forbids, abstain or not; GOLDEN_V2.md, section 5). Until 2026-11-18 the checker
+counted a cited answer as an abstention when a marker such as "non rientra", "not covered
+by" or "qualified legal professional" stood anywhere in it, and counted a forbidden string
+also when the answer quoted it to refuse it or gave it as the old value of a change: 9 of
+the 13 answers it failed on 2026-11-18 pass every check without those false alarms. The
+percentages of that column above come from that checker.
+
+Since 2026-11-18 the runner reports each measure on its own, and
+`python -m tests.validation.rescore <report.json>` scores a stored report again with the
+current checks. Every run above, re-scored (in brackets, the content checks of the day):
+
+| Run | "Passed" | Answerable: article cited | Answerable: content checks passed | **Answerable: both** | Abstention questions: abstained, nothing forbidden said | Content checks, all questions |
+|---|---|---|---|---|---|---|
+| mpnet, 2026-10-24 (§1) | 84 / 101 | 73 / 90 | 78 / 90 | **70 / 90** | 11 / 11 | 89 / 101 (79) |
+| mpnet, 2026-10-27 (§2.2) | 81 / 101 | 70 / 90 | 75 / 90 | **67 / 90** | 11 / 11 | 86 / 101 (76) |
+| e5, 2026-10-27 (§2.2) | 85 / 101 | 74 / 90 | 79 / 90 | **73 / 90** | 11 / 11 | 90 / 101 (79) |
+| e5, response parser fixed, 2026-10-27 (§2.2) | 89 / 101 | 78 / 90 | 82 / 90 | **77 / 90** | 11 / 11 | 93 / 101 (81) |
+| e5, 2026-11-03 (§2.3) | 95 / 101 | 84 / 90 | 85 / 90 | **82 / 90** | 11 / 11 | 96 / 101 (84) |
+| same code, second run, 2026-11-03 (§2.3) | 96 / 101 | 85 / 90 | 84 / 90 | **81 / 90** | 11 / 11 | 95 / 101 (84) |
+| e5, final, 2026-11-09 (§2.3) | 96 / 101 | 85 / 90 | 84 / 90 | **81 / 90** | 11 / 11 | 95 / 101 (81) |
+| candidate branch with the word-for-word verifier of 2026-11-11, 2026-11-18 | 98 / 101 | 87 / 90 | 86 / 90 | **84 / 90** | 11 / 11 | 97 / 101 (88) |
+
+- **"Answerable: both"** is the closest of these numbers to right answers: the expected
+  article is cited and the answer has every fact its record requires and none it forbids.
+  It is a check of strings, not a lawyer's reading.
+- **The run of 2026-11-18** (pre-launch evaluation; Claude Haiku 5.5 and
+  multilingual-e5-large, report `golden_v2_api_2026-11-18T10-46-13`): 84 of the 90
+  answerable questions right on both counts. Not cited: dora-028-001 (retrieval, §3.1),
+  aiact-113-005 and csddd-037-001 (the amending act cited instead of the amended article,
+  §2.3). Cited, a content check failed: aiact-003-004 says it does not have the definition;
+  aiact-113-003 gives the general date of application (2 August 2026), which its record
+  forbids in order to catch that date given for Chapter V; aiact-003-002 writes "under its
+  own authority" where its record requires "under its authority". The last two are limits
+  of the records' strings rather than wrong answers. Before the re-scoring the same run
+  read 77 / 90 answerable questions with every content check passed, 88 / 101 in all.
+- **Verified citations** on 2026-11-18: 394 of the 400 citations of all answers (98.5 %),
+  98.4 % as the mean of the 97 answers that cite; below the 99.5 % of the gate of month 1
+  (§2.3). The re-scoring does not change them.
+- **What the numbers cannot say.** The retrieval settings were chosen on these same
+  questions (§2.1, §3.1), no question is about Italian law, and the LLM does not answer
+  twice the same way (§2.2): a difference of a few questions between runs is noise.
+- **Relevance threshold.** `QA_MIN_DENSE_SCORE` (off, 0) makes the Q&A abstain without
+  calling the model when the best dense score of the passages found is below it. Its
+  scale is the embedding model's (e5 gives every passage a high score, §6), so it is set
+  from a golden run: every answer reports `best_dense_score`, and the report prints the
+  lowest score of the answerable questions and the abstention questions below it. Any value
+  up to that lowest score keeps every answerable question; none of the reports above
+  carries the scores.
 
 ## 3. Sparse vectors
 

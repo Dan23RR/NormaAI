@@ -8,6 +8,7 @@ avoiding event-loop blocking.
 import json
 import logging
 import re
+import unicodedata
 from pathlib import Path
 
 from typing_extensions import TypedDict
@@ -45,6 +46,9 @@ class AgentState(TypedDict, total=False):
     language: str  # request language ("it", "en", ...); "" when unknown
     company_profile: dict
     retrieved_chunks: list
+    # Highest dense (cosine) score among the hybrid search results; None when
+    # none carries one (QA_MIN_DENSE_SCORE is compared with it).
+    retrieval_best_dense_score: float | None
     result_json: str
     confidence_score: float
     requires_review: bool
@@ -63,26 +67,37 @@ class AgentState(TypedDict, total=False):
     snc_audit: dict  # Same as snc_decision; alias for clarity in audit logs
 
 
+# Names, acronyms and common spellings of each framework. They are matched as
+# whole words (detect_frameworks_in_query), so the singular and the plural of a
+# phrase are both listed where Italian changes its words; accents, apostrophes,
+# hyphens and case do not matter.
 _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
     "CSRD": [
         "csrd",
         "corporate sustainability reporting",
         "sustainability reporting directive",
         "rendicontazione di sostenibilità",
+        "rendicontazione societaria di sostenibilità",
         "direttiva sulla sostenibilità",
     ],
     "CSDDD": [
         "csddd",
+        "cs3d",
         "corporate sustainability due diligence",
         "due diligence directive",
         "dovuta diligenza",
+        "dovere di diligenza delle imprese",
         "catena del valore",
+        "catene del valore",
         "catena di fornitura",
+        "catene di fornitura",
     ],
     "AI_ACT": [
         "ai act",
         "artificial intelligence act",
         "ai regulation",
+        "regolamento ia",
+        "regolamento sull'ia",
         "regolamento sull'intelligenza artificiale",
         "intelligenza artificiale",
     ],
@@ -92,14 +107,19 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
         "resilienza operativa digitale",
         "resilienza operativa",
         "rischio ict",
+        "rischi ict",
         "rischio informatico",
+        "rischi informatici",
     ],
     "NIS2": [
         "nis2",
-        "network information security",
         "nis 2",
+        "nis ii",
+        "network information security",
+        "network and information security",
         "sicurezza delle reti",
         "sicurezza informatica",
+        "infrastruttura critica",
         "infrastrutture critiche",
     ],
     "TAXONOMY": [
@@ -112,11 +132,14 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
     ],
     "GDPR": [
         "gdpr",
+        "rgpd",
         "general data protection",
         "data protection regulation",
         "protezione dati",
         "protezione dei dati",
+        "dato personale",
         "dati personali",
+        "personal data",
         "regolamento sulla privacy",
         "privacy",
     ],
@@ -124,7 +147,10 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
         "cra",
         "cyber resilience act",
         "cyber resilience",
+        "ciberresilienza",
+        "product with digital elements",
         "products with digital elements",
+        "prodotto con elementi digitali",
         "prodotti con elementi digitali",
         "resilienza informatica",
         "sbom",
@@ -135,13 +161,36 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
 }
 
 
+def _framework_words(text: str) -> str:
+    """``text`` as lower-case words without accents, one space between them.
+
+    "Regolamento sull'IA", "regolamento sull’ia" and "REGOLAMENTO SULL IA" all
+    become "regolamento sull ia"; "NIS-2" becomes "nis 2".
+    """
+    decomposed = unicodedata.normalize("NFKD", str(text or "").lower())
+    plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(re.findall(r"[0-9a-z]+", plain))
+
+
+_FRAMEWORK_ALIASES: dict[str, tuple[str, ...]] = {
+    fw: tuple(_framework_words(keyword) for keyword in keywords)
+    for fw, keywords in _FRAMEWORK_KEYWORDS.items()
+}
+
+
 def detect_frameworks_in_query(query: str) -> list[str]:
-    query_lower = query.lower()
-    detected = []
-    for fw, keywords in _FRAMEWORK_KEYWORDS.items():
-        if any(kw in query_lower for kw in keywords):
-            detected.append(fw)
-    return detected
+    """The frameworks a question names, in the order of _FRAMEWORK_KEYWORDS.
+
+    A name counts only as whole words: "burocrazia" does not name the CRA,
+    "adora" does not name DORA and "scraping" does not name the CRA either, as
+    they did while names were matched inside other words.
+    """
+    padded = f" {_framework_words(query)} "
+    return [
+        fw
+        for fw, aliases in _FRAMEWORK_ALIASES.items()
+        if any(f" {alias} " in padded for alias in aliases)
+    ]
 
 
 # ─── Shared Helpers ──────────────────────────────────────────────
@@ -187,6 +236,29 @@ def _build_gap_prompt(state: AgentState) -> tuple[str, str]:
     return _INJECTION_GUARD + system_prompt, f"Perform gap analysis for {query}"
 
 
+# Languages the Q&A request may ask for (QARequest.language), by ISO 639-1 code.
+_ANSWER_LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French"}
+
+
+def answer_language_instruction(language: str | None) -> str:
+    """Instruction 6 of prompts/qa_bot.txt: the language the answer is written in.
+
+    The request's language when it names one of _ANSWER_LANGUAGES (the user
+    chose it, and it may differ from the language of the question); the
+    language of the question otherwise.
+    """
+    name = _ANSWER_LANGUAGES.get(str(language or "").strip().lower()[:2])
+    if name is None:
+        return (
+            "Match the language of the user's question. If they ask in Italian, respond "
+            "in Italian. If in English, respond in English."
+        )
+    return (
+        f"Write the answer, the caveats and every explanation in {name}, the language the "
+        f"user chose for the answers, even when the question is written in another language."
+    )
+
+
 def _build_qa_prompt(state: AgentState) -> tuple[str, str]:
     """Build system prompt and user message for QA bot."""
     prompt_template = _load_prompt("qa_bot")
@@ -198,6 +270,7 @@ def _build_qa_prompt(state: AgentState) -> tuple[str, str]:
         retrieved_chunks=context_text,
         company_profile=profile_text,
         user_question=query,
+        answer_language=answer_language_instruction(state.get("language")),
     )
     return system_prompt, query
 
@@ -470,6 +543,23 @@ def _retrieval_failed(state: AgentState) -> bool:
     return str(state.get("error") or "").startswith(RETRIEVAL_ERROR_PREFIX)
 
 
+def best_dense_score(chunks: list | None) -> float | None:
+    """Highest dense (cosine) score among search results, None when none carries one.
+
+    hybrid_search keeps each retriever's raw score (``dense_score``); a chunk
+    the dense search did not return has None and is ignored. The RRF ``score``
+    ranks results but says nothing about how close the best one is.
+    """
+    scores = [
+        float(c["dense_score"])
+        for c in chunks or []
+        if isinstance(c, dict)
+        and isinstance(c.get("dense_score"), int | float)
+        and not isinstance(c.get("dense_score"), bool)
+    ]
+    return max(scores) if scores else None
+
+
 # ─── Synchronous Nodes (for tests & sync graph) ──────────────────
 
 
@@ -546,6 +636,9 @@ def retrieve_node(state: AgentState) -> dict:
                 org_id=state.get("org_id"),
             )
             keep = 15
+        # Measured on every hybrid result, before reranking and before the
+        # consolidated text replaces an amending passage (which drops its score).
+        best_dense = best_dense_score(results)
 
         if reranker is not None:
             from src.nlp.embedding.reranker import rerank
@@ -566,7 +659,9 @@ def retrieve_node(state: AgentState) -> dict:
                 results = resolve_quoted_articles(results, indexer.article_chunks)
             except Exception as e:
                 logger.warning(f"Quoted articles not resolved, passages kept as retrieved: {e}")
-        return {"retrieved_chunks": results}
+        if best_dense is None:
+            return {"retrieved_chunks": results}
+        return {"retrieved_chunks": results, "retrieval_best_dense_score": best_dense}
     except Exception as e:
         logger.error(f"Retrieval failed: {e}")
         error = f"{RETRIEVAL_ERROR_PREFIX}: {str(e)}"
@@ -641,14 +736,81 @@ def _abstain_without_sources(state: AgentState) -> dict | None:
     )
 
 
+# ─── Passages too far from the question, no answer ───────────────
+
+LOW_RELEVANCE_ABSTENTION_REASON = "low_relevance"
+LOW_RELEVANCE_ABSTENTION_IT = (
+    "Non posso rispondere con una fonte: nessuno dei passaggi trovati nel corpus è abbastanza "
+    "vicino alla domanda per sostenere una risposta. Prova a indicare l'atto o l'articolo, "
+    "oppure consulta direttamente EUR-Lex."
+)
+LOW_RELEVANCE_ABSTENTION_EN = (
+    "I cannot answer with a source: none of the passages found in the corpus is close enough "
+    "to the question to support an answer. Try naming the act or the article, or consult "
+    "EUR-Lex directly."
+)
+
+
+def _abstain_on_low_relevance(state: AgentState) -> dict | None:
+    """The Q&A abstention when the passages found are too far from the question.
+
+    QA_MIN_DENSE_SCORE (Settings.qa_min_dense_score, 0 = off) is compared with
+    the best dense score of the hybrid results (retrieval_best_dense_score):
+    below it the model is not asked. None when the threshold is off, when no
+    result carries a dense score (nothing to compare) or when it is reached.
+    """
+    from src.config import get_settings
+
+    threshold = get_settings().qa_min_dense_score
+    best = state.get("retrieval_best_dense_score")
+    if threshold <= 0 or not isinstance(best, int | float) or best >= threshold:
+        return None
+    english = str(state.get("language") or "").strip().lower()[:2] == "en"
+    logger.info(
+        "qa_abstained_low_relevance",
+        extra={"best_dense_score": round(float(best), 4), "qa_min_dense_score": threshold},
+    )
+    return _pack_llm_result(
+        {
+            "answer": LOW_RELEVANCE_ABSTENTION_EN if english else LOW_RELEVANCE_ABSTENTION_IT,
+            "citations": [],
+            "caveats": [],
+            "confidence_score": 0.0,
+            "requires_expert_review": True,
+            "abstention_reason": LOW_RELEVANCE_ABSTENTION_REASON,
+            "best_dense_score": round(float(best), 4),
+            "verified_citations": 0,
+            "citations_total": 0,
+        }
+    )
+
+
+def _qa_abstention(state: AgentState) -> dict | None:
+    """The abstention decided before the model is asked, or None: no passage, or none close."""
+    return _abstain_without_sources(state) or _abstain_on_low_relevance(state)
+
+
+def _with_relevance(result: dict, state: AgentState) -> dict:
+    """A Q&A answer with ``best_dense_score``, the score QA_MIN_DENSE_SCORE is compared with.
+
+    Reported on every answer (rounded to 4 decimals) so the threshold can be
+    calibrated on a golden run; left out of an error and when no score exists.
+    """
+    best = state.get("retrieval_best_dense_score")
+    if isinstance(result, dict) and not result.get("error") and isinstance(best, int | float):
+        return {**result, "best_dense_score": round(float(best), 4)}
+    return result
+
+
 def qa_bot_node(state: AgentState) -> dict:
     if _retrieval_failed(state):
         return {}
-    abstention = _abstain_without_sources(state)
+    abstention = _qa_abstention(state)
     if abstention is not None:
         return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
-    return _pack_llm_result(call_llm(system_prompt, user_msg), state, verify_citations=True)
+    result = _with_relevance(call_llm(system_prompt, user_msg), state)
+    return _pack_llm_result(result, state, verify_citations=True)
 
 
 # ─── Async Nodes (for FastAPI - native .ainvoke) ─────────────────
@@ -674,11 +836,12 @@ async def async_qa_bot_node(state: AgentState) -> dict:
     """Async QA bot: uses acall_llm() → .ainvoke() (non-blocking)."""
     if _retrieval_failed(state):
         return {}
-    abstention = _abstain_without_sources(state)
+    abstention = _qa_abstention(state)
     if abstention is not None:
         return abstention
     system_prompt, user_msg = _build_qa_prompt(state)
-    return _pack_llm_result(await acall_llm(system_prompt, user_msg), state, verify_citations=True)
+    result = _with_relevance(await acall_llm(system_prompt, user_msg), state)
+    return _pack_llm_result(result, state, verify_citations=True)
 
 
 # ─── Shared Nodes (work in both sync & async graphs) ─────────────
@@ -764,7 +927,7 @@ async def async_simple_response_node(state: AgentState) -> dict:
     try:
         from src.cache import response_cache
 
-        cached = await response_cache.get(task_type, query, profile)
+        cached = await response_cache.get(task_type, query, profile, language=state.get("language"))
         if cached:
             logger.info("simple_response_cache_hit", extra={"task_type": task_type})
             try:

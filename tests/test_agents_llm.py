@@ -838,3 +838,156 @@ class TestAcallLLM:
         with _patch_settings(settings), patch("src.agents.llm.get_llm", side_effect=_capture):
             await acall_llm("sys", "user", temperature=0.88)
         assert captured["temperature"] == 0.88
+
+
+# ─── Token usage ──────────────────────────────────────────────────
+
+
+class TestTokenUsage:
+    """One ``llm_token_usage`` log line per LLM reply, with provider and model,
+    never the prompt or the answer; the Prometheus counter when available."""
+
+    PROMPT = "SYSTEM PROMPT WITH THE RETRIEVED LAW"
+    ANSWER = json.dumps({"answer": "THE ANSWER TEXT", "citations": []})
+
+    @staticmethod
+    def _settings():
+        return _make_settings(provider="anthropic", api_key="k", active_model="claude-haiku-5-5")
+
+    @staticmethod
+    def _usage_lines(caplog):
+        return [r for r in caplog.records if r.getMessage() == "llm_token_usage"]
+
+    def _reply(self, content=None, **fields):
+        from langchain_core.messages import AIMessage
+
+        return AIMessage(content=self.ANSWER if content is None else content, **fields)
+
+    def test_counts_from_langchain_usage_metadata(self):
+        from src.agents.llm import token_counts
+
+        reply = self._reply(
+            usage_metadata={"input_tokens": 1200, "output_tokens": 340, "total_tokens": 1540}
+        )
+        assert token_counts(reply) == (1200, 340)
+
+    @pytest.mark.parametrize(
+        "metadata, counts",
+        [
+            ({"usage": {"input_tokens": 10, "output_tokens": 4}}, (10, 4)),  # Anthropic
+            ({"token_usage": {"prompt_tokens": 11, "completion_tokens": 5}}, (11, 5)),  # OpenAI
+            (
+                {"usage_metadata": {"prompt_token_count": 12, "candidates_token_count": 6}},
+                (12, 6),
+            ),  # Gemini
+            ({"usage": {"input_tokens": "10", "output_tokens": 4}}, None),
+            ({}, None),
+        ],
+    )
+    def test_counts_from_the_provider_metadata(self, metadata, counts):
+        from src.agents.llm import token_counts
+
+        reply = SimpleNamespace(usage_metadata=None, response_metadata=metadata)
+        assert token_counts(reply) == counts
+
+    def test_log_line_carries_counts_provider_and_model_not_the_text(self, caplog):
+        from src.agents.llm import record_token_usage
+
+        reply = self._reply(
+            usage_metadata={"input_tokens": 1200, "output_tokens": 340, "total_tokens": 1540},
+            response_metadata={"model": "claude-haiku-5-5-20261001"},
+        )
+        with (
+            _patch_settings(self._settings()),
+            patch("src.observability.record_llm_tokens") as counter,
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(reply)
+        (line,) = self._usage_lines(caplog)
+        assert (line.provider, line.model) == ("anthropic", "claude-haiku-5-5")
+        assert (line.input_tokens, line.output_tokens) == (1200, 340)
+        assert line.usage_reported is True
+        assert line.served_model == "claude-haiku-5-5-20261001"
+        assert "THE ANSWER TEXT" not in repr(vars(line))
+        counter.assert_called_once_with("anthropic", "claude-haiku-5-5", 1200, 340)
+
+    def test_a_reply_without_counts_says_so(self, caplog):
+        from src.agents.llm import record_token_usage
+
+        with (
+            _patch_settings(self._settings()),
+            patch("src.observability.record_llm_tokens") as counter,
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(self._reply())
+        (line,) = self._usage_lines(caplog)
+        assert line.usage_reported is False
+        assert not hasattr(line, "input_tokens")
+        counter.assert_not_called()
+
+    def test_without_prometheus_client_nothing_breaks(self, caplog, monkeypatch):
+        import src.observability as obs
+        from src.agents.llm import record_token_usage
+
+        monkeypatch.setattr(obs, "_metrics_available", False)
+        if hasattr(obs, "LLM_TOKENS"):
+            monkeypatch.delattr(obs, "LLM_TOKENS")
+        reply = self._reply(
+            usage_metadata={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+        )
+        with (
+            _patch_settings(self._settings()),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(reply)
+        (line,) = self._usage_lines(caplog)
+        assert (line.input_tokens, line.output_tokens) == (3, 2)
+
+    def test_an_accounting_error_never_breaks_the_call(self):
+        from src.agents.llm import record_token_usage
+
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.token_counts", side_effect=RuntimeError("boom")),
+        ):
+            record_token_usage(self._reply())  # no exception
+
+    def test_sync_call_records_each_reply(self, caplog):
+        replies = [
+            self._reply(
+                content=PROSE,
+                usage_metadata={"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+            ),
+            self._reply(
+                content=JSON_REPLY,
+                usage_metadata={"input_tokens": 130, "output_tokens": 25, "total_tokens": 155},
+            ),
+        ]
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = replies
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            call_llm(self.PROMPT, "user message")
+        lines = self._usage_lines(caplog)
+        # The answer in prose and the second attempt asked as JSON: two calls, two lines.
+        assert [(r.input_tokens, r.output_tokens) for r in lines] == [(100, 20), (130, 25)]
+        assert all(self.PROMPT not in repr(vars(r)) for r in lines)
+
+    async def test_async_call_records_the_reply(self, caplog):
+        reply = self._reply(
+            usage_metadata={"input_tokens": 900, "output_tokens": 210, "total_tokens": 1110}
+        )
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(return_value=reply)
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            result = await acall_llm(self.PROMPT, "user message")
+        assert result["answer"] == "THE ANSWER TEXT"
+        (line,) = self._usage_lines(caplog)
+        assert (line.input_tokens, line.output_tokens) == (900, 210)

@@ -35,18 +35,31 @@ ABSTAIN_PATTERNS: tuple[str, ...] = (
     r"non sono in grado di rispondere",
 )
 _ABSTAIN_RE = re.compile(r"\b(?:" + "|".join(ABSTAIN_PATTERNS) + r")")
-# Where ABSTAIN_PATTERNS count for a record that expects an answer: the opening
-# of the answer, where prompts/qa_bot.txt puts the direct answer or the
-# abstention. Further down they say why one point is not covered.
-ABSTAIN_OPENING_CHARS = 500
+# For a record that expects an answer, ABSTAIN_PATTERNS count in the opening
+# sentence (the next one too when the first is a heading), where
+# prompts/qa_bot.txt puts the direct answer or the abstention. Further down
+# they say why one point is not answered ("quindi per quella parte non posso
+# rispondere con certezza", aiact-050-001 of 2026-11-03, a cited answer).
+OPENING_MIN_WORDS = 5
 
-# Phrases that count too, anywhere in the answer, for a record that expects an
-# abstention. They were the markers of every record until 2026-11-18, when 9
-# cited answers of the live run were counted as abstentions because of them
-# ("non rientra", "not covered by", "qualified legal professional"). An answer
-# that declines a false premise words it in many ways and may cite passages for
-# context; the record's answer_must_not_contain catches one that invents what
-# was asked.
+# For a record that expects an abstention, a refusal anywhere in the answer
+# counts: ABSTAIN_PATTERNS, refusals to say or give what was asked
+# (DECLINE_PATTERNS) and the markers below. An answer that declines a false
+# premise words it in many ways ("Non trovo l'articolo 200 del DORA ... quindi
+# non posso dire quali sanzioni preveda", "Non posso darti un consiglio di
+# investimento") and may cite passages for context; the record's
+# answer_must_not_contain catches one that invents what was asked.
+DECLINE_PATTERNS: tuple[str, ...] = (
+    r"non (?:posso|riesco a) (?:dire|indicare|indicarne|descrivere|riassumere|elencare"
+    r"|confermare|fornire|dar(?:ti|le|vi)?)\b",
+    r"(?:cannot|can't|can not|unable to|not able to) (?:say|describe|state|tell|confirm"
+    r"|provide|give|list|summari[sz]e)\b",
+    r"non trovo (?:l'|alcun |nessun )?articol",
+)
+_DECLINE_RE = re.compile(r"\b(?:" + "|".join(ABSTAIN_PATTERNS + DECLINE_PATTERNS) + r")")
+# The markers of every record until 2026-11-18, when 9 cited answers of the
+# live run were counted as abstentions because of them ("non rientra", "not
+# covered by", "qualified legal professional"): now for abstain records only.
 ABSTAIN_MARKERS: tuple[str, ...] = (
     "don't have sufficient information",
     "do not have sufficient information",
@@ -137,6 +150,16 @@ def _normalized(text: str | None) -> str:
     return (text or "").lower().replace("’", "'").replace("‘", "'")
 
 
+def _opening(text: str) -> str:
+    """The first sentence of ``text``, and the next one when the first is a heading."""
+    left, right = _sentence_bounds(text, 0, 0)
+    opening = text[left:right]
+    if len(re.findall(r"\w+", opening)) < OPENING_MIN_WORDS and right < len(text):
+        _, after = _sentence_bounds(text, right, right + 1)
+        opening = text[left:after]
+    return opening
+
+
 def looks_like_abstention(
     answer: str | None,
     citations: list | None,
@@ -148,15 +171,17 @@ def looks_like_abstention(
 
     Always when the pipeline says so (``abstention_reason``) or the answer has
     no citations. Otherwise when one of ABSTAIN_PATTERNS is in its opening
-    (ABSTAIN_OPENING_CHARS); with ``anywhere`` (records that expect an
-    abstention) also when one of them or of ABSTAIN_MARKERS is anywhere in it.
+    sentence (_opening); with ``anywhere`` (records that expect an abstention)
+    when one of ABSTAIN_PATTERNS, DECLINE_PATTERNS or ABSTAIN_MARKERS is
+    anywhere in it.
     """
     if abstention_reason or not citations:
         return True
-    low = " ".join(_normalized(answer).split())
+    text = answer or ""
     if anywhere:
-        return bool(_ABSTAIN_RE.search(low)) or any(m in low for m in ABSTAIN_MARKERS)
-    return bool(_ABSTAIN_RE.search(low[:ABSTAIN_OPENING_CHARS]))
+        low = " ".join(_normalized(text).split())
+        return bool(_DECLINE_RE.search(low)) or any(m in low for m in ABSTAIN_MARKERS)
+    return bool(_ABSTAIN_RE.search(" ".join(_normalized(_opening(text)).split())))
 
 
 def _sentence_bounds(text: str, start: int, end: int) -> tuple[int, int]:

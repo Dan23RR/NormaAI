@@ -183,9 +183,12 @@ parent/child matching.
 
 - **Abstention** (`golden_v2.looks_like_abstention`): the pipeline's `abstention_reason`, zero
   citations, or a first-person refusal to answer (`ABSTAIN_PATTERNS`: "I don't have
-  sufficient information", "non posso rispondere", ...) in the first 500 characters. For an
-  abstain record a refusal anywhere counts, including the older and looser
-  `ABSTAIN_MARKERS` ("non rientra", "qualified legal professional"). Until 2026-11-18 those
+  sufficient information", "non posso rispondere", ...) in the opening sentence. Further
+  down such a sentence limits one point of a cited answer ("quindi per quella parte non
+  posso rispondere con certezza"). For an abstain record a refusal anywhere counts: those
+  phrases, refusals to say or give what was asked (`DECLINE_PATTERNS`: "non posso dire
+  quali sanzioni preveda", "Non posso darti un consiglio di investimento") and the older,
+  looser `ABSTAIN_MARKERS` ("non rientra", "qualified legal professional"). Until 2026-11-18 those
   markers counted anywhere for every record: 9 cited answers of that day's live run were
   scored as abstentions because of them ("non rientra nell'obbligo", "not covered by this
   prohibition", "confirmed by a qualified legal professional", "Non posso rispondere solo

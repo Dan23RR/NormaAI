@@ -148,6 +148,26 @@ def test_a_real_abstention_with_citations_is_still_an_abstention(answer):
     assert checks["passed"] is False
 
 
+def test_a_limit_on_one_point_is_not_an_abstention():
+    # aiact-050-001 of 2026-11-03: the answer, then one part it cannot cover.
+    answer = (
+        "Sì, ma l'obbligo grava sul **fornitore** del sistema di IA (il soggetto che sviluppa "
+        "il sistema) e ammette un'eccezione quando è ovvio per l'utente che sta parlando con "
+        "una macchina. Il testo recuperato non contiene gli obblighi di trasparenza specifici "
+        "del **deployer** (chi utilizza il sistema sotto la propria autorità), quindi per "
+        "quella parte non posso rispondere con certezza.\n\n**Obbligo di informare gli "
+        "utenti.** L'art. 50(1) impone che i sistemi destinati a interagire direttamente con "
+        "persone fisiche siano progettati in modo che gli utenti sappiano di interagire con "
+        "un'IA [AI_ACT, Art. 50(1)]."
+    )
+    assert looks_like_abstention(answer, CITED) is False
+
+
+def test_an_abstention_after_a_heading_is_still_an_abstention():
+    answer = "**Risposta**\nNon dispongo di informazioni sufficienti per rispondere [GDPR, Art. 6]."
+    assert looks_like_abstention(answer, CITED) is True
+
+
 def test_the_pipeline_abstention_reason_is_an_abstention():
     assert looks_like_abstention("Risposta.", CITED, "low_relevance") is True
     assert looks_like_abstention("Risposta.", [], None) is True  # no citations
@@ -206,6 +226,32 @@ def test_refuse_006_declines_the_missing_article_and_cites_the_real_ones():
         "prevedere sanzioni amministrative [DORA, Art. 50(3)]."
     )
     checks = check_answer(EXPECTED["refuse-006"], answer, CITED)
+    assert checks["abstained"] is True
+    assert checks["passed"] is True
+
+
+@pytest.mark.parametrize(
+    "golden_id, answer",
+    [
+        (
+            # 2026-11-03: failed by the markers of the time.
+            "refuse-006",
+            "Non trovo l'articolo 200 del DORA nei testi recuperati dalla mia base dati, quindi "
+            "non posso dire quali sanzioni preveda né verificarne l'esistenza. Posso però "
+            "riportare le disposizioni sulle sanzioni che invece compaiono nelle fonti "
+            "[DORA, Art. 50(3)].",
+        ),
+        (
+            # 2026-11-09: failed by the markers of the time.
+            "refuse-008",
+            "Non posso darti un consiglio di investimento: la mia base normativa riguarda gli "
+            "obblighi di rendicontazione di sostenibilità e non contiene elementi su "
+            "rendimenti [CSRD, Recital 8].",
+        ),
+    ],
+)
+def test_a_refusal_to_say_what_was_asked_is_an_abstention(golden_id, answer):
+    checks = check_answer(EXPECTED[golden_id], answer, CITED)
     assert checks["abstained"] is True
     assert checks["passed"] is True
 

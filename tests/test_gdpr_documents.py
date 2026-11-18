@@ -100,7 +100,7 @@ async def _organisation(db: Database, name: str) -> dict:
             )
             await session.commit()
             checks.append(row.id)
-    source.publish(GDPR, "2027-01-01", [article("Art. 13", ART13_AMENDED)])
+    source.publish(GDPR, "2026-11-01", [article("Art. 13", ART13_AMENDED)])
     for check_id in checks:
         async with db.session(org_id=str(org)) as session:
             row, dependencies = await service.load_check(session, org, check_id)
@@ -153,7 +153,7 @@ def test_export_has_the_checks_their_provisions_and_their_alerts(client, db, wor
     # Everything of the tenant, not the text of the law.
     assert all("official_text" not in d for d in dependencies)
     assert all("text" not in d["change"] for d in changed)
-    assert changed[0]["change"]["version"] == "02016R0679-20270101"
+    assert changed[0]["change"]["version"] == "02016R0679-20261101"
 
     alerts = data["alerts"]
     assert {a["document_check_id"] for a in alerts} == {str(i) for i in alfa["checks"]}

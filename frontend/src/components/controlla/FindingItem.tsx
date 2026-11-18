@@ -122,8 +122,8 @@ export function FindingBody({ finding, dependency, checkedAt, lang }: FindingPro
 
   // The sentence of the re-check is said by the note above: not twice.
   const messages = stale && dependency?.message ? finding.messages.filter((message) => message !== dependency.message) : finding.messages
-  // A quote found in another article keeps the act but not the article the document names.
-  const elsewhere = finding.status.code === 'altro_articolo'
+  // A quote found in another article, paragraph or comma keeps the act but not the provision the document names.
+  const elsewhere = ['altro_articolo', 'altro_paragrafo', 'altro_comma'].includes(finding.status.code)
   const celex = finding.act?.source === 'eurlex' ? finding.act.id : undefined
   const showLaw = !!official && !stale
 

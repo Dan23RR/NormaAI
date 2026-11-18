@@ -45,7 +45,7 @@ esiti:
                   Cambiato dopo la data del documento (con --data);
                   Non esiste nel testo vigente (articolo, paragrafo o comma);
                   Citazione diversa dal testo ufficiale (con le parole diverse);
-                  Citazione non trovata
+                  Citazione non trovata; Citazione in un altro paragrafo (o comma)
   da controllare  Citazione in un altro articolo; Testo ufficiale non raggiungibile;
                   Versione più recente non leggibile; Estremi dell'atto da controllare;
                   Articolo letto solo in parte; Modifica pubblicata, non ancora in vigore;
@@ -135,6 +135,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     report.write_text(render_html(check, lock_path.name), encoding="utf-8")
     print("\n".join(summary_lines(check)))
+    if check.own_articles:
+        own = ", ".join(f"{ref.raw} (riga {ref.line})" for ref in check.own_articles)
+        print(f"Articoli del documento, non controllati: {own}")
     print(f"Report: {report}")
     print(f"Disposizioni citate: {lock_path}")
     return 0

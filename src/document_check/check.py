@@ -7,15 +7,20 @@ For every reference ``extract`` finds:
    on Normattiva, article by article (see "Italian law" below); the steps that
    follow are those of an EU act.
 2. The provision must exist in the version in force (the latest consolidated
-   text), and so must each cited paragraph. A provision missing today but
-   present in an earlier version was repealed or renumbered.
+   text dated no later than the day of the check: CELLAR lists some ahead of
+   their date, and those are only mentioned), and so must each cited
+   paragraph. A provision missing today but present in an earlier version was
+   repealed or renumbered.
 3. Each quote goes through the production verifier
    (src/agents/citation_verifier.py: same normalisation, same thresholds): in
    the cited provision, then elsewhere in the act, then in the earlier
    versions, newest first. A quote found only in an earlier version is
    outdated, and the report shows the provision then and now. A quote that is
    in no version but differs from the text in force only by a few words (a
-   number, a "non") is altered: the report shows the words that differ.
+   number, a "non") is altered: the report shows the words that differ. The
+   searches outside the cited provisions read a whole version of the act each:
+   a check makes at most ``WIDE_SEARCHES`` of them, and a quote past them is
+   reported with what was not read.
 4. When the document's date is known, the provision in force on that date is
    compared with today's: a change means the document rests on the old text.
 5. CELLAR does not give every consolidated version as text. The check reads
@@ -23,6 +28,10 @@ For every reference ``extract`` finds:
    of the act as published, that is the same wording and a note says so; when
    a later consolidated text could not be read, the provision is to be checked
    by hand.
+
+The document's own articles ("art. 12 del presente Contratto", "Art. 5 -
+Durata" in a contract) are not references to an act: they are listed in
+``DocumentCheck.own_articles``, neither checked nor put in the lock file.
 
 Italian law. Normattiva gives one article per request, as in force on a day,
 with the days between which that wording holds. The article must exist and be
@@ -65,8 +74,9 @@ from src.document_check.extract import (
     Provision,
     Reference,
     detect_language,
-    extract_references,
     paragraph_label,
+    quote_language,
+    split_references,
 )
 from src.document_check.normattiva import (
     IN_FORCE,
@@ -102,6 +112,10 @@ CHANGED = Status("cambiato", "Cambiato dopo la data del documento", "correggere"
 MISSING = Status("inesistente", "Non esiste nel testo vigente", "correggere")
 ALTERED = Status("alterata", "Citazione diversa dal testo ufficiale", "correggere")
 NOT_FOUND = Status("non_trovata", "Citazione non trovata", "correggere")
+# The quote is in the article cited, word for word, but not in the paragraph (or
+# comma) the reference names: the reference is wrong.
+OTHER_PARAGRAPH = Status("altro_paragrafo", "Citazione in un altro paragrafo", "correggere")
+OTHER_COMMA = Status("altro_comma", "Citazione in un altro comma", "correggere")
 ELSEWHERE = Status("altro_articolo", "Citazione in un altro articolo", "controllare")
 UNAVAILABLE = Status("non_disponibile", "Testo ufficiale non raggiungibile", "controllare")
 UNREAD = Status("versione_non_letta", "Versione più recente non leggibile", "controllare")
@@ -124,6 +138,8 @@ _ORDER = (
     MISSING,
     ALTERED,
     NOT_FOUND,
+    OTHER_PARAGRAPH,
+    OTHER_COMMA,
     ELSEWHERE,
     UNAVAILABLE,
     UNREAD,
@@ -191,6 +207,9 @@ class DocumentCheck:
     document_date: str | None
     lang: str
     findings: list[Finding]
+    # References to the document's own articles ("art. 12 del presente
+    # Contratto"): listed, neither checked nor in the lock file.
+    own_articles: list[Reference] = field(default_factory=list)
 
     def group(self, name: str) -> list[Finding]:
         return [f for f in self.findings if f.status.group == name]
@@ -246,6 +265,50 @@ def _day_before(iso: str) -> str:
 def _specific_enough(quote: str) -> bool:
     text = normalize(quote)
     return len(text) >= MIN_QUOTE_CHARS and len(text.split()) >= MIN_QUOTE_WORDS
+
+
+# Searches of a quote in a whole version of an act that one check may make. A
+# quote is first looked for in the provision it cites, a few milliseconds; only
+# a quote that is not there is looked for in the rest of the act and in its
+# earlier versions, and each of those searches reads the whole act again (a
+# tenth of a second, more when the quote shares many words with the act). The
+# budget keeps a document with thousands of such quotes from holding a worker
+# for an hour: a quote past it is reported as not found in the cited provision,
+# with the parts of the act that were not searched.
+WIDE_SEARCHES = 60
+
+
+@dataclass
+class _Searches:
+    """The searches in whole versions of acts left to a check, and those already made."""
+
+    left: int = field(default_factory=lambda: WIDE_SEARCHES)
+    done: dict[tuple[str, str, str, str, str], VerificationResult] = field(default_factory=dict)
+
+    def run(
+        self,
+        quote: str,
+        provision: Provision,
+        act: Act,
+        version: Version,
+        articles: list[ArticleText],
+        lang: str,
+    ) -> VerificationResult | None:
+        """The verifier on a whole version; None when the check has no searches left."""
+        key = (quote, provision.label, act.key, version.celex, lang)
+        if key not in self.done:
+            if self.left <= 0:
+                return None
+            self.left -= 1
+            self.done[key] = _verify(quote, provision, act, version, articles)
+        return self.done[key]
+
+
+def _unsearched(what: str) -> str:
+    return (
+        f"{what}: il documento ha più di {WIDE_SEARCHES} ricerche da fare fuori dalle "
+        "disposizioni citate. Per un controllo completo, dividilo in parti."
+    )
 
 
 def _verify(
@@ -397,6 +460,148 @@ def _compare_with_date(
     )
 
 
+# The languages of the official texts, and how a message names them.
+_LANGUAGE_NAMES = {"IT": "italiano", "EN": "inglese"}
+_OTHER_LANGUAGE = {"IT": "EN", "EN": "IT"}
+
+
+def _language_name(language: str, document: str) -> str | None:
+    """How a message names the language of a text: nothing when it is the document's."""
+    return None if language == document else _LANGUAGE_NAMES.get(language, language)
+
+
+@dataclass
+class _Placement:
+    """Where a quote is in the texts of an act in one language."""
+
+    # "verified" (in a provision cited), "elsewhere" (in another one), "outdated"
+    # (only in an earlier version), "altered" (almost: a few words differ),
+    # "unsearched" (the check had no searches left), "absent" (nowhere).
+    kind: str
+    result: VerificationResult | None = None
+    finding: Finding | None = None  # verified: the finding of the provision that has it
+    version: Version | None = None  # outdated: the version that has it
+    then: ArticleText | None = None  # outdated: the provision in that version
+    now: ArticleText | None = None  # outdated: the provision in force
+    until: str | None = None  # outdated: the last day of that version
+    where: str = ""  # unsearched: what the quote is not in
+    unsearched: str = ""  # unsearched: what was not read
+
+
+def _place(
+    quote: str,
+    findings: list[Finding],
+    act: Act,
+    versions: list[Version],
+    in_force: list[ArticleText],
+    source: TextSource,
+    lang: str,
+    searches: _Searches,
+) -> _Placement:
+    """Where ``quote`` is in the texts of ``act`` in ``lang``: the cited provisions first."""
+    current = versions[-1]
+    first = findings[0]
+    # In the provisions cited first: the verifier reads one article, not the act.
+    near_cited: VerificationResult | None = None
+    for f in findings:
+        if f.provision is None:
+            continue
+        cited = [a for a in in_force if same_article(a.key, f.provision.key)]
+        if not cited:
+            continue
+        r = _verify(quote, f.provision, act, current, cited)
+        if r.verified:
+            return _Placement("verified", r, finding=f)
+        if r.differences and near_cited is None:
+            near_cited = r
+    provision = first.provision or Provision("art:0")
+    result = searches.run(quote, provision, act, current, in_force, lang)
+    if result is None:
+        return _Placement(
+            "unsearched",
+            near_cited,
+            where="La citazione non è nella disposizione citata",
+            unsearched="Il resto dell'atto e le versioni precedenti non sono stati cercati",
+        )
+    if result.verified:
+        return _Placement("elsewhere", result)
+    # Close to the text in force but with different words: kept for the end,
+    # an earlier version may have the quote word for word.
+    near = near_cited or (result if result.differences else None)
+    # The quote stopped matching at the oldest newer version that lacks it.
+    newer_without = current
+    for version in reversed(versions[:-1]):
+        try:
+            articles = source.articles(version, lang)
+        except TextUnavailableError:
+            continue
+        old = searches.run(quote, provision, act, version, articles, lang)
+        if old is None:
+            return _Placement(
+                "unsearched",
+                near,
+                where="La citazione non è nel testo vigente",
+                unsearched="Le versioni precedenti non sono state cercate",
+            )
+        if not old.verified:
+            newer_without = version
+            continue
+        key = parse_article(old.article) or provision.key
+        return _Placement(
+            "outdated",
+            old,
+            version=version,
+            then=find_article(articles, key),
+            now=find_article(in_force, key),
+            until=_day_before(newer_without.as_of) if newer_without.as_of else None,
+        )
+    return _Placement("altered", near) if near is not None else _Placement("absent")
+
+
+def _apply(
+    placement: _Placement,
+    first: Finding,
+    quote: str,
+    provision: Provision,
+    name: str | None,
+) -> None:
+    """Write where a quote is on the findings; ``name`` is its language when not the document's."""
+    in_name = f" in {name}" if name else ""
+    result = placement.result
+    if placement.kind == "verified" and result is not None and placement.finding is not None:
+        found = placement.finding
+        _mark_verified(found, result, _other_paragraph(found.provision, result.paragraph), name)
+    elif placement.kind == "elsewhere" and result is not None:
+        first.status = _worse(first.status, ELSEWHERE)
+        first.official_quote = result.official_quote
+        where = result.article or "un'altra parte dell'atto"
+        first.messages.append(
+            f"La citazione è nel testo vigente{in_name}, ma in {where}, non nella disposizione "
+            "citata."
+        )
+    elif placement.kind == "outdated" and placement.version is not None:
+        first.status = _worse(first.status, OUTDATED)
+        if name is None:
+            # Then and now side by side, in the document's language. For a quote in
+            # the other language only the version that has it is said: its
+            # provision and the one in force read here are in two languages.
+            then, now = placement.then, placement.now
+            first.before, first.before_version = (then.text if then else None), placement.version
+            if first.article is None and now is not None:
+                first.article = now
+        until = placement.until
+        period = f", in vigore fino al {_italian_date(until)}" if until else ""
+        first.messages.append(
+            f"La citazione corrisponde al {placement.version.label}{in_name}{period}, non al "
+            "testo vigente: la disposizione è cambiata."
+        )
+    elif placement.kind == "altered" and result is not None:
+        _mark_altered(first, quote, result, provision, name)
+    elif placement.kind == "unsearched":
+        where = f"{placement.where}, nel testo in {name}" if name else placement.where
+        _not_placed(first, quote, result, provision, f"{where}.", placement.unsearched, name)
+
+
 def _check_quotes(
     ref: Reference,
     findings: list[Finding],
@@ -405,79 +610,149 @@ def _check_quotes(
     in_force: list[ArticleText],
     source: TextSource,
     lang: str,
+    searches: _Searches | None = None,
 ) -> None:
+    """Each quote in the texts of its own language, then in those of the other one.
+
+    A quote is in the language its short words say (``quote_language``), or in
+    the document's when they do not tell. A quote that is nowhere in the texts
+    of that language is looked for in the other language's before it is called
+    not found, and the other language's text is read only then.
+    """
+    searches = searches if searches is not None else _Searches()
     current = versions[-1]
     first = findings[0]
+    provision = first.provision or Provision("art:0")
     for quote in ref.quotes:
         if not _specific_enough(quote):
             first.messages.append("Citazione troppo breve per una verifica parola per parola.")
             continue
-        exact: tuple[Finding, VerificationResult] | None = None
-        for f in findings:
-            if f.provision is None:
+        own = quote_language(quote) or lang
+        languages = [own, *([_OTHER_LANGUAGE[own]] if own in _OTHER_LANGUAGE else [])]
+        if lang not in languages:
+            languages.append(lang)
+        absent: list[str] = []  # languages whose texts were all searched, in vain
+        unsearched: list[tuple[_Placement, str]] = []  # languages the budget cut short
+        unreadable: list[str] = []
+        placed = False
+        for language in languages:
+            texts = in_force
+            if language != lang:
+                try:
+                    texts = source.articles(current, language)
+                except TextUnavailableError:
+                    unreadable.append(language)
+                    continue
+            placement = _place(quote, findings, act, versions, texts, source, language, searches)
+            if placement.kind == "absent":
+                absent.append(language)
                 continue
-            r = _verify(quote, f.provision, act, current, in_force)
-            if r.verified and r.level == "article":
-                exact = (f, r)
-                break
-        if exact is not None:
-            finding, result = exact
-            if finding.status is VALID:
-                finding.status = VERIFIED
-            finding.official_quote = result.official_quote
-            finding.messages.append(
-                "La citazione è nel testo vigente, parola per parola."
-                if result.match == "exact"
-                else "La citazione è nel testo vigente, con piccole differenze di punteggiatura."
-            )
-            continue
-        provision = first.provision or Provision("art:0")
-        result = _verify(quote, provision, act, current, in_force)
-        if result.verified:
-            first.status = _worse(first.status, ELSEWHERE)
-            first.official_quote = result.official_quote
-            where = result.article or "un'altra parte dell'atto"
-            first.messages.append(
-                f"La citazione è nel testo vigente, ma in {where}, non nella disposizione citata."
-            )
-            continue
-        # Close to the text in force but with different words: kept for the
-        # end, an earlier version may have the quote word for word.
-        near = result if result.differences else None
-        # The quote stopped matching at the oldest newer version that lacks it.
-        newer_without = current
-        for version in reversed(versions[:-1]):
-            try:
-                articles = source.articles(version, lang)
-            except TextUnavailableError:
+            if placement.kind == "unsearched" and placement.result is None:
+                # Not even almost in the provisions cited: the other language may have it.
+                unsearched.append((placement, language))
                 continue
-            old = _verify(quote, provision, act, version, articles)
-            if not old.verified:
-                newer_without = version
-                continue
-            key = parse_article(old.article) or provision.key
-            then = find_article(articles, key)
-            now = find_article(in_force, key)
-            first.status = _worse(first.status, OUTDATED)
-            first.before, first.before_version = (then.text if then else None), version
-            if first.article is None and now is not None:
-                first.article = now
-            until = _day_before(newer_without.as_of) if newer_without.as_of else None
-            period = f", in vigore fino al {_italian_date(until)}" if until else ""
-            first.messages.append(
-                f"La citazione corrisponde al {version.label}{period}, non al testo vigente: "
-                "la disposizione è cambiata."
-            )
+            _apply(placement, first, quote, provision, _language_name(language, lang))
+            placed = True
             break
-        else:
-            if near is not None:
-                _mark_altered(first, quote, near, provision)
-                continue
+        if placed:
+            continue
+        if absent:
             first.status = _worse(first.status, NOT_FOUND)
+            if set(absent) == {"IT", "EN"}:
+                where = " né nelle versioni precedenti, né in italiano né in inglese"
+            else:
+                name = _language_name(absent[0], lang)
+                where = f"{f' in {name}' if name else ''} né nelle versioni precedenti"
             first.messages.append(
-                "La citazione non è nel testo vigente né nelle versioni precedenti: può essere "
-                "una parafrasi o un errore."
+                f"La citazione non è nel testo vigente{where}: può essere una parafrasi o un "
+                "errore."
             )
+            for placement, language in unsearched:
+                cut = placement.unsearched
+                first.messages.append(
+                    _unsearched(
+                        f"Nel testo in {_LANGUAGE_NAMES[language]}, {cut[:1].lower()}{cut[1:]}"
+                    )
+                )
+        elif unsearched:
+            placement, language = unsearched[0]
+            _apply(placement, first, quote, provision, _language_name(language, lang))
+        for language in unreadable:
+            first.messages.append(
+                f"Il testo ufficiale in {_LANGUAGE_NAMES.get(language, language)} non è "
+                "disponibile: la citazione non vi è stata cercata."
+            )
+
+
+def _parts(provision: Provision, parts: list[str] | tuple[str, ...]) -> str:
+    """ "par. 2", "parr. 2 e 3", "comma 1-bis", "commi 1 e 2", as the reference calls them."""
+    one = len(parts) == 1
+    word = ("comma" if one else "commi") if provision.commi else ("par." if one else "parr.")
+    labels = [paragraph_label(p) for p in parts]
+    listed = labels[0] if one else f"{', '.join(labels[:-1])} e {labels[-1]}"
+    return f"{word} {listed}"
+
+
+def _other_paragraph(provision: Provision | None, found: str | None) -> str | None:
+    """The numbered paragraph a quote was found in, when the reference cites others.
+
+    The verifier tells only plain numbers ("1", not "1-bis"): a paragraph cited
+    as "1-bis" is matched by its number.
+    """
+    if provision is None or not provision.paragraphs or not found:
+        return None
+    cited = {m.group() for m in (re.match(r"\d+", p) for p in provision.paragraphs) if m}
+    return found if cited and found not in cited else None
+
+
+def _mark_verified(
+    finding: Finding, result: VerificationResult, found_in: str | None, name: str | None = None
+) -> None:
+    """A quote found in the article the finding cites: verified, unless in another paragraph.
+
+    ``found_in`` is the paragraph or comma that has the quote when the reference
+    names others: the quote is right, the reference is to be corrected. ``name``
+    is the language of the text that has it, when not the document's.
+    """
+    in_name = f" in {name}" if name else ""
+    finding.official_quote = result.official_quote
+    words = (
+        "parola per parola"
+        if result.match == "exact"
+        else "con piccole differenze di punteggiatura"
+    )
+    provision = finding.provision
+    if found_in and provision is not None:
+        cited = provision.paragraphs
+        finding.status = _worse(finding.status, OTHER_COMMA if provision.commi else OTHER_PARAGRAPH)
+        finding.messages.append(
+            f"La citazione è nel testo vigente{in_name}, {words}, ma nel "
+            f"{_parts(provision, [found_in])}, "
+            f"non {'nel' if len(cited) == 1 else 'nei'} {_parts(provision, cited)} "
+            f"{'citato' if len(cited) == 1 else 'citati'}."
+        )
+        return
+    if finding.status is VALID:
+        finding.status = VERIFIED
+    finding.messages.append(f"La citazione è nel testo vigente{in_name}, {words}.")
+
+
+def _not_placed(
+    finding: Finding,
+    quote: str,
+    near: VerificationResult | None,
+    provision: Provision,
+    where: str,
+    unsearched: str,
+    name: str | None = None,
+) -> None:
+    """A quote the check could not look for everywhere: what it found, and what it did not read."""
+    if near is not None:
+        _mark_altered(finding, quote, near, provision, name)
+    else:
+        finding.status = _worse(finding.status, NOT_FOUND)
+        finding.messages.append(where)
+    finding.messages.append(_unsearched(unsearched))
 
 
 def _describe_differences(differences: list[dict[str, str]]) -> str:
@@ -494,7 +769,11 @@ def _describe_differences(differences: list[dict[str, str]]) -> str:
 
 
 def _mark_altered(
-    finding: Finding, quote: str, near: VerificationResult, provision: Provision
+    finding: Finding,
+    quote: str,
+    near: VerificationResult,
+    provision: Provision,
+    name: str | None = None,
 ) -> None:
     """A quote that differs from the text in force by a few words that matter."""
     finding.status = _worse(finding.status, ALTERED)
@@ -505,9 +784,29 @@ def _mark_altered(
         parse_article(near.near_article), provision.key
     )
     where = f" (trovato in {near.near_article})" if elsewhere else ""
+    in_name = f" in {name}" if name else ""
     finding.messages.append(
-        f"La citazione è diversa dal testo vigente{where}: "
+        f"La citazione è diversa dal testo vigente{in_name}{where}: "
         f"{_describe_differences(finding.differences)}."
+    )
+
+
+def _applicable(versions: list[Version], day: str) -> tuple[list[Version], list[Version]]:
+    """The versions already applicable on ``day``, and those consolidated at a later date.
+
+    CELLAR lists consolidated texts ahead of their date (the Accounting Directive
+    as consolidated on 30 January 2027, listed in November 2026): such a text is
+    not yet the one in force.
+    """
+    now = [v for v in versions if v.as_of is None or v.as_of <= day]
+    return now, [v for v in versions if v.as_of is not None and v.as_of > day]
+
+
+def _note_later(later: list[Version], read: Version) -> str:
+    """What a check says of the consolidated texts dated after its day."""
+    return (
+        f"Esiste già il {later[0].label}, non ancora applicabile: il controllo è fatto sul "
+        f"{read.label}."
     )
 
 
@@ -544,7 +843,12 @@ def _note_unread(findings: list[Finding], read: Version, unread: list[Version]) 
 
 
 def _check_reference(
-    ref: Reference, source: TextSource, lang: str, document_date: str | None, today: str
+    ref: Reference,
+    source: TextSource,
+    lang: str,
+    document_date: str | None,
+    today: str,
+    searches: _Searches | None = None,
 ) -> list[Finding]:
     act = ref.act
     if act is None:
@@ -580,7 +884,7 @@ def _check_reference(
         return out
 
     try:
-        versions = source.versions(act.key)
+        versions, later = _applicable(source.versions(act.key), today)
     except TextUnavailableError as e:
         return unavailable(str(e))
     readable = _newest_readable(versions, source, lang)
@@ -595,9 +899,12 @@ def _check_reference(
         for provision in ref.provisions
     ]
     findings[0].shows_quotes = True
-    _check_quotes(ref, findings, act, versions, in_force, source, lang)
+    _check_quotes(ref, findings, act, versions, in_force, source, lang, searches)
     if unread:
         _note_unread(findings, versions[-1], unread)
+    if later:
+        for finding in findings:
+            finding.messages.append(_note_later(later, versions[-1]))
     stale = getattr(source, "stale", {}).get(act.key)
     if stale:
         for finding in findings:
@@ -681,6 +988,23 @@ def _verify_in(quote: str, act: Act, article: ArticleText) -> VerificationResult
     }
     citation = {"framework": act.key, "reference": article.label, "quote_snippet": quote}
     return verify_citation(citation, [chunk])
+
+
+def _other_comma(
+    provision: Provision | None, article: ItalianArticle, result: VerificationResult
+) -> str | None:
+    """The comma that has a quote found in an Italian article, when the reference cites others.
+
+    The comma is the one whose text holds the first words of the official
+    passage found; when none or more than one does, nothing is said.
+    """
+    if provision is None or not provision.paragraphs or not result.official_quote:
+        return None
+    first = normalize(result.official_quote.split(" [...] ")[0])
+    holding = [c for c, text in article.comma_texts.items() if first and first in normalize(text)]
+    if len(holding) != 1 or holding[0] in provision.paragraphs:
+        return None
+    return holding[0]
 
 
 def _wording_before(italian: ItalianTextSource, article: ItalianArticle) -> ItalianArticle | None:
@@ -992,14 +1316,7 @@ def _check_italian_quotes(
         for finding, now in in_force:
             result = _verify_in(quote, act, now.article)
             if result.verified:
-                if finding.status is VALID:
-                    finding.status = VERIFIED
-                finding.official_quote = result.official_quote
-                finding.messages.append(
-                    "La citazione è nel testo vigente, parola per parola."
-                    if result.match == "exact"
-                    else "La citazione è nel testo vigente, con piccole differenze di punteggiatura."
-                )
+                _mark_verified(finding, result, _other_comma(finding.provision, now, result))
                 done = True
                 break
             if result.differences and near is None:
@@ -1099,14 +1416,17 @@ def check_text(
     lang = (lang or detect_language(text)).upper()
     today = today or date.today().isoformat()
     findings: list[Finding] = []
-    for ref in extract_references(text):
-        findings.extend(_check_reference(ref, source, lang, document_date, today))
+    searches = _Searches()
+    references, own = split_references(text)
+    for ref in references:
+        findings.extend(_check_reference(ref, source, lang, document_date, today, searches))
     return DocumentCheck(
         document=document,
         checked_on=today,
         document_date=document_date,
         lang=lang,
         findings=findings,
+        own_articles=own,
     )
 
 
@@ -1201,12 +1521,15 @@ def _recheck_italian(entry: dict[str, Any], italian: ItalianTextSource | None) -
     return Change(entry, "invariato", message, version)
 
 
-def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
+def recheck(lock: dict[str, Any], source: TextSource, today: str | None = None) -> list[Change]:
     """Compare a lock file's provisions with the texts in force now.
 
     An entry without ``fonte`` comes from a lock file written before Italian
-    law was read: it is an EU provision.
+    law was read: it is an EU provision. A consolidated text dated after
+    ``today`` (ISO, the current day by default) is not yet in force: it is
+    neither a change nor a reason to read the provision again.
     """
+    today = today or date.today().isoformat()
     changes: list[Change] = []
     for entry in lock.get("dipendenze", []):
         if entry.get("fonte") == "normattiva":
@@ -1214,11 +1537,16 @@ def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
             continue
         lang = str(entry.get("lingua") or "IT")
         try:
-            versions = source.versions(entry["atto"])
+            versions, later = _applicable(source.versions(entry["atto"]), today)
+            if not versions:
+                raise TextUnavailableError(f"nessuna versione di {entry['atto']} in vigore oggi")
             current = versions[-1]
             if current.celex == entry["versione"]:
+                note = f" {_note_later(later, current)}" if later else ""
                 changes.append(
-                    Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
+                    Change(
+                        entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.{note}"
+                    )
                 )
                 continue
             readable = _newest_readable(versions, source, lang)
@@ -1234,8 +1562,11 @@ def recheck(lock: dict[str, Any], source: TextSource) -> list[Change]:
                     "da controllare su EUR-Lex"
                 )
             if current.celex == entry["versione"]:
+                note = f" {_note_later(later, current)}" if later else ""
                 changes.append(
-                    Change(entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.")
+                    Change(
+                        entry, "invariato", f"Nessuna versione nuova dopo il {current.label}.{note}"
+                    )
                 )
                 continue
             article = find_article(articles, entry["chiave"])

@@ -16,7 +16,9 @@ provisions the document cites.
 Limits
 ------
 The size of the file, the length of its text and the number of provisions it
-cites are capped (``Settings``, "Document check"). The engine reads the official
+cites are capped (``Settings``, "Document check"); a .docx may unpack to at
+most 20 MB (``_check_zip``), and the searches of quotes outside the provisions
+cited are capped by ``check.WIDE_SEARCHES``. The engine reads the official
 texts over the network with blocking calls: ``run_job`` runs it in a small
 thread pool, away from the event loop, with a time limit and with a cap on the
 jobs one organisation has running. A job that outlives its time limit ends by
@@ -72,8 +74,13 @@ SUPPORTED_EXTENSIONS = (*TEXT_EXTENSIONS, *HTML_EXTENSIONS, ".docx", ".pdf")
 LANGUAGES = ("IT", "EN")
 DEFAULT_FILENAME = "documento.txt"
 
-# A .docx is a zip: refuse one that unpacks to far more than any real document.
-_DOCX_MAX_UNPACKED = 200 * 1024 * 1024
+# A .docx is a zip: refuse one that unpacks to far more than any real document
+# (all of its parts, text, styles and images, at most 20 MB), and one with a
+# part of more than a megabyte packed more than a hundred times (a real document
+# packs its text five to fifteen times; a zip bomb, thousands of times).
+_DOCX_MAX_UNPACKED = 20 * 1024 * 1024
+_ZIP_MAX_RATIO = 100
+_ZIP_RATIO_FROM = 1024 * 1024
 
 UNSUBSCRIBE_PURPOSE = "document-digest-unsubscribe"
 _UNSUBSCRIBE_VALIDITY = timedelta(days=5 * 365)
@@ -303,16 +310,29 @@ def _html_text(data: bytes) -> str:
     return re.sub(r"\n{3,}", "\n\n", soup.get_text("\n"))
 
 
+def _check_zip(data: bytes) -> None:
+    """Refuse a zip-based document (.docx) that unpacks to too much, before reading it.
+
+    The sizes are those the archive declares: the zip reader never gives more
+    than the declared size of a part and refuses a part that does not match it.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            parts = archive.infolist()
+    except (zipfile.BadZipFile, ValueError):
+        raise unreadable_file() from None
+    if sum(info.file_size for info in parts) > _DOCX_MAX_UNPACKED:
+        raise unreadable_file()
+    for info in parts:
+        packed = max(info.compress_size, 1)
+        if info.file_size > _ZIP_RATIO_FROM and info.file_size > _ZIP_MAX_RATIO * packed:
+            raise unreadable_file()
+
+
 def _docx_text(data: bytes) -> str:
     import docx
 
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            unpacked = sum(info.file_size for info in archive.infolist())
-    except zipfile.BadZipFile:
-        raise unreadable_file() from None
-    if unpacked > _DOCX_MAX_UNPACKED:
-        raise unreadable_file()
+    _check_zip(data)
     try:
         document = docx.Document(io.BytesIO(data))
         parts = [paragraph.text for paragraph in document.paragraphs]
@@ -612,30 +632,53 @@ async def run_job(org_id: str, job: Callable[[], T]) -> T:
 # ─── The official texts ──────────────────────────────────────────────
 
 
-class _LockedSource:
-    """One text source for the threads of a process: one call at a time.
+class _TextLocks:
+    """One lock per official text, made the first time the text is asked for."""
 
-    A source keeps what it downloaded and parsed in plain dictionaries and
-    files; two checks reading the same act at once must not trip on each other.
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._locks: dict[tuple[str, ...], threading.RLock] = {}
+
+    def __call__(self, *key: str) -> threading.RLock:
+        with self._guard:
+            lock = self._locks.get(key)
+            if lock is None:
+                lock = self._locks[key] = threading.RLock()
+            return lock
+
+
+class _LockedSource:
+    """One text source for the threads of a process: one lock per official text.
+
+    A source keeps what it downloaded and parsed in dictionaries and files. Two
+    checks that need the same text (a version of an act in a language, an
+    Italian article) wait for one download and one parse; texts of different
+    acts are read at the same time. The lists of versions go through a lock of
+    their own: the EUR-Lex client asks CELLAR's SPARQL endpoint through one
+    SPARQLWrapper, which threads cannot share, and a list read from the cache
+    takes no time. Normattiva's client keeps its own pace (one request at a
+    time), as before.
     """
 
     def __init__(self, inner: Any) -> None:
         self._inner = inner
-        self._lock = threading.RLock()
+        self._locks = _TextLocks()
+        self._catalogue = threading.RLock()
 
     def versions(self, celex: str) -> Any:
-        with self._lock:
+        with self._catalogue:
             return self._inner.versions(celex)
 
     def articles(self, version: Any, lang: str) -> Any:
-        with self._lock:
+        text = str(getattr(version, "celex", version))
+        with self._locks("eu", text, str(lang).upper()):
             return self._inner.articles(version, lang)
 
     @property
     def italian(self) -> Any:
-        """The Italian side of the source (``sources.OfficialSources``), under the same lock."""
+        """The Italian side of the source (``sources.OfficialSources``), one lock per article."""
         inner = getattr(self._inner, "italian", None)
-        return None if inner is None else _LockedItalian(inner, self._lock)
+        return None if inner is None else _LockedItalian(inner, self._locks)
 
     def __getattr__(self, name: str) -> Any:
         # Whatever else the engine reads from a source (``stale``).
@@ -645,18 +688,22 @@ class _LockedSource:
 
 
 class _LockedItalian:
-    """``ItalianTextSource`` of a ``_LockedSource``: Normattiva's cache is shared too."""
+    """``ItalianTextSource`` of a ``_LockedSource``: one lock per article of an act.
 
-    def __init__(self, inner: Any, lock: Any) -> None:
+    Normattiva's cache keeps one file per article, with every wording read: the
+    readings of one article, whatever the day, go one at a time.
+    """
+
+    def __init__(self, inner: Any, locks: _TextLocks) -> None:
         self._inner = inner
-        self._lock = lock
+        self._locks = locks
 
     def article(self, act_urn: str, key: str, on: str) -> Any:
-        with self._lock:
+        with self._locks("it", act_urn, key):
             return self._inner.article(act_urn, key, on)
 
     def original(self, act_urn: str, key: str) -> Any:
-        with self._lock:
+        with self._locks("it", act_urn, key):
             return self._inner.original(act_urn, key)
 
     def __getattr__(self, name: str) -> Any:

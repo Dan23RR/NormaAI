@@ -293,6 +293,16 @@ def render_html(check: DocumentCheck, lock_name: str | None = None) -> str:
             "decreti-legge, d.P.R., codici e Costituzione: questi riferimenti vanno controllati a "
             f"mano.</p>{_not_read_table(groups['non_coperto'])}</section>"
         )
+    if check.own_articles:
+        items = "".join(
+            f"<li>Riga {ref.line}: {escape(ref.raw)}</li>" for ref in check.own_articles
+        )
+        body.append(
+            "<section><h2>Articoli del documento, non controllati</h2>"
+            "<p>Questi riferimenti sono ad articoli del documento stesso (un contratto, delle "
+            "condizioni generali), non di una legge: non sono confrontati con i testi ufficiali "
+            f"e non sono sorvegliati.</p><ul>{items}</ul></section>"
+        )
     if lock_name:
         watched = len({(f.act.key, f.article.key) for f in check.findings if f.act and f.article})
         body.append(

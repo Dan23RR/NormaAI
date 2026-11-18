@@ -42,7 +42,9 @@ after them takes none of them.
 
 from __future__ import annotations
 
+import math
 import re
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -233,10 +235,10 @@ _IT_DATE = rf"(?:\d{{1,2}})[°º]?\s+(?:{_IT_MONTHS})\s+\d{{4}}"
 # The ways the date, the number and the year of an act are written.
 _IT_NUMBERED = (
     # "20.5.1970, n. 300"
-    r"(?P<d1>\d{1,2})[./](?P<m1>\d{1,2})[./](?P<y1>\d{4}|\d{2})\s*,?\s*n\.?\s*(?P<n1>\d{1,5})"
+    r"(?P<d1>\d{1,2})[./](?P<m1>\d{1,2})[./](?P<y1>\d{4}|\d{2})\s*(?:,\s*)?n\.?\s*(?P<n1>\d{1,5})"
     # "30 giugno 2003, n. 196"
     rf"|(?:del\s+|dell['’]\s?)?(?P<d2>\d{{1,2}})[°º]?\s+(?P<m2>{_IT_MONTHS})\s+(?P<y2>\d{{4}})"
-    r"\s*,?\s*n\.?\s*(?P<n2>\d{1,5})"
+    r"\s*(?:,\s*)?n\.?\s*(?P<n2>\d{1,5})"
     # "n. 196 del 2003", "n. 196 del 30 giugno 2003"
     r"|n\.?\s*(?P<n3>\d{1,5})\s+del(?:l['’])?\s*"
     rf"(?:(?P<d3>\d{{1,2}})[°º]?\s+(?P<m3>{_IT_MONTHS})\s+)?(?P<y3>\d{{4}})"
@@ -346,6 +348,10 @@ _IT_NAMES: tuple[tuple[re.Pattern[str], str, bool], ...] = (
 # "(di seguito «Regolamento» o «GDPR»)" right after an act: names the document defines.
 _DEFINITION_RE = re.compile(r"\s*\((?P<body>[^()]{0,200})\)")
 _DEFINED_NAME_RE = re.compile(r"[«“\"]\s*([^«»“”\"]{2,40}?)\s*[»”\"]")
+# Where a defined name can start (not inside a word, not right after a quotation
+# mark: the definition itself), and what may not follow it.
+_NAME_START_RE = re.compile(r"(?<![\w«“\"])\w+")
+_NAME_STOP_RE = re.compile(r"[\w»”\"]")
 
 NORMATTIVA_RESOLVER = "https://www.normattiva.it/uri-res/N2Ls?"
 
@@ -557,8 +563,14 @@ def _drop_overlaps(mentions: list[_Mention]) -> list[_Mention]:
 
 
 def _defined_names(text: str, mentions: list[_Mention]) -> list[_Mention]:
-    """Mentions of the names the document defines for an act, after the definition."""
-    found: list[_Mention] = []
+    """Mentions of the names the document defines for an act, after the definition.
+
+    A name stands for the act of its latest definition before it. The text is
+    read once, whatever the number of definitions: at each word that starts a
+    defined name, the names starting with that word are tried, longest first (a
+    name has at most 40 characters), and one mention is kept per place.
+    """
+    definitions: dict[str, tuple[list[int], list[Act]]] = {}
     for mention in mentions:
         d = _DEFINITION_RE.match(text, mention.end)
         if not d:
@@ -567,9 +579,31 @@ def _defined_names(text: str, mentions: list[_Mention]) -> list[_Mention]:
             name = name.strip()
             if not name or not name[0].isupper():
                 continue
-            pattern = re.compile(rf"(?<![\w«“\"]){re.escape(name)}(?![\w»”\"])")
-            for m in pattern.finditer(text, d.end()):
-                found.append(_Mention(mention.act, m.start(), m.end()))
+            positions, acts = definitions.setdefault(name, ([], []))
+            positions.append(d.end())
+            acts.append(mention.act)
+    if not definitions:
+        return []
+    # Names by the word they start with, longest first.
+    by_word: dict[str, list[str]] = {}
+    for name in definitions:
+        word = _NAME_START_RE.match(name)
+        if word:
+            by_word.setdefault(word.group(), []).append(name)
+    for names in by_word.values():
+        names.sort(key=len, reverse=True)
+    found: list[_Mention] = []
+    start = min(positions[0] for positions, _ in definitions.values())
+    for m in _NAME_START_RE.finditer(text, start):
+        for name in by_word.get(m.group(), ()):
+            end = m.start() + len(name)
+            if not text.startswith(name, m.start()) or _NAME_STOP_RE.match(text, end):
+                continue
+            positions, acts = definitions[name]
+            latest = bisect_right(positions, m.start()) - 1
+            if latest >= 0:
+                found.append(_Mention(acts[latest], m.start(), end))
+                break
     return found
 
 
@@ -635,8 +669,11 @@ _NUM = rf"\d{{1,4}}(?!\d|\s*/)(?:[\s-]?(?:{_LATIN})\b|[a-z](?![a-z]))?"
 _SUBDIV = r"(?:\s*\(\s*\d{1,3}\s*\))?(?:\s*\(\s*[a-z]{1,2}\s*\))*"
 # A paragraph or comma: "1", "1-bis".
 _PAR = rf"\d{{1,3}}(?:[\s-]?(?:{_LATIN})\b)?"
+# A comma between spaces is "\s*(?:,\s*)?", never "\s*,?\s*": without a comma the
+# second form can split a run of spaces in as many ways as it is long, and a
+# document with a long run of spaces made the match take minutes.
 _PARA = (
-    r"(?:\s*,?\s*(?:"
+    r"(?:\s*(?:,\s*)?(?:"
     r"(?:paragrafi|paragrafo|parr\.|par\.|paragraphs|paragraph|para\.|commi|comma|co\.)"
     rf"\s*{_PAR}(?:\s*(?:,|e|ed|and|-|–)\s*{_PAR})*"
     # "primo comma", "commi primo e secondo": how the codes are cited.
@@ -644,7 +681,7 @@ _PARA = (
     rf"|(?:{_ORDINAL})(?:\s*(?:,|e|ed)\s*(?:{_ORDINAL}))*\s+comm[ai]\b"
     r"))?"
 )
-_POINT = r"(?:\s*,?\s*(?:lettera|lett\.|letter|point|punto)\s*[a-z0-9]{1,3}\)?)?"
+_POINT = r"(?:\s*(?:,\s*)?(?:lettera|lett\.|letter|point|punto)\s*[a-z0-9]{1,3}\)?)?"
 _ITEM = rf"{_NUM}{_SUBDIV}{_PARA}{_POINT}"
 _SEP = r"\s*(?:,|\be\b|\bed\b|\band\b|-|–)\s*"
 _ARTICLE_RE = re.compile(
@@ -790,7 +827,7 @@ def _references(text: str) -> list[Reference]:
             refs.append(Reference(m.start(), m.end(), [Provision(key, (paragraphs[0],), commi)]))
     taken = [(r.start, r.end) for r in refs]
     for m in _ARTICLE_RE.finditer(text):
-        if any(start <= m.start() < end for start, end in taken):
+        if _within(m.start(), taken):
             continue
         provisions = _article_provisions(m.group("items"))
         if provisions:
@@ -808,8 +845,10 @@ def _references(text: str) -> list[Reference]:
 _ABBREVIATIONS = re.compile(
     r"\b(?:artt?|parr?|n|lett|co|cfr|es|ecc|d\.lgs|lgs|l|reg|dir|no|para)\.", re.IGNORECASE
 )
+# The spaces just inside the marks are part of the quote, stripped where it is
+# used: "«\s*...\s*»" could split a run of spaces in too many ways.
 _QUOTE_RE = re.compile(
-    r"«\s*(?P<a>[^«»\n]{20,1500}?)\s*»|“(?P<b>[^“”\n]{20,1500}?)”|\"(?P<c>[^\"\n]{20,1500}?)\""
+    r"«(?P<a>[^«»\n]{20,1500}?)»|“(?P<b>[^“”\n]{20,1500}?)”|\"(?P<c>[^\"\n]{20,1500}?)\""
 )
 _AFTER_WINDOW = 90
 _BEFORE_WINDOW = 40
@@ -831,7 +870,7 @@ _AMENDING_BEFORE_RE = re.compile(
 # Words right after an act that say it amends another: "Regulation (EU) 2026/1744
 # amending", "(the Digital Omnibus on AI), which amended", "che modifica".
 _AMENDING_AFTER_RE = re.compile(
-    r"\s*(?:\([^()\n]{0,80}\)\s*)?,?\s*(?:(?:which|that)\s+(?:has\s+)?(?:amended|amends)\b"
+    r"\s*(?:\([^()\n]{0,80}\)\s*)?(?:,\s*)?(?:(?:which|that)\s+(?:has\s+)?(?:amended|amends)\b"
     r"|amending\b|amends\b|che\s+(?:ha\s+)?modific|recante\s+modific|di\s+modifica\b)",
     re.IGNORECASE,
 )
@@ -857,8 +896,30 @@ def _line_bounds(text: str, position: int) -> tuple[int, int]:
     return start, len(text) if end == -1 else end
 
 
-def _context(text: str, start: int, end: int, width: int = 160) -> str:
-    line_start, line_end = _line_bounds(text, start)
+class _Lines:
+    """The lines of a text: which line a position is on, and where that line starts and ends.
+
+    Found by bisection on the line breaks, so that asking for every reference
+    of a long text costs a logarithm each, not a scan of the text.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.breaks = [m.start() for m in re.finditer("\n", text)]
+        self.size = len(text)
+
+    def index(self, position: int) -> int:
+        """0-based line of ``position``."""
+        return bisect_left(self.breaks, position)
+
+    def bounds(self, position: int) -> tuple[int, int]:
+        """Like ``_line_bounds``: start of the line of ``position`` and its line break."""
+        i = bisect_left(self.breaks, position)
+        start = self.breaks[i - 1] + 1 if i else 0
+        return start, self.breaks[i] if i < len(self.breaks) else self.size
+
+
+def _context(text: str, start: int, end: int, width: int = 160, lines: _Lines | None = None) -> str:
+    line_start, line_end = lines.bounds(start) if lines else _line_bounds(text, start)
     left = max(line_start, start - width)
     right = min(line_end, end + width)
     snippet = text[left:right].strip()
@@ -876,7 +937,30 @@ def _listed(text: str, mentions: list[_Mention], stands_for: dict[str, str]) -> 
     return {m for g in groups if len({stands_for[x.act.key] for x in g}) > 1 for m in g}
 
 
-def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> None:
+def _last_before(flags: list[bool]) -> list[int]:
+    """For each index, the last index up to it whose flag is set (-1 when none)."""
+    out: list[int] = []
+    last = -1
+    for i, flag in enumerate(flags):
+        if flag:
+            last = i
+        out.append(last)
+    return out
+
+
+def _link_acts(
+    text: str, refs: list[Reference], mentions: list[_Mention], lines: _Lines | None = None
+) -> None:
+    """Give each reference its act.
+
+    ``mentions`` are in the document's order and do not overlap, so their ends
+    are in order too: the acts next to a reference are found by bisection, and
+    the act named earlier on its line through indexes built once (the last
+    mention up to each point that is not an amending act, and the last one an
+    amending act can stop at). The work grows with the references and the
+    mentions, not with their product.
+    """
+    lines = lines or _Lines(text)
     first: dict[str, Act] = {}
     for mention in mentions:
         first.setdefault(mention.act.key, mention.act)
@@ -910,26 +994,34 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         if only_act is None:
             only_by = next(m.act for m in mentions if stands_for[m.act.key] == key)
             only_act = amended(only_by)
+    starts = [m.start for m in mentions]
+    ends = [m.end for m in mentions]
+    # Walking back from a reference, amending acts are passed over; the walk stops
+    # at the first other act, unless an amending act was passed: then it stops
+    # only at an act of a list or at one of the acts that one amends.
+    plain = _last_before([m not in amending for m in mentions])
+    stops = {
+        key: _last_before(
+            [m not in amending and (m in listed or m.act.key in targets) for m in mentions]
+        )
+        for key, targets in AMENDS.items()
+    }
     for ref in refs:
-        line_start, _ = _line_bounds(text, ref.start)
-        after = next(
-            (
-                m
-                for m in mentions
-                if ref.end <= m.start <= ref.end + _AFTER_WINDOW
-                and not _crosses_sentence(text[ref.end : m.start])
-            ),
-            None,
-        )
-        before = next(
-            (
-                m
-                for m in reversed(mentions)
-                if ref.start - _BEFORE_WINDOW <= m.end <= ref.start
-                and re.fullmatch(r"[\s,(:\-–]*", text[m.end : ref.start])
-            ),
-            None,
-        )
+        line_start, _ = lines.bounds(ref.start)
+        after: _Mention | None = None
+        k = bisect_left(starts, ref.end)
+        while k < len(mentions) and starts[k] <= ref.end + _AFTER_WINDOW:
+            if not _crosses_sentence(text[ref.end : starts[k]]):
+                after = mentions[k]
+                break
+            k += 1
+        before: _Mention | None = None
+        k = bisect_right(ends, ref.start) - 1
+        while k >= 0 and ends[k] >= ref.start - _BEFORE_WINDOW:
+            if re.fullmatch(r"[\s,(:\-\u2013]*", text[ends[k] : ref.start]):
+                before = mentions[k]
+                break
+            k -= 1
         # "Article 50(2), as amended by Regulation (EU) 2026/1744": the words say that
         # act amends the one the article belongs to.
         by = next((m.act for m in (after, before) if m in worded), None)
@@ -937,19 +1029,19 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         before = None if before in worded else before
         earlier: _Mention | None = None
         side_by_side = False
-        for m in reversed(mentions):
-            if m.end > ref.start:
-                continue
-            if m.end < line_start:
-                break
-            if m in amending:
-                by = by or m.act
-            elif m in listed:
+        last = bisect_right(ends, ref.start) - 1  # the last mention that ends before the reference
+        stop = plain[last] if last >= 0 else -1
+        if by is None and last >= 0 and stop < last and ends[last] >= line_start:
+            by = mentions[last].act  # the amending act nearest the reference
+        if stop >= 0 and by is not None and by.key in AMENDS:
+            m = mentions[stop]
+            if m not in listed and m.act.key not in AMENDS[by.key]:
+                stop = stops[by.key][stop]
+        if stop >= 0 and ends[stop] >= line_start:
+            if mentions[stop] in listed:
                 side_by_side = True
-                break
-            elif by is None or by.key not in AMENDS or m.act.key in AMENDS[by.key]:
-                earlier = m
-                break
+            else:
+                earlier = mentions[stop]
         # "Codice privacy, art. 2-ter, e la Direttiva ...": the closer act wins.
         if after and before and ref.start - before.end < after.start - ref.end:
             after = None
@@ -971,53 +1063,163 @@ def _link_acts(text: str, refs: list[Reference], mentions: list[_Mention]) -> No
         ref.raw = re.sub(r"\s+", " ", ref.raw).strip()
 
 
-def _link_quotes(text: str, refs: list[Reference]) -> list[tuple[int, int]]:
-    """Give each quote to the nearest reference of its line; the spans of the quotes given."""
+# ─── The document's own articles ─────────────────────────────────────
+
+# Words right after an article that say it is an article of the document itself:
+# "art. 12 del presente Contratto", "art. 7 delle Condizioni Generali", "Article 4
+# of this Agreement", "Article 6 hereof". "del Regolamento" alone is not one of
+# them: it is how a document calls the GDPR it defined as "Regolamento".
+_OWN_AFTER_RE = re.compile(
+    r"[^\S\n]*(?:,[^\S\n]*)?(?:"
+    r"(?:del|dello|della|dal|dalla|al|alla|nel|nella)[^\S\n]+present[ei][^\S\n]+"
+    r"(?:contratt[oi]|accord[oi]|atto|documento|regolamento|disciplinare|statuto)\b"
+    r"|(?:delle|dalle|alle|nelle)[^\S\n]+presenti[^\S\n]+condizioni(?:[^\S\n]+generali)?\b"
+    r"|(?:delle|dalle|alle|nelle)[^\S\n]+condizioni[^\S\n]+generali"
+    r"(?:[^\S\n]+(?:di[^\S\n]+(?:contratto|servizio|vendita|fornitura)|d['’][^\S\n]?uso))?\b"
+    r"|del[^\S\n]+contratto\b(?![^\S\n]+collettiv)"
+    r"|dell['’][^\S\n]?accordo\b(?![^\S\n]+(?:di|sul|sulla|tra|fra|quadro)\b)"
+    r"|of[^\S\n]+(?:this|the)[^\S\n]+(?:agreement|contract|addendum)\b"
+    r"|of[^\S\n]+this[^\S\n]+policy\b"
+    r"|of[^\S\n]+(?:these|the)[^\S\n]+terms"
+    r"(?:[^\S\n]+(?:and[^\S\n]+conditions|of[^\S\n]+(?:use|service)))?\b"
+    r"|here(?:of|in|under|to)\b(?!after)"
+    r")",
+    re.IGNORECASE,
+)
+# A line that starts with an article of the document and its title: "Art. 5 - Durata",
+# "Articolo 5 (Durata)", "Art. 5. Durata", "ARTICOLO 5 - OGGETTO", "Article 5 - Term".
+_HEADING_BEFORE_RE = re.compile(r"[ \t>#*•]*")
+_HEADING_INDENT = 20  # characters of spaces or markup a heading may have before it
+_HEADING_AFTER_RE = re.compile(r"[^\S\n]*(?:[-\u2013\u2014:.]|\()[^\S\n]*[^\W\d_]")
+# Words that say a document is a contract or terms with articles of its own
+# ("presente documento" is not one: a privacy notice calls itself that too).
+_SELF_RE = re.compile(
+    r"\bpresent[ei]\s+(?:contratt[oi]|accord[oi]|disciplinare|statuto|condizioni)\b"
+    r"|\bcondizioni\s+generali\b"
+    r"|\bthis\s+(?:agreement|contract|addendum)\b|\bthese\s+terms\b|\bterms\s+and\s+conditions\b"
+    r"|\bhere(?:of|in|under|to)\b(?!after)",
+    re.IGNORECASE,
+)
+
+
+def _own_articles(text: str, refs: list[Reference], lines: _Lines) -> set[int]:
+    """Which of ``refs`` (their positions in the list) are articles of the document itself.
+
+    An article followed by words that name the document ("del presente
+    Contratto", "of these Terms", "hereof") is one, whatever act is named
+    later. A line that starts with an article followed only by a title ("Art.
+    5 - Durata") is one too, when no act is written next to it (an act named
+    in the same sentence wins: "Art. 33 GDPR - Notifica") and the document has
+    articles of its own: it calls itself a contract, an agreement or terms, or
+    a line opens its article 1 ("Art. 1 - Oggetto"). Without that, "Art. 15 -
+    Diritto di accesso" in a privacy notice is the GDPR's.
+    """
+    own: set[int] = set()
+    headings: list[int] = []
+    for i, ref in enumerate(refs):
+        phrase = _OWN_AFTER_RE.match(text, ref.end)
+        if phrase:
+            ref.raw = re.sub(r"\s+", " ", text[ref.start : phrase.end()]).strip()
+            own.add(i)
+            continue
+        line_start, _ = lines.bounds(ref.start)
+        if (
+            ref.start - line_start <= _HEADING_INDENT
+            and (ref.act is None or ref.act_inferred)
+            and len(ref.provisions) == 1
+            and ref.provisions[0].key.startswith("art:")
+            and not ref.provisions[0].paragraphs
+            and _HEADING_BEFORE_RE.fullmatch(text, line_start, ref.start)
+            and _HEADING_AFTER_RE.match(text, ref.end)
+        ):
+            headings.append(i)
+    if headings:
+        first = any(refs[i].provisions[0].key == "art:1" for i in headings)
+        if first or _SELF_RE.search(_QUOTE_RE.sub(" ", text)):
+            own.update(headings)
+    for i in own:
+        refs[i].act, refs[i].act_inferred, refs[i].amended_by = None, False, None
+    return own
+
+
+def _link_quotes(
+    text: str, refs: list[Reference], lines: _Lines | None = None
+) -> list[tuple[int, int]]:
+    """Give each quote to the nearest reference of its line; the spans of the quotes given.
+
+    A reference counts when it ends at most 300 characters before the quote or
+    starts at most 150 after it (twice as far: the reference before is
+    preferred); on a tie, the first in the document. Only the references in
+    those two windows are looked at, found by bisection.
+    """
+    lines = lines or _Lines(text)
+    order = sorted(range(len(refs)), key=lambda i: refs[i].start)
+    starts = [refs[i].start for i in order]
+    by_end = sorted(range(len(refs)), key=lambda i: refs[i].end)
+    ends = [refs[i].end for i in by_end]
     given: list[tuple[int, int]] = []
     for q in _QUOTE_RE.finditer(text):
         quote = next(g for g in q.groups() if g)
-        line = _line_bounds(text, q.start())
-        best: tuple[int, Reference] | None = None
-        for ref in refs:
-            if _line_bounds(text, ref.start) != line:
-                continue
-            if ref.end <= q.start() and q.start() - ref.end <= 300:
-                distance = q.start() - ref.end
-            elif ref.start >= q.end() and ref.start - q.end() <= 150:
-                distance = 2 * (ref.start - q.end())
-            else:
-                continue
-            if best is None or distance < best[0]:
-                best = (distance, ref)
-        if best:
-            best[1].quotes.append(quote.strip())
+        line = lines.index(q.start())
+        candidates: list[tuple[int, int]] = []  # (distance, position in refs)
+        for k in range(bisect_left(ends, q.start() - 300), bisect_right(ends, q.start())):
+            candidates.append((q.start() - ends[k], by_end[k]))
+        for k in range(bisect_left(starts, q.end()), bisect_right(starts, q.end() + 150)):
+            candidates.append((2 * (starts[k] - q.end()), order[k]))
+        best = min((c for c in candidates if lines.index(refs[c[1]].start) == line), default=None)
+        if best is not None:
+            refs[best[1]].quotes.append(quote.strip())
             given.append((q.start(), q.end()))
     return given
 
 
 def _within(position: int, spans: list[tuple[int, int]]) -> bool:
-    return any(start <= position < end for start, end in spans)
+    """True when ``position`` is inside one of ``spans`` (in order, not overlapping)."""
+    i = bisect_right(spans, (position, math.inf)) - 1
+    return i >= 0 and position < spans[i][1]
 
 
-def extract_references(text: str) -> list[Reference]:
-    """Every reference to a provision in ``text``, with its act and quotes.
+def split_references(text: str) -> tuple[list[Reference], list[Reference]]:
+    """The references to a provision in ``text``, and those to the document's own articles.
 
     What stands inside a quoted passage of law is the law's own wording: an
     article it refers to ("a norma dell'articolo 55") is not a reference of the
     document, and an act it names is not the act of the references around it.
     A quote that no reference outside it claims is read as the document's text.
+    The articles of the document itself ("art. 12 del presente Contratto",
+    "Art. 5 - Durata" in a contract) come second, without act: they are not
+    checked.
     """
     mentions = _act_mentions(text)
-    refs = [r for r in _references(text) if not any(m.start <= r.start < m.end for m in mentions)]
+    lines = _Lines(text)
+    named = [(m.start, m.end) for m in mentions]
+    refs = [r for r in _references(text) if not _within(r.start, named)]
     quotes = [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
     outside = [r for r in refs if not _within(r.start, quotes)]
-    given = _link_quotes(text, outside)
+    given = _link_quotes(text, outside, lines)
     refs = [r for r in refs if not _within(r.start, given)]
-    _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)])
+    _link_acts(text, refs, [m for m in mentions if not _within(m.start, given)], lines)
+    own = _own_articles(text, refs, lines)
     for ref in refs:
-        ref.line = text.count("\n", 0, ref.start) + 1
-        ref.context = _context(text, ref.start, ref.end)
-    return refs
+        ref.line = lines.index(ref.start) + 1
+        ref.context = _context(text, ref.start, ref.end, lines=lines)
+    return (
+        [r for i, r in enumerate(refs) if i not in own],
+        [r for i, r in enumerate(refs) if i in own],
+    )
+
+
+def extract_references(text: str) -> list[Reference]:
+    """Every reference to a provision of an act in ``text``, with its act and quotes.
+
+    The document's own articles are left out: see ``split_references``.
+    """
+    return split_references(text)[0]
+
+
+def own_articles(text: str) -> list[Reference]:
+    """The references to the document's own articles ("art. 12 del presente Contratto")."""
+    return split_references(text)[1]
 
 
 def mentioned_acts(text: str) -> list[Act]:
@@ -1037,11 +1239,45 @@ _EN_WORDS = frozenset("the of and to in is are that for with by article data sha
 
 
 def detect_language(text: str) -> str:
-    """Return "IT" or "EN", by counting common words (Italian when in doubt)."""
-    words = re.findall(r"[a-zàèéìòù]+", text.lower())
-    italian = sum(w in _IT_WORDS for w in words)
-    english = sum(w in _EN_WORDS for w in words)
+    """Return "IT" or "EN", by counting common words (Italian when in doubt).
+
+    The words of the quotes count only when the rest has none: an English
+    policy that quotes the law in Italian is in English.
+    """
+    italian = english = 0
+    for part in (_QUOTE_RE.sub(" ", text), text):
+        words = re.findall(r"[a-zàèéìòù]+", part.lower())
+        italian = sum(w in _IT_WORDS for w in words)
+        english = sum(w in _EN_WORDS for w in words)
+        if italian or english:
+            break
     return "EN" if english > italian else "IT"
+
+
+# Short words that only one of the two languages has ("non", "per", "in", "a"
+# and "no" are in both): a quote of a line or two has enough of them.
+_IT_QUOTE_WORDS = frozenset(
+    "il lo la i gli le un uno una di del dello della dei degli delle da dal dallo dalla dai dagli "
+    "dalle nel nello nella nei negli nelle sul sullo sulla sui sugli sulle l dell nell dall sull "
+    "con tra fra che chi cui è e ed o od ma se ai al allo alla alle agli ad ove qualora sono deve "
+    "devono può possono essere suo sua suoi sue loro questo questa questi queste tale tali ogni "
+    "nonché ovvero oppure entro senza".split()
+)
+_EN_QUOTE_WORDS = frozenset(
+    "the an of and or to on at by for with from that which who whom whose this these those is are "
+    "be been being was were has have had shall may must should would not any each such where when "
+    "if as its their it than into under within without upon whether".split()
+)
+
+
+def quote_language(quote: str) -> str | None:
+    """ "IT" or "EN" by the short words only one of the two has; None when they do not tell."""
+    words = re.findall(r"[^\W\d_]+", quote.lower())
+    italian = sum(w in _IT_QUOTE_WORDS for w in words)
+    english = sum(w in _EN_QUOTE_WORDS for w in words)
+    if italian == english:
+        return None
+    return "IT" if italian > english else "EN"
 
 
 def load_text(path: Path) -> str:

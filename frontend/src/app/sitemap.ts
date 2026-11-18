@@ -11,7 +11,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://normaai.org'
  */
 const HOME_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
 const METHOD_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
-const CHECKERS_UPDATED_ON = new Date(Date.UTC(2026, 10, 11))
+const CHECKERS_UPDATED_ON = new Date(Date.UTC(2026, 10, 18))
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

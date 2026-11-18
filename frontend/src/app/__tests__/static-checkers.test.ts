@@ -64,6 +64,28 @@ describe.each(PAGES)('static checker $name', ({ name, url }) => {
     expect(html).not.toContain('20 minuti')
     expect(html).not.toMatch(/[–—…“”‘]/)
   })
+
+  // Saying which exceptions apply to a company, or what it must do, is legal
+  // advice (L. 247/2012, art. 2, c. 6): what a person sends back is the text
+  // in force and the questions for the company's own consultant.
+  it('promises the passages of law in force, not a reading of the case', () => {
+    expect(html).toContain('le domande da fare al tuo consulente')
+    for (const advice of [
+      'lettura del tuo caso',
+      'lettura del caso',
+      'lettura%20del%20mio%20caso',
+      'quali eccezioni valgono per te',
+      'che cosa predisporre',
+      'analisi del tuo caso',
+      'analisi di ambito della tua impresa',
+      'che cosa puoi rifiutare',
+      'ti conviene',
+      'da verificare sul tuo caso',
+      'conviene una verifica',
+    ]) {
+      expect(html, advice).not.toContain(advice)
+    }
+  })
 })
 
 describe('AI Act checker', () => {

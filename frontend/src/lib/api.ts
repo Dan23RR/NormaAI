@@ -337,12 +337,13 @@ class ApiClient {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (access) headers['Authorization'] = `Bearer ${access}`
     try {
+      // Not `keepalive`: with the Authorization header the request needs a CORS
+      // preflight, which some browsers refuse for keepalive requests. Signing
+      // out navigates inside the app, so the request finishes anyway.
       await fetch(`${this.baseUrl}/api/v1/auth/logout`, {
         method: 'POST',
         headers,
         body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
-        // The page usually navigates away right after: let the request finish.
-        keepalive: true,
       })
     } catch {
       /* the tokens are forgotten here anyway */

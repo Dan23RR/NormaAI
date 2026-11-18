@@ -4,7 +4,7 @@ Extracted from main.py so routers can import the limiter
 without importing the entire main module (breaks circular imports).
 
 Key functions:
-- ``_rate_limit_key`` (the limiter default): user_id from the JWT when present,
+- ``_rate_limit_key`` (the limiter default): the user of a valid access token,
   else the spoof-resistant client IP from ``src.audit.get_client_ip``.
 - ``client_ip_key``: ALWAYS the client IP. Used by the unauthenticated auth
   endpoints (register/login/refresh) where a per-user key is meaningless.
@@ -56,33 +56,26 @@ def client_ip_key(request: Request) -> str:
 
 
 def _rate_limit_key(request: Request) -> str:
-    """Rate limit key: user_id from JWT if available, fallback to client IP.
+    """Rate limit key: the user of a valid access token, else the client IP.
 
-    This provides per-user rate limiting for authenticated requests
-    and per-IP for unauthenticated ones.
+    The token's signature is checked (``decode_token``): an unverified ``sub``
+    would let anyone send a made-up token per request and get a fresh bucket
+    each time, on the routes that need no login (``RATE_LIMIT_DEFAULT``). A
+    token that does not verify counts as no token.
     """
-    # Try to extract user_id from already-parsed JWT
     if hasattr(request.state, "user_id"):
         return f"user:{request.state.user_id}"
 
-    # Try to extract from Authorization header without full JWT decode
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
-        try:
-            import base64
-            import json
+        from src.auth.security import decode_token
 
-            token = auth_header[7:]
-            # Decode JWT payload (middle part) without verification
-            payload_b64 = token.split(".")[1]
-            # Add padding
-            payload_b64 += "=" * (4 - len(payload_b64) % 4)
-            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
-            user_id = payload.get("sub")
-            if user_id:
-                return f"user:{user_id}"
-        except Exception:
-            pass
+        try:
+            payload = decode_token(auth_header[7:])
+        except ValueError:
+            payload = None
+        if payload is not None and payload.sub:
+            return f"user:{payload.sub}"
 
     return client_ip_key(request)
 

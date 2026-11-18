@@ -211,3 +211,33 @@ class TestStartupCheck:
 )
 def test_shared_schemes_count_as_redis(uri):
     assert rate_limit_storage_uri(_settings(redis_url=uri, rate_limit_storage_uri="")) == uri
+
+
+class TestTheKey:
+    """Per-user buckets only for tokens that verify; anything else counts per IP."""
+
+    def _request(self, authorization: str | None):
+        from starlette.requests import Request
+
+        headers = [(b"authorization", authorization.encode())] if authorization else []
+        scope = {"type": "http", "headers": headers, "client": ("203.0.113.5", 1234)}
+        return Request(scope)
+
+    def test_a_valid_token_is_its_user(self):
+        import uuid
+
+        from src.auth.security import create_access_token
+
+        user_id = uuid.uuid4()
+        token = create_access_token(user_id, uuid.uuid4(), "member")
+        assert rate_limit._rate_limit_key(self._request(f"Bearer {token}")) == f"user:{user_id}"
+
+    def test_a_made_up_token_counts_per_ip(self):
+        import base64
+        import json
+
+        body = base64.urlsafe_b64encode(json.dumps({"sub": "anyone"}).encode()).decode().rstrip("=")
+        forged = f"e30.{body}.c2ln"
+        key = rate_limit._rate_limit_key(self._request(f"Bearer {forged}"))
+        assert key.startswith("ip:")
+        assert rate_limit._rate_limit_key(self._request(None)) == key

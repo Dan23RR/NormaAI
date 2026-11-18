@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Export Qdrant knowledge base to JSONL training dataset for router fine-tuning.
 
-Connects to Qdrant, scrolls all chunks from the eu_regulations collection,
-and creates a classification dataset where each chunk maps to its framework label.
+Connects to Qdrant, scrolls the chunks of the official corpus from the
+eu_regulations collection, and creates a classification dataset where each chunk
+maps to its framework label. Chunks that carry an ``org_id`` are documents a
+customer uploaded, not official text: they are never exported.
 
 Also generates synthetic queries by paraphrasing chunk text.
 
@@ -59,6 +61,7 @@ def export_chunks():
     examples = []
     offset = None
     exported = 0
+    skipped_tenant = 0
 
     while True:
         records, next_offset = client.scroll(
@@ -74,6 +77,10 @@ def export_chunks():
 
         for record in records:
             payload = record.payload or {}
+            if payload.get("org_id") not in (None, ""):
+                # A customer's own document (legacy upload): never training data.
+                skipped_tenant += 1
+                continue
             text = payload.get("text", "")
             framework = payload.get("framework", "UNKNOWN")
             article = payload.get("article_number", "")
@@ -114,7 +121,7 @@ def export_chunks():
             exported += 1
 
         offset = next_offset
-        print(f"  Exported {exported} chunks...")
+        print(f"  Exported {exported} chunks ({skipped_tenant} customer chunks skipped)...")
 
         if next_offset is None:
             break

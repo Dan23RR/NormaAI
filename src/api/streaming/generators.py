@@ -31,6 +31,7 @@ from typing import Any, TypeGuard, get_args
 
 import structlog
 
+from src.agents.ai_marking import mark_ai_generated
 from src.agents.citation_verifier import (
     UNVERIFIED_CONFIDENCE_CAP,
     apply_unverified_policy,
@@ -50,6 +51,7 @@ from src.api.streaming.sse import (
     CitationMatch,
     DoneEvent,
     ErrorEvent,
+    GeneratorInfo,
     PhaseChangeEvent,
     SSEEvent,
     TokenEvent,
@@ -260,7 +262,8 @@ def _result_fields(result: dict[str, Any], *, with_citations: bool) -> dict[str,
     """What the ``done`` event reports about the answer beyond its score.
 
     ``caveats``, ``related_frameworks``, ``abstention_reason`` and the corpus
-    date for every task; the citation counters for Q&A (``with_citations``).
+    date for every task; the citation counters and the AI Act, Art. 50(2)
+    marking (``ai_generated``, ``generator``) for Q&A (``with_citations``).
     """
     fields: dict[str, Any] = {
         "caveats": _str_list(result.get("caveats")),
@@ -272,6 +275,15 @@ def _result_fields(result: dict[str, Any], *, with_citations: bool) -> dict[str,
         verified, total = citation_counters(result)
         fields["verified_citations"] = verified
         fields["citations_total"] = total
+        generated = result.get("ai_generated")
+        fields["ai_generated"] = generated if isinstance(generated, bool) else None
+        generator = result.get("generator")
+        if isinstance(generator, dict) and isinstance(generator.get("system"), str):
+            fields["generator"] = GeneratorInfo(
+                system=generator["system"],
+                provider=_text_or_none(generator.get("provider")),
+                model=_text_or_none(generator.get("model")),
+            )
     return fields
 
 
@@ -401,10 +413,11 @@ async def _stream_task(
             result = {"answer": str(result)}
         if emit_citations:
             # Q&A: the same unverified-citation decision as POST /qa (idempotent
-            # on an answer the agent node already verified).
+            # on an answer the agent node already verified), and the same marking.
             result = apply_unverified_policy(
                 result, mode=policy_mode(get_settings()), language=language
             )
+            result = mark_ai_generated(result, get_settings())
         text = text_of(result)
         for token in _token_events(text):
             yield token

@@ -446,6 +446,10 @@
       "open": "Apri il testo ufficiale",
       "copy": "testo trovato altrove: {location}"
     },
+    "marking": {
+      "label": "Testo generato con un sistema di IA",
+      "model": "Modello: {model}"
+    },
     "aiNotice": {
       "base": "Risposta generata da un sistema di IA.",
       "corpus": "Corpus al {date}.",

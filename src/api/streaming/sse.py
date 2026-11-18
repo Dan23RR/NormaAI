@@ -216,11 +216,24 @@ class ErrorEvent(BaseModel):
     error_code: str | None = Field(default=None, description="Machine-readable error class")
 
 
+class GeneratorInfo(BaseModel):
+    """What wrote the answer (AI Act, Art. 50(2)): NormaAI Chiedi, and the provider and model."""
+
+    system: str = Field(..., description="The system that served the answer: NormaAI Chiedi")
+    provider: str | None = Field(
+        default=None, description="LLM provider that wrote the text; null for an abstention"
+    )
+    model: str | None = Field(
+        default=None, description="Model that wrote the text; null for an abstention"
+    )
+
+
 class DoneEvent(BaseModel):
     """Stream completion marker with final metadata.
 
     ``abstention_reason`` and ``corpus_as_of`` are always on the wire (null when
-    absent, see NULLABLE_FIELDS); the citation counters are present for Q&A.
+    absent, see NULLABLE_FIELDS); the citation counters and the AI Act, Art.
+    50(2) marking (``ai_generated``, ``generator``) are present for Q&A.
     """
 
     # Serialized even when None (format_sse), so the client reads an explicit null.
@@ -253,6 +266,16 @@ class DoneEvent(BaseModel):
     )
     corpus_as_of: str | None = Field(
         default=None, description="Date of the regulatory corpus (ISO); null when not configured"
+    )
+    ai_generated: bool | None = Field(
+        default=None,
+        description=(
+            "Q&A: true when the answer text was written by a language model (AI Act, "
+            "Art. 50(2)), false for an abstention whose text NormaAI writes itself"
+        ),
+    )
+    generator: GeneratorInfo | None = Field(
+        default=None, description="Q&A: the system, provider and model that wrote the answer"
     )
 
 

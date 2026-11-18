@@ -386,6 +386,33 @@ describe('ChiediPage (demo mode)', () => {
     expect(screen.getByText(/La citazione \[GDPR, Art. 6\] non è verificata/)).toBeInTheDocument()
   })
 
+  it('labels an answer the backend marks as AI-generated (AI Act, Art. 50(2))', async () => {
+    mocks.post.mockResolvedValue({
+      ...ANSWER,
+      data: {
+        ...ANSWER.data,
+        ai_generated: true,
+        generator: { system: 'NormaAI Chiedi', provider: 'anthropic', model: 'claude-haiku-5-5' },
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    const label = await screen.findByText('Testo generato con un sistema di IA')
+    expect(label).toHaveAttribute('title', 'Modello: claude-haiku-5-5')
+  })
+
+  it('does not label an answer the backend does not mark', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/obbliga chi fornisce un chatbot/)
+    expect(screen.queryByText('Testo generato con un sistema di IA')).not.toBeInTheDocument()
+  })
+
   it('names an act cited by its CELEX, in the answer and in the margin', async () => {
     mocks.post.mockResolvedValue({
       status: 'success',

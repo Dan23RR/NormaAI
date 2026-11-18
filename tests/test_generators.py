@@ -62,6 +62,8 @@ _RESULT_FIELDS = {
     "related_frameworks",
     "abstention_reason",
     "corpus_as_of",
+    "ai_generated",
+    "generator",
 }
 
 
@@ -981,6 +983,42 @@ class TestQaCitationVerification:
             events, _ = await self._stream(result, enable_cove=True)
         done = [e for e in events if isinstance(e, DoneEvent)][0]
         assert done.requires_review is True and done.confidence_score == pytest.approx(0.97)
+
+    async def test_done_event_marks_the_answer_as_ai_generated(self):
+        # AI Act, Art. 50(2): the final event says the text was written by a model, and which.
+        settings = _settings(llm_provider="anthropic", anthropic_model_analysis="claude-haiku-5-5")
+        result = {
+            "answer": "x",
+            "citations": [_verified_citation()],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        events, _ = await self._stream(result, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.ai_generated is True
+        assert done.generator is not None
+        assert (done.generator.system, done.generator.provider, done.generator.model) == (
+            "NormaAI Chiedi",
+            "anthropic",
+            "claude-haiku-5-5",
+        )
+        # An answer that recorded its generator when it was written keeps it.
+        recorded = {**result, "generator": {"system": "NormaAI Chiedi", "model": "m1"}}
+        events, _ = await self._stream(recorded, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.generator is not None and done.generator.model == "m1"
+        # An abstention is text NormaAI writes itself.
+        abstention = {
+            "answer": "Non posso rispondere con una fonte.",
+            "citations": [],
+            "confidence_score": 0.0,
+            "abstention_reason": "no_sources",
+        }
+        events, _ = await self._stream(abstention, settings=settings)
+        done = [e for e in events if isinstance(e, DoneEvent)][0]
+        assert done.ai_generated is False
+        assert done.generator is not None and done.generator.model is None
 
     async def test_request_language_is_forwarded_to_the_agent(self):
         result = {"answer": "x", "citations": [], "confidence_score": 0.9}

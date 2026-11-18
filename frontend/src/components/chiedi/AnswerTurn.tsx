@@ -123,9 +123,17 @@ export function AnswerTurn({
   const copy = () =>
     onCopy(buildCopyText({ answer: message.content, sources, corpusAsOf: message.corpusAsOf, demo }, ctx))
 
+  // The answer as the backend marks it (AI Act, Art. 50(2)): text written by a language model.
+  const model = data.generator?.model?.trim()
+
   return (
     <div>
       {label}
+      {data.ai_generated === true && (
+        <p className="mt-1 text-caption text-ink-3" title={model ? t('marking.model', { model }) : undefined}>
+          {t('marking.label')}
+        </p>
+      )}
       <div className="mt-2">
         <AnswerBody text={message.content} citations={citations} messageId={message.id} activeIndex={activeIndex} onMarkerClick={onMarkerClick} />
       </div>

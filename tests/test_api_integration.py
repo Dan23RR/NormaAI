@@ -343,6 +343,43 @@ class TestQACitationVerificationContract:
         assert mock_qa.await_args.kwargs["language"] == "it"
 
     @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_every_answer_is_marked_as_ai_generated(self, mock_qa, client, auth_headers):
+        # AI Act, Art. 50(2): machine-readable marking in data, fresh and from the cache.
+        from src.config import get_settings
+
+        mock_qa.return_value = {
+            "answer": "Sì [GDPR, Art. 17(1)].",
+            "citations": [dict(_VERIFIED_CITATION)],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        response = client.post(
+            "/api/v1/qa",
+            json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+            headers=auth_headers,
+        )
+        body = response.json()
+        assert body["data"]["ai_generated"] is True
+        assert body["data"]["generator"] == {
+            "system": "NormaAI Chiedi",
+            "provider": get_settings().llm_provider,
+            "model": get_settings().active_model,
+        }
+        assert body["metadata"]["ai_generated"] is True
+
+        cached = {**mock_qa.return_value, "generator": {"system": "NormaAI Chiedi", "model": "m1"}}
+        with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+                headers=auth_headers,
+            )
+        body = response.json()
+        assert body["metadata"]["cached"] is True
+        assert body["data"]["ai_generated"] is True and body["data"]["generator"]["model"] == "m1"
+
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
     def test_unverified_citations_are_flagged_at_delivery(self, mock_qa, client, auth_headers):
         mock_qa.return_value = {
             "answer": "Sì.",

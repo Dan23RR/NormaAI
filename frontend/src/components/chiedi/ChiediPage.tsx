@@ -185,6 +185,8 @@ export function ChiediPage() {
           abstention_reason: stats.abstention_reason ?? undefined,
           verified_citations: stats.verified_citations,
           citations_total: stats.citations_total,
+          ai_generated: stats.ai_generated,
+          generator: stats.generator,
         }
         const corpusAsOf = stats.corpus_as_of ?? m.corpusAsOf
         return { ...m, status: 'done', content: data.answer, data, corpusAsOf, phase: undefined, streamCitations: undefined }

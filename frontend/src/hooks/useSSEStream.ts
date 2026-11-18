@@ -94,6 +94,13 @@ export interface ErrorEvent {
 /**
  * Done event with final statistics.
  */
+/** What wrote a Q&A answer (AI Act, Art. 50(2)): the system, provider and model. */
+export interface StreamGenerator {
+  system: string;
+  provider?: string | null;
+  model?: string | null;
+}
+
 export interface DoneStats {
   total_tokens: number;
   confidence_score: number;
@@ -107,6 +114,9 @@ export interface DoneStats {
   related_frameworks?: string[];
   abstention_reason?: string | null;
   corpus_as_of?: string | null;
+  /** Q&A: true when a language model wrote the answer text. */
+  ai_generated?: boolean;
+  generator?: StreamGenerator;
 }
 
 export interface DoneEvent {
@@ -122,6 +132,8 @@ export interface DoneEvent {
   related_frameworks?: string[];
   abstention_reason?: string | null;
   corpus_as_of?: string | null;
+  ai_generated?: boolean;
+  generator?: StreamGenerator;
 }
 
 /**
@@ -309,6 +321,8 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
           related_frameworks: event.related_frameworks,
           abstention_reason: event.abstention_reason,
           corpus_as_of: event.corpus_as_of,
+          ai_generated: event.ai_generated,
+          generator: event.generator,
         };
         setStats(doneStats);
         onDone?.(doneStats);

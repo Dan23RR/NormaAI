@@ -142,6 +142,11 @@ Il codice compare una volta sola: usalo su `https://normaai.org/login`
 (link "Hai un codice di invito?"). Gli inviti successivi si creano
 dall'app, in Amministrazione.
 
+Lo staff (crawl del corpus, inviti per nuove organizzazioni) non viene da
+un'impostazione: dopo la registrazione,
+`docker exec normaai-app python scripts/staff.py grant tu@dominio.it`
+([RUNBOOK.md](RUNBOOK.md) §11).
+
 ## 7. Backup + cron (5 min)
 
 ```bash

@@ -1,12 +1,13 @@
-"""Authentication endpoints: login, register, refresh, logout, me, invites."""
+"""Authentication endpoints: login, register, refresh, logout, me, invites,
+password reset and the members of an organisation."""
 
 import logging
 import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, text
@@ -15,11 +16,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.rate_limit import client_ip_key, limiter, settings_limit
 from src.audit import AuditAction, AuditOutcome, audit_log, get_client_ip
+from src.auth import members as member_admin
+from src.auth import password_reset
 from src.auth.dependencies import (
     STAFF_ONLY_DETAIL,
     CurrentUser,
     get_current_user,
+    invalidate_account,
     is_staff,
+    require_admin,
     require_role,
 )
 from src.auth.invites import (
@@ -38,6 +43,8 @@ from src.auth.security import (
     decode_token,
     hash_password,
     hash_password_async,
+    issued_before,
+    session_expires_at,
     token_blacklist,
     verify_password_async,
 )
@@ -48,7 +55,7 @@ from src.auth.verification import (
     verify_email_verification_token,
 )
 from src.config import get_settings
-from src.db.engine import RLS_GUC, get_db_session
+from src.db.engine import RLS_GUC, db_manager, get_db_session
 from src.db.models import Invite, Organization, User
 
 logger = logging.getLogger(__name__)
@@ -82,6 +89,45 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    # Sent by the web app so that the session ends even when the access token
+    # has already expired.
+    refresh_token: str | None = Field(default=None, max_length=4096)
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetRequestedResponse(BaseModel):
+    status: Literal["accepted"]
+    detail: str
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=20, max_length=512)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class PasswordResetDoneResponse(BaseModel):
+    status: Literal["password_changed"]
+    email: str
+
+
+class MemberResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    is_active: bool
+    email_verified: bool
+    created_at: datetime | None
+
+
+class MemberRoleRequest(BaseModel):
+    role: Literal["admin", "member", "viewer"]
 
 
 class UserResponse(BaseModel):
@@ -171,6 +217,24 @@ async def _set_rls_org_context(db: AsyncSession, org_id: uuid.UUID) -> None:
         )
 
 
+async def _invite_vouches_for_email(db: AsyncSession, invite: Invite) -> bool:
+    """True when the invite proves that the invitee reads the invited mailbox.
+
+    Only an invite NormaAI minted does: one from the command line (no creator)
+    or from a staff member. An organisation admin can invite any address into
+    their own organisation, so that invitee confirms the address with the link
+    like everyone else; "verified" then always means the mailbox's owner, which
+    staff (``is_staff``) relies on.
+    """
+    if invite.created_by is None:
+        return True
+    result = await db.execute(
+        select(User.is_staff, User.email_verified).where(User.id == invite.created_by)
+    )
+    creator = result.one_or_none()
+    return creator is not None and bool(creator.is_staff) and bool(creator.email_verified)
+
+
 @router.post("/register", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
 @limiter.limit(settings_limit("auth_rate_limit_register"), key_func=client_ip_key)
 async def register(
@@ -193,8 +257,10 @@ async def register(
     In open mode a supplied invite code is still honoured (an org invite joins
     that organization) and an invalid one is rejected rather than ignored.
 
-    The address is verified automatically when it matches the invite's email;
-    otherwise a verification email is sent in the background.
+    The address is verified automatically when it matches the email of an
+    invite NormaAI minted (scripts/create_invite.py, or staff); otherwise,
+    including with an organisation admin's invite, a verification email is
+    sent in the background.
     """
     client_ip = get_client_ip(request)
 
@@ -259,9 +325,13 @@ async def register(
 
     await _set_rls_org_context(db, org_id)
 
-    # An invite proves control of the invited address: skip verification when
-    # the registered email is the one the invite was issued for.
-    email_verified = invite is not None and invite.email == payload.email.strip().lower()
+    # An invite minted by NormaAI proves control of the invited address: skip
+    # verification when the registered email is the one it was issued for.
+    email_verified = (
+        invite is not None
+        and invite.email == payload.email.strip().lower()
+        and await _invite_vouches_for_email(db, invite)
+    )
 
     # Create user - rely on DB UNIQUE constraint to prevent race conditions
     user = User(
@@ -382,8 +452,11 @@ async def refresh_token(
 
     Implements refresh token rotation:
     - The old refresh token is blacklisted
-    - A new token pair is issued with the same family
+    - A new token pair is issued with the same family and sign-in time
     - If a blacklisted refresh token is reused, the entire family is revoked
+    - No refresh past ``settings.session_max_lifetime_days`` from the sign-in,
+      nor for a token issued before the user's sessions were ended
+      (``users.sessions_revoked_at``: password reset, staff)
     """
     client_ip = get_client_ip(request)
 
@@ -400,6 +473,19 @@ async def refresh_token(
 
     if token_data.type != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type. Provide a refresh token.")
+
+    started = token_data.session_started_at
+    if started is None or datetime.now(UTC) >= session_expires_at(started):
+        if token_data.family:
+            await token_blacklist.blacklist_token_family(token_data.family)
+        audit_log(
+            AuditAction.TOKEN_REFRESH,
+            AuditOutcome.DENIED,
+            user_id=token_data.sub,
+            ip_address=client_ip,
+            detail="Session past its maximum lifetime",
+        )
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
 
     # Check if this specific token was already used (replay attack detection)
     if await token_blacklist.is_blacklisted(token_data.jti, family=token_data.family):
@@ -424,6 +510,19 @@ async def refresh_token(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or deactivated.")
 
+    if issued_before(token_data.iat, user.sessions_revoked_at):
+        if token_data.family:
+            await token_blacklist.blacklist_token_family(token_data.family)
+        audit_log(
+            AuditAction.TOKEN_REFRESH,
+            AuditOutcome.DENIED,
+            user_id=str(user.id),
+            org_id=str(user.org_id),
+            ip_address=client_ip,
+            detail="Refresh token issued before the sessions were ended",
+        )
+        raise HTTPException(status_code=401, detail="Session ended. Please sign in again.")
+
     # Blacklist the old refresh token (rotation)
     await token_blacklist.blacklist_token(token_data.jti, token_data.exp)
 
@@ -435,7 +534,7 @@ async def refresh_token(
         ip_address=client_ip,
     )
 
-    # Issue new pair with same family
+    # Issue new pair with same family and the same sign-in time
     return create_token_pair(
         user.id,
         user.org_id,
@@ -443,39 +542,65 @@ async def refresh_token(
         family=token_data.family,
         email=user.email,
         email_verified=user.email_verified,
+        auth_time=started,
     )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    payload: LogoutRequest | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_scheme),
 ):
-    """Logout by blacklisting the current access token.
+    """End the session on the server.
 
-    The client should also discard the refresh token.
-    For full session termination, call with the access token.
+    Revokes the access token of the ``Authorization`` header, the session it
+    belongs to (its refresh-token family, so no refresh token of the session
+    works any more) and, when the body carries it, the refresh token with its
+    family: the session ends even when the access token has already expired.
     """
     client_ip = get_client_ip(request)
+    refresh_raw = payload.refresh_token if payload is not None else None
 
-    if credentials is None:
+    if credentials is None and not refresh_raw:
         raise HTTPException(status_code=401, detail="No token provided.")
 
-    try:
-        token_data = decode_token(credentials.credentials)
-    except ValueError:
-        # Token is already invalid, nothing to revoke
-        return
+    user_id: str | None = None
+    families: set[str] = set()
 
-    # Blacklist the token
-    await token_blacklist.blacklist_token(token_data.jti, token_data.exp)
+    if credentials is not None:
+        try:
+            access = decode_token(credentials.credentials)
+        except ValueError:
+            access = None  # already unusable: nothing to revoke for it
+        if access is not None:
+            await token_blacklist.blacklist_token(access.jti, access.exp)
+            session_id = access.sid or access.family
+            if session_id:
+                families.add(session_id)
+            user_id = access.sub
 
-    # If it's an access token and we know the family, blacklist the family too
-    if token_data.family:
-        await token_blacklist.blacklist_token_family(token_data.family)
+    if refresh_raw:
+        try:
+            refresh = decode_token(refresh_raw)
+        except ValueError:
+            refresh = None
+        # Never let one user's access token end another user's session.
+        if refresh is not None and refresh.type == "refresh" and user_id in (None, refresh.sub):
+            await token_blacklist.blacklist_token(refresh.jti, refresh.exp)
+            if refresh.family:
+                families.add(refresh.family)
+            user_id = refresh.sub
+
+    for family in families:
+        await token_blacklist.blacklist_token_family(family)
 
     audit_log(
-        AuditAction.LOGOUT, AuditOutcome.SUCCESS, user_id=token_data.sub, ip_address=client_ip
+        AuditAction.LOGOUT,
+        AuditOutcome.SUCCESS,
+        user_id=user_id,
+        ip_address=client_ip,
+        extra={"sessions_revoked": len(families)},
     )
 
 
@@ -578,6 +703,92 @@ async def resend_verification(
     return ResendVerificationResponse(status="sent", email=row.email)
 
 
+# ─── Password reset ──────────────────────────────────────────────
+
+
+async def _send_reset_link(email: str) -> None:
+    """After the answer: mint and mail the link (src/auth/password_reset.py). Never raises."""
+    try:
+        await password_reset.request_reset(email, manager=db_manager)
+    except Exception as e:  # noqa: BLE001 - the answer is already sent
+        logger.warning("password_reset_request_failed: %s", type(e).__name__)
+
+
+@router.post(
+    "/password-reset",
+    response_model=PasswordResetRequestedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@limiter.limit(settings_limit("auth_rate_limit_password_reset"), key_func=client_ip_key)
+async def request_password_reset(
+    request: Request,
+    payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+):
+    """Ask for a link to choose a new password.
+
+    Public. The answer is the same, and comes as fast, whether or not the
+    address has an account: the lookup and the email happen after it. For an
+    active account a single-use link valid ``PASSWORD_RESET_TOKEN_TTL_MINUTES``
+    is mailed (only its hash is stored); a new request replaces the previous
+    link, and within five minutes of a link no other is sent.
+    """
+    background_tasks.add_task(_send_reset_link, payload.email)
+    audit_log(
+        AuditAction.PASSWORD_RESET_REQUESTED,
+        AuditOutcome.SUCCESS,
+        ip_address=get_client_ip(request),
+        detail=f"Password reset requested for: {payload.email}",
+    )
+    ttl = get_settings().password_reset_token_ttl_minutes
+    return PasswordResetRequestedResponse(
+        status="accepted", detail=password_reset.reset_requested_detail(ttl)
+    )
+
+
+@router.post("/password-reset/confirm", response_model=PasswordResetDoneResponse)
+@limiter.limit(settings_limit("auth_rate_limit_password_reset"), key_func=client_ip_key)
+async def confirm_password_reset(
+    request: Request,
+    payload: PasswordResetConfirmRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Choose a new password with the token of the link.
+
+    Public: the token is the credential, and it works once. Changing the
+    password ends every session of the account (``users.sessions_revoked_at``)
+    and confirms its email address; the user then signs in again.
+    """
+    client_ip = get_client_ip(request)
+    user = await password_reset.confirm_reset(db, payload.token, payload.password)
+    if user is None:
+        await db.rollback()
+        audit_log(
+            AuditAction.PASSWORD_RESET,
+            AuditOutcome.FAILURE,
+            ip_address=client_ip,
+            detail="Invalid or expired password reset link",
+        )
+        raise HTTPException(status_code=400, detail=password_reset.INVALID_RESET_TOKEN_DETAIL)
+    user_id, org_id, email = user.id, user.org_id, user.email
+    await db.commit()
+    invalidate_account(user_id)
+
+    # A locked-out user can sign in with the new password straight away.
+    from src.auth.brute_force import brute_force
+
+    await brute_force.reset(email)
+    audit_log(
+        AuditAction.PASSWORD_RESET,
+        AuditOutcome.SUCCESS,
+        user_id=str(user_id),
+        org_id=str(org_id),
+        ip_address=client_ip,
+        detail="Password changed with a reset link; sessions ended",
+    )
+    return PasswordResetDoneResponse(status="password_changed", email=email)
+
+
 # ─── Invites (admin) ─────────────────────────────────────────────
 
 
@@ -649,3 +860,99 @@ async def list_invites(
         stmt = stmt.where(Invite.org_id == user.org_id)
     result = await db.execute(stmt)
     return [_invite_to_response(invite) for invite in result.scalars().all()]
+
+
+# ─── Members (admin) ─────────────────────────────────────────────
+
+
+def _member_to_response(member: User) -> MemberResponse:
+    return MemberResponse(
+        id=str(member.id),
+        email=member.email,
+        name=member.name,
+        role=member.role,
+        is_active=bool(member.is_active),
+        email_verified=bool(member.email_verified),
+        created_at=member.created_at,
+    )
+
+
+@router.get("/members", response_model=list[MemberResponse])
+@limiter.limit("60/minute")
+async def list_members(request: Request, user: CurrentUser = Depends(require_admin)):
+    """The accounts of the caller's organisation (admin only)."""
+    async with db_manager.session(org_id=str(user.org_id)) as session:
+        found = await member_admin.list_members(session, user.org_id)
+        return [_member_to_response(m) for m in found]
+
+
+@router.patch("/members/{member_id}", response_model=MemberResponse)
+@limiter.limit("20/minute")
+async def change_member_role(
+    request: Request,
+    member_id: uuid.UUID,
+    payload: MemberRoleRequest,
+    user: CurrentUser = Depends(require_admin),
+):
+    """Change the role of a member of the caller's organisation (admin only).
+
+    The last active admin cannot be demoted (409). The new role applies to the
+    member's next requests (``AUTH_ACCOUNT_CACHE_SECONDS`` at most).
+    """
+    async with db_manager.session(org_id=str(user.org_id)) as session:
+        try:
+            member, previous = await member_admin.change_role(
+                session, user.org_id, member_id, payload.role
+            )
+        except member_admin.MemberError as error:
+            await session.rollback()
+            raise HTTPException(status_code=error.status_code, detail=error.detail) from None
+        body = _member_to_response(member)
+        await session.commit()
+    invalidate_account(member_id)
+    if previous != payload.role:
+        audit_log(
+            AuditAction.ROLE_CHANGED,
+            AuditOutcome.SUCCESS,
+            user_id=str(user.user_id),
+            org_id=str(user.org_id),
+            ip_address=get_client_ip(request),
+            resource=f"/api/v1/auth/members/{member_id}",
+            detail=f"Role {previous} -> {payload.role}",
+            extra={"member_id": str(member_id)},
+        )
+    return body
+
+
+@router.delete("/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("20/minute")
+async def remove_member(
+    request: Request,
+    member_id: uuid.UUID,
+    user: CurrentUser = Depends(require_admin),
+) -> Response:
+    """Remove a member from the caller's organisation (admin only).
+
+    Deletes the account and the member's own conversations; clients, checks,
+    reports and invites stay with the organisation. The member's sessions stop
+    working at their next request. The last active admin cannot be removed (409).
+    """
+    async with db_manager.session(org_id=str(user.org_id)) as session:
+        try:
+            await member_admin.remove_member(session, user.org_id, member_id)
+        except member_admin.MemberError as error:
+            await session.rollback()
+            raise HTTPException(status_code=error.status_code, detail=error.detail) from None
+        await session.commit()
+    invalidate_account(member_id)
+    audit_log(
+        AuditAction.USER_REMOVED,
+        AuditOutcome.SUCCESS,
+        user_id=str(user.user_id),
+        org_id=str(user.org_id),
+        ip_address=get_client_ip(request),
+        resource=f"/api/v1/auth/members/{member_id}",
+        detail="Member removed",
+        extra={"member_id": str(member_id)},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -187,6 +187,13 @@ function LoginForm() {
             aria-describedby={mode === 'register' ? describedBy('password', { help: true }) : undefined}
           />
         </Field>
+        {mode === 'login' && (
+          <p className="text-right text-small">
+            <Link href="/reset-password" className="text-union underline hover:no-underline">
+              {t('passwordReset.forgotLink')}
+            </Link>
+          </p>
+        )}
         <Button type="submit" loading={loading} className="w-full" size="lg">
           {mode === 'register' ? t('submitRegister') : t('submitLogin')}
         </Button>
@@ -195,14 +202,7 @@ function LoginForm() {
       <p className="mt-4 text-small text-ink-2">
         {mode === 'register'
           ? t.rich('haveAccount', { login: switchTo('login') })
-          : t.rich('haveInvite', {
-              register: switchTo('register'),
-              mail: (chunks) => (
-                <a href="mailto:info@normaai.org?subject=Reimpostare%20la%20password" className="text-union underline hover:no-underline">
-                  {chunks}
-                </a>
-              ),
-            })}
+          : t.rich('haveInvite', { register: switchTo('register') })}
       </p>
 
       <div className="mt-8 border-t border-rule pt-6">

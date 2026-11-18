@@ -321,6 +321,63 @@ class ApiClient {
     return data
   }
 
+  // ─── Session end and password reset ─────────────────────
+
+  /**
+   * Ends the session on the server as well: the access token, the session it
+   * belongs to and the refresh token are revoked there. Best effort (offline or
+   * no backend: the caller still forgets the tokens). The tokens are read
+   * before the first await, so the caller may clear them right after calling.
+   */
+  async logout(): Promise<void> {
+    if (!API_CONFIGURED || isDemoMode()) return
+    const access = getAccessToken()
+    const refresh = getRefreshToken()
+    if (!access && !refresh) return
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (access) headers['Authorization'] = `Bearer ${access}`
+    try {
+      // Not `keepalive`: with the Authorization header the request needs a CORS
+      // preflight, which some browsers refuse for keepalive requests. Signing
+      // out navigates inside the app, so the request finishes anyway.
+      await fetch(`${this.baseUrl}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
+      })
+    } catch {
+      /* the tokens are forgotten here anyway */
+    }
+  }
+
+  // Both reach the backend even with a leftover demo flag, like login: a
+  // password is never sent to the demo client.
+
+  /** Asks for a password-reset link: same answer whether or not the address has an account. */
+  async requestPasswordReset(email: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/api/v1/auth/password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => {
+      throw new ApiError('network')
+    })
+    if (!res.ok) throw await this.failed(res)
+  }
+
+  /** Sets a new password with the token of the link; the server ends every other session. */
+  async resetPassword(token: string, password: string): Promise<{ email: string }> {
+    const res = await fetch(`${this.baseUrl}/api/v1/auth/password-reset/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    }).catch(() => {
+      throw new ApiError('network')
+    })
+    if (!res.ok) throw await this.failed(res)
+    return res.json()
+  }
+
   // ─── Typed helpers ──────────────────────────────────────
 
   get<T>(path: string) {

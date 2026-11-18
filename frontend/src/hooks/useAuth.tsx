@@ -76,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    // Revoke the session on the server too (not awaited: the client reads the
+    // tokens synchronously, before they are cleared here).
+    void api.logout()
     clearTokens()
     setDemoMode(false)
     setUser(null)

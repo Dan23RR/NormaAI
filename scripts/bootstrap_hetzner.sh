@@ -207,9 +207,11 @@ APP_ENV=production
 APP_SECRET_KEY=$(gen 64)
 CORS_ORIGINS=$CORS_ORIGINS
 NORMAAI_PUBLIC_URL=$PUBLIC_URL
-# Registrazione solo su invito; lo staff (crawl, inviti per nuove organizzazioni)
+# Registrazione solo su invito. Lo staff (crawl, inviti per nuove organizzazioni) non
+# e' un'impostazione: dopo la registrazione, python scripts/staff.py grant <email>.
 REGISTRATION_MODE=invite
-STAFF_EMAILS=$ADMIN_EMAIL
+# Solo per questo script, se gira di nuovo: a chi va il primo invito.
+ADMIN_EMAIL=$ADMIN_EMAIL
 API_DOMAIN=$API_DOMAIN
 ACME_EMAIL=$ACME_EMAIL
 
@@ -495,7 +497,8 @@ cat <<EOF
 
 Fatto. Prossimi passi (docs/DEPLOY_CHECKLIST.md):
   - Vercel -> Settings -> Environment Variables: NEXT_PUBLIC_API_BASE_URL=https://$API_DOMAIN, poi Redeploy.
-  - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra.
+  - Registrati su $PUBLIC_URL/login con il codice di invito qui sopra, poi, per i permessi
+    di staff: docker exec normaai-app python scripts/staff.py grant $ADMIN_EMAIL
   - Dal portatile: pwsh scripts/verify_live_site.ps1 -BaseUrl $PUBLIC_URL
   - Salva una copia di $APP_DIR/.env fuori dal server, nel password manager, con la password
     del repository restic. Le chiavi JWT no: un server ricostruito ne crea una coppia nuova.

@@ -1,11 +1,18 @@
 """GDPR data-subject rights for a tenant organization.
 
-- Export (Art. 15 access / Art. 20 portability): a full JSON dump of the org's
-  data, admin-only.
+- Export (Art. 15 access / Art. 20 portability): a JSON dump of the org's
+  data, admin-only. No secret leaves: of each account only the fields an admin
+  sees in the members list (never the password hash, the hash of a
+  password-reset link or the staff flag); invites, which carry the hash of
+  their code, are not part of it (``GET /auth/invites`` lists them).
+  Conversations are private to their author, so the export has the requesting
+  admin's own; every member reads theirs in the app.
 - Erasure (Art. 17 right to be forgotten): deletes the org's tenant content
   (clients, conversations, assessments, alerts, document checks and the
   provisions watched for them) from the database AND the org's uploaded chunks
-  from the vector store. Confirmation-gated and audit-logged.
+  from the vector store. Confirmation-gated and audit-logged. When the vector
+  store cannot be erased, the answer says so (503, ``status: "partial"``) and
+  the request can simply be repeated: it is idempotent.
   The shared regulatory corpus is never touched. Users and the Organization
   record are kept (account closure is a separate flow) so the admin can still
   operate / re-onboard.
@@ -19,16 +26,19 @@ and identified by act, version and fingerprint.
 Ironic-but-true: a GDPR product MUST be able to do this. It previously could not.
 """
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, inspect, or_, select
 
 from src.api.rate_limit import limiter
-from src.audit import AuditAction, audit_log, get_client_ip
+from src.audit import AuditAction, AuditOutcome, audit_log, get_client_ip
 from src.auth.dependencies import CurrentUser, require_role
 from src.db.engine import db_manager
 from src.db.models import (
@@ -52,6 +62,35 @@ def _row_to_dict(obj) -> dict:
     for col in inspect(obj).mapper.column_attrs:
         value = getattr(obj, col.key)
         out[col.key] = str(value) if isinstance(value, uuid.UUID) else value
+    return out
+
+
+# What the export gives of an account: what an admin can see of it in the app,
+# and nothing that works as a credential.
+_USER_EXPORT_FIELDS = (
+    "id",
+    "org_id",
+    "email",
+    "name",
+    "role",
+    "is_active",
+    "email_verified",
+    "notify_document_changes",
+    "created_at",
+)
+PARTIAL_ERASURE_DETAIL = (
+    "I dati dell'organizzazione sono stati cancellati dal database, ma non dall'indice di "
+    "ricerca (i testi caricati con la vecchia funzione di caricamento): riprova tra qualche "
+    "minuto. La richiesta si può ripetere senza rischi: ciò che è già cancellato non cambia."
+)
+
+
+def _fields(obj: Any, names: tuple[str, ...]) -> dict:
+    """The named attributes of a row, JSON-able (UUIDs as strings)."""
+    out: dict = {}
+    for name in names:
+        value = getattr(obj, name, None)
+        out[name] = str(value) if isinstance(value, uuid.UUID) else value
     return out
 
 
@@ -89,7 +128,11 @@ async def export_org_data(
     request: Request,
     user: CurrentUser = Depends(require_role("admin")),
 ) -> dict:
-    """Export all of the authenticated organization's data (admin only)."""
+    """Export the authenticated organization's data (admin only).
+
+    Accounts without secrets; the conversations of the requesting admin only
+    (each member's are private to them).
+    """
     org_id = str(user.org_id)
     async with db_manager.session(org_id=org_id) as session:
         users = (
@@ -103,13 +146,19 @@ async def export_org_data(
         client_ids = [c.id for c in clients]
         user_ids = [u.id for u in users]
 
+        # Private to their author: the requester's own, not the other members'.
         conversations = (
-            (await session.execute(select(Conversation).where(Conversation.user_id.in_(user_ids))))
+            (
+                await session.execute(
+                    select(Conversation).where(Conversation.user_id == user.user_id)
+                )
+            )
             .scalars()
             .all()
-            if user_ids
+            if user.user_id in user_ids
             else []
         )
+
         assessments = (
             (await session.execute(select(Assessment).where(Assessment.client_id.in_(client_ids))))
             .scalars()
@@ -157,7 +206,7 @@ async def export_org_data(
     return {
         "org_id": org_id,
         "exported_at": datetime.now(UTC).isoformat(),
-        "users": [_row_to_dict(u) for u in users],
+        "users": [_fields(u, _USER_EXPORT_FIELDS) for u in users],
         "clients": [_row_to_dict(c) for c in clients],
         "conversations": [_row_to_dict(c) for c in conversations],
         "assessments": [_row_to_dict(a) for a in assessments],
@@ -236,22 +285,42 @@ async def erase_org_data(
         deleted["clients"] = r.rowcount or 0
         await session.commit()
 
-    # Erase the org's uploaded chunks from the vector store (best-effort).
+    # Erase the org's uploaded chunks from the vector store. A failure is not
+    # hidden: the answer says the erasure is partial and the request can be
+    # repeated (the database part is already done and stays done).
+    vector_store = "erased"
     try:
         from src.api.app_state import app_state
 
-        if app_state.indexer is not None:
-            app_state.indexer.delete_org_chunks(org_id)
+        if app_state.indexer is None:
+            vector_store = "unavailable"
+        else:
+            await asyncio.to_thread(app_state.indexer.delete_org_chunks, org_id)
     except Exception as e:  # noqa: BLE001
-        logger.warning("gdpr_qdrant_erase_failed", org_id=org_id, error=str(e))
+        vector_store = "failed"
+        logger.error("gdpr_qdrant_erase_failed", org_id=org_id, error_type=type(e).__name__)
 
+    complete = vector_store == "erased"
     audit_log(
         AuditAction.DATA_ERASURE,
+        AuditOutcome.SUCCESS if complete else AuditOutcome.ERROR,
         user_id=str(user.user_id),
         org_id=org_id,
         ip_address=get_client_ip(request),
         resource="/api/v1/gdpr/erase",
-        detail=f"GDPR erasure: {deleted}",
+        detail=f"GDPR erasure: {deleted}, vector store {vector_store}",
     )
 
-    return {"status": "erased", "org_id": org_id, "deleted": deleted}
+    if not complete:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "partial",
+                "org_id": org_id,
+                "deleted": deleted,
+                "vector_store": vector_store,
+                "detail": PARTIAL_ERASURE_DETAIL,
+            },
+            headers={"Retry-After": "60"},
+        )
+    return {"status": "erased", "org_id": org_id, "deleted": deleted, "vector_store": vector_store}

@@ -221,6 +221,9 @@ Comportamento by design (non panicare):
 - **Token blacklist: fail-closed in produzione** → token revocati restano negati,
   ma `is_blacklisted` può negare anche token validi → utenti sloggati. Atteso.
 - **Brute-force lockout: fail-open** → nessun lockout durante l'outage (trade-off documentato SEC-03).
+- **Limiti di frequenza**: contati nella memoria di ogni processo finché Redis non risponde
+  (avviso `rate_limit_storage_unreachable` all'avvio, «falling back to in-memory» di slowapi
+  durante l'esercizio); con più worker ognuno conta per conto suo. Tornano condivisi da soli.
 - Cache: degrado di latenza, nessun errore funzionale.
 
 ```powershell
@@ -242,7 +245,9 @@ docker compose restart redis   # recovery cache: immediato; nessun dato critico 
 1. **Contieni**: revoca il segreto compromesso (vedi [SECURITY.md](../SECURITY.md) § Key Rotation).
    Per JWT: ruota la coppia RSA (`data/jwt_private.pem`, `data/jwt_public.pem`) e riavvia
    l'app → i token firmati con la vecchia chiave non sono più accettati;
-   per revoca immediata di un utente: blacklist via Redis.
+   per chiudere subito tutte le sessioni di un utente: `python scripts/staff.py end-sessions
+   <email>` (§11); per togliergli l'accesso, un amministratore della sua organizzazione lo
+   rimuove (`DELETE /api/v1/auth/members/{id}`).
 2. **Valuta GDPR**: se dati personali coinvolti → valuta notifica Garante entro
    **72h** (Art. 33) e clienti entro **48h** (impegno DPA §7).
 3. **Documenta**: timeline in `docs/incidents/YYYY-MM-DD-<slug>.md`.
@@ -301,6 +306,49 @@ docker compose run --rm migrate alembic downgrade -1
 | Settimanale (a mano), o quando `check-freshness` segnala atti superati | Aggiornamento del corpus: `docker compose run --rm app python -m src.pipeline --action update` (lo scheduler interno è spento, `ACQUISITION_SCHEDULER_ENABLED=false`). Confronta il testo di ogni atto seguito (`TRACKED_ACTS`), in EN e IT, con quello indicizzato, re-indicizza solo i testi cambiati e scrive nella collection la data del corpus, quella che vedono gli utenti; non aggiunge atti fuori dall'elenco. Con e5 ogni testo cambiato richiede minuti di CPU. Poi un nuovo snapshot della collection (§3) |
 | Mensile (auto) | Test di ripristino il 1° del mese alle 05:00 (`bash /opt/normaai/scripts/restore_test.sh`, riga di cron di `backup.sh --install-cron`, log in `/var/log/normaai-restore-test.log`): carica l'ultima copia in un Postgres e in un Qdrant usa e getta e controlla tabelle e punti; se fallisce avvisa l'operatore. Esito nel post-mortem log qui sotto |
 | Trimestrale | Esercitazione di ripristino dal portatile, con le sole chiavi del password manager: `bash scripts/restore_drill.sh` ([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md) §6.4); rotazione chiavi (SECURITY.md § Key Rotation) + review accessi |
+
+## 11. Account e accessi
+
+Tutti i comandi girano sul server dentro il container dell'app, per esempio
+`docker exec normaai-app python scripts/staff.py list` (oppure con
+`docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app ...`). La tabella
+`users` non ha RLS, quindi va bene anche il ruolo `normaai_app`. Ogni processo dell'API vede
+una modifica entro `AUTH_ACCOUNT_CACHE_SECONDS` (30 s).
+
+- **Staff** (crawl del corpus, inviti per nuove organizzazioni). È il flag `users.is_staff`,
+  che solo questo script imposta, e vale solo con l'email verificata. `STAFF_EMAILS` non è più
+  letto: se resta nel `.env`, all'avvio c'è un avviso.
+  ```bash
+  python scripts/staff.py list
+  python scripts/staff.py grant ops@normaai.org     # account attivo con email verificata
+  python scripts/staff.py revoke ops@normaai.org
+  ```
+  Dopo la migrazione 010 nessuno è staff: chi lo era per `STAFF_EMAILS` va nominato di nuovo
+  con `grant`. Un'email non verificata si sistema con il link di verifica o con un reset
+  della password, che la verifica. L'invito di un amministratore di un'organizzazione non
+  verifica l'indirizzo (solo quelli di `scripts/create_invite.py` e dello staff): prima di
+  `grant` controlla l'organizzazione che `list` e `grant` mostrano.
+- **Password dimenticata.** L'utente usa «Password dimenticata?» nella pagina di accesso
+  (`/reset-password`): arriva un link valido `PASSWORD_RESET_TOKEN_TTL_MINUTES` (30 minuti),
+  una volta sola, e al cambio si chiudono tutte le sue sessioni. Serve `RESEND_API_KEY`. Se
+  l'email non arriva (spam, Resend non configurato), lo staff crea lo stesso link:
+  ```bash
+  python scripts/staff.py reset-password anna@studio.it          # stampa il link, una volta
+  python scripts/staff.py reset-password anna@studio.it --send   # e lo spedisce
+  ```
+  Il link va consegnato solo alla persona, su un canale che sia suo. Nel database resta solo
+  l'hash; un nuovo link annulla il precedente.
+- **Chiudere tutte le sessioni** di un account (dispositivo perso, persona che lascia lo
+  studio): `python scripts/staff.py end-sessions anna@studio.it`. Ogni token emesso fino a
+  quel momento è rifiutato; l'utente accede di nuovo.
+- **Membri.** Li gestisce un amministratore dell'organizzazione via API:
+  `GET /api/v1/auth/members`, `PATCH /api/v1/auth/members/{id}` con `{"role": "viewer"}`,
+  `DELETE /api/v1/auth/members/{id}`. L'ultimo amministratore attivo non si può né declassare
+  né rimuovere (409). La rimozione cancella l'account e le sue conversazioni; clienti,
+  controlli, report e inviti restano all'organizzazione. Il logout dal sito revoca la
+  sessione anche sul server.
+- **Review trimestrale degli accessi** (§10): `python scripts/staff.py list` e, per ogni
+  organizzazione, `GET /api/v1/auth/members`.
 
 ## Post-mortem log
 

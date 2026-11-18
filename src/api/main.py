@@ -15,6 +15,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from src.config import get_settings
 from src.observability import setup_logging
@@ -82,19 +83,26 @@ Frameworks of the Q&A corpus: CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR
 """
 
 # ─── App ──────────────────────────────────────────────────────────
+# The interactive docs and the OpenAPI schema describe every route of the API:
+# served in development and test, not in production (settings.api_docs_enabled).
+_docs = get_settings().api_docs_enabled
 app = FastAPI(
     title="NormaAI",
     description=DESCRIPTION,
     version="0.3.0",
     lifespan=lifespan,
     openapi_tags=tags_metadata,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
 # ─── Rate Limiter ─────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+# Routes without a limit of their own get RATE_LIMIT_DEFAULT. Added before CORS,
+# so it runs inside it and a 429 still carries the CORS headers.
+app.add_middleware(SlowAPIMiddleware)
 
 # ─── CORS ─────────────────────────────────────────────────────────
 _cors_settings = get_settings()

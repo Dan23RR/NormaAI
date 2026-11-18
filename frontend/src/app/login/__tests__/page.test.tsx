@@ -84,5 +84,11 @@ describe('sign-in page', () => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Apri la demo con dati di esempio' })).toBeInTheDocument()
     })
+
+    it('links a forgotten password to the reset page, not to an email address', async () => {
+      await renderLogin(true)
+      expect(await screen.findByRole('link', { name: 'Password dimenticata?' })).toHaveAttribute('href', '/reset-password')
+      expect(screen.queryByRole('link', { name: 'info@normaai.org' })).not.toBeInTheDocument()
+    })
   })
 })

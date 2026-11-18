@@ -125,7 +125,8 @@ it): the interface and the report show the official passage in place.
 | Scope rules (CSRD, CSDDD, AI Act art. 50) and deadline calendar | partial: written by hand in the frontend | `frontend/src/lib/scope`, `frontend/src/lib/obligations` |
 | Gap analysis | partial: a requirements checklist written by the model from the retrieved passages and the profile you type, not an assessment of your documents | `src/agents/nodes.py`, `prompts/` |
 | PDF reports, GDPR export and erasure (admin) | wired | `src/api/routers/reports.py`, `src/api/routers/gdpr.py` |
-| Password reset, multi-factor authentication, single sign-on | not built | |
+| Password reset: a single-use emailed link, or minted by staff from the command line | wired | `src/auth/password_reset.py`, `scripts/staff.py` |
+| Multi-factor authentication, single sign-on | not built | |
 
 Each scope rule and calendar date names the source it comes from, with the day it was last
 checked (`VERIFIED_ON` in `frontend/src/lib/scope/sources.ts`); in this branch that check was
@@ -250,11 +251,11 @@ python scripts/create_invite.py --email founder@example.com
 
 | Area | Routes | Notes |
 |---|---|---|
-| Auth (`/api/v1/auth`) | `POST /register`, `/login`, `/refresh`, `/logout`, `/verify-email`, `/resend-verification`, `POST`/`GET /invites`, `GET /me` | per-IP limits on register, login, refresh, verification |
+| Auth (`/api/v1/auth`) | `POST /register`, `/login`, `/refresh`, `/logout`, `/verify-email`, `/resend-verification`, `/password-reset`, `/password-reset/confirm`, `POST`/`GET /invites`, `GET /members`, `PATCH`/`DELETE /members/{id}`, `GET /me` | per-IP limits on register, login, refresh, verification, password reset; invites and members admin only |
 | Documents (`/api/v1/documents`) | `POST /check`, `GET /checks`, `GET`/`DELETE /checks/{id}`, `POST /checks/{id}/recheck`, `GET /checks/{id}/report`, `GET`/`PATCH /preferences`, `GET`/`POST /unsubscribe` | no language model; own hourly limit (`DOCUMENT_CHECK_RATE_LIMIT`, 30/hour) |
 | Intelligence (`/api/v1`) | `POST /qa`, `/gap-analysis`, `/monitor`, each with `/stream` | count against the daily LLM quota per organisation (`LLM_DAILY_QUOTA_PER_ORG`, 200) |
-| Conversations, clients, alerts, reports (`/api/v1`) | `/conversations`, `/clients`, `/alerts`, `/reports/*` | |
-| Data (`/api/v1`) | `POST /crawl` (staff only, `STAFF_EMAILS`), `POST /documents/upload`, `GET /processors` | an uploaded document is indexed for its organisation and never verifies a citation |
+| Conversations, clients, alerts, reports (`/api/v1`) | `/conversations`, `/clients`, `/alerts`, `/reports/*` | a `viewer` only reads clients and alerts; deleting a client is admin only; the PDF reports count against the LLM quota, one unit per framework |
+| Data (`/api/v1`) | `POST /crawl` (staff only: `users.is_staff`, set with `scripts/staff.py`), `POST /documents/upload` (closed: 410), `GET /processors` | the legacy upload no longer indexes anything; documents go to `POST /documents/check` |
 | GDPR (`/api/v1/gdpr`) | `GET /export`, `POST /erase` | admin only |
 | System | `GET /health`, `/readyz`, `/api/v1/stats` (with corpus `freshness`), `/api/v1/system/quota`, `/api/v1/metrics` (admin), `/api/v1/metrics/prometheus` (scrape token) | |
 
@@ -270,7 +271,7 @@ The file is read in memory and not kept. What is stored: its name, its SHA-256, 
 the findings (the reference, at most 160 characters around it, the quotes, the outcome) and
 the official text of each provision it cites. Checking, re-checking and deleting are refused
 to the `viewer` role. The full request and response shapes are in the router's docstrings and
-at `/docs`.
+at `/docs` (not served with `APP_ENV=production`).
 
 ## Tests and CI
 
@@ -315,10 +316,9 @@ and, once configured, the API every 30 minutes.
   (`frontend/public/scope-csrd.html`, `scope-aiact.html`) and a demo mode with declared sample
   data work. No customer is claimed.
 - **Sessions.** Access and refresh tokens are kept in the browser's `localStorage`
-  (`frontend/src/lib/auth.ts`). There is no password reset, no multi-factor authentication
-  and no single sign-on.
-- **Roles.** `viewer` is enforced only on the documents routes; elsewhere a viewer can do what
-  a member can.
+  (`frontend/src/lib/auth.ts`), not in HTTP-only cookies; access tokens last 15 minutes,
+  logout revokes the session on the server and no session lasts more than 30 days. There is
+  no multi-factor authentication and no single sign-on.
 - **Audit trail.** Audit events are log lines (logger `normaai.audit`), not rows of a table,
   and are lost when the container is recreated.
 - **Tenant isolation in the database** needs the overlay `docker-compose.rls.yml`: without it

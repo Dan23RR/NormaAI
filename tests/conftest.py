@@ -21,6 +21,13 @@ os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///test.db"
 # invites and exercise open self-service sign-up. Invite/closed-mode tests set
 # the mode explicitly (tests/test_invites.py).
 os.environ["REGISTRATION_MODE"] = "open"
+# Rate-limit counters in memory: a Redis on the machine (or the CI service)
+# must not carry counts from one run, or one test, to the next. No default
+# limit either: it would count the requests of unrelated tests to the same
+# route whenever one leaves the limiter on. tests/test_rate_limit_storage.py
+# covers both with limiters of its own.
+os.environ["RATE_LIMIT_STORAGE_URI"] = "memory://"
+os.environ["RATE_LIMIT_DEFAULT"] = ""
 
 from src.auth.security import create_access_token  # noqa: E402  (env must be set first)
 from src.config import get_settings  # noqa: E402
@@ -28,6 +35,36 @@ from src.config import get_settings  # noqa: E402
 # Defensive: if anything imported src.config before this conftest ran (plugins,
 # earlier conftests), drop the cached Settings so tests see the values above.
 get_settings.cache_clear()
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "live_account: get_current_user reads the account for real (no claims stand-in)",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _accounts_from_token_claims(request, monkeypatch):
+    """Let the account check of get_current_user believe the tokens of the suite.
+
+    Most tests mint access tokens for users that exist in no database. Unless a
+    test is marked ``live_account``, ``resolve_account`` returns the account the
+    claims describe (``account_from_claims``: active, never staff). Tests of the
+    check itself, of staff and of removed members use the mark or patch
+    ``resolve_account`` / ``load_account`` themselves.
+    """
+    from src.auth import dependencies
+
+    dependencies.account_cache.clear()
+    if request.node.get_closest_marker("live_account") is None:
+
+        async def _from_claims(payload):
+            return dependencies.account_from_claims(payload)
+
+        monkeypatch.setattr(dependencies, "resolve_account", _from_claims)
+    yield
+    dependencies.account_cache.clear()
 
 
 @pytest.fixture

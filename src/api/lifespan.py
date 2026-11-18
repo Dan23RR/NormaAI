@@ -165,6 +165,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("token_blacklist_init_failed", error=str(e))
 
+    # Rate-limit counters: shared in Redis, else per process (logged as a warning).
+    try:
+        from src.api.rate_limit import check_limiter_storage
+
+        await asyncio.to_thread(check_limiter_storage)
+    except Exception as e:
+        logger.warning("rate_limit_storage_check_failed", error=str(e))
+
     # Initialize observability (OpenTelemetry + Prometheus)
     try:
         from src.observability import setup_observability

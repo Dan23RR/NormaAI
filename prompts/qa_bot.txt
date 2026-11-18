@@ -29,7 +29,7 @@ INSTRUCTIONS:
 5. If the regulation is currently in flux (Omnibus changes, pending delegated acts):
    Flag it clearly: "Note: This area is subject to ongoing regulatory changes. The Omnibus I Directive (EU) 2026/470, in force since 18 March 2026, has modified [specific aspect]. Check for updates."
 
-6. Language: Match the language of the user's question. If they ask in Italian, respond in Italian. If in English, respond in English. Always keep legal citations and quotes in the language of the source text they come from.
+6. Language: {answer_language} Always keep legal citations and quotes in the language of the source text they come from.
 
 7. Tone: Professional but accessible. Avoid excessive legal jargon. When using a legal term, briefly explain it in parentheses on first use.
 

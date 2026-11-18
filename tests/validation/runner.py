@@ -191,7 +191,11 @@ async def _call_normaai_api(test_case: TestCase, client) -> dict:
         framework = test_case.query  # e.g., "GDPR"
         raw_response = await client.run_gap_analysis(framework, profile)
     elif test_case.task_type == "qa":
-        raw_response = await client.run_qa(test_case.query, profile)
+        # The answer is written in the language the request asks for: the
+        # question's own language (a golden v2 record's ``lang``), not Italian.
+        raw_response = await client.run_qa(
+            test_case.query, profile, language=test_case.document.language
+        )
     elif test_case.task_type == "monitor":
         raw_response = await client.run_monitor(test_case.query, profile)
     else:
@@ -221,7 +225,7 @@ async def _call_normaai_direct(test_case: TestCase) -> dict:
     if test_case.task_type == "gap_analysis":
         return await arun_gap_analysis(test_case.query, profile)
     elif test_case.task_type == "qa":
-        return await arun_qa(test_case.query, profile)
+        return await arun_qa(test_case.query, profile, language=test_case.document.language)
     elif test_case.task_type == "monitor":
         return await arun_monitor_check(test_case.query, profile)
     else:

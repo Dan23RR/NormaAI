@@ -233,6 +233,29 @@ def _build_gap_prompt(state: AgentState) -> tuple[str, str]:
     return _INJECTION_GUARD + system_prompt, f"Perform gap analysis for {query}"
 
 
+# Languages the Q&A request may ask for (QARequest.language), by ISO 639-1 code.
+_ANSWER_LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French"}
+
+
+def answer_language_instruction(language: str | None) -> str:
+    """Instruction 6 of prompts/qa_bot.txt: the language the answer is written in.
+
+    The request's language when it names one of _ANSWER_LANGUAGES (the user
+    chose it, and it may differ from the language of the question); the
+    language of the question otherwise.
+    """
+    name = _ANSWER_LANGUAGES.get(str(language or "").strip().lower()[:2])
+    if name is None:
+        return (
+            "Match the language of the user's question. If they ask in Italian, respond "
+            "in Italian. If in English, respond in English."
+        )
+    return (
+        f"Write the answer, the caveats and every explanation in {name}, the language the "
+        f"user chose for the answers, even when the question is written in another language."
+    )
+
+
 def _build_qa_prompt(state: AgentState) -> tuple[str, str]:
     """Build system prompt and user message for QA bot."""
     prompt_template = _load_prompt("qa_bot")
@@ -244,6 +267,7 @@ def _build_qa_prompt(state: AgentState) -> tuple[str, str]:
         retrieved_chunks=context_text,
         company_profile=profile_text,
         user_question=query,
+        answer_language=answer_language_instruction(state.get("language")),
     )
     return system_prompt, query
 

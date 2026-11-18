@@ -80,6 +80,12 @@ def _build_user_message(state: dict) -> str:
     if chunks:
         parts.append("Regulatory context:")
         parts.append(format_retrieved_chunks(chunks))
+    if state.get("language") and state.get("task_type", "qa") == "qa":
+        # The resamples read the raw prompt, whose language instruction is a
+        # placeholder: they get the request's answer language here instead.
+        from src.agents.nodes import answer_language_instruction
+
+        parts.append(f"Answer language: {answer_language_instruction(state.get('language'))}")
     return "\n\n".join(parts)
 
 

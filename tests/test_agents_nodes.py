@@ -795,6 +795,43 @@ class TestPromptBuilders:
         system_prompt, _ = _build_qa_prompt({"query": "Q", "company_profile": {}})
         assert "Not available" in system_prompt
 
+    @pytest.mark.parametrize(
+        "language, name", [("en", "English"), ("it", "Italian"), ("de", "German"), ("fr", "French")]
+    )
+    def test_qa_prompt_asks_for_the_request_language(self, language, name):
+        # The Chiedi page lets the user pick the answer language, which may differ
+        # from the language of the question: the request's language decides.
+        system_prompt, _ = _build_qa_prompt({"query": "Entro quando?", "language": language})
+        assert f"every explanation in {name}, the language the user chose" in system_prompt
+        assert "Match the language of the user's question" not in system_prompt
+
+    @pytest.mark.parametrize("language", ["", None, "xx"])
+    def test_qa_prompt_without_a_known_language_follows_the_question(self, language):
+        system_prompt, _ = _build_qa_prompt({"query": "Q", "language": language})
+        assert "Match the language of the user's question" in system_prompt
+
+    def test_qa_prompt_fills_every_placeholder(self):
+        system_prompt, _ = _build_qa_prompt({"query": "Q", "language": "en"})
+        assert "{answer_language}" not in system_prompt
+        assert "6. Language: Write the answer" in system_prompt
+
+    def test_qa_node_sends_the_language_instruction_to_the_model(self, sample_qa_response):
+        with patch.object(nodes, "call_llm", return_value=sample_qa_response) as llm:
+            qa_bot_node({"query": "When?", "language": "it", "retrieved_chunks": [_A_PASSAGE]})
+        system_prompt, _ = llm.call_args.args
+        assert "every explanation in Italian" in system_prompt
+
+    async def test_async_qa_node_sends_the_language_instruction_to_the_model(
+        self, sample_qa_response
+    ):
+        llm = AsyncMock(return_value=sample_qa_response)
+        with patch.object(nodes, "acall_llm", llm):
+            await async_qa_bot_node(
+                {"query": "Quando?", "language": "en", "retrieved_chunks": [_A_PASSAGE]}
+            )
+        system_prompt, _ = llm.await_args.args
+        assert "every explanation in English" in system_prompt
+
     def test_monitor_prompt_defaults_for_missing_profile(self):
         # No profile -> default tokens ("Unknown", "All", etc.) and no crash.
         system_prompt, user_msg = _build_monitor_prompt({"query": "Q"})

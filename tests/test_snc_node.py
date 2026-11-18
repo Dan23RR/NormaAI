@@ -132,6 +132,19 @@ class TestBuildUserMessage:
         assert "Company profile:" not in msg
         assert "Regulatory context:" not in msg
 
+    def test_qa_resamples_get_the_request_language(self):
+        # The resample system prompt is the raw template, without the language
+        # instruction the agent node fills in: the user message carries it.
+        msg = _build_user_message({"query": "Quando?", "task_type": "qa", "language": "en"})
+        assert "Answer language: Write the answer" in msg
+        assert "every explanation in English" in msg
+
+    def test_no_language_line_without_a_language_or_outside_qa(self):
+        assert "Answer language" not in _build_user_message({"query": "Q", "task_type": "qa"})
+        assert "Answer language" not in _build_user_message(
+            {"query": "CSRD", "task_type": "gap_analysis", "language": "en"}
+        )
+
 
 # ─── _build_system_prompt_for_resample ────────────────────────────────
 

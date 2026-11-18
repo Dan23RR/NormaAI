@@ -401,6 +401,57 @@ class TestQACitationVerificationContract:
         mock_qa.assert_not_awaited()
 
 
+class TestQALanguageReachesThePrompt:
+    """The request's ``language`` is the language the model is asked to answer in,
+    on the JSON route and on the stream: the real graph runs, with the retrieval
+    and the model call replaced."""
+
+    _CHUNK = {
+        "id": "pt-gdpr-33",
+        "framework": "GDPR",
+        "article": "Art. 33",
+        "celex": "32016R0679",
+        "lang": "EN",
+        "text": "Article 33\n1. ... not later than 72 hours after having become aware of it ...",
+    }
+    _ANSWER = {
+        "answer": "Within 72 hours.",
+        "citations": [],
+        "confidence_score": 0.9,
+        "requires_expert_review": False,
+    }
+
+    def _post(self, client, auth_headers, path, language):
+        from src.agents import nodes as nodes_mod
+        from src.api.app_state import app_state
+
+        app_state.indexer.hybrid_search.return_value = [dict(self._CHUNK)]
+        llm = AsyncMock(return_value=dict(self._ANSWER))
+        with patch.object(nodes_mod, "acall_llm", llm):
+            response = client.post(
+                path,
+                json={
+                    "question": "Entro quando va notificata una violazione?",
+                    "language": language,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        assert llm.await_count >= 1
+        system_prompt, _ = llm.await_args_list[0].args
+        return system_prompt
+
+    @pytest.mark.parametrize("language, name", [("en", "English"), ("it", "Italian")])
+    def test_json_route(self, client, auth_headers, language, name):
+        prompt = self._post(client, auth_headers, "/api/v1/qa", language)
+        assert f"every explanation in {name}" in prompt
+
+    @pytest.mark.parametrize("language, name", [("en", "English"), ("it", "Italian")])
+    def test_stream_route(self, client, auth_headers, language, name):
+        prompt = self._post(client, auth_headers, "/api/v1/qa/stream", language)
+        assert f"every explanation in {name}" in prompt
+
+
 class TestGapAnalysisEndpoint:
     @patch("src.agents.graph.arun_gap_analysis", new_callable=AsyncMock)
     def test_gap_analysis_success(self, mock_gap, client, auth_headers):

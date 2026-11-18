@@ -149,6 +149,8 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
   .fine{ margin-top:14px; font-size:12px; line-height:1.4; color:var(--ink-2); }
   .fine.err{ color:var(--bad); }
   .hp{ position:absolute; left:-9999px; width:1px; height:1px; opacity:0; }
+  .consent{ margin-top:16px; display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--ink-2); cursor:pointer; }
+  .consent input{ flex:none; width:18px; height:18px; margin:1px 0 0; accent-color:var(--union); }
   .lead-ok{ display:none; }
   .lead.done .lead-form{ display:none; }
   .lead.done .lead-ok{ display:block; }
@@ -397,8 +399,12 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
               + '<div class="field"><label for="email">Email di lavoro</label><input type="email" id="email" autocomplete="email" placeholder="nome@impresa.it" required></div>'
             + '</div>'
             + '<input class="hp" type="text" id="contact_time" name="contact_time" tabindex="-1" autocomplete="off" aria-hidden="true">'
+            // Consent to be written to about NormaAI (art. 130 Codice privacy):
+            // unticked, optional, and the reply asked for comes either way.
+            + '<label class="consent" for="marketing_consent"><input type="checkbox" id="marketing_consent" name="marketing_consent">'
+            + '<span>Potete scrivermi anche su NormaAI, oltre alla risposta che ho chiesto: un messaggio scritto a mano da Daniel Culotta, niente newsletter. Facoltativo; posso ritirare il consenso quando voglio scrivendo a info@normaai.org.</span></label>'
             + '<button class="btn btn-primary" type="submit">Invia la richiesta</button>'
-            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta. Niente newsletter e nessuna cessione a terzi: uso i tuoi dati solo per mandarti i passaggi di legge e ricontattarti su questo tema (legittimo interesse, art. 6, par. 1, lettera f, del GDPR). Vedi la <a href="/privacy">privacy policy</a>.</p>'
+            + '<p class="fine" id="lead-msg">Ti scrivo io, Daniel Culotta, con i passaggi di legge che hai chiesto. Niente newsletter e nessuna cessione a terzi: su NormaAI ti scrivo solo se spunti la casella. Vedi la <a href="/privacy">privacy policy</a>.</p>'
           + '</form>'
         + '</div>'
         + '<div class="lead-ok"><h3>Richiesta inviata</h3>'
@@ -417,6 +423,7 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
       var email = ($('email').value||'').trim();
       var org = ($('org').value||'').trim();
       var hp = ($('contact_time').value||'').trim();
+      var consent = !!($('marketing_consent') && $('marketing_consent').checked);
       var msg = $('lead-msg');
       var re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
       if (!re.test(email)){ msg.textContent = 'Inserisci un indirizzo email valido.'; msg.className = 'fine err'; return; }
@@ -427,7 +434,7 @@ try{var t=localStorage.getItem('normaai.theme');if(t==='dark'||(t==='system'&&wi
       var src = 'aiact_checker:' + band + ((keys && keys.length) ? ':' + keys.join('+') : '');
       fetch('/api/leads', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ email:email, org_name:org, role:'aiact_checker', source:src, lead_ref:'scope-aiact', contact_time:hp })
+        body: JSON.stringify({ email:email, org_name:org, role:'aiact_checker', source:src, lead_ref:'scope-aiact', contact_time:hp, marketing_consent:consent })
       }).then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(data){
         $('cta').classList.add('done');

@@ -63,6 +63,7 @@
       "download": "Scarica il Codex (PDF)",
       "talk": "Vuoi parlarne trenta minuti? <mail>Scrivi a info@normaai.org</mail>.",
       "email": "Email di lavoro",
+      "emailHelp": "Serve solo se spunti la casella qui sotto.",
       "emailPlaceholder": "nome@azienda.it",
       "org": "Organizzazione",
       "orgPlaceholder": "Es. Rossi S.p.A.",
@@ -73,8 +74,10 @@
         "lawyer": "Avvocato / Consulente",
         "other": "Altro"
       },
+      "consent": "Potete scrivermi per email su NormaAI: un messaggio scritto a mano da Daniel Culotta, niente newsletter.",
+      "consentHelp": "Facoltativo: il Codex si scarica comunque. Puoi ritirare il consenso quando vuoi, scrivendo a info@normaai.org.",
       "submit": "Scarica il Codex",
-      "noNewsletter": "Niente newsletter. Ricevi il PDF e, al massimo, un’email scritta a mano per capire se NormaAI vi serve davvero."
+      "noNewsletter": "Niente newsletter e nessuna cessione a terzi. Senza la casella non inviamo email, organizzazione né ruolo: ricevi solo il PDF."
     }
   },
   "landing": {
@@ -1947,7 +1950,7 @@
         },
         "intro2": "Sul sito pubblico:",
         "site": {
-          "1": "Richiesta del Codex, di una demo o dell’analisi dopo una verifica gratuita: email, nome dell’organizzazione, ruolo e modulo di provenienza (per le verifiche anche l’esito e, per l’AI Act, le situazioni spuntate). La richiesta è ricevuta da una funzione serverless su Vercel: i dati sono scritti nei log della funzione e, quando l’invio delle email è configurato, inviati a info@normaai.org tramite Resend. Non sono salvati in un database dell’applicazione.",
+          "1": "Richiesta del Codex o, dopo una verifica gratuita, dei passaggi di legge: modulo di provenienza e la tua scelta sul consenso al ricontatto; per le verifiche anche l’esito e, per l’AI Act, le situazioni spuntate; email, nome dell’organizzazione e ruolo solo quando servono, cioè per rispondere alla richiesta di una verifica o se hai dato il consenso. Senza consenso, per il Codex non è registrato nulla che ti identifichi: il PDF si scarica dalla pagina. La richiesta è ricevuta da una funzione serverless su Vercel: i dati sono scritti nei log della funzione e, quando l’invio delle email è configurato, inviati a info@normaai.org tramite Resend. Non sono salvati in un database dell’applicazione.",
           "2": "Email: i dati contenuti nei messaggi inviati a info@normaai.org.",
           "3": "Statistiche di visita: Vercel Web Analytics, senza cookie e senza identificare il visitatore."
         }
@@ -1957,7 +1960,7 @@
         "items": {
           "1": "Erogazione del servizio e gestione dell’account: esecuzione del contratto (art. 6(1)(b) GDPR).",
           "2": "Sicurezza del servizio (registro degli eventi, blocco dei tentativi di accesso ripetuti, limiti di frequenza, controllo dello spam): legittimo interesse (art. 6(1)(f) GDPR).",
-          "3": "Invio del Codex e ricontatto sullo stesso tema a chi lo ha richiesto: legittimo interesse (art. 6(1)(f) GDPR). Puoi opporti in qualsiasi momento rispondendo all’email ricevuta o scrivendo a info@normaai.org.",
+          "3": "Ricontatto commerciale per email su NormaAI, dopo il Codex o una verifica gratuita: solo con il tuo consenso, dato spuntando nel modulo la casella che parte vuota (art. 6(1)(a) GDPR e art. 130 del Codice privacy). Il consenso è facoltativo: il Codex si scarica comunque e la risposta a una verifica arriva comunque. Puoi ritirarlo in qualsiasi momento rispondendo all’email ricevuta o scrivendo a info@normaai.org; il ritiro non tocca ciò che è stato fatto prima. Risposta con i passaggi di legge chiesti dopo una verifica gratuita: misure adottate su tua richiesta (art. 6(1)(b) GDPR).",
           "4": "Risposta a chi ci scrive: legittimo interesse o misure precontrattuali."
         },
         "p": "I dati non sono venduti né usati per profilazione pubblicitaria. Sono condivisi solo con i fornitori elencati nella sezione 4, per erogare il servizio."
@@ -1967,7 +1970,7 @@
         "items": {
           "1": "<strong>Hetzner Online GmbH</strong> (Germania): il server previsto per l’API, il database e l’indice di ricerca. È lì che l’applicazione tiene i dati quando è in funzione; la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico (punto 3).",
           "2": "<strong>Vercel Inc.</strong> (USA): hosting del sito e dell’interfaccia, con le funzioni lato server nella regione di Francoforte, compresa la funzione che riceve le richieste del Codex e delle verifiche gratuite. Statistiche di visita senza cookie.",
-          "3": "<strong>Google LLC</strong> (API Gemini, USA): il modello linguistico che genera le risposte. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati. È il fornitore predefinito oggi: la scelta è una configurazione, e il codice supporta in alternativa Anthropic e OpenRouter.",
+          "3": "<strong>Anthropic PBC</strong> (USA): Claude, il modello linguistico che scrive le risposte nella configurazione misurata e prevista per il server. Riceve la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati; non riceve i documenti sottoposti al controllo dei riferimenti, che non usa modelli linguistici. Il fornitore si sceglie in configurazione: il codice permette in alternativa Google (API Gemini, USA), Mistral AI (endpoint dell’Unione europea) e OpenRouter (USA). Se cambia, questa pagina lo dice.",
           "4": "<strong>Resend, Inc.</strong> (USA): invio delle email transazionali: la notifica delle nuove richieste alla casella del gestore e, nell’applicazione, la conferma dell’indirizzo email e il riepilogo degli avvisi. Il sito non scrive all’indirizzo inserito nei moduli: il Codex si scarica dalla pagina.",
           "5": "<strong>Cloudflare, Inc.</strong> (USA): DNS del dominio normaai.org e instradamento della posta in arrivo: i messaggi scritti a info@normaai.org passano dai server di posta di Cloudflare prima di arrivare alla casella di destinazione. Il traffico del sito non passa dal proxy di Cloudflare."
         },
@@ -1978,7 +1981,7 @@
         "items": {
           "1": "Dati dell’applicazione: per tutta la durata del rapporto. Non esiste una cancellazione automatica a scadenza. L’amministratore dell’organizzazione può in qualsiasi momento esportare i dati e cancellare clienti, conversazioni, valutazioni, avvisi e frammenti indicizzati dall’applicazione; ogni utente può cancellare le proprie conversazioni. Per chiudere gli account e l’organizzazione scrivi a info@normaai.org.",
           "2": "Copie di backup: lo script di backup copia il database ogni notte e conserva le copie per 30 giorni. Quando il gestore configura un archivio esterno con restic, la copia lascia anche il server, cifrata prima dell'invio, ed è conservata per lo stesso periodo. Un dato cancellato può restare in una copia di backup fino a 30 giorni.",
-          "3": "Richieste del Codex e delle verifiche gratuite: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
+          "3": "Richieste delle verifiche gratuite e richieste del Codex fatte con il consenso: restano nella casella info@normaai.org finché non ne chiedi la cancellazione, e nei log della funzione serverless per il periodo di conservazione di Vercel. Il Codex è un file pubblico: il suo indirizzo non scade.",
           "4": "Registro degli eventi: nei log del server, con la loro rotazione.",
           "5": "Dati nel browser: vedi la <cookie>cookie policy</cookie>."
         }
@@ -1994,7 +1997,7 @@
       "ai": {
         "title": "7. Trasparenza AI (art. 50 AI Act)",
         "p": {
-          "1": "NormaAI usa un modello linguistico generativo di un fornitore esterno (oggi, per impostazione predefinita, Google Gemini) per scrivere le risposte a partire dai passaggi recuperati dal corpus: testi ufficiali di atti dell’Unione pubblicati su EUR-Lex (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Tutti gli output sono generati da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report.",
+          "1": "NormaAI usa un modello linguistico generativo di un fornitore esterno (nella configurazione in uso, Claude di Anthropic) per scrivere le risposte a partire dai passaggi recuperati dal corpus: testi ufficiali di atti dell’Unione pubblicati su EUR-Lex (CSRD, CSDDD, AI Act, DORA, NIS2, Tassonomia UE, GDPR, CRA). Queste risposte sono generate da un sistema di intelligenza artificiale, possono contenere errori e richiedono la verifica di un professionista. L’avviso compare nell’applicazione, nella pagina Chiedi e nei report. Il controllo dei documenti invece non usa modelli generativi: confronta le parole del documento con il testo ufficiale.",
           "2": "NormaAI non prende decisioni automatizzate con effetti giuridici sulle persone: produce analisi che un professionista valuta."
         }
       },
@@ -2183,12 +2186,12 @@
       "hosting": {
         "title": "1. Dove girano il sito, l’API e i dati",
         "p1": "Il sito pubblico e l’interfaccia dell’applicazione sono ospitati su Vercel; le funzioni lato server girano nella regione fra1 (Francoforte). L’API e i database (PostgreSQL per i dati, Qdrant per l’indice di ricerca, Redis per cache e sessioni) sono progettati per girare su un server Hetzner in Germania.",
-        "p2": "Nella configurazione di produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e senza capability Linux aggiuntive."
+        "p2": "Nella configurazione di produzione l’unico servizio esposto a internet è Caddy, che termina il TLS con certificati Let’s Encrypt (porte 80 e 443) e inoltra le richieste all’applicazione su una rete interna. L’applicazione non ha porte pubbliche, gira in un container senza privilegi di root, con filesystem in sola lettura e con tutte le capability Linux tolte salvo NET_BIND_SERVICE."
       },
       "model": {
         "title": "2. Il modello linguistico",
-        "p1": "Le risposte sono scritte da un modello linguistico di un fornitore esterno, scelto in configurazione (impostazione <code>llm_provider</code>). Oggi il valore predefinito è <code>gemini</code>: Google Gemini, di una società statunitense. Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi.",
-        "p2": "Il fornitore si può cambiare in configurazione: il codice supporta anche Anthropic e OpenRouter. Oggi non esiste una modalità in cui le risposte sono generate interamente sui nostri server."
+        "p1": "Le risposte sono scritte da un modello linguistico di un fornitore esterno, scelto in configurazione (impostazione <code>llm_provider</code>). La configurazione misurata, e prevista per il server, è <code>anthropic</code>: Claude di Anthropic, una società statunitense. Per generare una risposta, la domanda, il profilo aziendale eventualmente inserito e i passaggi normativi recuperati dal corpus vengono inviati al fornitore del modello, che li elabora sui propri sistemi. Il controllo dei documenti non manda nulla a un modello linguistico.",
+        "p2": "Il fornitore si può cambiare in configurazione: il codice supporta anche Google Gemini, Mistral (con l’endpoint dell’Unione europea) e OpenRouter. Oggi non esiste una modalità in cui le risposte sono generate interamente sui nostri server."
       },
       "access": {
         "title": "3. Accesso e sessioni",
@@ -2333,7 +2336,7 @@
           },
           "2": {
             "title": "Redazione dal testo recuperato",
-            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello è quello del fornitore esterno scelto in configurazione: oggi, per impostazione predefinita, Google Gemini."
+            "body": "Il modello riceve la domanda, il profilo aziendale se inserito e i passaggi recuperati, con la consegna di citare atto e articolo e di non inventare atti o articoli che non esistono. Il testo dell’utente non entra mai nel prompt di sistema. Il modello è quello del fornitore esterno scelto in configurazione: nella configurazione misurata, Claude di Anthropic."
           },
           "3": {
             "title": "Controllo di aderenza alle fonti",

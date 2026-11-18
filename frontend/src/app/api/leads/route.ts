@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { LOCALE_COOKIE, toLanguage } from '@/i18n/config'
-import { MAX_BODY_BYTES, checkLead, clientIp, createRateLimiter, honeypotFilled, plainText } from '@/lib/leads'
+import {
+  CONSENT_TEXT_VERSION,
+  MAX_BODY_BYTES,
+  checkLead,
+  clientIp,
+  createRateLimiter,
+  honeypotFilled,
+  plainText,
+} from '@/lib/leads'
 
 /**
  * Serverless lead capture. Every public form (landing, /codex, the static
@@ -11,6 +19,13 @@ import { MAX_BODY_BYTES, checkLead, clientIp, createRateLimiter, honeypotFilled,
  * download button: nothing is ever emailed to the address typed in the form,
  * so the route cannot be used to make the site write to anybody. The only
  * email is the notification to the operator's own inbox, when configured.
+ *
+ * Consent (art. 130 Codice privacy): every form has an unticked box,
+ * `marketing_consent`. The route records the choice, and without it the
+ * person is never added to any follow-up: a Codex download keeps nothing
+ * that identifies them; a checker, which asks for a reply with the passages
+ * of law, reaches the operator marked "senza consenso", to be answered and
+ * no more.
  *
  * Env (Vercel → Project Settings → Environment Variables, server-side):
  *   RESEND_API_KEY      optional - enables the notification to the operator
@@ -122,9 +137,27 @@ export async function POST(req: NextRequest) {
       ? invalid({ it: 'Indirizzo email non valido.', en: 'Invalid email address.' })
       : invalid(INVALID_BODY)
   }
-  const { email, orgName, role, source, leadRef } = checked.lead
+  const { email, orgName, role, source, leadRef, marketingConsent } = checked.lead
+  const downloadMessage = english
+    ? 'Request recorded. Download the Codex with the button below.'
+    : 'Richiesta registrata. Scarica il Codex con il pulsante qui sotto.'
 
-  // Always log - this is the persistence floor if email is unavailable.
+  if (email === null) {
+    // A Codex download without consent: counted, nothing else.
+    console.log(
+      JSON.stringify({ event: 'codex_download', source, marketing_consent: false, ts: new Date().toISOString() }),
+    )
+    return NextResponse.json(
+      {
+        message: english ? 'Download the Codex with the button below.' : 'Scarica il Codex con il pulsante qui sotto.',
+        download_url: CODEX_PATH,
+      },
+      { status: 200 },
+    )
+  }
+
+  // Always log - this is the persistence floor if email is unavailable, and
+  // the record of the consent: given or not, and to which wording.
   console.log(
     JSON.stringify({
       event: 'lead_captured',
@@ -133,6 +166,8 @@ export async function POST(req: NextRequest) {
       role,
       lead_ref: leadRef,
       source,
+      marketing_consent: marketingConsent,
+      consent_text: marketingConsent ? CONSENT_TEXT_VERSION : null,
       ts: new Date().toISOString(),
     }),
   )
@@ -150,7 +185,7 @@ export async function POST(req: NextRequest) {
       apiKey,
       from,
       to: [notifyTo],
-      subject: `[NormaAI lead${leadRef ? ` - ${leadRef}` : ''}] ${email}${orgName ? ` - ${orgName}` : ''}`,
+      subject: `[NormaAI lead${leadRef ? ` - ${leadRef}` : ''}${marketingConsent ? '' : ' - senza consenso'}] ${email}${orgName ? ` - ${orgName}` : ''}`,
       text: [
         'Nuovo lead dal sito (route serverless Vercel):',
         '',
@@ -159,6 +194,9 @@ export async function POST(req: NextRequest) {
         `Ruolo:   ${role || '-'}`,
         `LeadRef: ${leadRef || '- (traffico organico)'}`,
         `Source:  ${source}`,
+        marketingConsent
+          ? `Consenso: sì, a essere ricontattato su NormaAI (testo del ${CONSENT_TEXT_VERSION}).`
+          : 'Consenso: NO. Rispondi solo con i passaggi di legge richiesti, senza altri contatti commerciali.',
         '',
         'NB: se il backend non è ancora live, il lead NON è in Postgres',
         'e va importato quando il backend viene deployato.',
@@ -169,13 +207,5 @@ export async function POST(req: NextRequest) {
 
   // The message says only what happened: the request is recorded and the
   // response carries the link, which the form shows as a download button.
-  return NextResponse.json(
-    {
-      message: english
-        ? 'Request recorded. Download the Codex with the button below.'
-        : 'Richiesta registrata. Scarica il Codex con il pulsante qui sotto.',
-      download_url: CODEX_PATH,
-    },
-    { status: 200 },
-  )
+  return NextResponse.json({ message: downloadMessage, download_url: CODEX_PATH }, { status: 200 })
 }

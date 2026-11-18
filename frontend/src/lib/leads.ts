@@ -42,12 +42,28 @@ export const LEAD_ROLES: readonly string[] = [
 /** The id of an outreach email (/codex?lead=<id>) or the name of a checker page. */
 const LEAD_REF_RE = /^[A-Za-z0-9_-]{1,64}$/
 
+/**
+ * The wording of the consent box, by the day it was written: the Codex form
+ * (`site.codexForm.consent`) and the two checkers. Change it with the words,
+ * so that the log says which text a person agreed to (art. 7(1) GDPR).
+ */
+export const CONSENT_TEXT_VERSION = '2026-11-18'
+
 export type Lead = {
-  email: string
+  /** Null for a Codex download without consent: nothing that identifies the person is kept then. */
+  email: string | null
   orgName: string | null
   role: string | null
   source: string
   leadRef: string | null
+  /**
+   * True only when the box, unticked on every form, was ticked: consent to
+   * be written to about NormaAI (art. 130 Codice privacy). Without it nobody
+   * adds the person to any follow-up.
+   */
+  marketingConsent: boolean
+  /** The checkers ask for a reply with the passages of law: they need the address whatever the consent. */
+  wantsReply: boolean
 }
 
 export type LeadCheck = { ok: true; lead: Lead } | { ok: false; field: 'body' | 'email' | 'source' }
@@ -76,11 +92,22 @@ export function checkLead(body: unknown): LeadCheck {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, field: 'body' }
   const b = body as Record<string, unknown>
 
-  const email = typeof b.email === 'string' ? b.email.trim() : ''
-  if (email.length > MAX_EMAIL || !EMAIL_RE.test(email)) return { ok: false, field: 'email' }
-
   const source = b.source === undefined || b.source === null || b.source === '' ? 'codex_download' : b.source
   if (typeof source !== 'string' || !SOURCE_RE.test(source)) return { ok: false, field: 'source' }
+
+  const marketingConsent = b.marketing_consent === true
+  const wantsReply = source !== 'codex_download'
+  if (!marketingConsent && !wantsReply) {
+    // The Codex is a public file and nobody will write back: whatever the
+    // form sent, no address, organisation, role or outreach id is kept.
+    return {
+      ok: true,
+      lead: { email: null, orgName: null, role: null, source, leadRef: null, marketingConsent, wantsReply },
+    }
+  }
+
+  const email = typeof b.email === 'string' ? b.email.trim() : ''
+  if (email.length > MAX_EMAIL || !EMAIL_RE.test(email)) return { ok: false, field: 'email' }
 
   // Optional fields: an unknown role or reference is dropped, not refused, so
   // a page cached before a change still gets its request through.
@@ -89,7 +116,7 @@ export function checkLead(body: unknown): LeadCheck {
   const leadRef = LEAD_REF_RE.test(ref) ? ref : null
   const orgName = plainText(b.org_name, 200) || null
 
-  return { ok: true, lead: { email, orgName, role, source, leadRef } }
+  return { ok: true, lead: { email, orgName, role, source, leadRef, marketingConsent, wantsReply } }
 }
 
 /**

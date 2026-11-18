@@ -68,6 +68,13 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('non è firmato e non scade')
     expect(main).toHaveTextContent('Non esiste ancora una release pubblicata.')
     expect(main).not.toHaveTextContent('Gemini 2.5')
+    expect(main).toHaveTextContent('La configurazione misurata, e prevista per il server, è anthropic: Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Oggi il valore predefinito è gemini')
+    expect(main).toHaveTextContent('Il controllo dei documenti non manda nulla a un modello linguistico.')
+    expect(main).toHaveTextContent('con tutte le capability Linux tolte salvo NET_BIND_SERVICE')
+    // the lead route writes to nobody but the operator, and limits each address
+    expect(main).toHaveTextContent('che non scrive mai all’indirizzo inserito nel modulo')
+    expect(main).toHaveTextContent('al massimo 10 richieste l’ora da uno stesso indirizzo IP')
     expect(main).toHaveTextContent('Il token di accesso dura 60 minuti')
     // what a document check keeps
     expect(main).toHaveTextContent('il file viene elaborato in memoria e non viene conservato')
@@ -79,7 +86,15 @@ describe('legal and method pages', () => {
     const main = screen.getByRole('main')
     expect(main).toHaveTextContent('Documenti controllati: il file che carichi per controllarne i riferimenti di legge viene elaborato in memoria e non viene conservato.')
     expect(main).toHaveTextContent('la domanda e i passaggi recuperati vanno invece al fornitore del modello linguistico')
-    expect(main).toHaveTextContent('Google LLC (API Gemini, USA)')
+    // the provider of the measured configuration receives the questions; the others are options
+    expect(main).toHaveTextContent('Anthropic PBC (USA): Claude, il modello linguistico che scrive le risposte')
+    expect(main).toHaveTextContent('il codice permette in alternativa Google (API Gemini, USA), Mistral AI')
+    expect(main).not.toHaveTextContent(/predefinit[oa]\W+Google|Google Gemini\) per scrivere/)
+    // commercial follow-up rests on an unticked box, not on legitimate interest
+    expect(main).toHaveTextContent('solo con il tuo consenso, dato spuntando nel modulo la casella che parte vuota')
+    expect(main).toHaveTextContent('art. 130 del Codice privacy')
+    expect(main).not.toHaveTextContent('Invio del Codex e ricontatto sullo stesso tema a chi lo ha richiesto: legittimo interesse')
+    expect(main).toHaveTextContent('Senza consenso, per il Codex non è registrato nulla che ti identifichi')
     expect(main).not.toHaveTextContent(/scade dopo 30 giorni|EUR-Lex e Normattiva/)
     expect(main).toHaveTextContent('Ultimo aggiornamento: 18 novembre 2026')
   })
@@ -159,6 +174,8 @@ describe('legal and method pages', () => {
     expect(main).toHaveTextContent('Da novembre 2026 una citazione conta come verificata solo se è letterale')
     expect(main).toHaveTextContent('Il corpus delle risposte contiene 18 atti dell’Unione')
     expect(main).toHaveTextContent('Oggi il corpus non contiene leggi nazionali italiane.')
+    expect(main).toHaveTextContent('nella configurazione misurata, Claude di Anthropic')
+    expect(main).not.toHaveTextContent('Google Gemini')
     expect(main).not.toHaveTextContent(/lavoro in corso|In lavorazione/)
     // every step and every documented choice points at the code behind it
     expect(within(main).getAllByText('Nel codice:', { exact: false }).length).toBeGreaterThanOrEqual(6 + 5)

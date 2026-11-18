@@ -31,11 +31,34 @@ describe('checkLead', () => {
 
   it('keeps the roles the forms send and drops any other', () => {
     for (const role of LEAD_ROLES) {
-      const checked = lead({ role })
+      const checked = lead({ role, marketing_consent: true })
       expect(checked.ok && checked.lead.role).toBe(role)
     }
-    const other = lead({ role: 'Amministratore delegato' })
+    const other = lead({ role: 'Amministratore delegato', marketing_consent: true })
     expect(other.ok && other.lead.role).toBeNull()
+  })
+
+  it('keeps nothing that identifies a Codex download without consent, and needs no address for it', () => {
+    expect(lead({ org_name: 'Rossi', role: 'Altro', lead_ref: 'p07' })).toEqual({
+      ok: true,
+      lead: {
+        email: null,
+        orgName: null,
+        role: null,
+        source: 'codex_download',
+        leadRef: null,
+        marketingConsent: false,
+        wantsReply: false,
+      },
+    })
+    expect(checkLead({ source: 'codex_download' }).ok).toBe(true)
+  })
+
+  it('needs an address with consent, and for a checker, which asks for a reply', () => {
+    expect(checkLead({ marketing_consent: true })).toEqual({ ok: false, field: 'email' })
+    expect(checkLead({ source: 'aiact_checker:out' })).toEqual({ ok: false, field: 'email' })
+    const reply = lead({ source: 'aiact_checker:out' })
+    expect(reply.ok && reply.lead).toMatchObject({ email: 'ada@example.test', marketingConsent: false, wantsReply: true })
   })
 
   it('refuses a body that is not an object', () => {

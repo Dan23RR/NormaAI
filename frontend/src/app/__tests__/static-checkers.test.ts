@@ -59,6 +59,18 @@ describe.each(PAGES)('static checker $name', ({ name, url }) => {
     expect(html).toMatch(/type="email" id="email"/)
   })
 
+  // Commercial follow-up by email needs consent (art. 130 Codice privacy):
+  // an optional box that starts unticked, sent as a boolean.
+  it('asks for consent with an unticked box and sends the choice', () => {
+    const box = html.match(/<input type="checkbox" id="marketing_consent"[^>]*>/)
+    expect(box).not.toBeNull()
+    expect(box?.[0]).not.toMatch(/checked/)
+    expect(html).toContain("var consent = !!($('marketing_consent') && $('marketing_consent').checked);")
+    expect(html).toContain('contact_time:hp, marketing_consent:consent })')
+    expect(html).toContain('posso ritirare il consenso quando voglio')
+    expect(html).not.toContain('legittimo interesse')
+  })
+
   it('offers a 30 minute call and uses no dash, ellipsis or curly quote characters', () => {
     expect(html).toContain('30 minuti')
     expect(html).not.toContain('20 minuti')

@@ -92,6 +92,141 @@ class TestDetectFrameworks:
     def test_case_insensitive(self):
         assert detect_frameworks_in_query("CSRD AND csrd") == ["CSRD"]
 
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "La burocrazia per i fornitori è eccessiva?",
+            "Chi adora i registri dei trattamenti?",
+            "Lo scraping di immagini dal web è lecito?",
+            "In una democrazia chi controlla le autorità?",
+        ],
+    )
+    def test_a_name_inside_another_word_does_not_count(self, question):
+        # Matched as substrings, "burocrazia" and "democrazia" named the CRA,
+        # "adora" DORA and "scraping" the CRA.
+        assert detect_frameworks_in_query(question) == []
+
+    def test_the_same_names_as_whole_words_count(self):
+        assert detect_frameworks_in_query("La burocrazia del CRA") == ["CRA"]
+        assert detect_frameworks_in_query("Chi adora il DORA?") == ["DORA"]
+
+    @pytest.mark.parametrize(
+        "question, framework",
+        [
+            ("Cosa prevede l'AI Act?", "AI_ACT"),
+            ("Obblighi dell'AI-Act per i deployer", "AI_ACT"),
+            ("Il Regolamento IA si applica alle PMI?", "AI_ACT"),
+            ("Cosa dice il regolamento sull’IA?", "AI_ACT"),
+            ("Il DORA si applica agli intermediari?", "DORA"),
+            ("La direttiva NIS 2 e i soggetti importanti", "NIS2"),
+            ("NIS-2: termini di notifica", "NIS2"),
+            ("NIS2 incident reporting", "NIS2"),
+            ("Le RGPD s'applique-t-il ?", "GDPR"),
+            ("Il GDPR e i cookie", "GDPR"),
+            ("CS3D scope after Omnibus I", "CSDDD"),
+            ("Il regolamento sulla ciberresilienza", "CRA"),
+        ],
+    )
+    def test_known_names_and_spellings(self, question, framework):
+        assert detect_frameworks_in_query(question) == [framework]
+
+    def test_accents_and_apostrophes_do_not_matter(self):
+        for spelling in (
+            "rendicontazione di sostenibilità",
+            "rendicontazione di sostenibilita",
+            "rendicontazione di sostenibilita'",
+            "RENDICONTAZIONE DI SOSTENIBILITÀ",
+        ):
+            assert detect_frameworks_in_query(f"Chi deve fare la {spelling}?") == ["CSRD"]
+
+    @pytest.mark.parametrize(
+        "question, framework",
+        [
+            ("Come si protegge un dato personale?", "GDPR"),
+            ("Come si proteggono i dati personali?", "GDPR"),
+            ("Chi gestisce i rischi informatici?", "DORA"),
+            ("Chi gestisce il rischio informatico?", "DORA"),
+            ("È un'infrastruttura critica?", "NIS2"),
+            ("Un prodotto con elementi digitali va marcato?", "CRA"),
+            ("Le catene di fornitura extra UE", "CSDDD"),
+        ],
+    )
+    def test_singular_and_plural(self, question, framework):
+        assert detect_frameworks_in_query(question) == [framework]
+
+    def test_nis3_is_not_nis2(self):
+        assert detect_frameworks_in_query("Cosa cambia con la NIS3?") == []
+
+    @pytest.mark.parametrize(
+        "golden_id, question, expected",
+        [
+            (
+                "aiact-005-002",
+                "È consentito creare o ampliare una banca dati di riconoscimento facciale "
+                "tramite scraping non mirato di immagini dal web secondo l'AI Act?",
+                ["AI_ACT"],  # was ["AI_ACT", "CRA"]: "scraping" contains "cra"
+            ),
+            (
+                "refuse-009",
+                "What does the NIS3 Directive change compared to NIS2?",
+                ["NIS2"],
+            ),
+            (
+                "dora-005-001",
+                "Chi ha la responsabilità finale della gestione dei rischi informatici in "
+                "un'entità finanziaria secondo il DORA?",
+                ["DORA"],
+            ),
+            (
+                "cra-014-001",
+                "A chi deve notificare un fabbricante una vulnerabilità attivamente sfruttata "
+                "in un prodotto con elementi digitali ai sensi dell'art. 14 del Cyber "
+                "Resilience Act?",
+                ["CRA"],
+            ),
+            (
+                "gdpr-033-001",
+                "Entro quanto tempo il titolare deve notificare una violazione dei dati "
+                "personali all'autorità di controllo?",
+                ["GDPR"],
+            ),
+            (
+                "tax-003-002",
+                "Quale condizione relativa alle «garanzie minime di salvaguardia» deve "
+                "rispettare un'attività per essere ecosostenibile secondo il regolamento "
+                "Tassonomia?",
+                ["TAXONOMY"],
+            ),
+            (
+                "nis2-021-003",
+                "La direttiva NIS2 richiede l'uso dell'autenticazione a più fattori?",
+                ["NIS2"],
+            ),
+            (
+                "csddd-002-003",
+                "La CSDDD si applica a una società che supera le soglie dell'art. 2 per un "
+                "solo esercizio?",
+                ["CSDDD"],
+            ),
+            (
+                "csrd-19a-002",
+                "After Omnibus I, which size thresholds trigger individual sustainability "
+                "reporting under Article 19a(1) of the Accounting Directive?",
+                [],  # names the act by its common name only: no framework, as before
+            ),
+            (
+                "aiact-026-001",
+                "Per quanto tempo il deployer di un sistema di IA ad alto rischio deve "
+                "conservare i log generati automaticamente dal sistema?",
+                [],
+            ),
+        ],
+    )
+    def test_golden_v2_questions(self, golden_id, question, expected):
+        # Real questions of tests/validation/test_cases/golden_v2.jsonl: of the 101,
+        # only aiact-005-002 is detected differently from the substring matching.
+        assert detect_frameworks_in_query(question) == expected, golden_id
+
 
 # ─── _load_prompt (real prompts dir) ──────────────────────────────
 

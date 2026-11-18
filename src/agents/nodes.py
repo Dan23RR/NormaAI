@@ -8,6 +8,7 @@ avoiding event-loop blocking.
 import json
 import logging
 import re
+import unicodedata
 from pathlib import Path
 
 from typing_extensions import TypedDict
@@ -63,26 +64,37 @@ class AgentState(TypedDict, total=False):
     snc_audit: dict  # Same as snc_decision; alias for clarity in audit logs
 
 
+# Names, acronyms and common spellings of each framework. They are matched as
+# whole words (detect_frameworks_in_query), so the singular and the plural of a
+# phrase are both listed where Italian changes its words; accents, apostrophes,
+# hyphens and case do not matter.
 _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
     "CSRD": [
         "csrd",
         "corporate sustainability reporting",
         "sustainability reporting directive",
         "rendicontazione di sostenibilità",
+        "rendicontazione societaria di sostenibilità",
         "direttiva sulla sostenibilità",
     ],
     "CSDDD": [
         "csddd",
+        "cs3d",
         "corporate sustainability due diligence",
         "due diligence directive",
         "dovuta diligenza",
+        "dovere di diligenza delle imprese",
         "catena del valore",
+        "catene del valore",
         "catena di fornitura",
+        "catene di fornitura",
     ],
     "AI_ACT": [
         "ai act",
         "artificial intelligence act",
         "ai regulation",
+        "regolamento ia",
+        "regolamento sull'ia",
         "regolamento sull'intelligenza artificiale",
         "intelligenza artificiale",
     ],
@@ -92,14 +104,19 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
         "resilienza operativa digitale",
         "resilienza operativa",
         "rischio ict",
+        "rischi ict",
         "rischio informatico",
+        "rischi informatici",
     ],
     "NIS2": [
         "nis2",
-        "network information security",
         "nis 2",
+        "nis ii",
+        "network information security",
+        "network and information security",
         "sicurezza delle reti",
         "sicurezza informatica",
+        "infrastruttura critica",
         "infrastrutture critiche",
     ],
     "TAXONOMY": [
@@ -112,11 +129,14 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
     ],
     "GDPR": [
         "gdpr",
+        "rgpd",
         "general data protection",
         "data protection regulation",
         "protezione dati",
         "protezione dei dati",
+        "dato personale",
         "dati personali",
+        "personal data",
         "regolamento sulla privacy",
         "privacy",
     ],
@@ -124,7 +144,10 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
         "cra",
         "cyber resilience act",
         "cyber resilience",
+        "ciberresilienza",
+        "product with digital elements",
         "products with digital elements",
+        "prodotto con elementi digitali",
         "prodotti con elementi digitali",
         "resilienza informatica",
         "sbom",
@@ -135,13 +158,36 @@ _FRAMEWORK_KEYWORDS: dict[str, list[str]] = {
 }
 
 
+def _framework_words(text: str) -> str:
+    """``text`` as lower-case words without accents, one space between them.
+
+    "Regolamento sull'IA", "regolamento sull’ia" and "REGOLAMENTO SULL IA" all
+    become "regolamento sull ia"; "NIS-2" becomes "nis 2".
+    """
+    decomposed = unicodedata.normalize("NFKD", str(text or "").lower())
+    plain = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(re.findall(r"[0-9a-z]+", plain))
+
+
+_FRAMEWORK_ALIASES: dict[str, tuple[str, ...]] = {
+    fw: tuple(_framework_words(keyword) for keyword in keywords)
+    for fw, keywords in _FRAMEWORK_KEYWORDS.items()
+}
+
+
 def detect_frameworks_in_query(query: str) -> list[str]:
-    query_lower = query.lower()
-    detected = []
-    for fw, keywords in _FRAMEWORK_KEYWORDS.items():
-        if any(kw in query_lower for kw in keywords):
-            detected.append(fw)
-    return detected
+    """The frameworks a question names, in the order of _FRAMEWORK_KEYWORDS.
+
+    A name counts only as whole words: "burocrazia" does not name the CRA,
+    "adora" does not name DORA and "scraping" does not name the CRA either, as
+    they did while names were matched inside other words.
+    """
+    padded = f" {_framework_words(query)} "
+    return [
+        fw
+        for fw, aliases in _FRAMEWORK_ALIASES.items()
+        if any(f" {alias} " in padded for alias in aliases)
+    ]
 
 
 # ─── Shared Helpers ──────────────────────────────────────────────

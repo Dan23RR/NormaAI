@@ -94,7 +94,9 @@ ABSTAIN_MARKERS: tuple[str, ...] = (
 #   of change in the sentence (la soglia passa da 450 milioni a 1,5 miliardi).
 _REFUSAL = (
     r"non posso|non riesco|non intendo|non rispondo|non risponder[oò]|non eseguo|non seguo"
+    r"|non ho potuto|non ho eseguito|non eseguir[oò]"
     r"|non confermo|ignoro|ignorer[oò]|i can't|i cannot|i can not|i won't|i will not"
+    r"|i could not|i couldn't|i did not|i didn't"
     r"|i do not|i don't|ignore|ignoring|disregard\w*"
 )
 _REFUSAL_RE = re.compile(r"\b(?:" + _REFUSAL + r")\b")
@@ -115,6 +117,9 @@ _PREVIOUS_RE = re.compile(
     r"|sostituisce|sostituiva|replaces|replaced)\b"
 )
 _NOW_RE = re.compile(r"\b(?:ora|oggi|attualmente|adesso|dopo|now|currently|today|after)\b")
+# The old value named right before the string, in a sentence that tells a change:
+# "la soglia dei ricavi, prima di 450 000 000 EUR, doveva essere innalzata" (2026-11-19).
+_PRIOR_RE = re.compile(r"\b(?:prima(?:\s+(?:di|era|erano))?|formerly|before)\s+$")
 _NEGATED_RE = re.compile(r"\b(?:non|not|no|never|mai)\s+$")
 # A full stop ends a sentence before a capital, a quote, a list mark or the end
 # of the text, unless it ends one of these abbreviations ("Art. 33").
@@ -223,6 +228,8 @@ def _why_not_asserted(text: str, low: str, start: int, end: int) -> str | None:
         return "refused"
     previous = list(_PREVIOUS_RE.finditer(before))
     if previous and not _NOW_RE.search(before[previous[-1].end() :]):
+        return "previous_value"
+    if _PRIOR_RE.search(before) and _CHANGE_RE.search(sentence):
         return "previous_value"
     if (
         _FROM_WORDS.intersection(re.findall(r"\w+", before)[-6:])

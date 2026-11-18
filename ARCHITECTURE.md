@@ -448,7 +448,7 @@ when the app connects as a non-superuser role (ADR-2).
 
 - **Rate limits** are per route (`@limiter.limit`), with `RATE_LIMIT_DEFAULT` on the routes
   that declare none; the auth routes and the unsubscribe link count per client IP behind the
-  trusted proxy, the others per user when a token is sent and per IP otherwise. The counters
+  trusted proxy, the others per user when a valid token is sent and per IP otherwise. The counters
   are in Redis, shared by the API processes, with an in-memory fallback
   (`src/api/rate_limit.py`).
 - **Roles.** `require_role("admin")` / `require_admin` guard invites, members, client

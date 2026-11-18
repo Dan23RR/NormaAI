@@ -235,10 +235,10 @@ _IT_DATE = rf"(?:\d{{1,2}})[°º]?\s+(?:{_IT_MONTHS})\s+\d{{4}}"
 # The ways the date, the number and the year of an act are written.
 _IT_NUMBERED = (
     # "20.5.1970, n. 300"
-    r"(?P<d1>\d{1,2})[./](?P<m1>\d{1,2})[./](?P<y1>\d{4}|\d{2})\s*,?\s*n\.?\s*(?P<n1>\d{1,5})"
+    r"(?P<d1>\d{1,2})[./](?P<m1>\d{1,2})[./](?P<y1>\d{4}|\d{2})\s*(?:,\s*)?n\.?\s*(?P<n1>\d{1,5})"
     # "30 giugno 2003, n. 196"
     rf"|(?:del\s+|dell['’]\s?)?(?P<d2>\d{{1,2}})[°º]?\s+(?P<m2>{_IT_MONTHS})\s+(?P<y2>\d{{4}})"
-    r"\s*,?\s*n\.?\s*(?P<n2>\d{1,5})"
+    r"\s*(?:,\s*)?n\.?\s*(?P<n2>\d{1,5})"
     # "n. 196 del 2003", "n. 196 del 30 giugno 2003"
     r"|n\.?\s*(?P<n3>\d{1,5})\s+del(?:l['’])?\s*"
     rf"(?:(?P<d3>\d{{1,2}})[°º]?\s+(?P<m3>{_IT_MONTHS})\s+)?(?P<y3>\d{{4}})"
@@ -669,8 +669,11 @@ _NUM = rf"\d{{1,4}}(?!\d|\s*/)(?:[\s-]?(?:{_LATIN})\b|[a-z](?![a-z]))?"
 _SUBDIV = r"(?:\s*\(\s*\d{1,3}\s*\))?(?:\s*\(\s*[a-z]{1,2}\s*\))*"
 # A paragraph or comma: "1", "1-bis".
 _PAR = rf"\d{{1,3}}(?:[\s-]?(?:{_LATIN})\b)?"
+# A comma between spaces is "\s*(?:,\s*)?", never "\s*,?\s*": without a comma the
+# second form can split a run of spaces in as many ways as it is long, and a
+# document with a long run of spaces made the match take minutes.
 _PARA = (
-    r"(?:\s*,?\s*(?:"
+    r"(?:\s*(?:,\s*)?(?:"
     r"(?:paragrafi|paragrafo|parr\.|par\.|paragraphs|paragraph|para\.|commi|comma|co\.)"
     rf"\s*{_PAR}(?:\s*(?:,|e|ed|and|-|–)\s*{_PAR})*"
     # "primo comma", "commi primo e secondo": how the codes are cited.
@@ -678,7 +681,7 @@ _PARA = (
     rf"|(?:{_ORDINAL})(?:\s*(?:,|e|ed)\s*(?:{_ORDINAL}))*\s+comm[ai]\b"
     r"))?"
 )
-_POINT = r"(?:\s*,?\s*(?:lettera|lett\.|letter|point|punto)\s*[a-z0-9]{1,3}\)?)?"
+_POINT = r"(?:\s*(?:,\s*)?(?:lettera|lett\.|letter|point|punto)\s*[a-z0-9]{1,3}\)?)?"
 _ITEM = rf"{_NUM}{_SUBDIV}{_PARA}{_POINT}"
 _SEP = r"\s*(?:,|\be\b|\bed\b|\band\b|-|–)\s*"
 _ARTICLE_RE = re.compile(
@@ -842,8 +845,10 @@ def _references(text: str) -> list[Reference]:
 _ABBREVIATIONS = re.compile(
     r"\b(?:artt?|parr?|n|lett|co|cfr|es|ecc|d\.lgs|lgs|l|reg|dir|no|para)\.", re.IGNORECASE
 )
+# The spaces just inside the marks are part of the quote, stripped where it is
+# used: "«\s*...\s*»" could split a run of spaces in too many ways.
 _QUOTE_RE = re.compile(
-    r"«\s*(?P<a>[^«»\n]{20,1500}?)\s*»|“(?P<b>[^“”\n]{20,1500}?)”|\"(?P<c>[^\"\n]{20,1500}?)\""
+    r"«(?P<a>[^«»\n]{20,1500}?)»|“(?P<b>[^“”\n]{20,1500}?)”|\"(?P<c>[^\"\n]{20,1500}?)\""
 )
 _AFTER_WINDOW = 90
 _BEFORE_WINDOW = 40
@@ -865,7 +870,7 @@ _AMENDING_BEFORE_RE = re.compile(
 # Words right after an act that say it amends another: "Regulation (EU) 2026/1744
 # amending", "(the Digital Omnibus on AI), which amended", "che modifica".
 _AMENDING_AFTER_RE = re.compile(
-    r"\s*(?:\([^()\n]{0,80}\)\s*)?,?\s*(?:(?:which|that)\s+(?:has\s+)?(?:amended|amends)\b"
+    r"\s*(?:\([^()\n]{0,80}\)\s*)?(?:,\s*)?(?:(?:which|that)\s+(?:has\s+)?(?:amended|amends)\b"
     r"|amending\b|amends\b|che\s+(?:ha\s+)?modific|recante\s+modific|di\s+modifica\b)",
     re.IGNORECASE,
 )

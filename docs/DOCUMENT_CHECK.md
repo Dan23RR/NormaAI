@@ -142,8 +142,10 @@ non si può fermare, quindi è il lavoro stesso a dover finire presto.
   lettore zip non dà mai più byte di quelli dichiarati e rifiuta una parte che non torna.
 - **Lettura dei riferimenti.** Il tempo cresce con la lunghezza del testo, non con il suo
   quadrato. Un testo di 400.000 caratteri fatto per essere lento (migliaia di atti con nomi
-  definiti, riferimenti, citazioni e atti modificativi sulla stessa riga) si legge in uno o
-  due secondi; prima ne servivano da 40 a più di 150. Un nome definito («di seguito
+  definiti, riferimenti, citazioni e atti modificativi sulla stessa riga, oppure lunghe file
+  di spazi dopo un riferimento o dopo le virgolette che aprono una citazione) si legge in uno o
+  due secondi; prima ne servivano da 40 secondi a più di 19 minuti, e 20 KB fatti di spazi
+  bastavano per 55 secondi. Un nome definito («di seguito
   "Regolamento"») indica l'atto della sua ultima definizione che lo precede.
   `tests/test_document_check_scale.py` lo controlla in CI con un limite di 15 secondi per
   testo.

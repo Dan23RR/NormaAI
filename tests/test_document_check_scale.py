@@ -61,7 +61,31 @@ def _definitions(size: int = SIZE) -> str:
     return "".join(parts)[:size]
 
 
+def _long_blanks(size: int = SIZE) -> str:
+    """Words that start a reference, an act or a quote, each followed by a long run of blanks.
+
+    Patterns with two runs of spaces around an optional comma, or spaces inside
+    quotation marks, could split such a run in as many ways as it is long: 8,000
+    spaces after "art. 5" took 23 s, 4,000 after "«" took 50 s.
+    """
+    starts = [
+        "art. 5",
+        "Article 5(1)",
+        "«",
+        "d.lgs. 30 giugno 2003",
+        "legge 20.5.1970",
+        "GDPR",
+        "Art. 5 - Durata",
+        "art. 12 del presente",
+    ]
+    blank = (size - sum(len(s) + 1 for s in starts)) // len(starts)
+    runs = [" " * blank, "\n \t" * (blank // 3), " " * blank, " ,  " * (blank // 4)]
+    text = "".join(f"{s}{runs[i % len(runs)]}x" for i, s in enumerate(starts))
+    return text + " " * (size - len(text))
+
+
 ADVERSARIAL = {
+    "long runs of blanks": _long_blanks,
     "many definitions": _definitions,
     "one name defined again and again": lambda: _repeat(
         "Il Regolamento (UE) 2016/679 (di seguito «Regolamento») vale; art. 5 del Regolamento. "

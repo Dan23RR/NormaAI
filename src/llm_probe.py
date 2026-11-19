@@ -27,7 +27,6 @@ answer. Under APP_ENV=testing nothing is sent.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -78,9 +77,11 @@ _inflight: dict[tuple[str, ...], asyncio.Task[ProbeResult]] = {}
 
 
 def _cache_key(settings: Any) -> tuple[str, ...]:
-    # A digest, not the key: the cache must not keep a second copy of it.
-    digest = hashlib.sha256(str(settings.active_api_key).encode()).hexdigest()[:16]
-    return (str(settings.llm_provider), str(settings.active_model), _base_url(settings), digest)
+    # The key itself, by reference: the cache lives in this process only, next to
+    # the settings that hold it, and is never logged or returned. A new key is a
+    # new entry. (A fast digest of it would read as a weak password hash.)
+    key = str(settings.active_api_key)
+    return (str(settings.llm_provider), str(settings.active_model), _base_url(settings), key)
 
 
 def _base_url(settings: Any) -> str:

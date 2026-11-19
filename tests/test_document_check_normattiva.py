@@ -1176,7 +1176,7 @@ class TestItalianReport:
         assert "non hanno carattere di ufficialità" in html
         assert "prevale in caso di discordanza" in html
         assert "https://creativecommons.org/licenses/by/4.0/deed.it" in html
-        assert "https://dati.normattiva.it/" in html
+        assert re.search(r'href="https://dati\.normattiva\.it/"', html)
         assert "2 disposizioni registrate" in html
 
     def test_summary(self, source):

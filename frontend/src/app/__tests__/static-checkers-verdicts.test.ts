@@ -14,9 +14,10 @@ const PUBLIC = join(__dirname, '..', '..', '..', 'public')
 function mount(name: string): void {
   const html = readFileSync(join(PUBLIC, name), 'utf8')
   const body = html.slice(html.indexOf('<body>') + '<body>'.length, html.indexOf('</body>'))
-  const scripts = [...body.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+  // Any case and spacing of the tags, as an HTML parser reads them.
+  const scripts = [...body.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((m) => m[1])
   expect(scripts).toHaveLength(1)
-  document.body.innerHTML = body.replace(/<script>[\s\S]*?<\/script>/g, '')
+  document.body.innerHTML = body.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
   new Function(scripts[0])()
 }
 

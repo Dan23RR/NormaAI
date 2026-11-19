@@ -155,6 +155,7 @@ def check_page(check: str, url: str, marker: str) -> Result:
 def cert_days_left(host: str, port: int = 443, timeout: float = 20.0) -> float:
     """Days until the certificate the host presents expires (it must be valid)."""
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     with (
         socket.create_connection((host, port), timeout=timeout) as raw,
         context.wrap_socket(raw, server_hostname=host) as tls,

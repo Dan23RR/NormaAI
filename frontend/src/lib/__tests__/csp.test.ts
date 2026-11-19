@@ -25,8 +25,9 @@ function inlineScriptHashes(): Map<string, string[]> {
   for (const name of readdirSync(PUBLIC).filter((file) => file.endsWith('.html'))) {
     // The HTML parser reads CRLF as LF, and git stores these files with LF.
     const html = readFileSync(join(PUBLIC, name), 'utf8').replace(/\r\n?/g, '\n')
-    const hashes = [...html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)]
-      .filter(([, attributes = '']) => !/\ssrc=/.test(attributes))
+    // Any case and spacing of the tags, as an HTML parser reads them.
+    const hashes = [...html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script\s*>/gi)]
+      .filter(([, attributes = '']) => !/\ssrc=/i.test(attributes))
       .map(([, , body]) => `'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`)
     byPage.set(name, hashes)
   }

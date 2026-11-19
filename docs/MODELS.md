@@ -290,6 +290,46 @@ current checks. Every run above, re-scored (in brackets, the content checks of t
   up to that lowest score keeps every answerable question; none of the reports above
   carries the scores.
 
+### 2.5 Measured: golden v2 on the pre-launch branch, 2026-11-19
+
+Branch `fix/prelaunch-2026-11-18`, same model and retrieval as on 2026-11-18 (Claude Haiku
+5.5, multilingual-e5-large, `RERANKER_SEARCH_DEPTH=45`, no reranker). What changed for
+these numbers: the verifier (every part between omissions found on word boundaries and
+close together, a quote found in another act, article or paragraph no longer verified, a
+different letter or ending no longer forgiven), the labels of the sources (an act that is
+not a family's principal one is labelled with its CELEX, `[32026R1744, Art. 1]`), the
+request language in the prompt, and the checker of §2.4. Three runs, the cache emptied
+before each:
+
+| Run | "Passed" | Answerable: article cited | Answerable: content checks passed | **Answerable: both** | Abstention questions: abstained, nothing forbidden said | Verified citations (all answers; mean of the answers) |
+|---|---|---|---|---|---|---|
+| 1, 00:04 | 99 / 101 | 88 / 90 | 87 / 90 | **86 / 90** | 10 / 11 | 424 / 436; 97.6 % |
+| 2, 00:35, the verifier also reads EUR-Lex consolidation markers and a "CELEX" prefix | 93 / 101 | 82 / 90 | 81 / 90 | **77 / 90** | 11 / 11 | 435 / 439; 99.0 % |
+| 3, 01:04, a reply without an answer gets a second attempt | 97 / 101 | 86 / 90 | 86 / 90 | **85 / 90** | 11 / 11 | 417 / 420; 99.3 % |
+
+- **The spread is the model's.** The retrieval is the same in the three runs (the best
+  dense score of every question is identical), yet "Answerable: both" goes from 77 to 86:
+  judge a change on several runs, not on one.
+- **Verified citations.** Run 1 left 12 citations unverified; 9 were right and failed on
+  the markers EUR-Lex writes inside consolidated texts and on a framework written as
+  "CELEX 32024R2847" (fixed before run 2). What is left (3 in run 3, 4 in run 2) are
+  quotes the model changed or shortened without marking the omission (Art. 50(2) AI Act,
+  Art. 17(3) GDPR), a quote of NIS2 Art. 23(4) cited as 23(5), a quote of the consolidated
+  CSDDD cited as the amending act: the verifier is right, and the 99.5 % of the gate of
+  month 1 (§2.3) now depends on how the model quotes.
+- **Run 2** also served one empty answer: a reply that parsed to a JSON object without the
+  answer field (gdpr-035-003), cached for an hour. Since run 3 such a reply gets the second
+  attempt the replies in prose get, and an error when the second has no answer either;
+  the cache refuses a Q&A result without an answer. In run 3 four replies needed the
+  second attempt, all recovered.
+- **Relevance threshold, measured.** The lowest `best_dense_score` of the 90 answerable
+  questions is 0.844 (inj-004); two abstention questions fall below it (refuse-009 0.825,
+  refuse-005 0.829), and so do four off-topic questions asked by hand (a recipe, the
+  capital of Australia, a bicycle tyre, a train ticket: 0.825 to 0.839). The gap between
+  the highest off-topic score and the lowest answerable one is 0.005: too thin for a
+  default. `QA_MIN_DENSE_SCORE` stays off; on those questions the model already abstains
+  without citations, and the answer carries the caveat for answers that cite nothing.
+
 ## 3. Sparse vectors
 
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
@@ -589,3 +629,5 @@ with `LLM_PROVIDER=mistral`, the result in a row of the table above, and the sam
 | 2026-11-03 | Sparse terms split on punctuation and lookup of the articles a question names, retrieval only: e5 83 → 89 / 90, mpnet 80 → 85 (§3.1, §3.2); the retrieval-only measure counts the expected paragraph; golden v2 end to end 95 and 96 / 101 with e5 (§2.3); licences and training data of two permissive rerankers, MS MARCO in e5's fine-tuning data too (§4, §4.2) |
 | 2026-11-09 | Golden v2 end to end with the final retrieval and a second attempt for replies in prose: 96 / 101, citations verified 99.79 %; the gate of month 1 is met (§2.3) |
 | 2026-11-11 | Provider `mistral` added: Mistral Small 4 on Mistral's EU regional endpoint, through the OpenAI-compatible client; not measured, not the default (§5.1) |
+| 2026-11-18 | Golden v2 live on the candidate branch with the word-for-word verifier of 2026-11-11: 98 / 101, citations verified 98.4 %; each measure reported on its own and every run re-scored, "96 / 101" of 2026-11-09 is 81 / 90 answerable questions right on both counts (§2.4) |
+| 2026-11-19 | Golden v2 live on the pre-launch branch, three runs: 86, 77 and 85 / 90 answerable questions right on both counts; citations verified 97.6, 99.0 and 99.3 % with the stricter verifier (the 99.79 % of 2026-11-09 was measured with the old rules); a reply without an answer gets a second attempt; relevance threshold measured and left off (§2.5) |

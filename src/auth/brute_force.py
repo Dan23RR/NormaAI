@@ -25,9 +25,12 @@ def _loggable(value: str, limit: int) -> str:
     """``value`` cut to ``limit`` characters, with anything not printable replaced.
 
     The email and the client address come from the request: a line break in
-    them must not forge a log line.
+    them must not forge a log line. The line breaks are already replaced with the
+    other unprintable characters; removing them again is the form log scanners
+    recognise.
     """
-    return "".join(ch if ch.isprintable() else "?" for ch in value[:limit])
+    cut = "".join(ch if ch.isprintable() else "?" for ch in value[:limit])
+    return cut.replace("\r\n", "").replace("\n", "").replace("\r", "")
 
 
 class BruteForceProtection:

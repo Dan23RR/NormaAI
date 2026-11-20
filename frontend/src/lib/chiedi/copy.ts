@@ -1,27 +1,33 @@
-import type { Source } from '@/lib/sources'
 import { formatCorpusDate } from '@/i18n/format'
 import type { TextContext } from '@/i18n/types'
 import { answerToPlainText } from './answer-text'
+import { withActNames, type ChiediSource } from './sources'
 
 /** The answer plus its numbered sources, as plain text for the clipboard. */
 export function buildCopyText(
   opts: {
     answer: string
-    sources: Source[]
+    sources: ChiediSource[]
     corpusAsOf?: string
     demo?: boolean
   },
   ctx: TextContext,
 ): string {
   const { t } = ctx
-  const lines: string[] = [answerToPlainText(opts.answer)]
+  const lines: string[] = [withActNames(answerToPlainText(opts.answer), t)]
   if (opts.sources.length) {
     lines.push('', t('chiedi.copy.sources'))
     for (const s of opts.sources) {
       let line = `${s.index}. ${s.act}`
       if (s.article) line += `, ${s.article}`
-      if (s.quote) line += `: «${s.quote}»`
-      line += ` (${t(`chiedi.copy.status.${s.status}`)})`
+      // A quote that differs from the official text travels with the official wording next to it;
+      // a quote found elsewhere, with the place where it is.
+      const quoted = s.quote || s.near?.quoted || s.elsewhere?.quote
+      if (quoted) line += `: «${quoted}»`
+      const status = t(`chiedi.copy.status.${s.status}`)
+      if (s.near) line += ` (${status}; ${t('chiedi.copy.near', { official: s.near.official })})`
+      else if (s.elsewhere) line += ` (${status}; ${t('chiedi.elsewhere.copy', { location: s.elsewhere.location })})`
+      else line += ` (${status})`
       if (s.url) line += ` ${s.url}`
       lines.push(line)
     }

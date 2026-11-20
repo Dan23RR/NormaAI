@@ -20,7 +20,7 @@ export function DemoSection() {
 
   return (
     <SettingsSection id="demo" title={t('title')} description={t('description')}>
-      <div className="rounded-lg border border-mark-deep/40 bg-mark/20 p-5">
+      <div className="rounded-lg border border-warn/30 bg-warn/10 p-5">
         <p className="max-w-prose text-body text-ink">{t('body')}</p>
         <Button className="mt-4" variant="secondary" onClick={leave} iconLeft={<LogOut className="h-4 w-4" aria-hidden="true" />}>
           {t('leave')}

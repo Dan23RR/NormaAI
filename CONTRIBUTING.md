@@ -5,7 +5,7 @@ Thank you for your interest in contributing to NormaAI! This document provides g
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/normaai.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/NormaAI.git`
 3. Create a feature branch: `git checkout -b feature/your-feature-name`
 4. Set up the development environment (see README.md)
 
@@ -18,7 +18,9 @@ poetry install
 # Install frontend dependencies
 cd frontend && npm ci && cd ..
 
-# Start infrastructure
+# Start infrastructure (set POSTGRES_PASSWORD in .env first; locally
+# docker-compose.override.yml publishes Postgres on 5433, Redis on 6380 and
+# Qdrant on 6335: align .env with those ports)
 docker compose up -d postgres qdrant redis
 
 # Generate JWT keys
@@ -42,7 +44,7 @@ uvicorn src.api.main:app --reload
 
 - **Formatter:** ruff format (line length 100)
 - **Linter:** ruff check
-- **Type checker:** mypy (strict mode)
+- **Type checker:** mypy (`strict = true` in `pyproject.toml`; CI blocks only on the ten modules of its strict gate, see `.github/workflows/ci.yml`)
 - **Docstrings:** Required for all public modules, classes, and functions
 - **Tests:** pytest with async support
 
@@ -56,7 +58,7 @@ pytest tests/ -v --cov=src
 
 ### TypeScript (Frontend)
 
-- **Framework:** Next.js 14 with App Router
+- **Framework:** Next.js 16 with App Router, next-intl (Italian and English)
 - **Style:** Tailwind CSS
 - **Type checking:** strict TypeScript
 - **Tests:** vitest
@@ -95,7 +97,7 @@ We welcome contributions in these areas:
 - **Frontend:** Dashboard components, visualizations, UX improvements
 - **Testing:** Expanding test coverage, adding integration tests
 - **Documentation:** API docs, usage examples, regulatory guides
-- **Localization:** Improving i18n support (currently EN, IT, DE, FR)
+- **Localization:** Improving i18n support (currently Italian and English; every key of `frontend/messages/it.json` must exist in `en.json`)
 - **Performance:** Caching, query optimization, batch processing
 
 ## Reporting Issues

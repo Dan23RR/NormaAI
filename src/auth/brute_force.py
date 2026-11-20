@@ -21,6 +21,18 @@ KEY_PREFIX = "normaai:bruteforce:"
 _MEMORY_MAX_KEYS = 10_000
 
 
+def _loggable(value: str, limit: int) -> str:
+    """``value`` cut to ``limit`` characters, with anything not printable replaced.
+
+    The email and the client address come from the request: a line break in
+    them must not forge a log line. The line breaks are already replaced with the
+    other unprintable characters; removing them again is the form log scanners
+    recognise.
+    """
+    cut = "".join(ch if ch.isprintable() else "?" for ch in value[:limit])
+    return cut.replace("\r\n", "").replace("\n", "").replace("\r", "")
+
+
 class BruteForceProtection:
     """Redis-backed brute-force protection for login.
 
@@ -92,8 +104,8 @@ class BruteForceProtection:
                 logger.warning(
                     "brute_force_lockout",
                     extra={
-                        "email": email[:3] + "***",
-                        "ip": ip,
+                        "email": _loggable(email, 3) + "***",
+                        "ip": _loggable(ip, 64),
                         "remaining_seconds": ttl,
                     },
                 )

@@ -14,6 +14,11 @@ function StatusIcon({ status, className }: { status: SourceStatus; className?: s
  * under the highlighter, the act and article underneath, the verification
  * status and the link to the official text. The passage keeps the language
  * it was quoted in (`lang`), whatever the interface language.
+ *
+ * `status` has no default: a passage is shown as verified only when the
+ * caller passes the outcome of a check that really ran (a citation the
+ * verifier found, or an entry of src/lib/verification with its date).
+ * Without a status the quote is shown with no claim about it.
  */
 export function LawQuote({
   quote,
@@ -23,7 +28,7 @@ export function LawQuote({
   article,
   celex,
   url,
-  status = 'verified',
+  status,
   verifiedAt,
   origin,
   lang = 'it',
@@ -37,8 +42,9 @@ export function LawQuote({
   article?: string
   celex?: string
   url?: string
+  /** Outcome of a real check; leave it out when none ran. */
   status?: SourceStatus
-  /** Already formatted for the reader, e.g. "23 ottobre 2026". */
+  /** Date of that check, already formatted for the reader, e.g. "23 ottobre 2026". */
   verifiedAt?: string
   origin?: string
   /** Language of the quoted passage. */
@@ -46,7 +52,7 @@ export function LawQuote({
   className?: string
 }) {
   const t = useTranslations('ui')
-  const long = t(`sourceStatus.${status}.long`)
+  const long = status ? t(`sourceStatus.${status}.long`) : undefined
   return (
     <figure className={cn('border-l-2 border-mark-deep pl-4', className)}>
       <blockquote className="font-serif text-read leading-relaxed text-ink" lang={lang}>
@@ -60,12 +66,14 @@ export function LawQuote({
           {article && <span>, {article}</span>}
         </span>
         {celex && <span className="tabular text-ink-3">{t('celex', { celex })}</span>}
-        <span className="inline-flex items-center gap-1" title={verifiedAt ? t('statusOn', { status: long, date: verifiedAt }) : long}>
-          <StatusIcon status={status} />
-          <span className={cn(status === 'verified' && 'text-ok', status === 'unverified' && 'text-warn')}>
-            {t(`sourceStatus.${status}.short`)}
+        {status && long && (
+          <span className="inline-flex items-center gap-1" title={verifiedAt ? t('statusOn', { status: long, date: verifiedAt }) : long}>
+            <StatusIcon status={status} />
+            <span className={cn(status === 'verified' && 'text-ok', status === 'unverified' && 'text-warn')}>
+              {t(`sourceStatus.${status}.short`)}
+            </span>
           </span>
-        </span>
+        )}
         {url && (
           <a
             href={url}

@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2003;196~art2ter!vig=2018-09-18",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO LEGISLATIVO 30 giugno 2003, n. 196",
+    "sottoTitolo": "Codice in materia di protezione dei dati personali.\r\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_2-ter\">Art. 2-ter</h2>\n        <span class=\"art-just-text-akn\"> Art. 2 ter\n            <br>\n             NON ANCORA ESISTENTE O VIGENTE</span>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO LEGISLATIVO",
+    "tipoProvvedimentoCodice": "PLL",
+    "annoProvvedimento": 2003,
+    "meseProvvedimento": 6,
+    "giornoProvvedimento": 30,
+    "numeroProvvedimento": 196,
+    "tipoSupplementoCode": "SO",
+    "numeroSupplemento": 123,
+    "annoGU": 2003,
+    "meseGU": 7,
+    "giornoGU": 29,
+    "numeroGU": 174,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "0",
+    "articoloDataFineVigenza": "20180918",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

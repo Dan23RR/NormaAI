@@ -37,17 +37,27 @@ Consequences to accept before the force-push:
 
 ## 1. Standard deploy
 
+`.github/workflows/deploy.yml` does it after CI succeeded on a commit of `main`: it builds
+that commit's image in GitHub, pushes it to GHCR, and runs `scripts/deploy.sh` on the server
+as the non-root user `deploy` (pull by digest, migrations as the owner, the app recreated
+alone, healthcheck, the previous image back on failure). By hand, on the server:
+
 ```bash
-# on the server, from /opt/normaai  (service is `app`, not `api`)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# as the deploy user, never root (service is `app`, not `api`)
+sudo -u deploy -H bash /opt/normaai/scripts/deploy.sh <commit of main> build
 docker exec normaai-app curl -fsS http://localhost:8000/health   # expect {"status":"ok",...}
 ```
 
+The step by step, with the `COMPOSE_FILE` of the server's `.env` (base, prod and RLS):
+
+```bash
+docker compose run --rm migrate          # alembic upgrade head, as the normaai owner
+docker compose up -d --no-deps app       # the app alone, as normaai_app
+```
+
 Notes:
-- **alembic in the image**: the Dockerfile now `COPY`s `alembic/` + `alembic.ini`,
-  so `run --rm app alembic upgrade head` works after a rebuild. (Before that fix it
+- **alembic in the image**: the Dockerfile `COPY`s `alembic/` + `alembic.ini`, so the
+  `migrate` service (the app's image with `alembic upgrade head`) works. (Before that fix it
   failed with *"No 'script_location' key"* because the config wasn't in the image.)
 - **Alembic is the only source of the schema** (since migration 007):
   `scripts/init_db.sql` now creates just the extensions, `alembic upgrade head`
@@ -55,9 +65,10 @@ Notes:
   and migrations cannot drift. A database born from the old `init_db.sql` and
   `alembic stamp`ed is reconciled by 007 on its next `alembic upgrade head`
   (missing tables, renamed columns, RLS policies) - never `stamp head` again.
-  Migrations must run as the `normaai` owner (`run --rm app`, base compose
-  files): `exec app` under the RLS overlay connects as `normaai_app`, which
-  cannot ALTER tables. `.github/workflows/deploy.yml` does all of this on push.
+  Migrations must run as the `normaai` owner: the one-shot `migrate` service of
+  `docker-compose.prod.yml` is the only container that receives the owner's
+  password; the app connects as `normaai_app`, which cannot ALTER tables, and its
+  `POSTGRES_PASSWORD` is blanked. `scripts/deploy.sh` runs it at every deploy.
 - **health from the host**: the prod overlay removes the app's host port (Caddy
   fronts it), so `curl localhost:8000` from the host fails by design - probe via
   `docker exec normaai-app curl ...` or through Caddy (`https://api.normaai.org`).
@@ -110,12 +121,16 @@ two real customers on the instance before this.
 
 ## 3. Other readiness items
 
-- **Fresh-content guarantee (#3)**: `superseded_by` is written only at seed and
-  never updated, and the acquisition scheduler is OFF by default
-  (`ACQUISITION_SCHEDULER_ENABLED=false`). So the corpus is frozen at last seed
-  and abrogated law can be served as current. Until amendment-detection is built,
-  either keep the "as-of <seed date>" caveat visible in the UI/PDF, or enable the
-  scheduler and accept best-effort refresh.
+- **Fresh-content guarantee (#3)**: `superseded_by` is written by the seed and
+  by `--action update` (its in-force re-check), and the acquisition scheduler is OFF
+  by default (`ACQUISITION_SCHEDULER_ENABLED=false`). So the corpus is as fresh as
+  the last seed or update, and its date (the one the collection records, shown with
+  every answer and PDF) says which. Scheduled work runs from cron on the server, not
+  from the in-process scheduler, which stays off: `python -m src.pipeline --action check-freshness`
+  every night compares the indexed consolidated versions with CELLAR, and
+  `python -m src.pipeline --action update` refreshes the corpus by hand: the tracked
+  acts in every corpus language, only the texts CELLAR changed, then the corpus date
+  the API shows (DEPLOY_CHECKLIST.md step 5, RUNBOOK.md section 10).
 - **DNS**: point `normaai.org` + `api.normaai.org` (Cloudflare DNS, proxy OFF so
   Vercel/the server can issue TLS). The funnel + backend don't resolve until then.
 - **Secrets**: rotate any key that ever sat in a shared `.env` (Resend,

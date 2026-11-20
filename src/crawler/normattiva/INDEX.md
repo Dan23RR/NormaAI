@@ -1,46 +1,23 @@
-# Normattiva Open Data Crawler - Module Index
+# Italian legislative URNs - Module Index
 
 ## Overview
 
-This package provides a production-grade async Python client for the Italian Normattiva Open Data API, with comprehensive URN validation, citation extraction, and data parsing capabilities.
+This package holds `URNValidator`: validation, normalization, parsing and extraction of Italian and EU legislative URNs (`urn:nir:...`) from free text. The document check uses it (`src/document_check/extract.py`).
+
+It used to hold an async client for the Normattiva Open Data API as well. Its endpoints (`www.normattiva.it/opendata/api/...`) answered HTTP 409 with a page of the Poligrafico's protection systems (2026-11-11), so the client fed no Italian text into the Q&A corpus and returned an error for every URN that CoVe asked it about; it was removed in November 2026 (git keeps it in history). The document check reads Italian law through the newer open data API in `src/document_check/normattiva.py`.
 
 ## Module Structure
 
 ```
 src/crawler/normattiva/
-├── __init__.py              # Package exports (clean public API)
-├── client.py                # Main API client (599 lines)
-├── urn_validator.py         # URN handling & extraction (397 lines)
+├── __init__.py              # exports URNValidator, URNComponents
+├── urn_validator.py         # URN handling & extraction
 └── INDEX.md                 # This file
 ```
 
-## Core Classes
+## URNValidator (urn_validator.py)
 
-### NormattivaOpenDataClient (client.py)
-
-Async HTTP client for the Normattiva Open Data API.
-
-**Main Methods:**
-- `async search(query, tipo_atto, anno, page, limit)` - Search acts
-- `async get_atto(tipo, anno, numero, articolo)` - Get full text
-- `async get_multivigenza(urn, data_vigenza)` - Version history
-- `async download_bulk_xml(tipo_atto, anno_from, anno_to)` - Bulk downloads
-- `async validate_urn(urn)` - Validate URN existence
-- `async close()` - Close connection
-
-**Configuration:**
-```python
-client = NormattivaOpenDataClient(
-    base_url="https://www.normattiva.it/opendata",
-    rate_limit_delay=1.0,  # 1 second between requests
-    timeout=30.0,  # 30 second timeout
-    max_retries=3,  # 3 retry attempts
-)
-```
-
-### URNValidator (urn_validator.py)
-
-Static URN validation, parsing, and extraction utilities.
+Static URN validation, parsing, and extraction utilities. Pure functions: no network.
 
 **Main Methods:**
 - `validate_format(urn: str) -> bool` - Check URN format
@@ -50,79 +27,8 @@ Static URN validation, parsing, and extraction utilities.
 - `build_url(urn: str) -> str` - Build Normattiva web URL
 - `get_citation_format(urn: str) -> str` - Generate readable citation
 - `extract_and_validate(text: str) -> dict` - Extract & validate URNs
-- `async verify_remote(urn, client)` - Verify against API
 
-## Data Models
-
-### From client.py
-
-1. **Articolo** - Single article in legislative text
-   - numero, rubrica, testo, commi
-
-2. **NormativeActSummary** - Search result summary
-   - urn, tipo, anno, numero, titolo, data_pubblicazione, in_vigore
-
-3. **SearchResult** - Paginated search response
-   - total, page, results
-
-4. **NormativeText** - Full legislative text
-   - urn, tipo, anno, numero, titolo, testo_html, testo_plain, articoli, data_vigenza, url
-
-5. **Versione** - Single version in history
-   - data_inizio, data_fine, testo, modifiche
-
-6. **MultivigenzaResult** - Version history wrapper
-   - urn, versioni
-
-7. **NormativeActXML** - Parsed XML document
-   - urn, xml_content, parsed_articles
-
-8. **URNValidationResult** - Validation response
-   - urn, exists, is_in_force, tipo, anno, numero, titolo, url
-
-### From urn_validator.py
-
-1. **URNComponents** - Parsed URN parts
-   - autorita, tipo, data, numero, articolo
-
-## Usage Patterns
-
-### Pattern 1: Search and Retrieve
-
-```python
-async with NormattivaOpenDataClient() as client:
-    # Search
-    results = await client.search(query="energy", anno=2024)
-
-    # Get first result's full text
-    if results.results:
-        act = results.results[0]
-        text = await client.get_atto(tipo=act.tipo, anno=act.anno, numero=act.numero)
-```
-
-### Pattern 2: URN Extraction and Validation
-
-```python
-# Extract URNs from text
-text = "Law n. 123 del 2024 modifies decree 138/2023"
-urns = URNValidator.from_citation(text)
-
-# Build URLs
-for urn in urns:
-    url = URNValidator.build_url(urn)
-    print(f"Read: {url}")
-
-# Validate with API
-valid = await URNValidator.verify_remote(urn, client)
-```
-
-### Pattern 3: Concurrent Operations
-
-```python
-async with NormattivaOpenDataClient() as client:
-    tasks = [client.search(query=q) for q in ["tax", "health", "environment"]]
-    results = await asyncio.gather(*tasks)
-```
+**URNComponents** - Parsed URN parts: autorita, tipo, data, numero, articolo.
 
 ## Supported Legislative Types
 
@@ -151,63 +57,6 @@ async with NormattivaOpenDataClient() as client:
 | EU regulation | Regolamento (UE) 2024/1689 | urn:nir:unione.europea:regolamento:2024;1689 |
 | EU directive | Direttiva (UE) 2024/1689 | urn:nir:unione.europea:direttiva:2024;1689 |
 
-## Error Handling
-
-All methods implement comprehensive error handling:
-
-- HTTP errors are caught and logged
-- Returns empty/None results on failure
-- Never throws exceptions to caller
-- All errors logged via Python logging module
-
-Enable logging:
-```python
-import logging
-
-logging.basicConfig(level=logging.INFO)
-```
-
-## Performance Characteristics
-
-- **Rate limiting:** 1 second default between requests
-- **Retry logic:** 3 attempts with exponential backoff (1s, 2s, 4s)
-- **Timeout:** 30 seconds default per request
-- **Async:** Supports concurrent operations via asyncio.gather()
-- **Memory:** Efficient XML parsing with streaming
-
-## Dependencies
-
-- Python >= 3.10
-- pydantic >= 2.0
-- httpx >= 0.25.0
-- lxml (for XML parsing)
-
-## API Endpoints
-
-All requests go to: https://www.normattiva.it/opendata/
-
-Implemented endpoints:
-- GET /api/ricerca - Search
-- GET /api/atto/{tipo}/{anno}/{numero} - Full text
-- GET /api/multivigenza/{urn} - Version history
-- GET /api/bulk - Bulk XML download
-- GET /api/validate - URN validation
-
 ## Testing
 
-Manual validation checks:
-```bash
-python3 -m py_compile client.py urn_validator.py __init__.py
-```
-
-See IMPLEMENTATION_SUMMARY.txt for test recommendations.
-
-## Documentation
-
-- NORMATTIVA_README.md - Complete usage guide
-- DELIVERY_SUMMARY.txt - Implementation overview
-- IMPLEMENTATION_SUMMARY.txt - Technical details
-
-## License
-
-Part of NormaAI - Italian/EU Regulatory Intelligence Platform
+`tests/test_urn_validator.py`; `urn_validator.py` is also in the blocking mypy gate of CI.

@@ -3,7 +3,12 @@
 > Obiettivo: `api.normaai.org` live con TLS, in ~1 ora. Prerequisiti: account
 > Hetzner Cloud, dominio `normaai.org` su Cloudflare, repo su GitHub.
 > Tutto il materiale è già nel repo: `docker-compose.prod.yml`, `infra/Caddyfile`,
-> `scripts/backup_postgres.sh`. In caso di problemi: [RUNBOOK.md](RUNBOOK.md).
+> `scripts/bootstrap_hetzner.sh`, `scripts/deploy.sh`, `scripts/backup.sh`. In caso di
+> problemi: [RUNBOOK.md](RUNBOOK.md).
+>
+> La procedura in vigore è [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md), con lo script di
+> bootstrap: questa guida manuale descrive ancora un server da 4 GB e mpnet. Le parti su
+> configurazione, migrazioni, backup e aggiornamenti qui sotto dicono come funzionano oggi.
 
 ## 1. Server (5 min)
 
@@ -54,11 +59,13 @@ Valori da impostare (gli altri default vanno bene):
 |---|---|
 | `APP_ENV` | `production` |
 | `APP_SECRET_KEY` | nuovo: `python3 -c "import secrets; print(secrets.token_urlsafe(64))"` |
-| `POSTGRES_PASSWORD` | nuovo, robusto (entra anche in `DATABASE_URL`) |
-| `DATABASE_URL` | `postgresql+asyncpg://normaai:<password>@postgres:5432/normaai` (ruolo owner: lo usano solo migrazioni + seed, che richiedono i privilegi DDL) |
+| `POSTGRES_PASSWORD` | nuovo, robusto: password del proprietario dello schema, per i servizi `postgres` e `migrate`; `docker-compose.prod.yml` la azzera nel container dell'app. Nessuna `DATABASE_URL` del proprietario nel `.env`: il `.env` è l'`env_file` dell'app |
 | `APP_DB_PASSWORD` | password del ruolo applicativo **non-superuser** `normaai_app` (l'overlay RLS la usa per la `DATABASE_URL` dell'app a runtime) |
 | `QDRANT_HOST` / `REDIS_URL` | `qdrant` / `redis://redis:6379/0` (nomi servizio docker) |
-| `GOOGLE_API_KEY` (o `ANTHROPIC_API_KEY`) | chiave di produzione |
+| `LLM_PROVIDER`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | `anthropic`, chiave di produzione con un limite di spesa nella console, `claude-haiku-5-5` (la configurazione misurata) |
+| `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`, `QDRANT_COLLECTION`, `RERANKER_SEARCH_DEPTH` | `intfloat/multilingual-e5-large`, `1024`, `eu_regulations_e5`, `45` |
+| `WEB_CONCURRENCY`, `APP_MEMORY_LIMIT` | `1`, `4G`: un worker con e5 tiene 2,8 GB |
+| `SENTRY_DSN`, `OPS_ALERT_EMAIL` | gli allarmi (RUNBOOK §1) |
 | `CORS_ORIGINS` | `https://normaai-psi.vercel.app,https://normaai.org,https://www.normaai.org` |
 | `NORMAAI_PUBLIC_URL` | `https://normaai-psi.vercel.app` (poi `https://normaai.org` quando il dominio è live) |
 | `RESEND_API_KEY` | chiave Resend (email transazionali: consegna del Codex) |
@@ -92,11 +99,11 @@ chmod 600 jwt_private.pem
 ## 5. Avvio (10 min)
 
 ```bash
-# 1) Migrazioni + seed come ruolo OWNER. Sono comandi CLI one-shot (run --rm):
-#    NON avviano il server, quindi il fail-fast del lifespan non scatta. Il seed
-#    scarica da EUR-Lex: minuti.
+# 1) Migrazioni come ruolo OWNER, nel servizio usa e getta migrate (l'unico che riceve la
+#    sua password), poi il seed. Sono comandi CLI one-shot (run --rm): NON avviano il
+#    server, quindi il fail-fast del lifespan non scatta. Il seed scarica da EUR-Lex: minuti.
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres qdrant redis
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
 # crea il ruolo non-superuser normaai_app (le policy RLS le crea Alembic, migrazione
 # 007). Passa la STESSA password che hai messo in APP_DB_PASSWORD nel .env
 # (:'app_pw' la quota da solo):
@@ -142,17 +149,22 @@ Il codice compare una volta sola: usalo su `https://normaai.org/login`
 (link "Hai un codice di invito?"). Gli inviti successivi si creano
 dall'app, in Amministrazione.
 
+Lo staff (crawl del corpus, inviti per nuove organizzazioni) non viene da
+un'impostazione: dopo la registrazione,
+`docker exec normaai-app python scripts/staff.py grant tu@dominio.it`
+([RUNBOOK.md](RUNBOOK.md) §11).
+
 ## 7. Backup + cron (5 min)
 
 ```bash
-chmod +x scripts/backup_postgres.sh
-crontab -e
-# aggiungi:
-0 2 * * * /opt/normaai/scripts/backup_postgres.sh >> /var/log/normaai-backup.log 2>&1
+bash scripts/backup.sh --install-cron   # backup ogni notte alle 02:00, test di ripristino il 1° del mese
 ```
 
-Copia off-site settimanale: vedi [BACKUP_STRATEGY.md](BACKUP_STRATEGY.md)
-(Hetzner Storage Box, `rclone` o `scp` dei file in `backups/`).
+Copia fuori dal server, cifrata con restic, in un repository **fuori dall'account Hetzner**
+(un altro fornitore, con un accesso suo): a settembre 2026 si è perso l'intero account, e una
+Storage Box dello stesso account sarebbe sparita con il server. Indirizzo, password e chiave
+dello storage nel password manager; impostazioni in `/etc/normaai/backup.env`
+([BACKUP_STRATEGY.md](BACKUP_STRATEGY.md), sezioni 3 e 7).
 
 ## 8. Smoke finale
 
@@ -166,18 +178,18 @@ Registra l'esito nel post-mortem log del [RUNBOOK](RUNBOOK.md). Fine G10.
 
 ## Aggiornamenti successivi
 
-Un push su `main` esegue `.github/workflows/deploy.yml` (secret `DEPLOY_HOST`,
-`DEPLOY_USER`, `DEPLOY_SSH_KEY`, opzionali `DEPLOY_PORT` e `DEPLOY_KNOWN_HOSTS`):
-build con il SHA git, migrazioni **come owner**, riavvio, verifica che
-`/health` risponda con la `version` attesa. A mano, nello stesso ordine:
+`.github/workflows/deploy.yml` parte dopo che la CI è riuscita su un push di `main` e installa
+quel commit: costruisce l'immagine nella CI, la pubblica su GHCR e, via SSH come utente non root
+`deploy` (la sua chiave può lanciare solo `scripts/deploy.sh`), la scarica per digest, esegue le
+migrazioni **come owner** nel servizio `migrate`, ricrea la sola app e aspetta il suo
+healthcheck, poi verifica che `/health` risponda con la `version` attesa. Segreti `DEPLOY_HOST`,
+`DEPLOY_USER` (`deploy`), `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` (obbligatorio), opzionale
+`DEPLOY_PORT`: [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) passo 6. A mano, sul server:
 
 ```bash
-cd /opt/normaai && git pull && export GIT_SHA=$(git rev-parse --short=7 HEAD)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build app
-# come owner `normaai`: sotto l'overlay RLS l'app gira come normaai_app, che NON puo' alterare le tabelle
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm app alembic upgrade head
-docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.rls.yml up -d app caddy
-curl https://api.normaai.org/health   # "version" = SHA appena deployato
+sudo -u deploy -H bash /opt/normaai/scripts/deploy.sh <sha di main> build   # immagine costruita qui
+curl https://api.normaai.org/health   # "version" = i primi 7 caratteri dello SHA
 ```
 
-Rollback: `git checkout <tag-precedente>` + stesso comando di build.
+Rollback: Actions, Deploy, Run workflow con lo `sha` di un commit buono di `main`, oppure lo
+stesso comando con quello SHA ([RUNBOOK.md](RUNBOOK.md) §9).

@@ -47,7 +47,7 @@ const defaultProfile: CompanyProfile = {
 
 const demoProfile: CompanyProfile = {
   name: 'Acme Srl',
-  sector: 'Manufacturing',
+  sector: 'Manifattura',
   employee_count: 2500,
   revenue_eur: 200_000_000,
   jurisdictions: ['IT', 'DE', 'FR'],

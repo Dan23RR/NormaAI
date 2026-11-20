@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, ChevronDown, Copy } from 'lucide-react'
 import { Button, Spinner } from '@/components/ui/Button'
-import { FrameworkBadge, frameworkLabel } from '@/components/ui/Badge'
+import { FRAMEWORK_META, FrameworkBadge, frameworkLabel } from '@/components/ui/Badge'
 import { cn } from '@/lib/cn'
 import { useTextContext } from '@/i18n/useTextContext'
 import { getConfidenceLabel } from '@/lib/confidence-labels'
@@ -36,6 +36,7 @@ export function AnswerTurn({
   onToggleSources,
   onMarkerClick,
   onSourceSelect,
+  onAsk,
   onFollowUp,
   onRetry,
   onCopy,
@@ -47,6 +48,9 @@ export function AnswerTurn({
   onToggleSources: () => void
   onMarkerClick: (index: number) => void
   onSourceSelect: (index: number) => void
+  /** Ask a complete question at once (the example questions of an abstention). */
+  onAsk: (question: string) => void
+  /** Put a question to complete in the box (the follow-up on a related act). */
   onFollowUp: (question: string) => void
   onRetry: () => void
   onCopy: (text: string) => void
@@ -102,7 +106,7 @@ export function AnswerTurn({
             code={abstention.code}
             reason={abstention.reason}
             suggestions={data.suggested_questions}
-            onSuggestion={onFollowUp}
+            onSuggestion={onAsk}
             corpusAsOf={message.corpusAsOf}
             demo={demo}
           />
@@ -114,14 +118,26 @@ export function AnswerTurn({
   const confidence = getConfidenceLabel(data.confidence_score ?? 0, ctx.t)
   const caveats = [...(data.caveats ?? [])]
   if (data.grounding_warning) caveats.push(t('answer.groundingCaveat'))
-  const related = Array.from(new Set((data.related_frameworks ?? []).map(normalizeFramework).filter(Boolean)))
+  // Only frameworks the interface knows become follow-up chips: the model sometimes lists
+  // whole act titles ("Regolamento (UE) 2018/1139 (...)"), which the answer text names already.
+  const related = Array.from(
+    new Set((data.related_frameworks ?? []).map(normalizeFramework).filter((k) => Boolean(k && FRAMEWORK_META[k]))),
+  )
 
   const copy = () =>
     onCopy(buildCopyText({ answer: message.content, sources, corpusAsOf: message.corpusAsOf, demo }, ctx))
 
+  // The answer as the backend marks it (AI Act, Art. 50(2)): text written by a language model.
+  const model = data.generator?.model?.trim()
+
   return (
     <div>
       {label}
+      {data.ai_generated === true && (
+        <p className="mt-1 text-caption text-ink-3" title={model ? t('marking.model', { model }) : undefined}>
+          {t('marking.label')}
+        </p>
+      )}
       <div className="mt-2">
         <AnswerBody text={message.content} citations={citations} messageId={message.id} activeIndex={activeIndex} onMarkerClick={onMarkerClick} />
       </div>

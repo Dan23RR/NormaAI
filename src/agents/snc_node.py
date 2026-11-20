@@ -80,6 +80,12 @@ def _build_user_message(state: dict) -> str:
     if chunks:
         parts.append("Regulatory context:")
         parts.append(format_retrieved_chunks(chunks))
+    if state.get("language") and state.get("task_type", "qa") == "qa":
+        # The resamples read the raw prompt, whose language instruction is a
+        # placeholder: they get the request's answer language here instead.
+        from src.agents.nodes import answer_language_instruction
+
+        parts.append(f"Answer language: {answer_language_instruction(state.get('language'))}")
     return "\n\n".join(parts)
 
 
@@ -139,6 +145,16 @@ async def async_snc_governance_node(state: dict) -> dict:
     if "error" in initial:
         logger.info("snc_skipped_due_to_draft_error")
         return state
+    # Nor when the agent abstained before asking the model (no passage, or none
+    # close enough): resampling would ask it anyway and replace the abstention.
+    from src.agents.nodes import LOW_RELEVANCE_ABSTENTION_REASON, NO_SOURCES_ABSTENTION_REASON
+
+    if initial.get("abstention_reason") in (
+        NO_SOURCES_ABSTENTION_REASON,
+        LOW_RELEVANCE_ABSTENTION_REASON,
+    ):
+        logger.info("snc_skipped_due_to_abstention")
+        return state
 
     system_prompt = _build_system_prompt_for_resample(state)
     user_message = _build_user_message(state)
@@ -177,6 +193,9 @@ async def async_snc_governance_node(state: dict) -> dict:
     surfaced["confidence_score"] = decision.trust
     surfaced["snc_trust"] = decision.trust
     surfaced["snc_action"] = decision.action
+    if "best_dense_score" in initial:
+        # The retrieval score belongs to the request, not to one sample.
+        surfaced["best_dense_score"] = initial["best_dense_score"]
 
     # Re-run the grounding guard on the answer ACTUALLY SERVED (the SNC modal
     # resample), not just the pre-SNC first draft. The guard in the agent node only

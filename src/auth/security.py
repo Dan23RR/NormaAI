@@ -31,12 +31,16 @@ logger = structlog.get_logger(__name__)
 
 
 # Token configuration - loaded from settings (src/config.py)
-def _get_access_token_expire_minutes() -> int:
-    return get_settings().access_token_expire_minutes
+def _get_access_token_ttl_seconds() -> int:
+    return get_settings().access_token_ttl
 
 
-def _get_refresh_token_expire_days() -> int:
-    return get_settings().refresh_token_expire_days
+def _get_refresh_token_ttl_seconds() -> int:
+    return get_settings().refresh_token_ttl
+
+
+def _get_session_max_lifetime() -> timedelta:
+    return timedelta(days=get_settings().session_max_lifetime_days)
 
 
 def _get_jwt_issuer() -> str:
@@ -128,16 +132,28 @@ _load_rsa_keys()
 class TokenPayload(BaseModel):
     sub: str  # user_id
     org_id: str  # organization_id
-    role: str  # admin, member, viewer
+    role: str  # admin, member, viewer: as at issue time, the account check reads the live one
     exp: datetime
     type: str  # access or refresh
     jti: str  # unique token ID for blacklisting
+    iat: datetime | None = None  # issue time (absent on hand-made legacy tokens)
     family: str | None = None  # refresh token family for rotation
-    # Identity claims on ACCESS tokens (absent on legacy / refresh tokens):
-    # the staff gate matches ``email`` against settings.staff_emails;
-    # ``email_verified`` is the fast path of require_verified_email.
+    # The session (= the refresh family) an ACCESS token belongs to: logout and
+    # a detected refresh reuse revoke the family, and with it its access tokens.
+    sid: str | None = None
+    # Sign-in time, carried by REFRESH tokens through every rotation: no
+    # refresh after settings.session_max_lifetime_days from it.
+    auth_time: datetime | None = None
+    # Identity claims on ACCESS tokens (absent on legacy / refresh tokens), for
+    # logs and as the fast path of require_verified_email. Authorization never
+    # rests on them: the account check reads role, staff and status from the DB.
     email: str | None = None
     email_verified: bool | None = None
+
+    @property
+    def session_started_at(self) -> datetime | None:
+        """Sign-in time of the session: ``auth_time``, else (legacy) the issue time."""
+        return self.auth_time or self.iat
 
 
 class TokenPair(BaseModel):
@@ -206,11 +222,15 @@ class TokenBlacklist:
             return False
 
     async def blacklist_token_family(self, family: str) -> bool:
-        """Blacklist an entire refresh token family (compromised token rotation)."""
+        """Blacklist an entire refresh token family (compromised token rotation, logout).
+
+        The entry outlives every token of the family: each refresh token lasts at
+        most the refresh TTL, and none is issued for a blacklisted family.
+        """
         if not self._available or not self._client:
             return False
         try:
-            ttl_seconds = _get_refresh_token_expire_days() * 86400
+            ttl_seconds = _get_refresh_token_ttl_seconds()
             await self._client.setex(f"{self.KEY_PREFIX}family:{family}", ttl_seconds, "1")
             logger.warning("token_family_blacklisted", family=family[:8])
             return True
@@ -294,10 +314,10 @@ def create_access_token(
     *,
     email: str | None = None,
     email_verified: bool | None = None,
+    session_id: str | None = None,
 ) -> str:
-    expire = datetime.now(UTC) + (
-        expires_delta or timedelta(minutes=_get_access_token_expire_minutes())
-    )
+    now = datetime.now(UTC)
+    expire = now + (expires_delta or timedelta(seconds=_get_access_token_ttl_seconds()))
     jti = str(uuid.uuid4())
     payload: dict[str, Any] = {
         "sub": str(user_id),
@@ -306,10 +326,12 @@ def create_access_token(
         "exp": expire,
         "type": "access",
         "jti": jti,
-        "iat": datetime.now(UTC),
+        "iat": now,
         "iss": _get_jwt_issuer(),
         "aud": _get_jwt_audience(),
     }
+    if session_id:
+        payload["sid"] = session_id
     if email:
         payload["email"] = email
     if email_verified is not None:
@@ -317,13 +339,27 @@ def create_access_token(
     return str(jwt.encode(payload, _get_signing_key(), algorithm=_algorithm))
 
 
+def session_expires_at(auth_time: datetime) -> datetime:
+    """When a session that started at ``auth_time`` can no longer be refreshed."""
+    if auth_time.tzinfo is None:
+        auth_time = auth_time.replace(tzinfo=UTC)
+    return auth_time + _get_session_max_lifetime()
+
+
 def create_refresh_token(
     user_id: uuid.UUID,
     org_id: uuid.UUID,
     role: str,
     family: str | None = None,
+    *,
+    auth_time: datetime | None = None,
 ) -> str:
-    expire = datetime.now(UTC) + timedelta(days=_get_refresh_token_expire_days())
+    """A refresh token of ``family``, never valid past the session's absolute limit."""
+    now = datetime.now(UTC)
+    started = auth_time or now
+    expire = min(
+        now + timedelta(seconds=_get_refresh_token_ttl_seconds()), session_expires_at(started)
+    )
     jti = str(uuid.uuid4())
     token_family = family or str(uuid.uuid4())
     payload = {
@@ -334,7 +370,8 @@ def create_refresh_token(
         "type": "refresh",
         "jti": jti,
         "family": token_family,
-        "iat": datetime.now(UTC),
+        "auth_time": int(started.timestamp()),
+        "iat": now,
         "iss": _get_jwt_issuer(),
         "aud": _get_jwt_audience(),
     }
@@ -349,16 +386,50 @@ def create_token_pair(
     *,
     email: str | None = None,
     email_verified: bool | None = None,
+    auth_time: datetime | None = None,
 ) -> TokenPair:
+    """An access and a refresh token of one session.
+
+    ``family`` (the session id) is new at sign-in and kept by every refresh, like
+    ``auth_time``, the sign-in time the absolute session limit counts from. The
+    access token carries the family as ``sid`` so that revoking the family
+    (logout, refresh reuse) refuses its access tokens too.
+    """
+    session_id = family or str(uuid.uuid4())
     # Identity claims go on the access token only: refresh re-reads the user
     # from the DB, so a rotated pair always carries fresh values.
     return TokenPair(
         access_token=create_access_token(
-            user_id, org_id, role, email=email, email_verified=email_verified
+            user_id,
+            org_id,
+            role,
+            email=email,
+            email_verified=email_verified,
+            session_id=session_id,
         ),
-        refresh_token=create_refresh_token(user_id, org_id, role, family=family),
-        expires_in=_get_access_token_expire_minutes() * 60,
+        refresh_token=create_refresh_token(
+            user_id, org_id, role, family=session_id, auth_time=auth_time
+        ),
+        expires_in=_get_access_token_ttl_seconds(),
     )
+
+
+def issued_before(issued_at: datetime | None, revoked_at: datetime | None) -> bool:
+    """True when a token issued at ``issued_at`` predates ``revoked_at`` (sessions ended).
+
+    Compared to the second (``iat`` has no fraction): a token issued in the
+    same second as the revocation is refused too, which only ever costs a
+    second sign-in. A token without ``iat`` counts as old.
+    """
+    if revoked_at is None:
+        return False
+    if issued_at is None:
+        return True
+    if revoked_at.tzinfo is None:
+        revoked_at = revoked_at.replace(tzinfo=UTC)
+    if issued_at.tzinfo is None:
+        issued_at = issued_at.replace(tzinfo=UTC)
+    return int(issued_at.timestamp()) <= int(revoked_at.timestamp())
 
 
 # ─── Token Decoding ─────────────────────────────────────────────

@@ -14,7 +14,8 @@
   --surface-3: 236 238 241;
   --ink: 12 27 51;
   --ink-2: 61 75 97;
-  --ink-3: 107 119 136;
+  /* 5.05:1 on canvas, 4.87:1 on surface-3: captions pass AA on every light background. */
+  --ink-3: 92 104 121;
   --rule: 216 220 227;
   --rule-2: 195 201 211;
   --union: 10 58 156;
@@ -22,9 +23,22 @@
   --union-ink: 255 255 255;
   --mark: 255 234 122;
   --mark-deep: 245 196 0;
-  --ok: 19 122 75;
-  --warn: 154 91 0;
+  /* ok and warn as text on their own 10% tint (the status badges) pass AA on
+     surface, surface-2, canvas and surface-3. */
+  --ok: 17 111 68;
+  --warn: 143 84 0;
   --bad: 163 38 46;
+  /* Framework hues: category labels only, as text on their own 10% tint.
+     Each pair passes AA on surface, surface-2 and canvas. */
+  --fw-csrd: 27 110 74;
+  --fw-csddd: 26 100 168;
+  --fw-aiact: 109 74 184;
+  --fw-dora: 160 72 24;
+  --fw-nis2: 138 90 0;
+  --fw-taxonomy: 14 107 100;
+  --fw-gdpr: 180 42 69;
+  --fw-cra: 154 61 122;
+  --fw-esrs: 91 92 165;
 }
 
 .dark {
@@ -35,7 +49,7 @@
   --surface-3: 30 43 71;
   --ink: 232 236 243;
   --ink-2: 179 188 203;
-  --ink-3: 127 138 156;
+  --ink-3: 139 150 168;
   --rule: 37 49 73;
   --rule-2: 56 70 99;
   --union: 127 163 255;
@@ -46,6 +60,15 @@
   --ok: 74 196 134;
   --warn: 230 160 60;
   --bad: 240 110 118;
+  --fw-csrd: 111 207 163;
+  --fw-csddd: 125 183 240;
+  --fw-aiact: 183 161 242;
+  --fw-dora: 240 160 112;
+  --fw-nis2: 227 179 79;
+  --fw-taxonomy: 92 207 196;
+  --fw-gdpr: 242 139 160;
+  --fw-cra: 232 154 200;
+  --fw-esrs: 169 170 234;
 }
 
 @layer base {

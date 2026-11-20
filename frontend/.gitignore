@@ -1,0 +1,5 @@
+# Written by next dev, next build and next typegen (the import path in
+# next-env.d.ts differs between dev and build) and by tsc --incremental:
+# generated on every run, so not tracked.
+next-env.d.ts
+*.tsbuildinfo

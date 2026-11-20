@@ -205,6 +205,8 @@ class _FakeUser:
         self.role = role
         self.is_active = is_active
         self.email_verified = email_verified
+        self.is_staff = False
+        self.sessions_revoked_at = None
 
 
 class _FakeOrg:

@@ -22,22 +22,23 @@ Chiaro di default, scuro opzionale (classe `dark` su `html`). I token vivono in 
 | `surface-3` | `#ECEEF1` | stato hover di righe e voci |
 | `ink` | `#0C1B33` | testo principale: inchiostro blu-nero, non nero tinto |
 | `ink-2` | `#3D4B61` | testo secondario |
-| `ink-3` | `#6B7788` | testo terziario, didascalie (mai sotto 12 px) |
+| `ink-3` | `#5C6879` | testo terziario, didascalie (mai sotto 12 px); AA anche su `canvas` e `surface-3` |
 | `rule` | `#D8DCE3` | filetti e bordi |
 | `rule-2` | `#C3C9D3` | bordi dei campi, filetti marcati |
 | `union` | `#0A3A9C` | il blu dell'Unione: link, azioni primarie, focus |
 | `union-deep` | `#072B75` | hover delle azioni primarie |
 | `mark` | `#FFEA7A` | l'evidenziatore: **solo** per il passaggio di legge citato |
 | `mark-deep` | `#F5C400` | il giallo delle stelle: icona del marchio, accenti del marchio |
-| `ok` | `#137A4B` | citazione verificata, operazione riuscita |
-| `warn` | `#9A5B00` | attenzione, scadenza vicina, verifica consigliata |
+| `ok` | `#116F44` | citazione verificata, operazione riuscita |
+| `warn` | `#8F5400` | attenzione, scadenza vicina, verifica consigliata |
 | `bad` | `#A3262E` | errore, scadenza superata |
 
 Regole:
 - L'evidenziatore è la cosa memorabile e si spende in un posto solo: la citazione testuale della norma. Mai come sfondo decorativo, mai nei bottoni.
 - Il blu `union` è il colore delle azioni, non del marchio: il marchio è inchiostro più evidenziatore.
 - Niente gradienti, niente ombre su ogni card. L'ombra `shadow-doc` esiste per due cose: il documento in primo piano nella hero e i dialoghi.
-- I colori dei framework (`fw-*`) servono solo come etichetta di categoria, con testo scuro su tinta chiara, mai come riempimento pieno.
+- I colori dei framework (`fw-*`) servono solo come etichetta di categoria: il testo nella tinta su un fondo al 10% della stessa tinta, mai come riempimento pieno. Sono token come gli altri, con la variante scura.
+- Gli avvisi che non citano la legge (la demo, uno stato sospeso) usano i token `warn`, non l'evidenziatore.
 
 ## 3. Tipografia
 
@@ -79,21 +80,56 @@ Pagine pubbliche: colonna massima 1120 px, gutter 24 px, sezioni separate da un 
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Applicazione: barra laterale di 232 px (64 px compressa) con il marchio in alto e l'organizzazione in basso; intestazione di pagina con titolo e azioni; contenuto con larghezza massima 1200 px. La pagina Chiedi ha due colonne: la conversazione (massimo 72 caratteri) e il margine delle fonti, fisso durante lo scorrimento.
+Applicazione: barra laterale di 232 px (64 px compressa) con il marchio in alto e l'organizzazione in basso; intestazione di pagina con titolo e azioni; contenuto con larghezza massima 1200 px.
+
+Le superfici dell'applicazione sono sette, in quest'ordine nella barra laterale (l'Amministrazione compare in più solo a chi ha quel ruolo):
+
+| Superficie | Percorso | Cosa fa |
+|---|---|---|
+| Controlla | `/app/controlla`, `/app/controlla/[id]` | Controlla i riferimenti di legge di un documento sul testo vigente e sorveglia le norme che cita |
+| Chiedi | `/app/chiedi` | Una domanda, una risposta con il passaggio di legge che la sostiene |
+| Ambito | `/app/ambito` | Quali obblighi si applicano a un'impresa, e da quando |
+| Monitoraggio | `/app/monitoraggio` | Scadenze dei prossimi mesi, avvisi, analisi di una novità normativa |
+| Clienti | `/app/clienti`, `/app/clienti/[id]` | Profilo, requisiti da verificare e documenti controllati di ogni cliente |
+| Report | `/app/report` | Gap analysis di un cliente o sintesi direzionale, in PDF |
+| Impostazioni | `/app/impostazioni` | Account, lingua, tema, dati |
+
+Chiedi e Controlla hanno due colonne: il testo al centro (massimo 72 caratteri) e il margine a destra, fisso durante lo scorrimento. In Chiedi il centro è la conversazione e il margine sono le fonti.
 
 ```
 ┌──────┬───────────────────────────────┬──────────────────────┐
 │ Marc.│ Chiedi                        │ Fonti                │
 │      │                               │                      │
-│ Chie.│ Domanda                       │ 1 Reg. (UE) 2024/1689│
-│ Ambi.│ Risposta con rimandi [1] [2]  │   art. 50, par. 1    │
-│ Moni.│                               │   ┃«testo evidenz.»  │
-│ Clie.│                               │   ✓ verificata       │
-│ Repo.│                               │   EUR-Lex ↗          │
-│      │                               │                      │
+│ Cont.│ Domanda                       │ 1 Reg. (UE) 2024/1689│
+│ Chie.│ Risposta con rimandi [1] [2]  │   art. 50, par. 1    │
+│ Ambi.│                               │   ┃«testo evidenz.»  │
+│ Moni.│                               │   ✓ verificata       │
+│ Clie.│                               │   EUR-Lex ↗          │
+│ Repo.│                               │                      │
 │ Org. │ [Scrivi la domanda      ][Inv]│ corpus al 2026-10-01 │
 └──────┴───────────────────────────────┴──────────────────────┘
 ```
+
+In Controlla il centro sono i riferimenti trovati nel documento, raggruppati per cosa fare (da correggere, da controllare, a posto, non coperto), e il margine dice cosa resta del documento e le norme da cui dipende. I primi due gruppi si leggono per intero; gli altri due sono una riga per riferimento, che si apre.
+
+```
+┌──────┬───────────────────────────────┬──────────────────────┐
+│ Marc.│ nota.docx        [Ricontrolla]│ Documento            │
+│      │ 2 da correggere  1 da contr.  │ controllato il ...   │
+│ Cont.│ 4 a posto        0 non coperto│ sorveglianza attiva  │
+│ Chie.│                               │                      │
+│ Ambi.│ GDPR, art. 33, par. 1  [esito]│ Norme da cui dipende │
+│ Moni.│ Nel documento, riga 8: «...»  │ GDPR, Art. 33        │
+│ Clie.│ Parole diverse: «48» / «72»   │   ✓ invariata        │
+│ Repo.│ ┃ ... entro [72] ore ...      │ AI Act, Art. 4       │
+│ Org. │   Reg. (UE) 2016/679 ✓ EUR-Lex│   ! cambiata         │
+└──────┴───────────────────────────────┴──────────────────────┘
+```
+
+Tre regole valgono per Controlla e per ogni confronto tra due testi:
+- L'evidenziatore va solo sul testo ufficiale: mai sulla citazione scritta nel documento, che può essere sbagliata. In una citazione alterata evidenzia le parole ufficiali che il documento ha cambiato.
+- Una differenza non si affida al colore: le parole tolte sono barrate, quelle aggiunte sottolineate, e un lettore di schermo sente «tolto» e «aggiunto». Ogni esito ha un'icona e le sue parole, non solo una tinta.
+- Vicino al caricamento si dice che il documento non viene conservato e si elenca cosa resta sul server.
 
 Tabelle: filetti orizzontali, niente zebra, intestazione in `ink-2` a 13 px. Card solo per entità discrete (un cliente, un report), mai per spezzettare un testo.
 

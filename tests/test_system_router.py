@@ -229,6 +229,54 @@ class TestReadyz:
         assert body["status"] == "not_ready"
         assert body["checks"]["llm"] == "down"
 
+    def test_readyz_says_why_the_model_check_is_up(self, client, app_state):
+        app_state.qdrant_available = True
+        app_state.llm_available = True
+        app_state.indexer = None
+        # The suite runs with APP_ENV=testing: the provider is not asked.
+        assert client.get("/readyz").json()["llm"] == "not_checked"
+
+    def test_readyz_is_red_when_the_provider_refuses_the_key(self, client, app_state):
+        from src.llm_probe import ProbeResult
+
+        app_state.qdrant_available = True
+        app_state.llm_available = True
+        app_state.indexer = None
+        refused = ProbeResult(False, "key_rejected", 0.0, 401)
+        with patch("src.llm_probe.llm_readiness", return_value=refused) as probe:
+            r = client.get("/readyz")
+            # Liveness stays green: the container is not restarted for this.
+            assert client.get("/health").status_code == 200
+        assert probe.await_count == 1
+        assert r.status_code == 503
+        body = r.json()
+        assert body["checks"]["llm"] == "down"
+        assert body["llm"] == "key_rejected"
+
+    def test_readyz_is_red_while_the_llm_circuit_is_open(self, client, app_state):
+        from src.resilience import llm_circuit
+
+        app_state.qdrant_available = True
+        app_state.llm_available = True
+        app_state.indexer = None
+        llm_circuit.reset()
+        try:
+            for _ in range(llm_circuit.failure_threshold):
+                llm_circuit.record_failure()
+            r = client.get("/readyz")
+        finally:
+            llm_circuit.reset()
+        assert r.status_code == 503
+        assert r.json()["llm"] == "circuit_open"
+        assert r.json()["checks"]["llm"] == "down"
+
+    def test_readyz_without_a_key_says_so(self, client, app_state):
+        app_state.qdrant_available = True
+        app_state.llm_available = False
+        r = client.get("/readyz")
+        assert r.status_code == 503
+        assert r.json()["llm"] == "missing_key"
+
     def test_readyz_not_ready_when_corpus_empty(self, client, app_state):
         # qdrant/llm up but the collection has zero points -> not ready, so the
         # green liveness check can no longer hide an unseeded corpus.

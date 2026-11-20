@@ -202,7 +202,7 @@ class TestTrackLLMCall:
 class TestRecordLLMTokens:
     def test_degraded_is_noop(self):
         # No LLM_TOKENS collector defined; must not raise.
-        assert obs.record_llm_tokens("gemini", 10, 20) is None
+        assert obs.record_llm_tokens("gemini", "gemini-3.6-flash", 10, 20) is None
 
     def test_available_records_input_and_output_directions(self):
         tokens = MagicMock()
@@ -210,12 +210,12 @@ class TestRecordLLMTokens:
             patch.object(obs, "_metrics_available", True),
             patch.object(obs, "LLM_TOKENS", tokens, create=True),
         ):
-            obs.record_llm_tokens("gemini", 100, 250)
+            obs.record_llm_tokens("gemini", "gemini-3.6-flash", 100, 250)
 
-        # Two distinct labelled series: input and output.
+        # Two distinct labelled series per model: input and output.
         assert tokens.labels.call_args_list == [
-            ({"provider": "gemini", "direction": "input"},),
-            ({"provider": "gemini", "direction": "output"},),
+            ({"provider": "gemini", "model": "gemini-3.6-flash", "direction": "input"},),
+            ({"provider": "gemini", "model": "gemini-3.6-flash", "direction": "output"},),
         ]
         # Each incremented by its respective token count (not by 1).
         assert tokens.labels.return_value.inc.call_args_list == [
@@ -229,7 +229,7 @@ class TestRecordLLMTokens:
             patch.object(obs, "_metrics_available", True),
             patch.object(obs, "LLM_TOKENS", tokens, create=True),
         ):
-            obs.record_llm_tokens("anthropic", 0, 0)
+            obs.record_llm_tokens("anthropic", "claude-haiku-5-5", 0, 0)
 
         assert tokens.labels.return_value.inc.call_args_list == [((0,),), ((0,),)]
 
@@ -609,3 +609,165 @@ class TestSetupSentry:
             assert (
                 obs.setup_sentry(MagicMock(sentry_dsn="https://key@o1.ingest.sentry.io/1")) is False
             )
+
+    def test_events_carry_no_request_body_and_no_local_variables(self):
+        # Questions, profiles and documents are in request bodies and locals.
+        fake_sdk = MagicMock()
+        with patch.dict(
+            sys.modules,
+            {
+                "sentry_sdk": fake_sdk,
+                "sentry_sdk.integrations": MagicMock(),
+                "sentry_sdk.integrations.fastapi": MagicMock(),
+                "sentry_sdk.integrations.starlette": MagicMock(),
+            },
+        ):
+            obs.setup_sentry(
+                MagicMock(sentry_dsn="https://key@o1.ingest.sentry.io/1", app_version="a1b2c3d")
+            )
+        kwargs = fake_sdk.init.call_args.kwargs
+        assert kwargs["max_request_body_size"] == "never"
+        assert kwargs["include_local_variables"] is False
+        # The release is the build (GET /health "version"), not the package version.
+        assert kwargs["release"] == "normaai@a1b2c3d"
+
+
+# --------------------------------------------------------------------------- #
+# Metrics the alert rules read: recorded, not only defined
+# --------------------------------------------------------------------------- #
+REPO_ROOT = obs.__file__.rsplit("src", 1)[0]
+
+
+def _repo_text(path: str) -> str:
+    with open(os.path.join(REPO_ROOT, path), encoding="utf-8") as handle:
+        return handle.read()
+
+
+class TestRequestMetrics:
+    def test_records_count_and_latency_by_route(self):
+        count, latency = MagicMock(), MagicMock()
+        with (
+            patch.object(obs, "_metrics_available", True),
+            patch.object(obs, "REQUEST_COUNT", count, create=True),
+            patch.object(obs, "REQUEST_LATENCY", latency, create=True),
+        ):
+            obs.record_http_request("GET", "/api/v1/documents/{check_id}", 404, 0.25)
+        count.labels.assert_called_once_with(
+            method="GET", endpoint="/api/v1/documents/{check_id}", status_code="404"
+        )
+        count.labels.return_value.inc.assert_called_once_with()
+        latency.labels.assert_called_once_with(
+            method="GET", endpoint="/api/v1/documents/{check_id}"
+        )
+        latency.labels.return_value.observe.assert_called_once_with(0.25)
+
+    def test_degraded_is_a_no_op(self, degraded):
+        assert degraded.record_http_request("GET", "/health", 200, 0.01) is None
+        assert degraded.track_active_request(1) is None
+
+    def test_middleware_labels_the_route_template_not_the_path(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from src.api import middleware
+
+        app = FastAPI()
+        middleware.register_middleware(app)
+
+        @app.get("/items/{item_id}")
+        async def item(item_id: str):
+            return {"id": item_id}
+
+        recorded = MagicMock()
+        with patch.object(middleware, "record_http_request", recorded):
+            client = TestClient(app)
+            assert client.get("/items/42").status_code == 200
+            assert client.get("/no/such/path").status_code == 404
+        calls = [call.args for call in recorded.call_args_list]
+        assert [(c[0], c[1], c[2]) for c in calls] == [
+            ("GET", "/items/{item_id}", 200),
+            ("GET", "<unmatched>", 404),
+        ]
+        assert all(isinstance(c[3], float) for c in calls)
+
+
+class TestCircuitMetrics:
+    def test_record_circuit_sets_state_and_counts_outcome(self):
+        state, outcomes = MagicMock(), MagicMock()
+        with (
+            patch.object(obs, "_metrics_available", True),
+            patch.object(obs, "CIRCUIT_STATE", state, create=True),
+            patch.object(obs, "CIRCUIT_OUTCOMES", outcomes, create=True),
+        ):
+            obs.record_circuit("llm", "open", "failure")
+        state.labels.assert_called_once_with(service="llm")
+        state.labels.return_value.set.assert_called_once_with(2)
+        outcomes.labels.assert_called_once_with(service="llm", outcome="failure")
+
+    def test_a_broken_metric_never_breaks_the_call(self):
+        state = MagicMock()
+        state.labels.side_effect = RuntimeError("registry gone")
+        with (
+            patch.object(obs, "_metrics_available", True),
+            patch.object(obs, "CIRCUIT_STATE", state, create=True),
+        ):
+            obs.record_circuit("llm", "open", "failure")
+
+    def test_breaker_publishes_every_outcome_and_the_opening(self):
+        import src.resilience as resilience
+
+        published = MagicMock()
+        with patch.object(resilience, "record_circuit", published):
+            breaker = resilience.CircuitBreaker("llm", failure_threshold=2, recovery_timeout=60)
+            breaker.record_success()
+            breaker.record_failure()
+            breaker.record_failure()
+        assert [call.args for call in published.call_args_list] == [
+            ("llm", "closed", "success"),
+            ("llm", "closed", "failure"),
+            ("llm", "open", "failure"),
+        ]
+
+
+class TestPrometheusWiring:
+    def test_image_installs_the_sentry_and_metrics_extras(self):
+        dockerfile = _repo_text("Dockerfile")
+        export = re.search(r"RUN poetry export .*?-o requirements\.txt", dockerfile, re.S)
+        assert export is not None
+        for extra in ("openrouter", "sentry", "metrics"):
+            assert f"--extras {extra}" in export.group(0)
+        import tomllib
+
+        extras = tomllib.loads(_repo_text("pyproject.toml"))["tool"]["poetry"]["extras"]
+        assert extras["sentry"] == ["sentry-sdk"]
+        assert extras["metrics"] == ["prometheus-client"]
+        lock = _repo_text("poetry.lock")
+        assert 'metrics = ["prometheus-client"]' in lock
+
+    def test_scrape_token_reaches_prometheus_from_a_file(self):
+        yaml = pytest.importorskip("yaml")
+        config = yaml.safe_load(_repo_text("infra/prometheus.yml"))
+        job = next(j for j in config["scrape_configs"] if j["job_name"] == "normaai")
+        # Prometheus expands no ${VARIABLE}: a literal would be sent as the token.
+        assert "${" not in _repo_text("infra/prometheus.yml")
+        assert "bearer_token" not in job
+        assert job["authorization"] == {
+            "type": "Bearer",
+            "credentials_file": "/run/secrets/prometheus_bearer_token",
+        }
+        compose = yaml.safe_load(_repo_text("docker-compose.yml"))
+        assert "prometheus_bearer_token" in compose["services"]["prometheus"]["secrets"]
+        assert compose["secrets"]["prometheus_bearer_token"] == {
+            "environment": "PROMETHEUS_BEARER_TOKEN"
+        }
+
+    def test_alert_rules_read_only_metrics_the_app_records(self):
+        rules = _repo_text("infra/prometheus.rules.yml")
+        names = set(re.findall(r"\bnormaai_[a-z_]+", rules))
+        assert names
+        source = _repo_text("src/observability.py")
+        for name in names:
+            base = re.sub(r"_(bucket|sum|count)$", "", name)
+            assert f'"{base}"' in source, f"{name} is not a metric of src/observability.py"
+        # The ones defined but never recorded must not drive an alert.
+        assert "normaai_llm_calls_total" not in rules

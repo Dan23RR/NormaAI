@@ -10,6 +10,9 @@ documents to redo when a cited provision changes.
 
 - ``extract``: the references, acts and quotes in a document's text.
 - ``official``: the official EU texts by version, from CELLAR, cached on disk.
+- ``normattiva``: Italian acts article by article, from the Normattiva open
+  data API, cached on disk.
+- ``sources``: the source every caller uses, EU and Italian law behind one object.
 - ``check``: the comparison, the lock file and the later re-check.
 - ``report``: the HTML report and the plain-text summary.
 

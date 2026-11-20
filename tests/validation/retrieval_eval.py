@@ -35,6 +35,12 @@ Matching: an expected article counts as found when a retrieved chunk labelled
 Latin suffixes read as letters, as in the golden set metric
 (tests.validation.metrics.normalize_article): "Art. 19 bis" is "19a". Runs before
 2026-10-26 read it as "19", which undercounted the CSRD cases on Art. 19a and 29a.
+
+Also counted (since 2026-11-03), the expected paragraph: "Art. 29a(1)" is found
+when a retrieved chunk of Art. 29a holds paragraph 1 (its ``paragraph`` payload,
+"1" or "1-5"). An expected finding without a paragraph, or an article whose
+retrieved chunks carry no paragraph numbers, counts as soon as the article is
+there. The agents can only cite a paragraph they read.
 """
 
 from __future__ import annotations
@@ -49,6 +55,8 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from typing import Any
 
+from src.nlp.embedding.article_refs import paragraph_range
+
 from .golden_v2 import GOLDEN_V2_PATH, load_golden_v2_test_cases
 from .metrics import normalize_article
 
@@ -61,7 +69,13 @@ NATURAL_ART50 = (
     "Il nostro assistente virtuale per i clienti deve avvisare che è un sistema di IA?",
     "Do we need to tell customers they are talking to a bot on our customer service chat?",
 )
-SUMMARY_KEYS = ("label", "cases_with_expected_article", "expected_article_in_top15", "rate")
+SUMMARY_KEYS = (
+    "label",
+    "cases_with_expected_article",
+    "expected_article_in_top15",
+    "rate",
+    "expected_paragraph_in_top15",
+)
 LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 Retrieve = Callable[[str], list[dict[str, Any]]]
@@ -79,6 +93,35 @@ def article_number(label: object) -> str | None:
 def expected_articles(case: Any) -> set[str]:
     """Article numbers a golden case expects (empty for refusal / out-of-corpus cases)."""
     return {article_number(f.article) for f in case.expected_findings} - {None}
+
+
+def expected_paragraphs(case: Any) -> set[tuple[str, int | None]]:
+    """(article number, paragraph) pairs a golden case expects: "Art. 29a(1)" -> ("29a", 1)."""
+    pairs = set()
+    for finding in case.expected_findings:
+        number = article_number(finding.article)
+        if number:
+            m = re.search(r"\((\d+)\)", str(finding.article))
+            pairs.add((number, int(m.group(1)) if m else None))
+    return pairs
+
+
+def paragraph_found(expected: set[tuple[str, int | None]], results: list[dict[str, Any]]) -> bool:
+    """Whether a retrieved chunk holds an expected paragraph (see the module docstring)."""
+    for number, paragraph in expected:
+        ranges = [
+            paragraph_range(r.get("paragraph"))
+            for r in results
+            if str(r.get("article") or "").startswith("Art.")
+            and article_number(r.get("article")) == number
+        ]
+        if ranges and (
+            paragraph is None
+            or all(found is None for found in ranges)
+            or any(found is not None and paragraph in found for found in ranges)
+        ):
+            return True
+    return False
 
 
 def retrieved_articles(results: Iterable[dict[str, Any]]) -> set[str]:
@@ -104,20 +147,21 @@ def evaluate(cases: Iterable[Any], retrieve: Retrieve) -> tuple[list[dict], list
     """Score every case that expects an article, then rank Art. 50 for NATURAL_ART50.
 
     Returns (rows, art50): one row per scored case ({id, framework, expected,
-    hit}) and one entry per chatbot question ({query, art50_rank, top3}).
+    hit, paragraph_hit}) and one entry per chatbot question ({query, art50_rank, top3}).
     """
     rows = []
     for case in cases:
         expected = expected_articles(case)
         if not expected:
             continue  # abstention / refusal cases have no expected article
-        hit = bool(expected & retrieved_articles(retrieve(case.query)))
+        results = retrieve(case.query)
         rows.append(
             {
                 "id": case.id,
                 "framework": case.expected_findings[0].framework.value,
                 "expected": sorted(expected),
-                "hit": hit,
+                "hit": bool(expected & retrieved_articles(results)),
+                "paragraph_hit": paragraph_found(expected_paragraphs(case), results),
             }
         )
     art50 = []
@@ -134,7 +178,7 @@ def evaluate(cases: Iterable[Any], retrieve: Retrieve) -> tuple[list[dict], list
 
 
 def summarise(label: str, rows: list[dict], art50: list[dict]) -> dict[str, Any]:
-    """The JSON report (same keys as the first measurement's retrieval_*.json files)."""
+    """The JSON report: the first measurement's keys, then the paragraph count (2026-11-03)."""
     by_framework: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     for row in rows:
         by_framework[row["framework"]][0] += int(row["hit"])
@@ -148,6 +192,8 @@ def summarise(label: str, rows: list[dict], art50: list[dict]) -> dict[str, Any]
         "by_framework": {fw: f"{h}/{n}" for fw, (h, n) in sorted(by_framework.items())},
         "art50_natural_language": art50,
         "misses": [row["id"] for row in rows if not row["hit"]],
+        "expected_paragraph_in_top15": sum(int(row["paragraph_hit"]) for row in rows),
+        "paragraph_misses": [row["id"] for row in rows if not row["paragraph_hit"]],
     }
 
 

@@ -20,6 +20,7 @@ No real network, Qdrant, model or DB is touched.
 
 import sys
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -464,122 +465,227 @@ class TestSeed:
         assert stats["chunks_indexed"] == 1
         assert stats["corpus_as_of"] is None
 
-    def test_normattiva_disabled_when_source_eurlex(self, patched_pipeline):
-        """data_source='eurlex' must not trigger the Normattiva branch."""
+    def test_the_seed_indexes_no_italian_law(self, patched_pipeline):
+        """No Normattiva step: the old client (HTTP 409) was removed."""
         p, m = patched_pipeline
         m["eurlex"].crawl_all_core_frameworks.return_value = []
-
-        with patch.object(p, "seed_normattiva") as seed_norm:
-            stats = p.seed()
-            seed_norm.assert_not_called()
-        assert stats["normattiva"]["success"] == 0
-        assert stats["normattiva"]["total_chunks"] == 0
+        stats = p.seed()
+        assert "normattiva" not in stats
+        assert not hasattr(p, "seed_normattiva")
+        m["indexer"].index_contextual_chunks.assert_not_called()
 
 
 # --------------------------------------------------------------------------- #
-# seed() with Normattiva enabled (seed_normattiva is patched out)
+# seed() with DATA_SOURCE asking for Normattiva
 # --------------------------------------------------------------------------- #
 class TestSeedNormattiva:
-    def test_normattiva_branch_extends_chunks(self, patched_pipeline):
+    def test_both_seeds_eurlex_and_says_italian_law_is_not_indexed(self, patched_pipeline, caplog):
         p, m = patched_pipeline
         m["settings"].data_source = "both"
         m["eurlex"].crawl_all_core_frameworks.return_value = []
-        m["indexer"].index_contextual_chunks.return_value = 5
-
-        norm_chunks = [
-            FakeChunk(f"n{i}", {"framework": "GDPR", "source": "normattiva"}) for i in range(5)
-        ]
-        with patch.object(p, "seed_normattiva", return_value=norm_chunks) as seed_norm:
+        with caplog.at_level("WARNING", logger="normaai.pipeline"):
             stats = p.seed()
-            seed_norm.assert_called_once()
-
-        # 5 normattiva chunks enriched then indexed.
-        assert m["ctx_chunker"].enrich_single.call_count == 5
-        assert stats["normattiva"]["total_chunks"] == 5
-        assert stats["chunks_indexed"] == 5
+        m["eurlex"].crawl_all_core_frameworks.assert_called_once()
         assert stats["data_source"] == "both"
+        assert "no Italian law goes into the Q&A corpus" in caplog.text
 
-    def test_normattiva_only_skips_eurlex_crawl(self, patched_pipeline):
+    def test_normattiva_only_seeds_nothing_and_says_so(self, patched_pipeline, caplog):
         p, m = patched_pipeline
         m["settings"].data_source = "normattiva"
-        m["indexer"].index_contextual_chunks.return_value = 0
-
-        with patch.object(p, "seed_normattiva", return_value=[]) as seed_norm:
+        with caplog.at_level("WARNING", logger="normaai.pipeline"):
             stats = p.seed()
-            seed_norm.assert_called_once()
-
         m["eurlex"].crawl_all_core_frameworks.assert_not_called()
+        m["indexer"].index_contextual_chunks.assert_not_called()
         assert stats["eurlex"]["success"] == 0
+        assert stats["chunks_indexed"] == 0
+        assert "DATA_SOURCE=normattiva" in caplog.text
 
 
 # --------------------------------------------------------------------------- #
-# update()
+# update(): the tracked acts, in every corpus language, and nothing else
 # --------------------------------------------------------------------------- #
+AI_ACT = "32024R1689"
+AI_ACT_OLD = "02024R1689-20240712"
+AI_ACT_NEW = "02026R1689-20261201"
+
+
+def _indexed_corpus(langs=("EN", "IT"), versions=None, as_of="2026-10-24") -> dict:
+    """A corpus metadata point holding every tracked act (its own CELEX as the text)."""
+    versions = versions or {}
+    return {
+        "kind": "corpus_meta",
+        "corpus_as_of": as_of,
+        "embedding_model": "test-model",
+        "languages": list(langs),
+        "data_source": "eurlex",
+        "acts": [
+            {
+                "celex": act.celex,
+                "lang": lang,
+                "source_celex": versions.get(act.celex, act.celex),
+                "chunks": 10,
+            }
+            for act in pipeline_mod.TRACKED_ACTS
+            for lang in langs
+        ],
+    }
+
+
+def _serve_every_tracked_act(m, newer=None):
+    """CELLAR stand-in: every tracked act, today's text = ``newer`` or the act itself."""
+    newer = newer or {}
+    m["eurlex"].crawl_all_core_frameworks.side_effect = lambda celex_filter=None, unique=True: [
+        FakeReg(celex=act.celex, framework=act.framework)
+        for act in pipeline_mod.tracked_acts(celex_filter)
+    ]
+    m["eurlex"].resolve_download_celex.side_effect = lambda celex, **kw: newer.get(celex, celex)
+    m["eurlex"].download_full_text_html.return_value = "<html>" + "x" * 600 + "</html>"
+    m["eurlex"].check_for_new_amendments.return_value = []
+    m["eurlex"].fetch_regulation_metadata.return_value = _meta(True)
+    m["indexer"].reindex_act.return_value = 7
+
+
 class TestUpdate:
-    def test_update_indexes_new_legislation(self, patched_pipeline):
+    def _run(self, p, m, **kwargs):
+        with patch.object(pipeline_mod, "EURLexHTMLChunker") as chunker:
+            chunker.return_value.chunk_html.return_value = [FakeChunk("t", {})]
+            return p.update(**kwargs)
+
+    def test_a_newer_consolidated_text_is_reindexed_in_both_languages(self, patched_pipeline):
         p, m = patched_pipeline
-        m["eurlex"].check_for_new_amendments.return_value = ["a1", "a2"]
-        new_reg = FakeReg(celex="32025L0794", framework="CSRD")
-        m["eurlex"].fetch_recent_legislation.return_value = [new_reg]
-        m["eurlex"].download_full_text_html.return_value = "<html>" + ("y" * 600) + "</html>"
-        m["indexer"].index_contextual_chunks.return_value = 4
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(versions={AI_ACT: AI_ACT_OLD})
+        _serve_every_tracked_act(m, newer={AI_ACT: AI_ACT_NEW})
 
-        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
-            mock_chunker_cls.return_value.chunk_html.return_value = [
-                FakeChunk("u1", {"framework": "CSRD"}),
-            ]
-            stats = p.update(days_back=14)
+        stats = self._run(p, m)
 
-        m["eurlex"].fetch_recent_legislation.assert_called_once_with(days_back=14)
-        assert stats["action"] == "update"
-        assert stats["amendments_found"] == 2
-        assert stats["new_legislation"] == 1
-        assert stats["new_chunks_indexed"] == 4
-        m["indexer"].index_contextual_chunks.assert_called_once()
+        reindexed = [(c.args[0], c.args[1]) for c in m["indexer"].reindex_act.call_args_list]
+        assert reindexed == [(AI_ACT, "EN"), (AI_ACT, "IT")]
+        downloads = [c.args[0] for c in m["eurlex"].download_full_text_html.call_args_list]
+        assert downloads == [AI_ACT_NEW, AI_ACT_NEW]
+        assert [t["lang"] for t in stats["texts_refreshed"]] == ["EN", "IT"]
+        assert stats["chunks_indexed"] == 14
+        assert stats["texts_unchanged"] == 2 * (len(pipeline_mod.TRACKED_ACTS) - 1)
 
-    def test_update_no_new_content_does_not_index(self, patched_pipeline):
+    def test_nothing_outside_the_tracked_list_is_added(self, patched_pipeline):
         p, m = patched_pipeline
-        m["eurlex"].check_for_new_amendments.return_value = []
-        m["eurlex"].fetch_recent_legislation.return_value = []
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus()
+        _serve_every_tracked_act(m)
 
-        stats = p.update()
+        self._run(p, m)
 
+        # The old update indexed up to 100 recent EU acts of any kind, in English.
+        m["eurlex"].fetch_recent_legislation.assert_not_called()
         m["indexer"].index_contextual_chunks.assert_not_called()
-        assert stats["new_chunks_indexed"] == 0
-        assert stats["amendments_found"] == 0
-        assert stats["new_legislation"] == 0
+        tracked = {act.celex for act in pipeline_mod.TRACKED_ACTS}
+        assert {c.args[0] for c in m["indexer"].reindex_act.call_args_list} <= tracked
 
-    def test_update_skips_short_html(self, patched_pipeline):
+    def test_an_unchanged_corpus_downloads_nothing_and_is_dated_today(self, patched_pipeline):
         p, m = patched_pipeline
-        m["eurlex"].check_for_new_amendments.return_value = []
-        m["eurlex"].fetch_recent_legislation.return_value = [FakeReg(celex="3X")]
-        m["eurlex"].download_full_text_html.return_value = "short"  # < 500
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus()
+        _serve_every_tracked_act(m)
 
-        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
-            stats = p.update()
-            mock_chunker_cls.return_value.chunk_html.assert_not_called()
+        stats = self._run(p, m)
 
-        m["indexer"].index_contextual_chunks.assert_not_called()
-        assert stats["new_legislation"] == 1
-        assert stats["new_chunks_indexed"] == 0
+        m["eurlex"].download_full_text_html.assert_not_called()
+        m["indexer"].reindex_act.assert_not_called()
+        today = datetime.now(UTC).date().isoformat()
+        assert stats["complete"] is True
+        assert stats["corpus_as_of"] == today
+        kwargs = m["indexer"].write_corpus_meta.call_args.kwargs
+        assert kwargs["corpus_as_of"] == today
+        # Everything the point held is kept: the acts and the other fields.
+        assert len(kwargs["acts"]) == 2 * len(pipeline_mod.TRACKED_ACTS)
+        assert kwargs["extra"]["data_source"] == "eurlex"
+        assert kwargs["extra"]["languages"] == ["EN", "IT"]
 
-    def test_update_framework_fallback_unknown(self, patched_pipeline):
-        """A reg with falsy framework falls back to 'UNKNOWN' for the chunker."""
+    def test_a_language_missing_from_the_corpus_is_indexed(self, patched_pipeline):
         p, m = patched_pipeline
-        m["eurlex"].check_for_new_amendments.return_value = []
-        reg = FakeReg(celex="32025L0001", framework="")
-        m["eurlex"].fetch_recent_legislation.return_value = [reg]
-        m["eurlex"].download_full_text_html.return_value = "<html>" + ("z" * 600) + "</html>"
-        m["indexer"].index_contextual_chunks.return_value = 1
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(langs=("EN",))
+        _serve_every_tracked_act(m)
 
-        with patch.object(pipeline_mod, "EURLexHTMLChunker") as mock_chunker_cls:
-            mock_chunker_cls.return_value.chunk_html.return_value = [FakeChunk("t", {})]
-            p.update()
+        stats = self._run(p, m)
 
-        # framework="" -> "UNKNOWN" in the EURLexHTMLChunker(celex=..., framework=...)
-        _, kwargs = mock_chunker_cls.call_args
-        assert kwargs["framework"] == "UNKNOWN"
-        assert kwargs["celex"] == "32025L0001"
+        langs = {c.args[1] for c in m["indexer"].reindex_act.call_args_list}
+        assert langs == {"IT"}
+        assert m["indexer"].reindex_act.call_count == len(pipeline_mod.TRACKED_ACTS)
+        acts = m["indexer"].write_corpus_meta.call_args.kwargs["acts"]
+        assert {(a["celex"], a["lang"]) for a in acts} == {
+            (act.celex, lang) for act in pipeline_mod.TRACKED_ACTS for lang in ("EN", "IT")
+        }
+        assert stats["complete"] is True
+
+    def test_a_partial_update_keeps_the_corpus_date(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(versions={AI_ACT: AI_ACT_OLD})
+        _serve_every_tracked_act(m, newer={AI_ACT: AI_ACT_NEW})
+
+        stats = self._run(p, m, acts=["AI_ACT"])
+
+        assert stats["complete"] is False
+        assert stats["corpus_as_of"] == "2026-10-24"
+        assert m["indexer"].write_corpus_meta.call_args.kwargs["corpus_as_of"] == "2026-10-24"
+        entry = next(
+            a
+            for a in m["indexer"].write_corpus_meta.call_args.kwargs["acts"]
+            if (a["celex"], a["lang"]) == (AI_ACT, "IT")
+        )
+        assert entry["source_celex"] == AI_ACT_NEW
+
+    def test_a_text_cellar_does_not_serve_keeps_the_date(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["settings"].corpus_language_list = ["EN", "IT"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(versions={AI_ACT: AI_ACT_OLD})
+        _serve_every_tracked_act(m, newer={AI_ACT: AI_ACT_NEW})
+        m["eurlex"].download_full_text_html.return_value = None
+
+        stats = self._run(p, m)
+
+        assert stats["texts_failed"] == [
+            {"celex": AI_ACT, "lang": "EN"},
+            {"celex": AI_ACT, "lang": "IT"},
+        ]
+        assert stats["complete"] is False
+        assert stats["corpus_as_of"] == "2026-10-24"
+        # Nothing new to record, and no date to move: the point is left alone.
+        m["indexer"].write_corpus_meta.assert_not_called()
+
+    def test_cellar_down_for_one_act_does_not_stop_the_others(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["settings"].corpus_language_list = ["EN"]
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(langs=("EN",))
+        _serve_every_tracked_act(m)
+
+        def resolve(celex, **kw):
+            if celex == AI_ACT:
+                raise ConnectionError("CELLAR timed out")
+            return celex
+
+        m["eurlex"].resolve_download_celex.side_effect = resolve
+        stats = self._run(p, m)
+        assert stats["texts_failed"] == [{"celex": AI_ACT, "lang": "EN"}]
+        assert stats["texts_unchanged"] == len(pipeline_mod.TRACKED_ACTS) - 1
+        assert stats["complete"] is False
+
+    def test_the_in_force_check_covers_the_tracked_acts(self, patched_pipeline):
+        p, m = patched_pipeline
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(langs=("EN",))
+        _serve_every_tracked_act(m)
+
+        with patch.object(pipeline_mod, "refresh_in_force_status") as refresh:
+            refresh.return_value = {
+                "checked": 1,
+                "superseded_regulations": 0,
+                "superseded_chunks": 0,
+            }
+            self._run(p, m)
+
+        tracked = [act.celex for act in pipeline_mod.TRACKED_ACTS]
+        assert refresh.call_args.args[2] == tracked
 
 
 # --------------------------------------------------------------------------- #
@@ -769,14 +875,17 @@ class TestMainDispatch:
         )
 
     def test_main_update_dispatch(self):
+        # --days-back is still accepted (older command lines) and changes nothing.
         fp = self._run_main(["pipeline", "--action", "update", "--days-back", "30"])
-        fp.update.assert_called_once_with(days_back=30)
+        fp.update.assert_called_once_with(acts=None, languages=None)
         fp.seed.assert_not_called()
         fp.close.assert_called_once()
 
-    def test_main_update_default_days_back(self):
-        fp = self._run_main(["pipeline", "--action", "update"])
-        fp.update.assert_called_once_with(days_back=7)
+    def test_main_update_acts_and_lang_options(self):
+        fp = self._run_main(
+            ["pipeline", "--action", "update", "--acts", "AI_ACT", "--lang", "IT,EN"]
+        )
+        fp.update.assert_called_once_with(acts=["AI_ACT"], languages=["IT", "EN"])
 
     def test_main_stats_dispatch(self):
         fp = self._run_main(["pipeline", "--action", "stats"])
@@ -882,8 +991,8 @@ class TestRefreshInForceStatus:
 class TestUpdateSurfacesFreshness:
     def test_update_includes_superseded_stats(self, patched_pipeline):
         p, m = patched_pipeline
-        m["eurlex"].check_for_new_amendments.return_value = []
-        m["eurlex"].fetch_recent_legislation.return_value = []
+        m["indexer"].get_corpus_info.return_value = _indexed_corpus(langs=("EN",))
+        _serve_every_tracked_act(m)
         m["eurlex"].fetch_regulation_metadata.return_value = _meta(True)  # all in force
 
         stats = p.update()

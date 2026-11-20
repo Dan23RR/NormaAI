@@ -41,10 +41,13 @@ def _make_settings(provider="gemini", api_key="test-key", **overrides):
         anthropic_model_analysis="claude-sonnet-4-5",
         openrouter_model_analysis="some/free-model:free",
         openrouter_base_url="https://openrouter.ai/api/v1",
+        mistral_model_analysis="mistral-small-2603",
+        mistral_base_url="https://api.eu.mistral.ai/v1",
         normaai_public_url="https://normaai.org",
         google_api_key="" if provider != "gemini" else api_key,
         anthropic_api_key="" if provider != "anthropic" else api_key,
         openrouter_api_key="" if provider != "openrouter" else api_key,
+        mistral_api_key="" if provider != "mistral" else api_key,
     )
     # active_api_key is a real @property on Settings; emulate it here.
     s.active_api_key = api_key
@@ -64,6 +67,27 @@ def _reset_circuit():
 def _patch_settings(settings):
     """Patch the get_settings symbol that llm.py imports locally."""
     return patch("src.config.get_settings", return_value=settings)
+
+
+# A reply in prose, as in the golden v2 run of 2026-11-03, and the JSON one asked for.
+PROSE = "Yes. Each controller keeps a record of processing activities [GDPR, Art. 30(1)]."
+JSON_REPLY = json.dumps(
+    {
+        "answer": "Yes.",
+        "citations": [
+            {
+                "framework": "GDPR",
+                "article": "Art. 30(1)",
+                "quote": "Each controller shall maintain a record of processing activities",
+            }
+        ],
+        "confidence_score": 0.8,
+    }
+)
+
+
+def _json_retry_outcomes(caplog):
+    return [r.outcome for r in caplog.records if r.getMessage() == "llm_json_retry"]
 
 
 # ─── TestClassifyError ───────────────────────────────────────────
@@ -151,8 +175,41 @@ class TestGetLLM:
         assert kwargs["default_headers"]["X-Title"] == "NormaAI"
         assert kwargs["default_headers"]["HTTP-Referer"] == "https://normaai.org"
 
+    def test_mistral_provider_selected(self):
+        settings = _make_settings(provider="mistral", api_key="m-key")
+        fake_cls = MagicMock(return_value="MISTRAL_LLM")
+        with (
+            _patch_settings(settings),
+            patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=fake_cls)}),
+        ):
+            result = get_llm()
+        assert result == "MISTRAL_LLM"
+        _, kwargs = fake_cls.call_args
+        assert kwargs["model"] == "mistral-small-2603"
+        assert kwargs["api_key"].get_secret_value() == "m-key"
+        assert "m-key" not in repr(kwargs["api_key"])
+        assert kwargs["base_url"] == "https://api.eu.mistral.ai/v1"
+        assert kwargs["temperature"] == 0.3
+        assert kwargs["timeout"] == 30
+        # The limit goes in the body under the name Mistral's API documents:
+        # ChatOpenAI would send its own max_tokens as max_completion_tokens.
+        assert kwargs["extra_body"] == {"max_tokens": 2048}
+        assert "max_tokens" not in kwargs
+        # The OpenRouter attribution headers are for OpenRouter only.
+        assert "default_headers" not in kwargs
+
+    def test_mistral_temperature_override(self):
+        settings = _make_settings(provider="mistral", api_key="m-key")
+        fake_cls = MagicMock(return_value="MISTRAL_LLM")
+        with (
+            _patch_settings(settings),
+            patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=fake_cls)}),
+        ):
+            get_llm(temperature=0.7)
+        assert fake_cls.call_args.kwargs["temperature"] == 0.7
+
     def test_anthropic_is_the_fallback_branch(self):
-        # Any provider that is not gemini/openrouter falls through to Anthropic.
+        # Any provider that is not gemini/openrouter/mistral falls through to Anthropic.
         settings = _make_settings(provider="anthropic", api_key="a-key")
         fake_cls = MagicMock(return_value="ANTHROPIC_LLM")
         with (
@@ -503,6 +560,63 @@ class TestFormatRetrievedChunks:
             in out
         )
 
+    def test_another_act_of_a_framework_is_labelled_with_its_celex(self):
+        # B3.8: the Digital Omnibus on AI is no article of the AI Act, the Accounting
+        # Directive none of the CSRD: each act other than the principal one of its
+        # framework (citation_verifier.principal_celex) is labelled with its CELEX.
+        out = format_retrieved_chunks(
+            [
+                {"framework": "AI_ACT", "article": "Art. 1", "celex": "32026R1744", "text": "a"},
+                {
+                    "framework": "AI_ACT",
+                    "article": "Recital 38",
+                    "celex": "32026R1744",
+                    "text": "b",
+                },
+                {"framework": "CSRD", "article": "Art. 3", "celex": "32013L0034", "text": "c"},
+                {
+                    "framework": "CSRD",
+                    "article": "Art. 19a",
+                    "celex": "02022L2464-20260318",
+                    "text": "d",
+                },
+                {
+                    "framework": "AI_ACT",
+                    "article": "Art. 50",
+                    "celex": "02024R1689-20260727",
+                    "text": "e",
+                },
+            ]
+        )
+        assert "[32026R1744, Art. 1] | CELEX 32026R1744" in out
+        assert "[32026R1744, Recital 38]" in out
+        assert "[32013L0034, Art. 3] | CELEX 32013L0034" in out
+        assert "[AI_ACT, Art. 1]" not in out and "[CSRD, Art. 3]" not in out
+        # The principal act, in any consolidated version, keeps the framework key.
+        assert "[CSRD, Art. 19a] | CELEX 32022L2464" in out
+        assert "[AI_ACT, Art. 50] | CELEX 32024R1689" in out
+
+    def test_every_tracked_act_is_labelled_by_key_or_celex(self):
+        from src.agents.citation_verifier import principal_celex
+        from src.crawler.eurlex.client import TRACKED_ACTS
+
+        for act in TRACKED_ACTS:
+            out = format_retrieved_chunks(
+                [{"framework": act.framework, "article": "Art. 2", "celex": act.celex, "text": "x"}]
+            )
+            key = act.framework if act.celex == principal_celex(act.framework) else act.celex
+            assert out.startswith(f"--- Source 1 [{key}, Art. 2] | CELEX {act.celex}"), act.celex
+        principals = {
+            act.framework for act in TRACKED_ACTS if act.celex == principal_celex(act.framework)
+        }
+        assert principals == {"CSRD", "CSDDD", "AI_ACT", "DORA", "NIS2", "TAXONOMY", "GDPR", "CRA"}
+
+    def test_a_chunk_with_no_known_framework_keeps_its_label(self):
+        out = format_retrieved_chunks(
+            [{"framework": "OTHER", "article": "Art. 1", "celex": "32026R1744", "text": "x"}]
+        )
+        assert "[OTHER, Art. 1]" in out
+
     def test_long_act_title_is_shortened(self):
         out = format_retrieved_chunks([{"framework": "GDPR", "act_title": "T" * 300, "text": "b"}])
         assert "T" * 100 + "..." in out and "T" * 101 not in out
@@ -544,6 +658,14 @@ class TestCallLLM:
         with _patch_settings(settings):
             result = call_llm("sys", "user")
         assert "OPENROUTER_API_KEY" in result["error"]
+
+    def test_missing_api_key_names_the_mistral_variable(self):
+        settings = _make_settings(provider="mistral", api_key="")
+        settings.active_api_key = ""
+        with _patch_settings(settings):
+            result = call_llm("sys", "user")
+        assert "MISTRAL_API_KEY not configured" in result["error"]
+        assert result["error_code"] == "llm_not_configured"
 
     def test_open_circuit_returns_graceful_error(self):
         # An OPEN circuit degrades to the standardized error dict (it previously
@@ -590,6 +712,42 @@ class TestCallLLM:
             call_llm("sys", "user")
         # One failure recorded; below threshold of 5 → still available.
         assert llm_circuit._failure_count == 1
+
+    def test_a_reply_in_prose_is_asked_once_more_as_json(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = [MagicMock(content=PROSE), MagicMock(content=JSON_REPLY)]
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = call_llm("system prompt", "user message")
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.invoke.call_count == 2
+        retry = fake_llm.invoke.call_args_list[1][0][0]
+        # The same exchange, the reply in prose, then the request for the JSON object.
+        assert [m.content for m in retry[:3]] == ["system prompt", "user message", PROSE]
+        assert "JSON object" in retry[3].content
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    def test_two_replies_in_prose_keep_the_first(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = [MagicMock(content=PROSE), MagicMock(content="Still prose.")]
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = call_llm("sys", "user")
+        # As before the second attempt: the answer in prose with its inline citations.
+        assert result == parse_json_response(PROSE)
+        assert result["citations"] == [
+            {"framework": "GDPR", "reference": "Art. 30(1)", "quote_snippet": ""}
+        ]
+        assert fake_llm.invoke.call_count == 2  # never a third
+        assert _json_retry_outcomes(caplog) == ["prose"]
 
 
 # ─── TestAcallLLM (async path) ───────────────────────────────────
@@ -672,6 +830,108 @@ class TestAcallLLM:
         # A successful run clears the failure count.
         assert llm_circuit._failure_count == 0
 
+    async def test_a_reply_in_prose_is_asked_once_more_as_json(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), MagicMock(content=JSON_REPLY)]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("system prompt", "user message")
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.ainvoke.await_count == 2
+        retry = fake_llm.ainvoke.await_args_list[1][0][0]
+        assert [m.content for m in retry[:3]] == ["system prompt", "user message", PROSE]
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    async def test_two_replies_in_prose_keep_the_first(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), MagicMock(content="Still prose.")]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == parse_json_response(PROSE)
+        assert fake_llm.ainvoke.await_count == 2
+        assert _json_retry_outcomes(caplog) == ["prose"]
+
+    async def test_a_failed_second_attempt_keeps_the_first_reply(self, caplog):
+        # No backoff retries for the second attempt, and the circuit is left alone.
+        settings = _make_settings(provider="gemini", api_key="k")
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=PROSE), RuntimeError("overloaded 503")]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == parse_json_response(PROSE)
+        assert fake_llm.ainvoke.await_count == 2
+        assert llm_circuit._failure_count == 0
+        assert _json_retry_outcomes(caplog) == ["error"]
+
+    async def test_a_json_reply_without_the_answer_is_asked_once_more(self, caplog):
+        # 2026-11-19: a Q&A reply parsed to a JSON object with keys of its own
+        # and reached the user as an empty answer with no sources.
+        settings = _make_settings(provider="gemini", api_key="k")
+        own_keys = json.dumps({"risposta": "Sì.", "citazioni": [], "confidenza": 0.8})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=own_keys), MagicMock(content=JSON_REPLY)]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user", required=("answer",))
+        assert result == json.loads(JSON_REPLY)
+        assert fake_llm.ainvoke.await_count == 2
+        assert _json_retry_outcomes(caplog) == ["json"]
+
+    async def test_two_replies_without_the_answer_are_an_error_not_an_empty_answer(self, caplog):
+        settings = _make_settings(provider="gemini", api_key="k")
+        empty = json.dumps({"answer": "  ", "citations": []})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(
+            side_effect=[MagicMock(content=empty), MagicMock(content=json.dumps({"risposta": "x"}))]
+        )
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("WARNING", logger="src.agents.llm"),
+        ):
+            result = await acall_llm("sys", "user", required=("answer",))
+        assert result.get("error")
+        assert result.get("error_code")
+        assert _json_retry_outcomes(caplog) == ["missing_fields"]
+
+    async def test_without_required_fields_a_json_reply_is_kept_as_it_is(self):
+        # Gap analysis, monitor and CoVe replies have keys of their own.
+        settings = _make_settings(provider="gemini", api_key="k")
+        reply = json.dumps({"requirements": [], "summary": "ok"})
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content=reply))
+        with (
+            _patch_settings(settings),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+        ):
+            result = await acall_llm("sys", "user")
+        assert result == json.loads(reply)
+        assert fake_llm.ainvoke.await_count == 1
+
     async def test_temperature_propagates_to_get_llm(self):
         settings = _make_settings(provider="gemini", api_key="k")
         fake_llm = MagicMock()
@@ -685,3 +945,156 @@ class TestAcallLLM:
         with _patch_settings(settings), patch("src.agents.llm.get_llm", side_effect=_capture):
             await acall_llm("sys", "user", temperature=0.88)
         assert captured["temperature"] == 0.88
+
+
+# ─── Token usage ──────────────────────────────────────────────────
+
+
+class TestTokenUsage:
+    """One ``llm_token_usage`` log line per LLM reply, with provider and model,
+    never the prompt or the answer; the Prometheus counter when available."""
+
+    PROMPT = "SYSTEM PROMPT WITH THE RETRIEVED LAW"
+    ANSWER = json.dumps({"answer": "THE ANSWER TEXT", "citations": []})
+
+    @staticmethod
+    def _settings():
+        return _make_settings(provider="anthropic", api_key="k", active_model="claude-haiku-5-5")
+
+    @staticmethod
+    def _usage_lines(caplog):
+        return [r for r in caplog.records if r.getMessage() == "llm_token_usage"]
+
+    def _reply(self, content=None, **fields):
+        from langchain_core.messages import AIMessage
+
+        return AIMessage(content=self.ANSWER if content is None else content, **fields)
+
+    def test_counts_from_langchain_usage_metadata(self):
+        from src.agents.llm import token_counts
+
+        reply = self._reply(
+            usage_metadata={"input_tokens": 1200, "output_tokens": 340, "total_tokens": 1540}
+        )
+        assert token_counts(reply) == (1200, 340)
+
+    @pytest.mark.parametrize(
+        "metadata, counts",
+        [
+            ({"usage": {"input_tokens": 10, "output_tokens": 4}}, (10, 4)),  # Anthropic
+            ({"token_usage": {"prompt_tokens": 11, "completion_tokens": 5}}, (11, 5)),  # OpenAI
+            (
+                {"usage_metadata": {"prompt_token_count": 12, "candidates_token_count": 6}},
+                (12, 6),
+            ),  # Gemini
+            ({"usage": {"input_tokens": "10", "output_tokens": 4}}, None),
+            ({}, None),
+        ],
+    )
+    def test_counts_from_the_provider_metadata(self, metadata, counts):
+        from src.agents.llm import token_counts
+
+        reply = SimpleNamespace(usage_metadata=None, response_metadata=metadata)
+        assert token_counts(reply) == counts
+
+    def test_log_line_carries_counts_provider_and_model_not_the_text(self, caplog):
+        from src.agents.llm import record_token_usage
+
+        reply = self._reply(
+            usage_metadata={"input_tokens": 1200, "output_tokens": 340, "total_tokens": 1540},
+            response_metadata={"model": "claude-haiku-5-5-20261001"},
+        )
+        with (
+            _patch_settings(self._settings()),
+            patch("src.observability.record_llm_tokens") as counter,
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(reply)
+        (line,) = self._usage_lines(caplog)
+        assert (line.provider, line.model) == ("anthropic", "claude-haiku-5-5")
+        assert (line.input_tokens, line.output_tokens) == (1200, 340)
+        assert line.usage_reported is True
+        assert line.served_model == "claude-haiku-5-5-20261001"
+        assert "THE ANSWER TEXT" not in repr(vars(line))
+        counter.assert_called_once_with("anthropic", "claude-haiku-5-5", 1200, 340)
+
+    def test_a_reply_without_counts_says_so(self, caplog):
+        from src.agents.llm import record_token_usage
+
+        with (
+            _patch_settings(self._settings()),
+            patch("src.observability.record_llm_tokens") as counter,
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(self._reply())
+        (line,) = self._usage_lines(caplog)
+        assert line.usage_reported is False
+        assert not hasattr(line, "input_tokens")
+        counter.assert_not_called()
+
+    def test_without_prometheus_client_nothing_breaks(self, caplog, monkeypatch):
+        import src.observability as obs
+        from src.agents.llm import record_token_usage
+
+        monkeypatch.setattr(obs, "_metrics_available", False)
+        if hasattr(obs, "LLM_TOKENS"):
+            monkeypatch.delattr(obs, "LLM_TOKENS")
+        reply = self._reply(
+            usage_metadata={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5}
+        )
+        with (
+            _patch_settings(self._settings()),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            record_token_usage(reply)
+        (line,) = self._usage_lines(caplog)
+        assert (line.input_tokens, line.output_tokens) == (3, 2)
+
+    def test_an_accounting_error_never_breaks_the_call(self):
+        from src.agents.llm import record_token_usage
+
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.token_counts", side_effect=RuntimeError("boom")),
+        ):
+            record_token_usage(self._reply())  # no exception
+
+    def test_sync_call_records_each_reply(self, caplog):
+        replies = [
+            self._reply(
+                content=PROSE,
+                usage_metadata={"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+            ),
+            self._reply(
+                content=JSON_REPLY,
+                usage_metadata={"input_tokens": 130, "output_tokens": 25, "total_tokens": 155},
+            ),
+        ]
+        fake_llm = MagicMock()
+        fake_llm.invoke.side_effect = replies
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            call_llm(self.PROMPT, "user message")
+        lines = self._usage_lines(caplog)
+        # The answer in prose and the second attempt asked as JSON: two calls, two lines.
+        assert [(r.input_tokens, r.output_tokens) for r in lines] == [(100, 20), (130, 25)]
+        assert all(self.PROMPT not in repr(vars(r)) for r in lines)
+
+    async def test_async_call_records_the_reply(self, caplog):
+        reply = self._reply(
+            usage_metadata={"input_tokens": 900, "output_tokens": 210, "total_tokens": 1110}
+        )
+        fake_llm = MagicMock()
+        fake_llm.ainvoke = AsyncMock(return_value=reply)
+        with (
+            _patch_settings(self._settings()),
+            patch("src.agents.llm.get_llm", return_value=fake_llm),
+            caplog.at_level("INFO", logger="src.agents.llm"),
+        ):
+            result = await acall_llm(self.PROMPT, "user message")
+        assert result["answer"] == "THE ANSWER TEXT"
+        (line,) = self._usage_lines(caplog)
+        assert (line.input_tokens, line.output_tokens) == (900, 210)

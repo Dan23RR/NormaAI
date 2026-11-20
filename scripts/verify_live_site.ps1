@@ -1,13 +1,17 @@
-# Post-deploy smoke check for the live NormaAI site.
-# Run after every Vercel deploy:  pwsh scripts/verify_live_site.ps1
+# Post-deploy smoke check for the live NormaAI site and its backend.
+# Run after every Vercel or backend deploy:  pwsh scripts/verify_live_site.ps1
 # Optional:  pwsh scripts/verify_live_site.ps1 -BaseUrl https://normaai.org
+#            -ApiVersion <short SHA>  also requires that build on the backend
+#            -ApiUrl ''               checks the site only
 #
 # Checks are read-only except the lead-form probe, which submits with the
 # honeypot field filled so the serverless route silently drops it (no fake
 # lead reaches the founder inbox).
 
 param(
-    [string]$BaseUrl = 'https://normaai-psi.vercel.app'
+    [string]$BaseUrl = 'https://normaai-psi.vercel.app',
+    [string]$ApiUrl = 'https://api.normaai.org',
+    [string]$ApiVersion = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -45,9 +49,11 @@ Check 'No 2024/XXX placeholder citation' {
     $html -notmatch '2024/XXX'
 }
 
-Check 'CSDDD date is post-Omnibus (26 luglio 2028, no luglio 2027)' {
+# The pre-Omnibus date was 26 luglio 2027. "luglio 2027" alone is legitimate:
+# the monitoring calendar expects the Commission's CSDDD guidelines then.
+Check 'CSDDD date is post-Omnibus (26 luglio 2028, no 26 luglio 2027)' {
     $html = (Invoke-WebRequest -Uri "$BaseUrl/" -UseBasicParsing).Content
-    ($html -match '26 luglio 2028') -and ($html -notmatch 'luglio 2027')
+    ($html -match '26 luglio 2028') -and ($html -notmatch '26 luglio 2027')
 }
 
 Check 'robots.txt serves 200' {
@@ -89,6 +95,56 @@ Check 'Lead route rejects invalid email with 422' {
         $false
     } catch {
         $_.Exception.Response.StatusCode.value__ -eq 422
+    }
+}
+
+if ($ApiUrl) {
+    Write-Host "`nVerifying $ApiUrl`n"
+
+    Check 'API /health responds ok' {
+        $h = Invoke-RestMethod -Uri "$ApiUrl/health"
+        Write-Host "       version $($h.version), qdrant $($h.qdrant), llm $($h.llm)"
+        $h.status -eq 'ok'
+    }
+
+    if ($ApiVersion) {
+        Check "API runs build $ApiVersion" {
+            (Invoke-RestMethod -Uri "$ApiUrl/health").version -eq $ApiVersion
+        }
+    }
+
+    Check 'API /readyz is ready (qdrant, llm and corpus up)' {
+        try {
+            (Invoke-RestMethod -Uri "$ApiUrl/readyz").status -eq 'ready'
+        } catch {
+            # A 503 body lists the checks that are down.
+            Write-Host "       $($_.ErrorDetails.Message)"
+            $false
+        }
+    }
+
+    Check 'API serves the corpus (GET /api/v1/stats)' {
+        $s = Invoke-RestMethod -Uri "$ApiUrl/api/v1/stats"
+        Write-Host "       corpus as of $($s.corpus_as_of), $($s.qdrant.points_count) points, $($s.corpus.embedding_model)"
+        [bool]$s.corpus_as_of -and ($s.qdrant.points_count -gt 1)
+    }
+
+    Check "API CORS allows the site origin" {
+        $origin = ([Uri]$BaseUrl).GetLeftPart('Authority')
+        $headers = @{
+            Origin = $origin
+            'Access-Control-Request-Method' = 'POST'
+            'Access-Control-Request-Headers' = 'content-type'
+        }
+        $r = Invoke-WebRequest -Uri "$ApiUrl/api/v1/auth/login" -Method Options -Headers $headers -UseBasicParsing
+        "$($r.Headers['Access-Control-Allow-Origin'])" -eq $origin
+    }
+
+    # NEXT_PUBLIC_API_BASE_URL is read when Vercel builds: the CSP of the site
+    # names the API only after a redeploy with the variable set.
+    Check 'Site CSP lets the browser reach the API (NEXT_PUBLIC_API_BASE_URL)' {
+        $csp = "$((Invoke-WebRequest -Uri "$BaseUrl/login" -UseBasicParsing).Headers['Content-Security-Policy'])"
+        $csp -match ('connect-src[^;]*' + [regex]::Escape($ApiUrl))
     }
 }
 

@@ -19,17 +19,18 @@ module.exports = {
         ok: rgb('ok'),
         warn: rgb('warn'),
         bad: rgb('bad'),
-        // Framework hues: category labels only (dark text on a light tint).
+        // Framework hues: category labels only (text on its own tint,
+        // bg-fw-csrd/10 text-fw-csrd). Tokens with a dark variant, like the rest.
         fw: {
-          csrd: '#1F7A53',
-          csddd: '#1D6FB8',
-          aiact: '#6D4AB8',
-          dora: '#B9541F',
-          nis2: '#8A5A00',
-          taxonomy: '#0F766E',
-          gdpr: '#B42A45',
-          cra: '#9A3D7A',
-          esrs: '#5B5CA5',
+          csrd: rgb('fw-csrd'),
+          csddd: rgb('fw-csddd'),
+          aiact: rgb('fw-aiact'),
+          dora: rgb('fw-dora'),
+          nis2: rgb('fw-nis2'),
+          taxonomy: rgb('fw-taxonomy'),
+          gdpr: rgb('fw-gdpr'),
+          cra: rgb('fw-cra'),
+          esrs: rgb('fw-esrs'),
         },
       },
       fontFamily: {

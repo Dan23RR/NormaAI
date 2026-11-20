@@ -301,12 +301,14 @@ class EurLexClient:
         endpoint: str = "https://publications.europa.eu/webapi/rdf/sparql",
         request_delay: float = 1.5,  # seconds between requests
         max_retries: int = 3,
+        sparql_timeout: int = 30,  # seconds; without it a stalled query hangs forever
     ):
         self.endpoint = endpoint
         self.request_delay = request_delay
         self.max_retries = max_retries
         self._sparql = SPARQLWrapper(endpoint)
         self._sparql.setReturnFormat(JSON)
+        self._sparql.setTimeout(sparql_timeout)
         self._http = httpx.Client(
             timeout=30.0,
             follow_redirects=True,
@@ -514,8 +516,41 @@ class EurLexClient:
         prefix = celex_utils.consolidated_prefix(base)
         if prefix is None:
             return []
-        query = self._build_sparql_query(
-            """
+
+        def consolidated(query: str) -> list[str]:
+            bindings = self._execute_sparql(query).get("results", {}).get("bindings", [])
+            return sorted(
+                {
+                    value
+                    for value in (b.get("celex", {}).get("value", "").strip() for b in bindings)
+                    if celex_utils.is_consolidated_celex(value)
+                }
+            )
+
+        # Through the relation between a consolidated text and its basic act: an
+        # indexed lookup (0.2 s, measured 2026-11-11 on six acts, same ids as the
+        # scan below, which takes 3-5 s and sometimes never answers).
+        found = consolidated(
+            self._build_sparql_query(
+                """
+        SELECT DISTINCT ?celex WHERE {{
+            ?base cdm:resource_legal_id_celex "{{celex}}"^^xsd:string .
+            ?consolidated cdm:act_consolidated_based_on_resource_legal ?base .
+            ?consolidated cdm:resource_legal_id_celex ?celex .
+        }}
+        ORDER BY ?celex
+        LIMIT 500
+        """,
+                {"celex": base},
+            )
+        )
+        if found:
+            return found
+        # Nothing through the relation: confirm with the scan of the identifiers
+        # before saying that the act has no consolidated text.
+        return consolidated(
+            self._build_sparql_query(
+                """
         SELECT DISTINCT ?celex WHERE {{
             ?work cdm:resource_legal_id_celex ?celex .
             FILTER(STRSTARTS(STR(?celex), "{{prefix}}"))
@@ -523,15 +558,8 @@ class EurLexClient:
         ORDER BY ?celex
         LIMIT 500
         """,
-            {"prefix": prefix},
-        )
-        bindings = self._execute_sparql(query).get("results", {}).get("bindings", [])
-        return sorted(
-            {
-                value
-                for value in (b.get("celex", {}).get("value", "").strip() for b in bindings)
-                if celex_utils.is_consolidated_celex(value)
-            }
+                {"prefix": prefix},
+            )
         )
 
     def resolve_download_celex(self, celex: str, prefer_consolidated: bool = True) -> str:

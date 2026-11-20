@@ -34,6 +34,9 @@ class AuditAction(str, Enum):
     TOKEN_REUSE_DETECTED = "auth.token.reuse_detected"
     EMAIL_VERIFICATION = "auth.email.verification"
     EMAIL_VERIFICATION_RESEND = "auth.email.verification_resend"
+    PASSWORD_RESET_REQUESTED = "auth.password_reset.requested"
+    PASSWORD_RESET = "auth.password_reset.done"
+    SESSIONS_ENDED = "auth.sessions.ended"
 
     # Conversations
     CONVERSATION_CREATED = "data.conversation.created"
@@ -64,7 +67,10 @@ class AuditAction(str, Enum):
     INVITE_CREATED = "admin.invite.created"
     USER_CREATED = "admin.user.created"
     USER_DEACTIVATED = "admin.user.deactivated"
+    USER_REMOVED = "admin.user.removed"
     ROLE_CHANGED = "admin.role.changed"
+    STAFF_GRANTED = "admin.staff.granted"
+    STAFF_REVOKED = "admin.staff.revoked"
     CONFIG_CHANGED = "admin.config.changed"
 
     # Security

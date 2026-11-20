@@ -1,101 +1,75 @@
 /**
- * The legal sources the scope engine and the obligations calendar cite.
- * Every entry comes from a file of this repository (the two public scope
- * checkers, the Codex, the landing page, the prompts, ADR-003 and ADR-004);
- * the repository location is noted next to each one so a reviewer can
- * check it. The act and the article, in the language of the interface,
- * live in the `ambito.sources` messages. Nothing here is a legal opinion.
+ * The legal sources of the scope engine and of the obligations calendar,
+ * as the interface shows them. Each one is an entry of the registry in
+ * src/lib/verification: its status and its date come from the last run of
+ * scripts/verify_site_sources.py, never from this module. A source that
+ * check did not find is shown as "not yet verified", without a quote.
+ * Nothing here is a legal opinion.
  */
-import { eurlexLang } from '@/i18n/config'
+import { eurlexLang, languageOf } from '@/i18n/config'
+import { formatDate } from '@/i18n/format'
 import type { TextContext } from '@/i18n/types'
 import { eurlexUrl, type Source } from '@/lib/sources'
+import { actName, legalSource, originOf, verificationOf, type SourceKind } from '@/lib/verification'
 
-/** The day these rules and dates were checked against the repository sources. */
-export const VERIFIED_ON = '2026-10-23'
-
-export const CODEX_URL = '/codex-post-omnibus-2025-2029.pdf'
-
-export type ScopeSourceKey =
-  | 'omnibusI'
-  | 'csrd'
-  | 'dlgs125'
-  | 'csddd'
-  | 'aiAct50_1'
-  | 'aiAct50_2'
-  | 'aiAct50_3'
-  | 'aiAct50_4'
-  | 'aiAct50_5'
-  | 'aiAct113'
-  | 'aiAct99'
-  | 'aiAct4'
-  | 'aiAct5'
-  | 'aiActGpai'
-  | 'aiActHighRisk'
-  | 'legge132'
-  | 'cra'
-  | 'craImplementing'
-  | 'nis2'
-  | 'dora'
-  | 'esrs'
-  | 'codex'
-
-/** The structural part of each source: id, CELEX or link, origin. The words come from the messages. */
-const DEFINITIONS: Record<ScopeSourceKey, { id: string; celex?: string; url?: string; origin?: string }> = {
-  // public/scope-csrd.html (CITE), README.md "Regulatory Context", ADR-003.
-  omnibusI: { id: 'omnibus-i', celex: '32026L0470' },
-  // public/scope-csrd.html (CITE): the CSRD introduced art. 19-bis.
-  csrd: { id: 'csrd', celex: '32022L2464' },
-  // Codex p. 12 and p. 16: Italian transposition of the pre-Omnibus CSRD.
-  dlgs125: { id: 'dlgs-125-2024', origin: 'Gazzetta Ufficiale' },
-  // Landing page "Fonti", Codex p. 5, ADR-003, prompts/gap_analyst.txt.
-  csddd: { id: 'csddd', celex: '32024L1760' },
-  // public/scope-aiact.html and src/app/page.tsx.
-  aiAct50_1: { id: 'ai-act-50-1', celex: '32024R1689' },
-  aiAct50_2: { id: 'ai-act-50-2', celex: '32024R1689' },
-  aiAct50_3: { id: 'ai-act-50-3', celex: '32024R1689' },
-  aiAct50_4: { id: 'ai-act-50-4', celex: '32024R1689' },
-  aiAct50_5: { id: 'ai-act-50-5', celex: '32024R1689' },
-  aiAct113: { id: 'ai-act-113', celex: '32024R1689' },
-  aiAct99: { id: 'ai-act-99', celex: '32024R1689' },
-  aiAct4: { id: 'ai-act-4', celex: '32024R1689' },
-  aiAct5: { id: 'ai-act-5', celex: '32024R1689' },
-  aiActGpai: { id: 'ai-act-gpai', celex: '32024R1689' },
-  aiActHighRisk: { id: 'ai-act-high-risk', celex: '32024R1689' },
-  legge132: { id: 'legge-132-2025', origin: 'Normattiva' },
-  // ADR-004, prompts/gap_analyst.txt riga 47, scripts/redteam_openrouter.py (art. 14).
-  cra: { id: 'cra', celex: '32024R2847' },
-  craImplementing: { id: 'cra-implementing', celex: '32025R2392' },
-  // Codex p. 18 (CELEX stated there).
-  nis2: { id: 'nis2', celex: '32022L2555' },
-  dora: { id: 'dora', celex: '32022R2554' },
-  esrs: { id: 'esrs' },
-  codex: { id: 'codex', url: CODEX_URL, origin: 'Codex NormaAI' },
+/** A registry source ready for display. */
+export interface ScopeSource extends Source {
+  kind: SourceKind
+  /** ISO date of the consolidated EU text the passage was found in. */
+  textAsOf?: string
+  /** Language of the quoted passage (BCP 47). */
+  quoteLang?: string
 }
 
-/** The sources in the words and the EUR-Lex language of the interface. */
-export function scopeSources(ctx: TextContext): Record<ScopeSourceKey, Source> {
-  const out = {} as Record<ScopeSourceKey, Source>
-  for (const key of Object.keys(DEFINITIONS) as ScopeSourceKey[]) {
-    const def = DEFINITIONS[key]
-    const url = def.url ?? (def.celex ? eurlexUrl(def.celex, eurlexLang(ctx.locale)) : undefined)
-    const origin = def.origin ?? (url ? 'EUR-Lex' : undefined)
-    out[key] = {
-      id: def.id,
-      index: 0,
-      act: ctx.t(`ambito.sources.${key}.act`),
-      article: ctx.t(`ambito.sources.${key}.article`),
-      celex: def.celex,
-      url,
-      origin,
-      status: 'verified',
-      verifiedAt: VERIFIED_ON,
-    }
+const CELEX_VERSION = /^\d{5}[A-Z]\d{4}(-\d{8})?$/
+
+/** One line of official text: the breaks of the source page are not part of the wording. */
+function oneLine(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+function linkOf(id: string, ctx: TextContext): string | undefined {
+  const source = legalSource(id)
+  const record = verificationOf(id)
+  if (source.kind === 'eurlex') {
+    // The page of the version that was read, in the language of the interface.
+    const version = record?.version && CELEX_VERSION.test(record.version) ? record.version : source.act
+    return eurlexUrl(version, eurlexLang(ctx.locale))
   }
-  return out
+  if (source.kind === 'normattiva') return record?.url ?? `https://www.normattiva.it/uri-res/N2Ls?${source.act}`
+  return source.url
+}
+
+/** The source of a registry id in the words of the interface; an unknown id throws. */
+export function scopeSource(id: string, ctx: TextContext): ScopeSource {
+  const source = legalSource(id)
+  const record = verificationOf(id)
+  const verified = record?.status === 'verified' && Boolean(record.verified_on)
+  const language = languageOf(ctx.locale)
+  return {
+    id,
+    index: 0,
+    kind: source.kind,
+    act: actName(source.act, language),
+    article: source.label[language],
+    celex: source.kind === 'eurlex' ? source.act : undefined,
+    url: linkOf(id, ctx),
+    origin: originOf(source),
+    status: verified ? 'verified' : 'unverified',
+    verifiedAt: verified ? (record?.verified_on ?? undefined) : undefined,
+    quote: verified && record?.official_quote ? oneLine(record.official_quote) : undefined,
+    quoteLang: source.lang.toLowerCase(),
+    textAsOf: verified ? (record?.consolidated_as_of ?? undefined) : undefined,
+  }
+}
+
+/** The sources of some registry ids, numbered 1..n, without duplicates. */
+export function scopeSources(ids: string[], ctx: TextContext): ScopeSource[] {
+  return withIndex(ids.map((id) => scopeSource(id, ctx)))
 }
 
 /** Returns the sources renumbered 1..n, without duplicates, ready for display. */
-export function withIndex(sources: Source[]): Source[] {
+export function withIndex<T extends Source>(sources: T[]): T[] {
   const seen = new Set<string>()
   const unique = sources.filter((s) => {
     if (seen.has(s.id)) return false
@@ -105,12 +79,38 @@ export function withIndex(sources: Source[]): Source[] {
   return unique.map((s, i) => ({ ...s, index: i + 1 }))
 }
 
-/** "Regolamento (UE) 2024/1689 (AI Act), art. 50, par. 1 (CELEX 32024R1689)" */
-export function sourceLine(source: Source): string {
+/**
+ * "il 2 dicembre 2026", "l’11 novembre 2026": Italian puts the article
+ * before a date and elides it before 1, 8 and 11. English takes the date alone.
+ */
+export function dateWithArticle(iso: string, ctx: TextContext): string {
+  const text = formatDate(iso, ctx)
+  if (languageOf(ctx.locale) !== 'it') return text
+  const day = Number(iso.slice(8, 10))
+  return day === 1 || day === 8 || day === 11 ? `l’${text}` : `il ${text}`
+}
+
+/**
+ * What the last check says about a source: "Verificata l’11 novembre 2026"
+ * with the text it was found in, or "Fonte indicata, non ancora verificata".
+ */
+export function verificationLabel(source: Source, ctx: TextContext): string {
+  if (source.status !== 'verified' || !source.verifiedAt) return ctx.t('ambito.verification.notVerified')
+  const date = dateWithArticle(source.verifiedAt, ctx)
+  const textAsOf = (source as ScopeSource).textAsOf
+  if (textAsOf) {
+    return ctx.t('ambito.verification.verifiedConsolidated', { date, textDate: formatDate(textAsOf, ctx) })
+  }
+  return ctx.t('ambito.verification.verified', { date })
+}
+
+/** "Regolamento (UE) 2024/1689 (AI Act), art. 50, par. 1 (CELEX 32024R1689) <url>. Verificata ..." */
+export function sourceLine(source: Source, ctx?: TextContext): string {
   const parts = [source.act]
   if (source.article) parts.push(source.article)
   let line = parts.join(', ')
   if (source.celex) line += ` (CELEX ${source.celex})`
   if (source.url) line += ` ${source.url}`
+  if (ctx) line += `. ${verificationLabel(source, ctx)}`
   return line
 }

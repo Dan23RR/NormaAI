@@ -103,6 +103,71 @@ class TestCacheKeyGeneration:
         assert len(key) < 100
 
 
+def _settings(**update):
+    from src.config import get_settings
+
+    return get_settings().model_copy(update=update)
+
+
+class TestKeyFollowsWhatProducedTheAnswer:
+    """An answer is served only for the language it was written in and the
+    corpus, provider and model it came from."""
+
+    def test_language_is_part_of_the_key(self, cache):
+        italian = cache._make_key("qa", "Entro quando?", org_id="o", language="it")
+        english = cache._make_key("qa", "Entro quando?", org_id="o", language="en")
+        assert italian != english
+        assert italian == cache._make_key("qa", "Entro quando?", org_id="o", language=" IT ")
+
+    def test_corpus_version_is_part_of_the_key(self, cache):
+        with patch("src.cache.get_settings", return_value=_settings(corpus_as_of="2026-10-24")):
+            old_corpus = cache._make_key("qa", "q", org_id="o", language="it")
+        with patch("src.cache.get_settings", return_value=_settings(corpus_as_of="2026-11-18")):
+            new_corpus = cache._make_key("qa", "q", org_id="o", language="it")
+        with patch(
+            "src.cache.get_settings",
+            return_value=_settings(
+                corpus_as_of="2026-11-18", qdrant_collection="eu_regulations_e5"
+            ),
+        ):
+            other_collection = cache._make_key("qa", "q", org_id="o", language="it")
+        assert len({old_corpus, new_corpus, other_collection}) == 3
+
+    def test_provider_and_model_are_part_of_the_key(self, cache):
+        haiku = _settings(llm_provider="anthropic", anthropic_model_analysis="claude-haiku-5-5")
+        sonnet = _settings(llm_provider="anthropic", anthropic_model_analysis="claude-sonnet-5-5")
+        mistral = _settings(llm_provider="mistral")
+        keys = set()
+        for settings in (haiku, sonnet, mistral):
+            with patch("src.cache.get_settings", return_value=settings):
+                keys.add(cache._make_key("qa", "q", org_id="o", language="it"))
+        assert len(keys) == 3
+
+    def test_corpus_version_reads_collection_and_corpus_date(self):
+        from src.cache import corpus_version
+
+        with patch(
+            "src.cache.get_settings",
+            return_value=_settings(
+                qdrant_collection="eu_regulations_e5", corpus_as_of="2026-11-18"
+            ),
+        ):
+            assert corpus_version() == "eu_regulations_e5@2026-11-18"
+        with patch("src.cache.get_settings", return_value=_settings(corpus_as_of="")):
+            assert corpus_version().endswith("@")
+
+    def test_round_trip_needs_the_same_language(self, cache):
+        store = {}
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=lambda key: store.get(key))
+        client.setex = AsyncMock(side_effect=lambda key, ttl, value: store.__setitem__(key, value))
+        cache._client, cache._available = client, True
+        answer = {"answer": "Entro 72 ore.", "confidence_score": 0.9}
+        assert _run(cache.set("qa", "Entro quando?", answer, org_id="o", language="it"))
+        assert _run(cache.get("qa", "Entro quando?", org_id="o", language="it")) == answer
+        assert _run(cache.get("qa", "Entro quando?", org_id="o", language="en")) is None
+
+
 # ------------------------------------------------------------------ #
 #  TTL Configuration                                                  #
 # ------------------------------------------------------------------ #
@@ -126,6 +191,41 @@ class TestCacheTTL:
         """Monitor data is most time-sensitive."""
         assert ResponseCache.TTL_MAP["monitor"] < ResponseCache.TTL_MAP["qa"]
         assert ResponseCache.TTL_MAP["monitor"] < ResponseCache.TTL_MAP["gap_analysis"]
+
+    def test_default_setting_keeps_the_map(self):
+        with patch("src.cache.get_settings", return_value=_settings(cache_ttl_seconds=3600)):
+            assert [ResponseCache.ttl_seconds(t) for t in ("qa", "gap_analysis", "monitor")] == [
+                3600,
+                1800,
+                900,
+            ]
+
+    def test_cache_ttl_seconds_scales_every_task(self):
+        # CACHE_TTL_SECONDS was never read: setting it changed nothing.
+        with patch("src.cache.get_settings", return_value=_settings(cache_ttl_seconds=600)):
+            assert [ResponseCache.ttl_seconds(t) for t in ("qa", "gap_analysis", "monitor")] == [
+                600,
+                300,
+                150,
+            ]
+
+    def test_set_uses_the_configured_ttl(self, cache):
+        client = AsyncMock()
+        cache._client, cache._available = client, True
+        with patch("src.cache.get_settings", return_value=_settings(cache_ttl_seconds=7200)):
+            assert _run(cache.set("qa", "q", {"answer": "a", "confidence_score": 0.9}))
+        assert client.setex.call_args.args[1] == 7200
+
+    @pytest.mark.parametrize("ttl", [0, -5])
+    def test_zero_turns_the_cache_off(self, cache, ttl):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value='{"answer": "cached before"}')
+        cache._client, cache._available = client, True
+        with patch("src.cache.get_settings", return_value=_settings(cache_ttl_seconds=ttl)):
+            assert _run(cache.set("qa", "q", {"answer": "a", "confidence_score": 0.9})) is False
+            assert _run(cache.get("qa", "q")) is None
+        client.setex.assert_not_called()
+        client.get.assert_not_called()
 
 
 # ------------------------------------------------------------------ #
@@ -256,6 +356,20 @@ class TestCacheability:
         ok, why = is_cacheable_result(
             {"answer": "CSRD applies.", "citations": [], "confidence_score": 0.9}
         )
+        assert ok and why == "ok"
+
+    def test_an_empty_qa_answer_is_never_cached(self):
+        # 2026-11-19: an answer without text was cached for an hour.
+        for result in (
+            {"answer": "", "citations": []},
+            {"answer": "   ", "citations": []},
+            {"risposta": "Sì.", "citazioni": []},
+        ):
+            ok, why = is_cacheable_result(result, "qa")
+            assert not ok and why == "empty_answer", result
+
+    def test_other_tasks_have_no_answer_field_and_stay_cacheable(self):
+        ok, why = is_cacheable_result({"requirements": [], "confidence_score": 0.9}, "gap_analysis")
         assert ok and why == "ok"
 
     def test_corpus_coverage_abstention_is_cacheable(self):

@@ -1,12 +1,16 @@
 """Redis caching layer for LLM responses.
 
 Caches expensive LLM calls (Q&A, gap analysis, monitor) to reduce API costs
-and improve response times. Cache keys are derived from the request parameters.
+and improve response times. Cache keys are derived from the request parameters
+(task, question, profile, organisation, answer language) and from what produced
+the answer: the corpus (corpus_version) and the LLM provider and model. A new
+corpus, provider or model, or another language, is a cache miss.
 
-TTL strategy:
-- Q&A responses: 1 hour (regulations don't change frequently)
-- Gap analysis: 30 minutes (company profile-dependent)
-- Monitor impact: 15 minutes (time-sensitive regulatory changes)
+TTL strategy (CACHE_TTL_SECONDS, 3600 by default, sets the Q&A one):
+- Q&A responses: CACHE_TTL_SECONDS (1 hour by default)
+- Gap analysis: half of it (company profile-dependent)
+- Monitor impact: a quarter of it (time-sensitive regulatory changes)
+CACHE_TTL_SECONDS=0 turns the answer cache off.
 
 Cache honesty: only GENUINE results are cached - real answers and abstentions
 that describe the corpus ("the knowledge base does not cover this"). A failure
@@ -42,19 +46,43 @@ MIN_CACHEABLE_CONFIDENCE = 0.1
 # entries written by an older build are never served. 2: Q&A citations carry
 # the citation verifier's fields and the answer its verified_citations /
 # citations_total counters.
-CACHE_KEY_VERSION = 2
+CACHE_KEY_VERSION = 3
 
 
-def is_cacheable_result(result: object) -> tuple[bool, str]:
+def corpus_version() -> str:
+    """What identifies the indexed corpus in a cache key.
+
+    The Qdrant collection and the corpus date the API shows: the date the
+    pipeline recorded in the collection (src.api.app_state.corpus_as_of), or
+    the CORPUS_AS_OF setting when none is recorded (empty when neither is
+    there). A re-indexed corpus has a new date, so the cache key, and with it
+    every cached answer, changes with it.
+    """
+    from src.api.app_state import corpus_as_of  # local: the API state imports late
+
+    settings = get_settings()
+    date = corpus_as_of(str(settings.corpus_as_of or "").strip() or None) or ""
+    return f"{settings.qdrant_collection}@{date.strip()}"
+
+
+def is_cacheable_result(result: object, task_type: str | None = None) -> tuple[bool, str]:
     """Decide whether an agent result may be cached.
 
     Returns ``(cacheable, reason)``; ``reason`` names the rule that rejected the
-    result (for logs) or is ``"ok"``.
+    result (for logs) or is ``"ok"``. A Q&A result (``task_type`` "qa") needs a
+    non-blank answer unless it is an abstention: an empty answer is never kept.
     """
     if not isinstance(result, dict):
         return False, "not_a_dict"
     if result.get("error") or result.get("error_code"):
         return False, "error_result"
+    answer = result.get("answer")
+    if (
+        task_type == "qa"
+        and not result.get("abstention_reason")
+        and not (isinstance(answer, str) and answer.strip())
+    ):
+        return False, "empty_answer"
     if result.get("parse_warning") or "raw_response" in result:
         # The LLM output could not be parsed: not a genuine structured answer.
         return False, "unparsed_llm_output"
@@ -77,12 +105,14 @@ class ResponseCache:
     available, so callers never need to handle connection errors.
     """
 
-    # TTL in seconds per task type
+    # TTL in seconds per task type at the default CACHE_TTL_SECONDS (TTL_BASE):
+    # the setting scales them all (ttl_seconds), keeping these proportions.
     TTL_MAP = {
         "qa": 3600,  # 1 hour
         "gap_analysis": 1800,  # 30 minutes
         "monitor": 900,  # 15 minutes
     }
+    TTL_BASE = 3600
     KEY_PREFIX = "normaai:llm:"
 
     def __init__(self):
@@ -116,22 +146,44 @@ class ResponseCache:
             self._client = None
             self._available = False
 
+    @classmethod
+    def ttl_seconds(cls, task_type: str) -> int:
+        """Seconds an answer of ``task_type`` stays cached; 0 when the cache is off.
+
+        CACHE_TTL_SECONDS is the Q&A TTL; gap analysis and monitor keep their
+        share of it (TTL_MAP / TTL_BASE). 0 or less turns the cache off.
+        """
+        base = get_settings().cache_ttl_seconds
+        if base <= 0:
+            return 0
+        share = cls.TTL_MAP.get(task_type, 1800) / cls.TTL_BASE
+        return max(1, round(base * share))
+
     def _make_key(
         self,
         task_type: str,
         query: str,
         profile: dict | None = None,
         org_id: str | None = None,
+        language: str | None = None,
     ) -> str:
         """Generate a deterministic, org-scoped cache key.
 
         Including org_id ensures tenant isolation: org A's cached results
-        are never served to org B, even for identical queries.
+        are never served to org B, even for identical queries. The answer
+        language, the corpus (corpus_version) and the LLM provider and model
+        are part of the key too: an answer is served only for what it was
+        written in and from.
         """
+        settings = get_settings()
         key_data = {
             "v": CACHE_KEY_VERSION,
             "task_type": task_type,
             "query": query.strip().lower(),
+            "language": str(language or "").strip().lower(),
+            "corpus": corpus_version(),
+            "provider": settings.llm_provider,
+            "model": settings.active_model,
         }
         if org_id:
             key_data["org_id"] = org_id
@@ -153,16 +205,20 @@ class ResponseCache:
         query: str,
         profile: dict | None = None,
         org_id: str | None = None,
+        language: str | None = None,
     ) -> dict | None:
         """Get cached response. Returns None on miss or if cache unavailable.
 
         Args:
             org_id: Organization ID for tenant-isolated cache keys.
+            language: Answer language of the request (Q&A).
         """
         if not self._available or not self._client:
             return None
+        if self.ttl_seconds(task_type) <= 0:
+            return None  # CACHE_TTL_SECONDS=0: the cache is off, older entries too
         try:
-            key = self._make_key(task_type, query, profile, org_id=org_id)
+            key = self._make_key(task_type, query, profile, org_id=org_id, language=language)
             cached = await self._client.get(key)
             if cached:
                 logger.info("cache_hit: %s %s", task_type, key[-12:])
@@ -179,23 +235,28 @@ class ResponseCache:
         result: dict,
         profile: dict | None = None,
         org_id: str | None = None,
+        language: str | None = None,
     ) -> bool:
         """Cache a response with tenant isolation.
 
         Args:
             org_id: Organization ID for tenant-isolated cache keys.
+            language: Answer language of the request (Q&A).
         """
         if not self._available or not self._client:
             return False
         try:
+            ttl = self.ttl_seconds(task_type)
+            if ttl <= 0:
+                logger.info("cache_skip: %s reason=cache_ttl_zero", task_type)
+                return False
             # Only genuine answers / corpus-coverage abstentions are cached.
-            cacheable, why = is_cacheable_result(result)
+            cacheable, why = is_cacheable_result(result, task_type)
             if not cacheable:
                 logger.info("cache_skip: %s reason=%s", task_type, why)
                 return False
 
-            key = self._make_key(task_type, query, profile, org_id=org_id)
-            ttl = self.TTL_MAP.get(task_type, 1800)
+            key = self._make_key(task_type, query, profile, org_id=org_id, language=language)
             await self._client.setex(
                 key,
                 ttl,
@@ -208,11 +269,17 @@ class ResponseCache:
             return False
 
     async def invalidate(
-        self, task_type: str, query: str | None = None, profile: dict | None = None
+        self,
+        task_type: str,
+        query: str | None = None,
+        profile: dict | None = None,
+        org_id: str | None = None,
+        language: str | None = None,
     ) -> bool:
         """Invalidate a specific cache entry or all entries for a task type.
 
-        If query is provided, invalidates the specific key.
+        If query is provided, invalidates the specific key (with the
+        organisation and language it was cached for).
         If only task_type is provided, invalidates all entries for that type.
         Returns True if successful.
         """
@@ -221,7 +288,7 @@ class ResponseCache:
         try:
             if query is not None:
                 # Invalidate a specific key
-                key = self._make_key(task_type, query, profile)
+                key = self._make_key(task_type, query, profile, org_id=org_id, language=language)
                 await self._client.delete(key)
                 logger.info("cache_invalidated: key=%s", key[-12:])
                 return True

@@ -1,22 +1,27 @@
 """NormaAI configuration - single source of truth for all settings."""
 
-import json
 import logging
+import os
 import sys
 from functools import lru_cache
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import AliasChoices, Field, field_validator
-from pydantic_settings import BaseSettings, NoDecode
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings
 
 _config_logger = logging.getLogger("normaai.config")
+
+# Values LLM_PROVIDER accepts; any other value stops the API at startup.
+LLM_PROVIDERS = ("gemini", "anthropic", "openrouter", "mistral")
+# Mistral's EU regional endpoint: inference in data centres in EU and EFTA countries.
+MISTRAL_EU_BASE_URL = "https://api.eu.mistral.ai/v1"
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # ─── LLM Provider ─────────────────────────────────────────
-    # Supported: "gemini", "anthropic", "openrouter"
+    # Supported: "gemini", "anthropic", "openrouter", "mistral" (LLM_PROVIDERS)
     llm_provider: str = "gemini"
 
     # Google Gemini. Read from GEMINI_MODEL_ANALYSIS or, as in .env.example,
@@ -31,11 +36,13 @@ class Settings(BaseSettings):
     gemini_model_classification: str = "gemini-2.0-flash"
 
     # Anthropic. Read from ANTHROPIC_MODEL_ANALYSIS or, as in .env.example,
-    # ANTHROPIC_MODEL. The previous default (claude-sonnet-4-5-20250514) was
-    # not a real model id: the API answered 404 to every request.
+    # ANTHROPIC_MODEL. Claude Haiku 5.5 is the model measured on golden v2
+    # (docs/MODELS.md 2.3); claude-sonnet-5-5, the previous default, never was,
+    # and costs more. (The one before, claude-sonnet-4-5-20250514, was not a
+    # real model id: the API answered 404 to every request.)
     anthropic_api_key: str = ""
     anthropic_model_analysis: str = Field(
-        default="claude-sonnet-5-5",
+        default="claude-haiku-5-5",
         validation_alias=AliasChoices("anthropic_model_analysis", "anthropic_model"),
     )
 
@@ -46,6 +53,24 @@ class Settings(BaseSettings):
     # Default: strongest broadly-available free tier as of 2026-06
     # (list live models: GET https://openrouter.ai/api/v1/models)
     openrouter_model_analysis: str = "nvidia/nemotron-3-super-120b-a12b:free"
+
+    # Mistral (La Plateforme), a provider based in the EU. Its API speaks the
+    # OpenAI chat-completions dialect, so it needs no dependency of its own
+    # (src/agents/llm.py). Read from MISTRAL_MODEL_ANALYSIS or, as in
+    # .env.example, MISTRAL_MODEL. Checked on docs.mistral.ai on 2026-11-11:
+    # - mistral-small-2603 is Mistral Small 4, generally available. A dated id
+    #   does not change under a measurement, unlike the "-latest" aliases;
+    # - the default base URL is the EU regional endpoint, where inference runs
+    #   in data centres in EU and EFTA countries (billed at 1.1 times the list
+    #   price). On the global endpoint, https://api.mistral.ai/v1, Mistral
+    #   commits to no inference location.
+    # Not measured on the golden set yet: docs/MODELS.md, section 5.
+    mistral_api_key: str = ""
+    mistral_base_url: str = MISTRAL_EU_BASE_URL
+    mistral_model_analysis: str = Field(
+        default="mistral-small-2603",
+        validation_alias=AliasChoices("mistral_model_analysis", "mistral_model"),
+    )
 
     # Shared LLM settings
     llm_temperature: float = 0.0
@@ -71,6 +96,9 @@ class Settings(BaseSettings):
 
     # ─── Redis ────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
+    # Seconds a Q&A answer stays in the answer cache; gap analyses keep half of
+    # it and monitor checks a quarter (src/cache.py, ResponseCache.ttl_seconds).
+    # 0 turns the answer cache off.
     cache_ttl_seconds: int = 3600
 
     # ─── EUR-Lex ──────────────────────────────────────────────
@@ -94,20 +122,17 @@ class Settings(BaseSettings):
     # it - leave it off). Without this, "updated nightly" never actually ran.
     acquisition_scheduler_enabled: bool = False
 
-    # ─── Normattiva Open Data ─────────────────────────────────
-    normattiva_enabled: bool = True
-    normattiva_api_base_url: str = "https://www.normattiva.it/opendata"
-    normattiva_rate_limit_delay: float = 1.0
-    normattiva_bulk_download_enabled: bool = False
-
     # ─── Data Sources ─────────────────────────────────────────
-    data_source: str = "both"  # "eurlex", "normattiva", or "both"
+    # What the seed indexes for Chiedi: EUR-Lex only. "normattiva" and "both"
+    # are still accepted and index no Italian law (the old Normattiva client,
+    # whose endpoints answer HTTP 409, was removed); the seed says so.
+    data_source: str = "eurlex"
 
-    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD). Set this to
-    # the last seed/refresh date at deploy time. Surfaced in API metadata and PDF
-    # footers so a reader can tell how fresh the law is - the corpus is frozen
-    # between manual re-seeds and superseded_by is only set at seed time, so an
-    # honest staleness signal is the interim mitigation for serving repealed law.
+    # As-of date of the indexed regulatory corpus (ISO YYYY-MM-DD): the fallback.
+    # The API shows the date the seed and `--action update` record in the
+    # collection (src.api.app_state.corpus_as_of); this one only when the
+    # collection holds none. Surfaced in API metadata and PDF footers so a reader
+    # can tell how fresh the law is.
     corpus_as_of: str = ""
 
     # ─── Embedding ────────────────────────────────────────────
@@ -163,7 +188,14 @@ class Settings(BaseSettings):
     # ─── Sentry (optional error tracking) ─────────────────────
     # Set to enable sentry_sdk with the FastAPI integration at startup; the SDK
     # is an optional extra (`poetry install -E sentry`), never a hard dependency.
+    # The Docker image installs it.
     sentry_dsn: str | None = None
+
+    # ─── Operator alerts ──────────────────────────────────────
+    # Address told by email (through Resend, RESEND_API_KEY) when a scheduled
+    # job, the backup or the restore test fails (src/ops_alerts.py). Empty: the
+    # failure reaches Sentry (with SENTRY_DSN) and the log only.
+    ops_alert_email: str = ""
 
     # ─── Chain-of-Verification (CoVe) ────────────────────────
     cove_enabled: bool = False
@@ -209,6 +241,16 @@ class Settings(BaseSettings):
     #              abstention_reason="unverified_citations" (never cached).
     citation_verification: Literal["flag", "strict"] = "flag"
 
+    # ─── Q&A relevance threshold ─────────────────────────────
+    # Chiedi abstains without calling the LLM (abstention_reason "low_relevance")
+    # when no passage the hybrid search found has a dense (cosine) score of at
+    # least this value. Every Q&A answer reports the score it is compared with
+    # as best_dense_score. 0 disables the threshold (default): the scale depends
+    # on the embedding model (multilingual-e5-large gives every passage a score
+    # in a narrow, high band, docs/MODELS.md section 6) and it is not calibrated
+    # yet. Answers cached before a change are served until their TTL ends.
+    qa_min_dense_score: float = 0.0
+
     # ─── Streaming ────────────────────────────────────────────
     sse_keepalive_interval: int = 15
     sse_enabled: bool = True
@@ -222,8 +264,19 @@ class Settings(BaseSettings):
 
     # ─── Auth ───────────────────────────────────────────────
     app_secret_key: str = "change-me-in-production-use-64-chars-minimum"
-    access_token_expire_minutes: int = 60
-    refresh_token_expire_days: int = 7
+    # Lifetimes in seconds (ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL). Every refresh
+    # rotates the refresh token, so the refresh TTL is the longest a browser may
+    # stay idle; the absolute limit below is the longest a session may last.
+    access_token_ttl: int = Field(default=900, ge=60, le=86_400)
+    refresh_token_ttl: int = Field(default=604_800, ge=3_600)
+    # No refresh after this many days from the sign-in: the user signs in again.
+    session_max_lifetime_days: int = Field(default=30, ge=1, le=365)
+    # Seconds an API process keeps what it read of an account (exists, active,
+    # role, staff, sessions ended) before reading it again: a removed member or
+    # a changed role takes effect within this delay in every process. 0 = no cache.
+    auth_account_cache_seconds: int = Field(default=30, ge=0, le=300)
+    # Password reset link (POST /auth/password-reset): minutes it stays valid.
+    password_reset_token_ttl_minutes: int = Field(default=30, ge=5, le=1_440)
 
     # ─── Registration ────────────────────────────────────────
     # "invite" (default): POST /auth/register needs a valid invite code
@@ -249,34 +302,22 @@ class Settings(BaseSettings):
     auth_rate_limit_refresh: str = "30/minute"
     # verify-email + resend-verification (token guessing / mail flooding)
     auth_rate_limit_verification: str = "10/hour"
+    # password-reset request + confirm (mail flooding / token guessing)
+    auth_rate_limit_password_reset: str = "5/hour"
+
+    # ─── Rate limits (all routes) ────────────────────────────
+    # Limit of the routes that declare none of their own (slowapi syntax).
+    rate_limit_default: str = "100/minute"
+    # Where the counters live, so that every API process shares them. Empty:
+    # REDIS_URL. "memory://" keeps them in each process. When the storage cannot
+    # be reached the limiter falls back to memory and logs a warning.
+    rate_limit_storage_uri: str = ""
 
     # ─── Staff (NormaAI personnel) ───────────────────────────
-    # Emails allowed through ``require_staff`` (corpus crawl/re-index, invites
-    # that create new organizations). Matched case-insensitively against the
-    # ``email`` claim of the access token. Env: JSON list or comma-separated
-    # (STAFF_EMAILS=ops@normaai.org,info@normaai.org). Empty = nobody is staff.
-    staff_emails: Annotated[list[str], NoDecode] = []
-
-    @field_validator("staff_emails", mode="before")
-    @classmethod
-    def _parse_staff_emails(cls, value: object) -> object:
-        """Accept a JSON list or a comma-separated string; normalise to lowercase."""
-        if isinstance(value, str):
-            raw = value.strip()
-            if raw.startswith("["):
-                try:
-                    value = json.loads(raw)
-                except ValueError:
-                    value = raw
-            if isinstance(value, str):
-                return [e.strip().lower() for e in value.split(",") if e.strip()]
-        if isinstance(value, list | tuple | set):
-            return [str(e).strip().lower() for e in value if str(e).strip()]
-        return value
-
-    def is_staff_email(self, email: str | None) -> bool:
-        """True when ``email`` belongs to NormaAI staff (case-insensitive)."""
-        return bool(email) and str(email).strip().lower() in self.staff_emails
+    # Staff is the users.is_staff flag (migration 010), set only with
+    # scripts/staff.py and honoured only on a verified email: no setting, no
+    # registration and no token claim makes anyone staff. STAFF_EMAILS is no
+    # longer read (validate_settings_or_exit warns when it is still set).
 
     # ─── JWT RS256 Keys ──────────────────────────────────────
     jwt_private_key_path: str = ""
@@ -296,7 +337,9 @@ class Settings(BaseSettings):
 
     # ─── CORS ───────────────────────────────────────────────
     cors_origins: str = "http://localhost:3000"  # comma-separated
-    cors_allow_methods: str = "GET,POST,PUT,DELETE,OPTIONS"
+    # PATCH: the alerts (read, dismiss) and PATCH /documents/preferences. Without it
+    # the browser's preflight from the frontend origin is refused.
+    cors_allow_methods: str = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
     cors_allow_headers: str = "Authorization,Content-Type,X-Request-ID,Accept"
     cors_max_age: int = 600  # preflight cache in seconds
 
@@ -321,6 +364,48 @@ class Settings(BaseSettings):
     resend_from_name: str = "Daniel Culotta - NormaAI"
     resend_reply_to: str = "info@normaai.org"
     resend_webhook_secret: str = ""
+
+    # ═══ Document check: begin (src/document_check, /api/v1/documents) ═══
+    # Limits of one check. The uploaded file is read in memory and not kept.
+    document_check_max_bytes: int = 10 * 1024 * 1024
+    # Characters of text after extraction, and provisions cited ("artt. 1-30" is 30).
+    document_check_max_chars: int = 400_000
+    document_check_max_references: int = 300
+    # The check reads the official texts over the network, off the event loop:
+    # seconds before the request gives up (the first check of an act downloads it).
+    document_check_timeout_seconds: float = 120.0
+    # Checks and re-checks one organisation may have running at the same time,
+    # in each API process, and threads each process keeps for them.
+    document_check_concurrency_per_org: int = 2
+    document_check_workers: int = 4
+    # slowapi limit of POST /documents/check and of the re-check, per user. The
+    # check calls no language model, so it does not count against the LLM quota.
+    document_check_rate_limit: str = "30/hour"
+    # Checks an organisation can keep (0 = no limit): delete some to add more.
+    document_checks_max_per_org: int = 1000
+    # Seconds an API process keeps the same text source (and the texts it parsed).
+    document_check_source_ttl_seconds: int = 900
+    # Public origin of this API, e.g. https://api.normaai.org: the unsubscribe
+    # link of the digest email points here. Empty: https://<API_DOMAIN>, which
+    # bootstrap_hetzner.sh writes to .env. With neither, no digest is sent.
+    api_public_url: str = ""
+    api_domain: str = ""
+
+    @property
+    def api_base_url(self) -> str:
+        """Public origin of the API without a trailing slash, or "" when unknown."""
+        explicit = self.api_public_url.strip().rstrip("/")
+        if explicit:
+            return explicit
+        domain = self.api_domain.strip().strip("/")
+        return f"https://{domain}" if domain else ""
+
+    # ═══ Document check: end ═══
+
+    @property
+    def api_docs_enabled(self) -> bool:
+        """/docs, /redoc and /openapi.json: served everywhere but in production."""
+        return self.app_env != "production"
 
     @property
     def corpus_language_list(self) -> list[str]:
@@ -354,6 +439,8 @@ class Settings(BaseSettings):
             return self.google_api_key
         if self.llm_provider == "openrouter":
             return self.openrouter_api_key
+        if self.llm_provider == "mistral":
+            return self.mistral_api_key
         return self.anthropic_api_key
 
     @property
@@ -363,6 +450,8 @@ class Settings(BaseSettings):
             return self.gemini_model_analysis
         if self.llm_provider == "openrouter":
             return self.openrouter_model_analysis
+        if self.llm_provider == "mistral":
+            return self.mistral_model_analysis
         return self.anthropic_model_analysis
 
 
@@ -371,15 +460,43 @@ def get_settings() -> Settings:
     return Settings()
 
 
+def _check_mistral(settings: Settings, warnings: list[str]) -> None:
+    """LLM_PROVIDER=mistral: refuse a production start that cannot work as chosen.
+
+    Choosing Mistral is choosing where the questions are processed, so in
+    production a missing key or a base URL without TLS stops the API instead of
+    leaving it up with a provider that cannot answer, or that would receive the
+    key in clear. Outside production both are warnings.
+    """
+    base_url = settings.mistral_base_url.strip().rstrip("/")
+    problems = []
+    if not settings.mistral_api_key:
+        problems.append("MISTRAL_API_KEY is not set: intelligence endpoints will fail.")
+    if not base_url.startswith("https://"):
+        problems.append("MISTRAL_BASE_URL must be an https:// URL.")
+    if problems and settings.app_env == "production":
+        for problem in problems:
+            _config_logger.critical("LLM_PROVIDER=mistral in production: %s", problem)
+        sys.exit(1)
+    warnings.extend(f"{problem} Add it to your .env file." for problem in problems)
+    if base_url != MISTRAL_EU_BASE_URL:
+        warnings.append(
+            f"MISTRAL_BASE_URL is not the EU regional endpoint ({MISTRAL_EU_BASE_URL}): "
+            "Mistral commits to an inference location only on a regional endpoint "
+            "(docs/MODELS.md, section 5.1)."
+        )
+
+
 def validate_settings_or_exit() -> Settings:
     """Validate critical settings at startup, exit if misconfigured."""
     settings = get_settings()
     warnings = []
 
-    if settings.llm_provider not in ("gemini", "anthropic", "openrouter"):
+    if settings.llm_provider not in LLM_PROVIDERS:
         _config_logger.error(
-            "Invalid LLM_PROVIDER '%s'. Must be 'gemini', 'anthropic' or 'openrouter'.",
+            "Invalid LLM_PROVIDER '%s'. Must be one of: %s.",
             settings.llm_provider,
+            ", ".join(LLM_PROVIDERS),
         )
         sys.exit(1)
 
@@ -401,6 +518,8 @@ def validate_settings_or_exit() -> Settings:
             "Intelligence endpoints will fail. "
             "Add it to your .env file."
         )
+    elif settings.llm_provider == "mistral":
+        _check_mistral(settings, warnings)
 
     if settings.app_secret_key.startswith("change-me") or len(settings.app_secret_key) < 32:
         if settings.app_env == "production":
@@ -428,6 +547,12 @@ def validate_settings_or_exit() -> Settings:
             )
             sys.exit(1)
 
+    if os.environ.get("STAFF_EMAILS", "").strip():
+        warnings.append(
+            "STAFF_EMAILS is no longer read: staff is the users.is_staff flag, granted with "
+            "'python scripts/staff.py grant <email>' (docs/RUNBOOK.md). Remove it from .env."
+        )
+
     for w in warnings:
         _config_logger.warning(w)
 
@@ -450,14 +575,6 @@ def validate_settings_or_exit() -> Settings:
 
     # Data sources
     _config_logger.info("Data Sources: %s", settings.data_source.upper())
-    if settings.normattiva_enabled:
-        _config_logger.info(
-            "Normattiva: ENABLED | Rate limit: %.1fs | Bulk download: %s",
-            settings.normattiva_rate_limit_delay,
-            "ON" if settings.normattiva_bulk_download_enabled else "OFF",
-        )
-    else:
-        _config_logger.info("Normattiva: DISABLED")
 
     # Chain-of-Verification
     if settings.cove_enabled:

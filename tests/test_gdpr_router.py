@@ -105,6 +105,10 @@ def _model_from_sql(sql_text: str) -> str:
     """
     lowered = sql_text.lower()
     for table, key in (
+        # The document tables first: "document_check_id" in the alerts
+        # statement is a column, not the table "document_checks".
+        ("document_dependencies", "DocumentDependency"),
+        ("document_checks", "DocumentCheck"),
         ("conversations", "Conversation"),
         ("assessments", "Assessment"),
         ("clients", "Client"),
@@ -397,6 +401,8 @@ class TestEraseHappyPath:
             "Alert": 2,
             "Conversation": 4,
             "Client": 1,
+            "DocumentCheck": 5,
+            "DocumentDependency": 12,
         }
         session = _FakeSession(rows_by_model=rows, delete_counts=delete_counts)
         fake_db = _make_fake_db_manager(session)
@@ -417,7 +423,13 @@ class TestEraseHappyPath:
             "alerts": 2,
             "conversations": 4,
             "clients": 1,
+            "document_checks": 5,
+            "document_dependencies": 12,
         }
+        # Alerts before the document checks they point to, checks before clients.
+        order = session.deleted_models
+        assert order.index("Alert") < order.index("DocumentCheck") < order.index("Client")
+        assert order.index("DocumentDependency") < order.index("DocumentCheck")
         # The session was committed (writes are durable, not rolled back).
         assert session.committed is True
         # Session scoped to the caller's org for RLS.
@@ -449,17 +461,58 @@ class TestEraseHappyPath:
         assert r.status_code == 200
         indexer.delete_org_chunks.assert_called_once_with(str(org_id))
 
-    def test_erase_vector_store_failure_does_not_break_response(
+    def test_erase_vector_store_failure_is_reported_and_can_be_retried(
         self, client, app_objects, admin_headers, org_id, user_id
     ):
-        """Vector-store erasure is best-effort: a Qdrant error is swallowed and
-        the DB erasure result is still returned 200."""
+        """A Qdrant error is not hidden: 503, status "partial", the DB counts, and
+        the same request repeated once Qdrant answers completes the erasure."""
         _app, app_state, _limiter = app_objects
         indexer = MagicMock()
-        indexer.delete_org_chunks.side_effect = RuntimeError("qdrant down")
+        indexer.delete_org_chunks.side_effect = [RuntimeError("qdrant down"), None]
         app_state.indexer = indexer
 
-        session = _FakeSession(rows_by_model={"Client": [uuid.uuid4()], "User": [user_id]})
+        session = _FakeSession(
+            rows_by_model={"Client": [uuid.uuid4()], "User": [user_id]},
+            delete_counts={"Client": 1},
+        )
+        fake_db = _make_fake_db_manager(session)
+
+        with (
+            patch("src.api.routers.gdpr.db_manager", fake_db),
+            patch("src.api.app_state.app_state", app_state),
+        ):
+            first = client.post(
+                "/api/v1/gdpr/erase",
+                json={"confirm_org_id": str(org_id)},
+                headers=admin_headers,
+            )
+            again = client.post(
+                "/api/v1/gdpr/erase",
+                json={"confirm_org_id": str(org_id)},
+                headers=admin_headers,
+            )
+
+        assert first.status_code == 503
+        body = first.json()
+        assert body["status"] == "partial"
+        assert body["vector_store"] == "failed"
+        assert body["deleted"]["clients"] == 1
+        assert "riprova" in body["detail"].lower()
+        assert first.headers["Retry-After"] == "60"
+        assert session.committed is True  # the database part is done and stays done
+
+        assert again.status_code == 200
+        assert again.json()["status"] == "erased"
+        assert again.json()["vector_store"] == "erased"
+        assert indexer.delete_org_chunks.call_count == 2
+
+    def test_erase_without_a_vector_store_is_partial(
+        self, client, app_objects, admin_headers, org_id, user_id
+    ):
+        """No indexer (Qdrant down at startup): the uploaded text cannot be erased."""
+        _app, app_state, _limiter = app_objects
+        app_state.indexer = None
+        session = _FakeSession(rows_by_model={"User": [user_id]})
         fake_db = _make_fake_db_manager(session)
 
         with (
@@ -472,8 +525,9 @@ class TestEraseHappyPath:
                 headers=admin_headers,
             )
 
-        assert r.status_code == 200
-        assert r.json()["status"] == "erased"
+        assert r.status_code == 503
+        assert r.json()["status"] == "partial"
+        assert r.json()["vector_store"] == "unavailable"
 
     def test_erase_idempotent_on_empty_org(self, client, admin_headers, org_id):
         """Erasing an already-empty org is a no-op that still returns 200 with
@@ -496,8 +550,11 @@ class TestEraseHappyPath:
             "conversations": 0,
             "assessments": 0,
             "alerts": 0,
+            "document_checks": 0,
+            "document_dependencies": 0,
         }
-        # With no client_ids and no user_ids, only the Client delete runs.
+        # With no client_ids, user_ids or document checks, only the deletes
+        # that filter on the organisation itself run.
         assert "Assessment" not in session.deleted_models
         assert "Alert" not in session.deleted_models
         assert "Conversation" not in session.deleted_models

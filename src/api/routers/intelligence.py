@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.agents.ai_marking import mark_ai_generated
 from src.agents.citation_verifier import apply_unverified_policy, policy_mode
 from src.api.errors import QDRANT_UNAVAILABLE_DETAIL, llm_not_configured_detail, raise_for_result
 from src.api.streaming.generators import (
@@ -99,7 +100,10 @@ class QARequest(BaseModel):
         },
     )
     company_profile: CompanyProfile | None = None
-    language: LanguageEnum = Field(default=LanguageEnum.EN, description="Response language")
+    language: LanguageEnum | None = Field(
+        default=None,
+        description="Response language; when omitted, the language of the question (it or en)",
+    )
     conversation_id: str | None = Field(
         default=None,
         max_length=64,
@@ -214,25 +218,49 @@ def _build_metadata(
     *,
     cached: bool = False,
     framework: str | None = None,
+    ai_generated: bool = True,
 ) -> dict:
-    """Build response metadata with tenant context."""
+    """Build response metadata with tenant context.
+
+    ``ai_generated`` follows the answer's own marking for Q&A (False for an
+    abstention, whose text NormaAI writes itself).
+    """
     settings = get_settings()
     meta = {
         "timestamp": datetime.now(UTC).isoformat(),
         "model": settings.active_model,
         "org_id": str(user.org_id),
-        "ai_generated": True,
+        "ai_generated": ai_generated,
         "disclaimer": "AI-assisted analysis. Not legal advice. Expert review recommended.",
     }
-    # Corpus freshness signal: the regulatory corpus is frozen between manual
-    # re-seeds, so tell the client how current the law is (empty => not configured).
-    if settings.corpus_as_of:
-        meta["corpus_as_of"] = settings.corpus_as_of
+    # How current the law is: the date the seed or the update recorded in the
+    # collection, else CORPUS_AS_OF (absent when neither says).
+    from src.api.app_state import corpus_as_of
+
+    as_of = corpus_as_of(settings.corpus_as_of)
+    if as_of:
+        meta["corpus_as_of"] = as_of
     if cached:
         meta["cached"] = True
     if framework:
         meta["framework"] = framework
     return meta
+
+
+def _answer_language(payload: QARequest) -> str:
+    """The language of the answer: the one the request names, else the question's.
+
+    ``language`` is optional. A client that omits it gets the answer, the
+    caveats and the cache entry in the language of its question, as before the
+    field reached the prompt: Italian and English are told apart by their short
+    words (the document check's quote_language); a question that tells neither
+    is answered in Italian, the language of the interface.
+    """
+    if payload.language is not None:
+        return payload.language.value
+    from src.document_check.extract import quote_language
+
+    return "en" if quote_language(payload.question) == "EN" else "it"
 
 
 def _finalize_qa_result(result: dict, language: str) -> dict:
@@ -243,9 +271,13 @@ def _finalize_qa_result(result: dict, language: str) -> dict:
     guarantees, for both, the ``verified_citations`` / ``citations_total``
     counters and a decision taken with the CURRENT ``citation_verification``
     setting and the request language (a flagged answer cached under ``flag``
-    becomes an abstention once the deploy switches to ``strict``).
+    becomes an abstention once the deploy switches to ``strict``). Every
+    answer leaves marked as AI-generated or not (``ai_generated``,
+    ``generator``: AI Act, Art. 50(2); src.agents.ai_marking).
     """
-    return apply_unverified_policy(result, mode=policy_mode(get_settings()), language=language)
+    settings = get_settings()
+    result = apply_unverified_policy(result, mode=policy_mode(settings), language=language)
+    return mark_ai_generated(result, settings)
 
 
 # ─── SSE Streaming Helper ────────────────────────────────────────
@@ -282,7 +314,10 @@ async def ask_question(
     carries `verified` (true only when its quote was found word for word in the
     retrieved official text), `official_quote`, `celex`, `article`, `url` and
     the other fields of the citation verifier; `data` carries
-    `verified_citations` and `citations_total`.
+    `verified_citations` and `citations_total`, and the machine-readable
+    marking of the AI Act, Art. 50(2): `ai_generated` (false for an abstention,
+    whose text NormaAI writes itself) and `generator` (`system`, `provider`,
+    `model`).
 
     Set `stream: true` in the request body to receive Server-Sent Events.
 
@@ -318,13 +353,22 @@ async def ask_question(
             cached = (
                 None
                 if payload.enable_cove
-                else await response_cache.get("qa", payload.question, profile_dict, org_id=org_id)
+                else await response_cache.get(
+                    "qa",
+                    payload.question,
+                    profile_dict,
+                    org_id=org_id,
+                    language=_answer_language(payload),
+                )
             )
             if cached:
+                data = _finalize_qa_result(cached, _answer_language(payload))
                 response_body = {
                     "status": "success",
-                    "data": _finalize_qa_result(cached, payload.language.value),
-                    "metadata": _build_metadata(user, cached=True),
+                    "data": data,
+                    "metadata": _build_metadata(
+                        user, cached=True, ai_generated=data.get("ai_generated") is not False
+                    ),
                 }
                 if payload.stream:
                     return StreamingResponse(
@@ -345,12 +389,12 @@ async def ask_question(
             profile_dict,
             cove_enabled=payload.enable_cove,
             org_id=org_id,
-            language=payload.language.value,
+            language=_answer_language(payload),
         )
         # A failed analysis is an HTTP error (503/502/504/500), never a 200
         # "success" envelope wrapping an error payload - and it is never cached.
         raise_for_result(result, endpoint="qa")
-        result = _finalize_qa_result(result, payload.language.value)
+        result = _finalize_qa_result(result, _answer_language(payload))
 
         # Cache with org isolation (skip when CoVe ran - see cache-read note above)
         try:
@@ -358,7 +402,12 @@ async def ask_question(
 
             if not payload.enable_cove:
                 await response_cache.set(
-                    "qa", payload.question, result, profile_dict, org_id=org_id
+                    "qa",
+                    payload.question,
+                    result,
+                    profile_dict,
+                    org_id=org_id,
+                    language=_answer_language(payload),
                 )
         except Exception as cache_err:
             logger.debug("cache_set_failed", endpoint="qa", error=str(cache_err))
@@ -366,7 +415,7 @@ async def ask_question(
         response_body = {
             "status": "success",
             "data": result,
-            "metadata": _build_metadata(user),
+            "metadata": _build_metadata(user, ai_generated=result.get("ai_generated") is not False),
         }
 
         if payload.stream:
@@ -645,7 +694,7 @@ async def ask_question_stream(
                     profile_dict,
                     user,
                     payload.enable_cove,
-                    language=payload.language.value,
+                    language=_answer_language(payload),
                 )
             ),
             media_type="text/event-stream",

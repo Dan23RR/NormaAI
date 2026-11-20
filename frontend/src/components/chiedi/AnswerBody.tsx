@@ -3,7 +3,9 @@
 import { Fragment, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/cn'
+import { useTextContext } from '@/i18n/useTextContext'
 import { parseAnswer, resolverFor, type InlineToken } from '@/lib/chiedi/answer-text'
+import { markerLabel } from '@/lib/chiedi/sources'
 import type { ChiediCitation } from '@/lib/chiedi/types'
 
 /**
@@ -24,6 +26,7 @@ export function AnswerBody({
   onMarkerClick?: (index: number) => void
 }) {
   const t = useTranslations('chiedi.answer')
+  const ctx = useTextContext()
   const blocks = useMemo(() => parseAnswer(text, resolverFor(citations)), [text, citations])
 
   const renderInline = (tokens: InlineToken[], keyPrefix: string) =>
@@ -36,7 +39,9 @@ export function AnswerBody({
             {tok.text}
           </strong>
         )
-      if (tok.index === null || !onMarkerClick) return <Fragment key={key}>[{tok.label}]</Fragment>
+      // An act cited by its CELEX is shown by its name: "[Regolamento (UE) 2026/1744, Art. 1]".
+      const shown = markerLabel(tok.label, ctx.t)
+      if (tok.index === null || !onMarkerClick) return <Fragment key={key}>[{shown}]</Fragment>
       const index = tok.index
       const active = activeIndex === index
       return (
@@ -52,7 +57,7 @@ export function AnswerBody({
             active && 'bg-union/10 underline',
           )}
         >
-          [{tok.label}]
+          [{shown}]
         </button>
       )
     })

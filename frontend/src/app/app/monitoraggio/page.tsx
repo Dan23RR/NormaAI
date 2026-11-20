@@ -9,9 +9,9 @@ import { Tabs } from '@/components/ui/Tabs'
 import { AlertsTab, normaliseSummary } from '@/components/monitoraggio/AlertsTab'
 import { AnalyzeTab } from '@/components/monitoraggio/AnalyzeTab'
 import { DeadlinesTab } from '@/components/monitoraggio/DeadlinesTab'
-import { useDateFormat } from '@/i18n/useDateFormat'
+import { useTextContext } from '@/i18n/useTextContext'
 import { api } from '@/lib/api'
-import { VERIFIED_ON } from '@/lib/scope/sources'
+import { freshnessLine, readFreshness, type Freshness } from '@/lib/obligations/freshness'
 
 const TAB_IDS = ['scadenze', 'avvisi', 'analizza'] as const
 type TabId = (typeof TAB_IDS)[number]
@@ -31,13 +31,14 @@ export default function MonitoraggioPage() {
 
 function MonitoraggioView() {
   const t = useTranslations('monitoraggio')
-  const formatDate = useDateFormat()
+  const ctx = useTextContext()
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
   const fromUrl = params.get('tab')
   const [tab, setTab] = useState<TabId>(isTabId(fromUrl) ? fromUrl : 'scadenze')
   const [unread, setUnread] = useState<number | undefined>()
+  const [freshness, setFreshness] = useState<Freshness | undefined>()
 
   useEffect(() => {
     if (isTabId(fromUrl) && fromUrl !== tab) setTab(fromUrl)
@@ -63,6 +64,22 @@ function MonitoraggioView() {
     }
   }, [])
 
+  // The header says when the automatic check of consolidated versions last ran, if the server reports it.
+  useEffect(() => {
+    let cancelled = false
+    api
+      .get<unknown>('/api/v1/stats')
+      .then((stats) => {
+        if (!cancelled) setFreshness(readFreshness(stats))
+      })
+      .catch(() => {
+        /* without the stats the header keeps the hand-curated sentence */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const change = useCallback(
     (id: string) => {
       if (!isTabId(id)) return
@@ -77,7 +94,7 @@ function MonitoraggioView() {
       <PageHeader
         title={t('title')}
         description={t('description')}
-        meta={t('meta', { date: formatDate(VERIFIED_ON) })}
+        meta={freshnessLine(freshness, ctx)}
       />
       <Tabs
         label={t('tabsLabel')}

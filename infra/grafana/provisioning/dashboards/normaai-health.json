@@ -70,14 +70,14 @@
       }
     },
     {
-      "title": "LLM calls by status (calls/min)",
+      "title": "LLM calls by outcome (calls/min)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "" },
       "targets": [
         {
-          "expr": "sum(rate(normaai_llm_calls_total[5m])) by (status) * 60",
-          "legendFormat": "{{status}}"
+          "expr": "sum(rate(normaai_circuit_outcomes_total{service=\"llm\"}[5m])) by (outcome) * 60",
+          "legendFormat": "{{outcome}}"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "cpm" }, "overrides": [] }

@@ -343,6 +343,43 @@ class TestQACitationVerificationContract:
         assert mock_qa.await_args.kwargs["language"] == "it"
 
     @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_every_answer_is_marked_as_ai_generated(self, mock_qa, client, auth_headers):
+        # AI Act, Art. 50(2): machine-readable marking in data, fresh and from the cache.
+        from src.config import get_settings
+
+        mock_qa.return_value = {
+            "answer": "Sì [GDPR, Art. 17(1)].",
+            "citations": [dict(_VERIFIED_CITATION)],
+            "verified_citations": 1,
+            "citations_total": 1,
+            "confidence_score": 0.9,
+        }
+        response = client.post(
+            "/api/v1/qa",
+            json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+            headers=auth_headers,
+        )
+        body = response.json()
+        assert body["data"]["ai_generated"] is True
+        assert body["data"]["generator"] == {
+            "system": "NormaAI Chiedi",
+            "provider": get_settings().llm_provider,
+            "model": get_settings().active_model,
+        }
+        assert body["metadata"]["ai_generated"] is True
+
+        cached = {**mock_qa.return_value, "generator": {"system": "NormaAI Chiedi", "model": "m1"}}
+        with patch("src.cache.response_cache.get", new=AsyncMock(return_value=cached)):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "Posso chiedere la cancellazione?", "language": "it"},
+                headers=auth_headers,
+            )
+        body = response.json()
+        assert body["metadata"]["cached"] is True
+        assert body["data"]["ai_generated"] is True and body["data"]["generator"]["model"] == "m1"
+
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
     def test_unverified_citations_are_flagged_at_delivery(self, mock_qa, client, auth_headers):
         mock_qa.return_value = {
             "answer": "Sì.",
@@ -399,6 +436,78 @@ class TestQACitationVerificationContract:
         assert body["data"]["citations"] == []
         assert (body["data"]["verified_citations"], body["data"]["citations_total"]) == (0, 1)
         mock_qa.assert_not_awaited()
+
+
+class TestQACacheKeyLanguage:
+    @patch("src.agents.graph.arun_qa", new_callable=AsyncMock)
+    def test_the_answer_is_cached_and_looked_up_in_the_request_language(
+        self, mock_qa, client, auth_headers
+    ):
+        mock_qa.return_value = {"answer": "Within 72 hours.", "confidence_score": 0.9}
+        get, set_ = AsyncMock(return_value=None), AsyncMock(return_value=True)
+        with (
+            patch("src.cache.response_cache.get", new=get),
+            patch("src.cache.response_cache.set", new=set_),
+        ):
+            response = client.post(
+                "/api/v1/qa",
+                json={"question": "Entro quando va notificata?", "language": "en"},
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        assert get.await_args.kwargs["language"] == "en"
+        assert set_.await_args.kwargs["language"] == "en"
+
+
+class TestQALanguageReachesThePrompt:
+    """The request's ``language`` is the language the model is asked to answer in,
+    on the JSON route and on the stream: the real graph runs, with the retrieval
+    and the model call replaced."""
+
+    _CHUNK = {
+        "id": "pt-gdpr-33",
+        "framework": "GDPR",
+        "article": "Art. 33",
+        "celex": "32016R0679",
+        "lang": "EN",
+        "text": "Article 33\n1. ... not later than 72 hours after having become aware of it ...",
+    }
+    _ANSWER = {
+        "answer": "Within 72 hours.",
+        "citations": [],
+        "confidence_score": 0.9,
+        "requires_expert_review": False,
+    }
+
+    def _post(self, client, auth_headers, path, language):
+        from src.agents import nodes as nodes_mod
+        from src.api.app_state import app_state
+
+        app_state.indexer.hybrid_search.return_value = [dict(self._CHUNK)]
+        llm = AsyncMock(return_value=dict(self._ANSWER))
+        with patch.object(nodes_mod, "acall_llm", llm):
+            response = client.post(
+                path,
+                json={
+                    "question": "Entro quando va notificata una violazione?",
+                    "language": language,
+                },
+                headers=auth_headers,
+            )
+        assert response.status_code == 200
+        assert llm.await_count >= 1
+        system_prompt, _ = llm.await_args_list[0].args
+        return system_prompt
+
+    @pytest.mark.parametrize("language, name", [("en", "English"), ("it", "Italian")])
+    def test_json_route(self, client, auth_headers, language, name):
+        prompt = self._post(client, auth_headers, "/api/v1/qa", language)
+        assert f"every explanation in {name}" in prompt
+
+    @pytest.mark.parametrize("language, name", [("en", "English"), ("it", "Italian")])
+    def test_stream_route(self, client, auth_headers, language, name):
+        prompt = self._post(client, auth_headers, "/api/v1/qa/stream", language)
+        assert f"every explanation in {name}" in prompt
 
 
 class TestGapAnalysisEndpoint:

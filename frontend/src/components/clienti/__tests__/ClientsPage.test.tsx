@@ -44,51 +44,51 @@ describe('ClientiPage', () => {
 
   it('renders the demo clients with Italian thousands separators and framework badges', async () => {
     renderPage()
-    expect(await screen.findByText('EnergiePlus GmbH')).toBeInTheDocument()
+    expect(await screen.findByText('Alfa Macchine Utensili S.r.l.')).toBeInTheDocument()
     for (const client of DEMO_CLIENTS) {
       expect(screen.getByText(client.name)).toBeInTheDocument()
     }
     const table = screen.getByRole('table')
     // Node may ship a small ICU: the separator is "." with full Italian locale data, "," without.
-    expect(within(table).getByText(/^5[.,]000$/)).toBeInTheDocument()
+    expect(within(table).getByText(/^1[.,]650$/)).toBeInTheDocument()
     expect(within(table).getAllByText('CSRD').length).toBeGreaterThan(0)
     expect(within(table).getAllByText('Tassonomia').length).toBeGreaterThan(0)
-    expect(within(table).getByText('2026-03-02')).toBeInTheDocument()
-    expect(screen.getByText('4 clienti')).toBeInTheDocument()
+    expect(within(table).getByText('2026-11-03')).toBeInTheDocument()
+    expect(screen.getByText('6 clienti')).toBeInTheDocument()
   })
 
   it('renders the same page in English with English separators and labels', async () => {
     renderPage('en')
-    expect(await screen.findByText('EnergiePlus GmbH')).toBeInTheDocument()
+    expect(await screen.findByText('Alfa Macchine Utensili S.r.l.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Clients' })).toBeInTheDocument()
     const table = screen.getByRole('table')
-    expect(within(table).getByText('5,000')).toBeInTheDocument()
+    expect(within(table).getByText('1,650')).toBeInTheDocument()
     expect(within(table).getAllByText('Taxonomy').length).toBeGreaterThan(0)
-    expect(screen.getByText('4 clients')).toBeInTheDocument()
+    expect(screen.getByText('6 clients')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New client' })).toBeInTheDocument()
   })
 
   it('filters by name or sector and offers to clear an empty search', async () => {
     const user = userEvent.setup()
     renderPage()
-    await screen.findByText('EnergiePlus GmbH')
+    await screen.findByText('Alfa Macchine Utensili S.r.l.')
     const search = screen.getByLabelText('Cerca tra i clienti')
-    await user.type(search, 'banca')
-    expect(screen.getByText('Banca Meridiana S.p.A.')).toBeInTheDocument()
-    expect(screen.queryByText('EnergiePlus GmbH')).not.toBeInTheDocument()
-    expect(screen.getByText('1 di 4 clienti')).toBeInTheDocument()
+    await user.type(search, 'salute')
+    expect(screen.getByText('Epsilon Salute S.r.l.')).toBeInTheDocument()
+    expect(screen.queryByText('Alfa Macchine Utensili S.r.l.')).not.toBeInTheDocument()
+    expect(screen.getByText('1 di 6 clienti')).toBeInTheDocument()
 
     await user.clear(search)
     await user.type(search, 'zzz')
     expect(screen.getByText(/Nessun cliente corrisponde a «zzz»/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Cancella la ricerca' }))
-    expect(screen.getByText('EnergiePlus GmbH')).toBeInTheDocument()
+    expect(screen.getByText('Alfa Macchine Utensili S.r.l.')).toBeInTheDocument()
   })
 
   it('validates the new client form in Italian before calling the API', async () => {
     const user = userEvent.setup()
     renderPage()
-    await screen.findByText('EnergiePlus GmbH')
+    await screen.findByText('Alfa Macchine Utensili S.r.l.')
 
     await user.click(screen.getByRole('button', { name: 'Nuovo cliente' }))
     const dialog = screen.getByRole('dialog')
@@ -122,7 +122,7 @@ describe('ClientiPage', () => {
       updated_at: '2026-10-23T10:00:00Z',
     })
     renderPage()
-    await screen.findByText('EnergiePlus GmbH')
+    await screen.findByText('Alfa Macchine Utensili S.r.l.')
 
     await user.click(screen.getByRole('button', { name: 'Nuovo cliente' }))
     const dialog = screen.getByRole('dialog')
@@ -145,6 +145,6 @@ describe('ClientiPage', () => {
     expect(await screen.findByText('Cliente creato')).toBeInTheDocument()
     const table = screen.getByRole('table')
     expect(within(table).getByText('Nuova S.r.l.')).toBeInTheDocument()
-    expect(screen.getByText('5 clienti')).toBeInTheDocument()
+    expect(screen.getByText('7 clienti')).toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ Includes article-level matching with fuzzy logic for partial matches.
 """
 
 import re
+import statistics
 
 from .golden_v2 import check_answer
 from .schemas import (
@@ -31,15 +32,14 @@ def citation_grounding_rate(output: dict, retrieved_chunks: list | None) -> floa
     return _rate(output, retrieved_chunks)
 
 
-def verified_citation_rate(output: dict) -> float | None:
-    """Fraction of an answer's citations whose quote was found word for word.
+def verified_citation_counts(output: dict) -> tuple[int, int] | None:
+    """(verified, total) citations of an answer, by the pipeline's own verdicts.
 
-    Read from the pipeline's own verdicts (src.agents.citation_verifier): the
-    ``verified_citations`` / ``citations_total`` counters when the answer carries
-    them (they also count the citations a strict-mode abstention withheld), else
-    the ``verified`` flags of the citations. None when there is nothing to score:
-    no citations, or an output without any verifier flag (e.g. produced before
-    the verifier existed, or a demo run). Informational: no threshold uses it.
+    The ``verified_citations`` / ``citations_total`` counters when the answer
+    carries them (they also count the citations a strict-mode abstention
+    withheld), else the ``verified`` flags of the citations. None when there is
+    nothing to score: no citations, or an output without any verifier flag (e.g.
+    produced before the verifier existed, or a demo run).
     """
     if not isinstance(output, dict):
         return None
@@ -50,11 +50,68 @@ def verified_citation_rate(output: dict) -> float | None:
         and not isinstance(verified, bool)
         and not isinstance(total, bool)
     ):
-        return verified / total if total > 0 else None
+        return (verified, total) if total > 0 else None
     citations = [c for c in output.get("citations") or [] if isinstance(c, dict)]
     if not any(isinstance(c.get("verified"), bool) for c in citations):
         return None
-    return sum(1 for c in citations if c.get("verified") is True) / len(citations)
+    return sum(1 for c in citations if c.get("verified") is True), len(citations)
+
+
+def verified_citation_rate(output: dict) -> float | None:
+    """Fraction of an answer's citations whose quote was found word for word.
+
+    Read from the pipeline's own verdicts (src.agents.citation_verifier), see
+    verified_citation_counts. None when there is nothing to score.
+    Informational: no threshold uses it.
+    """
+    counts = verified_citation_counts(output)
+    return counts[0] / counts[1] if counts else None
+
+
+def relevance_calibration(results: list[TestResult], test_cases: list[TestCase]) -> dict | None:
+    """What QA_MIN_DENSE_SCORE can be set to without an abstention on an answerable question.
+
+    Reads ``best_dense_score``, the score the threshold is compared with, from
+    each golden v2 answer (records that carry ``expected_answer``). The
+    threshold abstains below its value, so any value up to ``answerable_min``
+    keeps every answerable record; ``abstain_below_answerable_min`` are the
+    abstention records such a value would catch. None when no answer carries
+    the score (a run of an API without it, or a demo run).
+    """
+    case_map = {tc.id: tc for tc in test_cases}
+    answerable: list[tuple[float, str]] = []
+    abstain: list[tuple[float, str]] = []
+    for r in results:
+        tc = case_map.get(r.test_case_id)
+        output = r.normaai_output if isinstance(r.normaai_output, dict) else {}
+        score = output.get("best_dense_score")
+        if (
+            tc is None
+            or tc.expected_answer is None
+            or not isinstance(score, int | float)
+            or isinstance(score, bool)
+        ):
+            continue
+        (abstain if tc.expected_answer.get("abstain") else answerable).append(
+            (float(score), r.test_case_id)
+        )
+    if not answerable and not abstain:
+        return None
+    calibration: dict = {"answerable_scored": len(answerable), "abstain_scored": len(abstain)}
+    if answerable:
+        lowest, lowest_case = min(answerable)
+        calibration["answerable_min"] = lowest
+        calibration["answerable_min_case"] = lowest_case
+        calibration["answerable_median"] = statistics.median(s for s, _ in answerable)
+    if abstain:
+        highest, highest_case = max(abstain)
+        calibration["abstain_max"] = highest
+        calibration["abstain_max_case"] = highest_case
+        if answerable:
+            calibration["abstain_below_answerable_min"] = sorted(
+                case for score, case in abstain if score < calibration["answerable_min"]
+            )
+    return calibration
 
 
 _LATIN_TO_LETTER = {
@@ -282,13 +339,60 @@ def calculate_test_metrics(
     # Golden v2 answer checks (must-contain / must-not-contain / abstain)
     if test_case.expected_answer is not None:
         answer = normaai_output.get("answer")
+        reason = normaai_output.get("abstention_reason")
         result.answer_checks = check_answer(
             test_case.expected_answer,
             answer if isinstance(answer, str) else None,
             detected,
+            reason if isinstance(reason, str) else None,
         )
 
     return result
+
+
+def _golden_v2_breakdown(
+    suite: SuiteResult, results: list[TestResult], case_map: dict[str, TestCase]
+) -> None:
+    """Fill the golden v2 measures of ``suite``, each on its own.
+
+    ``passed_cases`` counts the cases whose recall reaches recall_threshold: a
+    record that expects an abstention expects no citation, so it scores recall
+    1.0 whatever the system answers and is always "passed". These measures
+    say what the number is made of. Records that expect an answer and records
+    that expect an abstention are counted apart; a case that ended in an
+    error counts as failed in every measure. Nothing is set when no case
+    carries answer checks (a legacy suite).
+    """
+    golden = [
+        (r, case_map[r.test_case_id])
+        for r in results
+        if r.test_case_id in case_map and case_map[r.test_case_id].expected_answer is not None
+    ]
+    if not golden:
+        return
+
+    def checks(r: TestResult) -> dict:
+        return r.answer_checks if not r.error and isinstance(r.answer_checks, dict) else {}
+
+    def cited(r: TestResult) -> bool:
+        return not r.error and r.recall >= suite.recall_threshold
+
+    answerable = [r for r, tc in golden if not tc.expected_answer.get("abstain")]
+    abstain = [r for r, tc in golden if tc.expected_answer.get("abstain")]
+    suite.answerable_cases = len(answerable)
+    suite.answerable_article_cited = sum(1 for r in answerable if cited(r))
+    suite.answerable_answered = sum(
+        1 for r in answerable if checks(r) and not checks(r).get("abstained")
+    )
+    suite.answerable_content_passed = sum(1 for r in answerable if checks(r).get("passed"))
+    suite.answerable_article_and_content = sum(
+        1 for r in answerable if cited(r) and checks(r).get("passed")
+    )
+    suite.abstain_cases = len(abstain)
+    suite.abstain_abstained = sum(1 for r in abstain if checks(r).get("abstained"))
+    suite.abstain_content_passed = sum(1 for r in abstain if checks(r).get("passed"))
+    suite.content_checks_total = len(golden)
+    suite.content_checks_passed = suite.answerable_content_passed + suite.abstain_content_passed
 
 
 def aggregate_suite_results(
@@ -334,8 +438,16 @@ def aggregate_suite_results(
         if rates:
             suite.avg_verified_citation_rate = sum(rates) / len(rates)
 
+        suite.relevance_calibration = relevance_calibration(valid_results, test_cases)
+
+        counts = [verified_citation_counts(r.normaai_output) for r in valid_results]
+        if any(counts):
+            suite.citations_verified = sum(c[0] for c in counts if c)
+            suite.citations_scored = sum(c[1] for c in counts if c)
+
     # Per-framework breakdown
     case_map = {tc.id: tc for tc in test_cases}
+    _golden_v2_breakdown(suite, results, case_map)
     framework_groups: dict[str, list[TestResult]] = {}
     difficulty_groups: dict[str, list[TestResult]] = {}
 

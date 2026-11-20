@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2003;196~art2ter!vig=2021-12-07",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO LEGISLATIVO 30 giugno 2003, n. 196",
+    "sottoTitolo": "Codice in materia di protezione dei dati personali <em><strong>((, recante disposizioni per l'adeguamento dell'ordinamento nazionale al regolamento (UE) n. 2016/679 del Parlamento europeo e del Consiglio, del 27 aprile 2016, relativo alla protezione delle persone fisiche con riguardo al trattamento dei dati personali, nonche' alla libera circolazione di tali dati e che abroga la direttiva 95/46/CE))</strong></em>.\r\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_2-ter\">Art. 2-ter</h2>\n        <div class=\"article-heading-akn\">(Base giuridica per il trattamento di dati personali effettuato per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri)</div>\n        <div class=\"art-commi-div-akn\">\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">1. </span><span class=\"art_text_in_comma\">La base giuridica prevista dall'articolo 6, paragrafo 3, lettera b), del regolamento &egrave; costituita esclusivamente da una norma di legge o, nei casi previsti dalla legge, di regolamento. \n                    <br>\n                    \n                </span>\n            </div>\n            <div class=\"ins-akn\" eId=\"ins_1\">\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"art_text_in_comma\">((</span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"comma-num-akn\">1-bis. </span><span class=\"art_text_in_comma\">Il trattamento dei dati personali da parte di un'amministrazione pubblica di cui all'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2001-03-30;165~art1-com2\" target=\"_blank\">articolo 1, comma 2, del decreto legislativo 30 marzo 2001, n. 165</a>, ivi comprese le Autorit&agrave; indipendenti e le amministrazioni inserite nell'elenco di cui all'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2009-12-31;196~art1-com3\" target=\"_blank\">articolo 1, comma 3, della legge 31 dicembre 2009, n. 196</a>, nonch&egrave; da parte di una societ&agrave; a controllo pubblico statale di cui all'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2016-08-19;175~art16\" target=\"_blank\">articolo 16 del decreto legislativo 19 agosto 2016, n. 175</a>, con esclusione per le societ&agrave; pubbliche dei trattamenti correlati ad attivit&agrave; svolte in regime di libero mercato, &egrave; sempre consentito se necessario per l'adempimento di un compito svolto nel pubblico interesse o per l'esercizio di pubblici poteri a essa attribuiti. La finalit&agrave; del trattamento, se non espressamente prevista da una norma di legge o, nei casi previsti dalla legge, di regolamento, &egrave; indicata dall'amministrazione, dalla societ&agrave; a controllo pubblico in coerenza al compito svolto o al potere esercitato, assicurando adeguata pubblicit&agrave; all'identit&agrave; del titolare del trattamento, alle finalit&agrave; del trattamento e fornendo ogni altra informazione necessaria ad assicurare un trattamento corretto e trasparente con riguardo ai soggetti interessati e ai loro diritti di ottenere conferma e comunicazione di un trattamento di dati personali che li riguardano.</span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"art_text_in_comma\">))</span>\n                </div>\n            </div>\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">2. </span><span class=\"art_text_in_comma\">La comunicazione fra titolari che effettuano trattamenti di dati personali, diversi da quelli ricompresi nelle particolari categorie di cui all'articolo 9 del Regolamento e di quelli relativi a condanne penali e reati di cui all'articolo 10 del Regolamento, per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri &egrave; ammessa se prevista ai sensi del comma 1 \n                    <div class=\"ins-akn\" eId=\"ins_2\">((o se necessaria ai sensi del comma 1-bis))</div>\n                    . \n                    <div class=\"ins-akn\" eId=\"ins_3\">((PERIODO SOPPRESSO DAL <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legge:2021-10-08;139\" target=\"_blank\">D.L. 8 OTTOBRE 2021, N. 139</a>))</div>\n                    . \n                    <br>\n                    \n                </span>\n            </div>\n            <div class=\"art-comma-div-akn\">\n                <span class=\"comma-num-akn\">3. </span><span class=\"art_text_in_comma\">La diffusione e la comunicazione di dati personali, trattati per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri, a soggetti che intendono trattarli per altre finalit&agrave; sono ammesse unicamente se previste ai sensi del comma 1 \n                    <div class=\"ins-akn\" eId=\"ins_4\">((o se necessarie ai sensi del comma 1-bis))</div>\n                    . \n                    <br>\n                    \n                </span>\n            </div>\n            <div class=\"art-comma-div-akn\">\n                <div>\n                    <div class=\"pointedList-first-akn\">\n                        <span class=\"comma-num-akn\">4. </span>Si intende per: \n                        <br>\n                         \n                    </div>\n                    <div class=\"pointedList-rest-akn\">\n                        a) \"comunicazione\", il dare conoscenza dei dati personali a uno o pi&ugrave; soggetti determinati diversi dall'interessato, dal rappresentante del titolare nel territorio dell'Unione europea, dal responsabile o dal suo rappresentante nel territorio dell'Unione europea, dalle persone autorizzate, ai sensi dell'articolo 2-quaterdecies, al trattamento dei dati personali sotto l'autorit&agrave; diretta del titolare o del responsabile, in qualunque forma, anche mediante la loro messa a disposizione, consultazione o mediante interconnessione; \n                        <br>\n                        \n                    </div>\n                    <div class=\"pointedList-rest-akn\">\n                        b) \"diffusione\", il dare conoscenza dei dati personali a soggetti indeterminati, in qualunque forma, anche mediante la loro messa a disposizione o consultazione. \n                        <br>\n                        \n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO LEGISLATIVO",
+    "tipoProvvedimentoCodice": "PLL",
+    "annoProvvedimento": 2003,
+    "meseProvvedimento": 6,
+    "giornoProvvedimento": 30,
+    "numeroProvvedimento": 196,
+    "tipoSupplementoCode": "SO",
+    "numeroSupplemento": 123,
+    "annoGU": 2003,
+    "meseGU": 7,
+    "giornoGU": 29,
+    "numeroGU": 174,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20211009",
+    "articoloDataFineVigenza": "20211207",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

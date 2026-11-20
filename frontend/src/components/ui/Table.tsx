@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn'
 /** Horizontal rules, no zebra, numbers right-aligned and tabular. */
 export function Table({ className, children, ...rest }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-rule bg-surface">
+    <div className="relative overflow-x-auto rounded-lg border border-rule bg-surface">
       <table className={cn('w-full border-collapse text-body', className)} {...rest}>
         {children}
       </table>

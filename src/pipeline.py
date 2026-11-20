@@ -12,15 +12,21 @@ Usage:
     python -m src.pipeline --action seed     # Initial seed: crawl + index all tracked acts
     python -m src.pipeline --action seed --acts AI_ACT,32022L2464 --lang IT   # subset
     python -m src.pipeline --action seed --recreate   # drop + rebuild the collection
-    python -m src.pipeline --action update   # Check for amendments and index new content
+    python -m src.pipeline --action update   # Refresh the tracked acts (EN, IT); corpus date
     python -m src.pipeline --action stats    # Show collection statistics
+
+Scheduled jobs (cron on the server; they do not load the embedding model):
+    python -m src.pipeline --action recheck-documents   # weekly: watched documents
+    python -m src.pipeline --action check-freshness     # nightly: corpus vs CELLAR
 """
 
 import argparse
 import json
 import logging
 import time
-from datetime import datetime
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from src.config import get_settings
 from src.crawler.eurlex import celex as celex_utils
@@ -29,6 +35,7 @@ from src.crawler.eurlex.client import (
     TRACKED_ACTS,
     EurLexClient,
     get_tracked_act,
+    tracked_acts,
 )
 from src.nlp.chunking.contextual_chunker import ContextualChunker
 from src.nlp.chunking.legal_chunker import EURLexHTMLChunker
@@ -146,7 +153,10 @@ class IngestionPipeline:
         languages: list[str] | None = None,
     ) -> dict:
         """
-        Initial seed: download and index the tracked EU acts (+ Normattiva).
+        Initial seed: download and index the tracked EU acts.
+
+        No Italian law: the old Normattiva client called endpoints that answer
+        HTTP 409 and was removed. DATA_SOURCE=normattiva or both only logs that.
 
         Idempotent: every (act, language) pair is re-indexed in place (delete +
         upsert with deterministic point ids), so re-running the seed never
@@ -167,25 +177,24 @@ class IngestionPipeline:
 
         start_time = time.time()
         settings = get_settings()
-        data_source = settings.data_source  # "eurlex", "normattiva", or "both"
+        data_source = settings.data_source  # "eurlex"; "normattiva"/"both" index no Italian law
         raw_langs = languages or settings.corpus_language_list
         langs = list(dict.fromkeys(celex_utils.normalize_lang(code) for code in raw_langs))
         prefer_consolidated = bool(getattr(settings, "eurlex_prefer_consolidated", True))
         batch_size = settings.embedding_batch_size
 
         # Step 1: Setup Qdrant collection
-        logger.info("[1/5] Setting up Qdrant collection...")
+        logger.info("[1/4] Setting up Qdrant collection...")
         self.indexer.setup_collection(recreate=recreate_collection)
 
         download_stats_eurlex = {"success": 0, "failed": 0, "total_chunks": 0}
-        download_stats_normattiva = {"success": 0, "failed": 0, "total_chunks": 0}
         indexed_acts: list[dict] = []
         indexed = 0
 
         # Step 2-3: EUR-Lex acts, one (act, language) at a time
         if data_source in ("eurlex", "both"):
             logger.info(
-                f"[2/5] Crawling EUR-Lex metadata for the tracked acts "
+                f"[2/4] Crawling EUR-Lex metadata for the tracked acts "
                 f"(languages: {', '.join(langs)}, consolidated: {prefer_consolidated})..."
             )
             regulations = self.eurlex.crawl_all_core_frameworks(celex_filter=acts, unique=True)
@@ -193,7 +202,7 @@ class IngestionPipeline:
                 f"  {len(regulations)} acts selected across {len(CORE_FRAMEWORKS)} frameworks"
             )
 
-            logger.info("[3/5] Downloading, chunking and indexing EUR-Lex texts...")
+            logger.info("[3/4] Downloading, chunking and indexing EUR-Lex texts...")
             for reg in regulations:
                 logger.info(f"  Processing {reg.celex} ({reg.framework}): {reg.title[:60]}...")
                 download_celex = self.eurlex.resolve_download_celex(
@@ -211,26 +220,19 @@ class IngestionPipeline:
                     indexed += result["chunks"]
                     indexed_acts.append(result)
 
-        # Step 4: Seed Normattiva (if enabled)
+        # Italian law is not indexed: the document check reads it through the
+        # newer open data API (src/document_check/normattiva.py) instead.
         if data_source in ("normattiva", "both"):
-            logger.info("[4/5] Initializing Normattiva Italian implementations...")
-            normattiva_chunks = self.seed_normattiva(list(CORE_FRAMEWORKS.keys()))
-            download_stats_normattiva["success"] = len(normattiva_chunks) // max(
-                1, len(normattiva_chunks) // 5
+            logger.warning(
+                f"  DATA_SOURCE={data_source}: no Italian law goes into the Q&A corpus, "
+                "only EUR-Lex (set DATA_SOURCE=eurlex)"
             )
-            download_stats_normattiva["total_chunks"] = len(normattiva_chunks)
-            if normattiva_chunks:
-                logger.info(
-                    f"  Enriching and indexing {len(normattiva_chunks)} Normattiva chunks..."
-                )
-                enriched = self._enrich(normattiva_chunks)
-                indexed += self.indexer.index_contextual_chunks(enriched, batch_size=batch_size)
 
-        # Step 5: corpus metadata - only when something was indexed, so an empty
+        # Step 4: corpus metadata - only when something was indexed, so an empty
         # seed never makes the corpus look ready.
         corpus_meta = None
         if indexed > 0:
-            logger.info("[5/5] Writing corpus metadata point...")
+            logger.info("[4/4] Writing corpus metadata point...")
             try:
                 corpus_meta = self.indexer.write_corpus_meta(
                     acts=indexed_acts,
@@ -239,7 +241,6 @@ class IngestionPipeline:
                         "languages": langs,
                         "data_source": data_source,
                         "prefer_consolidated": prefer_consolidated,
-                        "normattiva_chunks": download_stats_normattiva["total_chunks"],
                     },
                 )
             except Exception as e:
@@ -249,11 +250,9 @@ class IngestionPipeline:
         elapsed = time.time() - start_time
 
         # Summary
-        total_downloads = download_stats_eurlex["success"] + download_stats_normattiva["success"]
-        total_failed = download_stats_eurlex["failed"] + download_stats_normattiva["failed"]
-        total_chunks_created = (
-            download_stats_eurlex["total_chunks"] + download_stats_normattiva["total_chunks"]
-        )
+        total_downloads = download_stats_eurlex["success"]
+        total_failed = download_stats_eurlex["failed"]
+        total_chunks_created = download_stats_eurlex["total_chunks"]
 
         stats = {
             "action": "seed",
@@ -263,7 +262,6 @@ class IngestionPipeline:
             "languages": langs,
             "prefer_consolidated": prefer_consolidated,
             "eurlex": download_stats_eurlex,
-            "normattiva": download_stats_normattiva,
             "total_downloads_success": total_downloads,
             "total_downloads_failed": total_failed,
             "total_chunks": total_chunks_created,
@@ -286,9 +284,6 @@ class IngestionPipeline:
         logger.info(
             f"  EUR-Lex:    {download_stats_eurlex['success']} OK, {download_stats_eurlex['failed']} failed"
         )
-        logger.info(
-            f"  Normattiva: {download_stats_normattiva['success']} OK, {download_stats_normattiva['failed']} failed"
-        )
         logger.info(f"  Chunks:     {stats['chunks_indexed']} indexed (with contextual enrichment)")
         logger.info(f"  Corpus as of: {corpus_as_of or 'n/a'}")
         logger.info(f"  Time:       {stats['elapsed_seconds']}s")
@@ -296,259 +291,168 @@ class IngestionPipeline:
 
         return stats
 
-    def seed_normattiva(self, frameworks: list[str]) -> list:
+    def update(
+        self,
+        acts: list[str] | None = None,
+        languages: list[str] | None = None,
+    ) -> dict:
         """
-        Seed Normattiva Italian implementations for the given frameworks.
+        Refresh the tracked acts (TRACKED_ACTS), in every corpus language, and nothing else.
 
-        This searches for Italian implementing legislation and regulations
-        related to each EU framework, downloads them, and returns chunks
-        ready for indexing.
+        For each tracked act and each language of CORPUS_LANGUAGES (EN and IT by
+        default), the text CELLAR serves today (the latest consolidated version
+        with EURLEX_PREFER_CONSOLIDATED, else the act as adopted) is compared
+        with the one the corpus metadata point says was indexed. Only a newer or
+        missing text is downloaded and re-indexed in place, as the seed does
+        (delete + upsert for that act and language). Then the in-force status of
+        the tracked acts is re-checked (one no longer in force is marked
+        superseded), and the corpus metadata point is rewritten: its acts list,
+        and ``corpus_as_of`` set to today when every tracked act was checked in
+        every corpus language, which is the date the API shows (src/api/app_state
+        corpus_as_of). A partial run (``acts``, ``languages``, an act CELLAR did
+        not serve) keeps the date it found.
 
-        Args:
-            frameworks: List of EU framework codes (e.g., ["CSRD", "GDPR", "AI_ACT"])
-
-        Returns:
-            List of Chunk objects enriched with metadata (source="normattiva")
+        No act outside TRACKED_ACTS is added: this action used to index up to
+        100 recent EU acts of any kind, in English only, and left the tracked
+        ones as they were. Run by hand (docs/RUNBOOK.md, section 10).
         """
-        import asyncio
-
-        from src.crawler.normattiva.client import NormattivaOpenDataClient
-
-        logger.info(f"Seeding Normattiva implementations for {len(frameworks)} frameworks...")
-
-        # Map EU framework codes to Italian search queries
-        FRAMEWORK_SEARCH_QUERIES: dict[str, list[str]] = {  # noqa: N806 - function-scoped constant
-            "CSRD": [
-                "rendicontazione societaria di sostenibilità",
-                "decreto legislativo recepimento direttiva 2022/2464",
-            ],
-            "CSDDD": [
-                "dovuta diligenza imprese sostenibilità",
-                "due diligence catena del valore",
-            ],
-            "AI_ACT": [
-                "regolamento intelligenza artificiale",
-                "decreto legislativo intelligenza artificiale 2024",
-            ],
-            "DORA": [
-                "resilienza operativa digitale settore finanziario",
-                "decreto legislativo recepimento DORA",
-            ],
-            "NIS2": [
-                "sicurezza delle reti e dei sistemi informativi",
-                "decreto legislativo recepimento NIS2",
-                "decreto legislativo 138 2024",
-            ],
-            "TAXONOMY": [
-                "finanza sostenibile tassonomia",
-                "regolamento delegato tassonomia UE",
-            ],
-            "GDPR": [
-                "codice protezione dati personali",
-                "decreto legislativo 196 2003 privacy",
-                "decreto legislativo 101 2018",
-            ],
-            # CRA is an EU Regulation (no transposition); national measures
-            # are adaptation decrees - search for those.
-            "CRA": [
-                "regolamento ciberresilienza prodotti elementi digitali",
-                "adeguamento regolamento 2024/2847",
-            ],
-        }
-
-        all_chunks = []
-
-        async def _seed_async():
-            async with NormattivaOpenDataClient(
-                rate_limit_delay=1.5,
-                timeout=30.0,
-                max_retries=3,
-            ) as client:
-                for fw in frameworks:
-                    queries = FRAMEWORK_SEARCH_QUERIES.get(fw, [])
-                    if not queries:
-                        logger.warning(f"  No Normattiva search queries for framework: {fw}")
-                        continue
-
-                    logger.info(
-                        f"  Searching Normattiva for {fw} implementations ({len(queries)} queries)..."
-                    )
-                    seen_urns = set()
-
-                    for query in queries:
-                        try:
-                            search_result = await client.search(query, limit=10)
-                            logger.info(
-                                f"    Query '{query[:40]}...' → {search_result.total} results"
-                            )
-
-                            for act_summary in search_result.results:
-                                # Skip duplicates
-                                if act_summary.urn in seen_urns:
-                                    continue
-                                seen_urns.add(act_summary.urn)
-
-                                # Only process acts that are currently in force
-                                if not act_summary.in_vigore:
-                                    logger.debug(f"    Skipping {act_summary.urn} (not in force)")
-                                    continue
-
-                                # Download full text
-                                try:
-                                    normative_text = await client.get_atto(
-                                        tipo=act_summary.tipo,
-                                        anno=act_summary.anno,
-                                        numero=act_summary.numero,
-                                    )
-                                except Exception as dl_err:
-                                    logger.warning(
-                                        f"    Failed to download {act_summary.urn}: {dl_err}"
-                                    )
-                                    continue
-
-                                if not normative_text:
-                                    continue
-
-                                # Use HTML if available, otherwise plain text
-                                text_content = (
-                                    normative_text.testo_html or normative_text.testo_plain
-                                )
-                                if not text_content or len(text_content.strip()) < 200:
-                                    logger.debug(f"    Skipping {act_summary.urn}: text too short")
-                                    continue
-
-                                # Chunk the content (Italian text, URN as identifier)
-                                chunker = EURLexHTMLChunker(
-                                    celex=act_summary.urn,
-                                    framework=fw,
-                                    lang="IT",
-                                )
-                                try:
-                                    chunks = chunker.chunk_html(text_content)
-                                except Exception:
-                                    # If HTML chunking fails, create a single chunk from plain text
-                                    from src.nlp.chunking.legal_chunker import LegalChunk
-
-                                    plain = normative_text.testo_plain or text_content
-                                    chunks = [
-                                        LegalChunk(
-                                            text=plain[:4000],
-                                            metadata={
-                                                "celex": act_summary.urn,
-                                                "framework": fw,
-                                                "lang": "IT",
-                                                "source": "normattiva",
-                                                "urn": act_summary.urn,
-                                            },
-                                        )
-                                    ]
-
-                                # Enrich metadata for each chunk
-                                for chunk in chunks:
-                                    chunk.metadata["source"] = "normattiva"
-                                    chunk.metadata["urn"] = act_summary.urn
-                                    chunk.metadata["tipo_atto"] = act_summary.tipo
-                                    chunk.metadata["anno"] = act_summary.anno
-                                    chunk.metadata["numero"] = act_summary.numero
-                                    chunk.metadata["titolo"] = act_summary.titolo
-                                    chunk.metadata["in_vigore"] = act_summary.in_vigore
-                                    chunk.metadata["url"] = normative_text.url or ""
-
-                                all_chunks.extend(chunks)
-                                logger.info(
-                                    f"    OK {act_summary.urn}: {len(chunks)} chunks "
-                                    f"({act_summary.titolo[:50]}...)"
-                                )
-
-                        except Exception as q_err:
-                            logger.warning(
-                                f"    Search query failed for '{query[:40]}...': {q_err}"
-                            )
-                            continue
+        settings = get_settings()
+        raw_langs = languages or settings.corpus_language_list
+        langs = list(dict.fromkeys(celex_utils.normalize_lang(code) for code in raw_langs))
+        prefer_consolidated = bool(getattr(settings, "eurlex_prefer_consolidated", True))
+        batch_size = settings.embedding_batch_size
+        logger.info(
+            f"NORMAAI UPDATE - the tracked acts in {', '.join(langs)} "
+            f"(consolidated: {prefer_consolidated})"
+        )
+        start_time = time.time()
+        self.indexer.setup_collection(recreate=False)
 
         try:
-            asyncio.run(_seed_async())
-            logger.info(
-                f"  Normattiva seed complete: {len(all_chunks)} chunks from {len(frameworks)} frameworks"
+            corpus = self.indexer.get_corpus_info()
+        except Exception as e:  # noqa: BLE001 - no metadata: every text counts as missing
+            logger.warning(f"  corpus metadata not readable: {e}")
+            corpus = None
+        corpus = corpus if isinstance(corpus, dict) else {}
+        previous_acts = [a for a in corpus.get("acts") or [] if isinstance(a, dict)]
+        indexed_text = {
+            (celex_utils.base_celex(str(a.get("celex") or "")), str(a.get("lang") or "")): str(
+                a.get("source_celex") or a.get("celex") or ""
             )
-        except Exception as e:
-            logger.error(f"Error seeding Normattiva: {e}")
+            for a in previous_acts
+        }
 
-        return all_chunks
+        wanted = tracked_acts(acts)
+        regulations = self.eurlex.crawl_all_core_frameworks(celex_filter=acts, unique=True)
+        refreshed: list[dict] = []
+        unchanged = 0
+        failed: list[dict] = []
+        for reg in regulations:
+            try:
+                download_celex = self.eurlex.resolve_download_celex(
+                    reg.celex, prefer_consolidated=prefer_consolidated
+                )
+            except Exception as e:  # noqa: BLE001 - CELLAR down for this act: next one
+                logger.warning(f"  {reg.celex}: latest text not known: {e}")
+                failed.extend({"celex": reg.celex, "lang": lang} for lang in langs)
+                continue
+            if not isinstance(download_celex, str) or not download_celex:
+                download_celex = reg.celex
+            for lang in langs:
+                if indexed_text.get((reg.celex, lang)) == download_celex:
+                    unchanged += 1
+                    continue
+                logger.info(f"  {reg.celex} [{lang}]: indexing {download_celex}")
+                try:
+                    result = self._seed_eurlex_act(reg, download_celex, lang, batch_size)
+                except Exception as e:  # noqa: BLE001 - one text must not stop the others
+                    logger.warning(f"  {reg.celex} [{lang}]: not re-indexed: {e}")
+                    result = None
+                if result is None:
+                    failed.append({"celex": reg.celex, "lang": lang})
+                    continue
+                refreshed.append(result)
 
-    def update(self, days_back: int = 7) -> dict:
-        """
-        Incremental update: refresh temporal status + index new publications.
-
-        Run on demand (CLI ``--action update``) or by the AcquisitionScheduler
-        when ACQUISITION_SCHEDULER_ENABLED=true. Re-checks the in-force status of
-        tracked regulations and marks any no longer in force as superseded (so
-        the corpus stops serving repealed law as current), then indexes recently
-        published legislation.
-        """
-        logger.info(f"NORMAAI UPDATE - Checking for changes (last {days_back} days)")
-
-        start_time = time.time()
-
-        # Tracked CELEX numbers across all frameworks
-        all_celex = []
-        for celex_map in CORE_FRAMEWORKS.values():
-            all_celex.extend(celex_map.keys())
-
-        # Check amendments to tracked regulations
-        amendments = self.eurlex.check_for_new_amendments(all_celex)
-
-        # Temporal freshness: mark chunks of regulations no longer in force as
-        # superseded (an amendment alone does NOT supersede a still-in-force act).
+        # In force? Checked after the re-indexing, so the marks land on the new chunks.
+        tracked_celex = [act.celex for act in wanted]
+        try:
+            amendments = self.eurlex.check_for_new_amendments(tracked_celex)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"  amendment lookup failed: {e}")
+            amendments = []
         freshness = refresh_in_force_status(
-            self.eurlex, self.indexer, all_celex, amendments=amendments
+            self.eurlex, self.indexer, tracked_celex, amendments=amendments
         )
 
-        # Check for new legislation
-        new_legislation = self.eurlex.fetch_recent_legislation(days_back=days_back)
-
-        # Download and index any new content
-        new_chunks = []
-        for reg in new_legislation:
-            html = self.eurlex.download_full_text_html(reg.celex)
-            if html and len(html.strip()) > 500:
-                chunker = EURLexHTMLChunker(celex=reg.celex, framework=reg.framework or "UNKNOWN")
-                chunks = chunker.chunk_html(html)
-                new_chunks.extend(chunks)
-
-        # Enrich and index
-        indexed = 0
-        if new_chunks:
-            enriched = []
-            for chunk in new_chunks:
-                ctx = self.contextual_chunker.enrich_single(
-                    text=chunk.text,
-                    framework=chunk.metadata.get("framework", ""),
-                    article=chunk.metadata.get("article_number", ""),
-                    section=chunk.metadata.get("section_title", ""),
+        served = {reg.celex for reg in regulations}
+        complete = (
+            not acts
+            and not failed
+            and set(langs) >= set(settings.corpus_language_list)
+            and all(act.celex in served for act in TRACKED_ACTS)
+        )
+        previous_as_of = corpus.get("corpus_as_of")
+        corpus_as_of = datetime.now(UTC).date().isoformat() if complete else previous_as_of
+        if refreshed or complete:
+            if corpus_as_of:
+                merged = {
+                    (celex_utils.base_celex(str(a.get("celex") or "")), str(a.get("lang") or "")): a
+                    for a in previous_acts
+                }
+                for entry in refreshed:
+                    merged[(entry["celex"], entry["lang"])] = entry
+                carried = {
+                    key: value
+                    for key, value in corpus.items()
+                    if key not in ("kind", "corpus_as_of", "acts", "embedding_model", "built_at")
+                    and key != "org_id"
+                }
+                carried["languages"] = list(
+                    dict.fromkeys([*(carried.get("languages") or []), *langs])
                 )
-                ctx.metadata.update(chunk.metadata)
-                enriched.append(ctx)
-
-            indexed = self.indexer.index_contextual_chunks(enriched)
+                carried["prefer_consolidated"] = prefer_consolidated
+                try:
+                    self.indexer.write_corpus_meta(
+                        acts=list(merged.values()),
+                        corpus_as_of=str(corpus_as_of),
+                        embedding_model=settings.embedding_model,
+                        extra=carried,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(f"  corpus metadata write failed: {e}")
+                    corpus_as_of = previous_as_of
+            else:
+                logger.warning(
+                    "  corpus metadata not rewritten: a partial update cannot date a corpus "
+                    "that had no date"
+                )
 
         elapsed = time.time() - start_time
-
         stats = {
             "action": "update",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "elapsed_seconds": round(elapsed, 1),
+            "languages": langs,
+            "prefer_consolidated": prefer_consolidated,
+            "acts_checked": len(regulations),
+            "texts_refreshed": [
+                {key: entry[key] for key in ("celex", "lang", "source_celex", "chunks")}
+                for entry in refreshed
+            ],
+            "texts_unchanged": unchanged,
+            "texts_failed": failed,
+            "chunks_indexed": sum(entry["chunks"] for entry in refreshed),
             "amendments_found": len(amendments),
             "regulations_superseded": freshness["superseded_regulations"],
             "chunks_superseded": freshness["superseded_chunks"],
-            "new_legislation": len(new_legislation),
-            "new_chunks_indexed": indexed,
+            "complete": complete,
+            "corpus_as_of": corpus_as_of,
         }
-
         logger.info(
-            f"UPDATE COMPLETE: {len(amendments)} amendments, "
-            f"{freshness['superseded_chunks']} chunks superseded, "
-            f"{len(new_legislation)} new, {indexed} chunks indexed ({elapsed:.1f}s)"
+            f"UPDATE COMPLETE: {len(refreshed)} texts re-indexed, {unchanged} unchanged, "
+            f"{len(failed)} failed, {freshness['superseded_chunks']} chunks superseded; "
+            f"corpus as of {corpus_as_of or 'n/a'}{'' if complete else ' (partial run: date kept)'} "
+            f"({elapsed:.1f}s)"
         )
         return stats
 
@@ -725,6 +629,244 @@ def refresh_in_force_status(eurlex, indexer, tracked_celex: list[str], amendment
     }
 
 
+# ─── Scheduled jobs ──────────────────────────────────────────────────
+# Run by cron on the server (the in-process scheduler stays off). Neither
+# builds an IngestionPipeline: no embedding model, no document processor.
+
+
+def _iso_z(moment: datetime) -> str:
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def corpus_freshness(
+    corpus: dict | None,
+    versions_of: Callable[[str], list[Any]],
+    now: datetime | None = None,
+) -> dict:
+    """Compare the version of each tracked EU act in the corpus with CELLAR's latest.
+
+    ``corpus`` is the corpus metadata point the seed writes
+    (``HybridIndexer.get_corpus_info()``: its ``acts`` say which text of each act
+    was indexed, per language). ``versions_of(celex)`` lists the versions of an
+    act, oldest first, as the document check reads them
+    (``default_source().versions``): objects with ``celex``, ``as_of`` and
+    ``initial``.
+
+    An act is outdated when CELLAR lists a consolidated text newer than the one
+    indexed in some language. A corpus that holds the act as adopted is not
+    behind a consolidated text that is only CELLAR's snapshot of the act as
+    published (``initial``): the words are the same. Acts registered as
+    amending are skipped, they have no consolidated text of their own.
+
+    Returns ``{"status", "checked_at", "outdated", "missing", "unknown", ...}``:
+    ``status`` is ``ok``, ``outdated`` or ``unknown`` (no corpus metadata, or no
+    act could be compared); ``missing`` are tracked acts the corpus does not
+    hold, ``unknown`` those CELLAR could not be asked about.
+    """
+    now = now or datetime.now(UTC)
+    acts = corpus.get("acts") if isinstance(corpus, dict) else None
+    if not isinstance(acts, list) or not acts:
+        return {
+            "status": "unknown",
+            "checked_at": None,
+            "outdated": [],
+            "missing": [],
+            "unknown": [],
+            "reason": "corpus metadata not available",
+            "attempted_at": _iso_z(now),
+        }
+
+    indexed: dict[str, dict[str, str]] = {}  # act -> {language: id of the text indexed}
+    for entry in acts:
+        if not isinstance(entry, dict):
+            continue
+        celex = celex_utils.base_celex(str(entry.get("celex") or ""))
+        text_id = str(entry.get("source_celex") or entry.get("celex") or "")
+        if celex and text_id:
+            indexed.setdefault(celex, {})[str(entry.get("lang") or "")] = text_id
+
+    def age(text_id: str) -> str:
+        """Sorts the act as adopted before every consolidated text."""
+        return celex_utils.consolidated_as_of(text_id) or ""
+
+    outdated: list[dict] = []
+    missing: list[str] = []
+    unknown: list[str] = []
+    compared = 0
+    for act in TRACKED_ACTS:
+        if not act.consolidated:
+            continue
+        in_corpus = indexed.get(act.celex)
+        if not in_corpus:
+            missing.append(act.celex)
+            continue
+        try:
+            consolidated = [v for v in versions_of(act.celex) if getattr(v, "as_of", None)]
+        except Exception as e:  # noqa: BLE001 - CELLAR not reachable for this act
+            logger.warning(f"  freshness: versions of {act.celex} not available: {e}")
+            unknown.append(act.celex)
+            continue
+        compared += 1
+        if not consolidated:
+            continue
+        real = [v for v in consolidated if not getattr(v, "initial", False)]
+        behind: dict[str, str] = {}
+        for lang, text_id in in_corpus.items():
+            if celex_utils.is_consolidated_celex(text_id):
+                if age(text_id) < str(consolidated[-1].as_of):
+                    behind[lang] = text_id
+            elif real:
+                behind[lang] = text_id
+        if behind:
+            outdated.append(
+                {
+                    "celex": act.celex,
+                    "indexed": min(behind.values(), key=age),
+                    "latest": consolidated[-1].celex,
+                    "langs": sorted(lang for lang in behind if lang),
+                }
+            )
+
+    if outdated:
+        status = "outdated"
+    elif compared and not unknown:
+        status = "ok"
+    else:
+        status = "unknown"
+    return {
+        "status": status,
+        "checked_at": _iso_z(now) if compared else None,
+        "outdated": outdated,
+        "missing": missing,
+        "unknown": unknown,
+        "acts": compared,
+        "corpus_as_of": corpus.get("corpus_as_of") if isinstance(corpus, dict) else None,
+        "attempted_at": _iso_z(now),
+    }
+
+
+async def store_freshness(sessions: Any, outcome: dict, now: datetime | None = None) -> None:
+    """Keep the outcome in ``system_state``, where GET /api/v1/stats reads it."""
+    from src.db.models import CORPUS_FRESHNESS_KEY, SystemState
+
+    now = now or datetime.now(UTC)
+    async with sessions() as session:
+        row = await session.get(SystemState, CORPUS_FRESHNESS_KEY)
+        if row is None:
+            session.add(SystemState(key=CORPUS_FRESHNESS_KEY, value=outcome, updated_at=now))
+        else:
+            row.value = outcome
+            row.updated_at = now
+        await session.commit()
+
+
+def run_check_freshness() -> dict:
+    """``--action check-freshness``: compare, store, return the outcome.
+
+    Without Qdrant (or on a corpus seeded before the metadata point existed)
+    the outcome is ``unknown`` and is stored as such.
+    """
+    import asyncio
+
+    from src.db.engine import db_manager
+    from src.document_check.sources import default_source
+
+    try:
+        corpus = HybridIndexer(**indexer_kwargs_from_settings(get_settings())).get_corpus_info()
+    except Exception as e:  # noqa: BLE001 - Qdrant not reachable
+        logger.warning(f"freshness: corpus metadata not readable: {e}")
+        corpus = None
+
+    source: Any = None
+
+    def versions_of(celex: str) -> list[Any]:
+        # One source for the run: it keeps the lists on disk for a day, the
+        # same lists the document checks read.
+        nonlocal source
+        if source is None:
+            source = default_source()
+        return list(source.versions(celex))
+
+    outcome = corpus_freshness(corpus if isinstance(corpus, dict) else None, versions_of)
+
+    async def _store() -> None:
+        db_manager.init()
+        try:
+            await store_freshness(db_manager.session, outcome)
+        finally:
+            await db_manager.close()
+
+    asyncio.run(_store())
+    logger.info(
+        f"FRESHNESS: {outcome['status']}, {len(outcome['outdated'])} outdated, "
+        f"{len(outcome['missing'])} missing, {len(outcome['unknown'])} not checked"
+    )
+    return outcome
+
+
+def run_recheck_documents() -> dict:
+    """``--action recheck-documents``: the surveillance of the watched documents.
+
+    Re-checks the provisions every watched document cites, writes the alerts
+    and sends the digest emails (src/document_check/surveillance.py). Safe to
+    run again: a change is announced once.
+    """
+    import asyncio
+
+    from src.db.engine import db_manager
+    from src.document_check import surveillance
+    from src.document_check.sources import default_source
+
+    async def _run() -> dict:
+        db_manager.init()
+        try:
+            report = await surveillance.run(db_manager.session, default_source())
+            return report.as_dict()
+        finally:
+            await db_manager.close()
+
+    result = asyncio.run(_run())
+    logger.info(
+        f"RECHECK: {result['checks']} watched documents, {result['provisions']} provisions, "
+        f"{result['checks_changed']} documents to review, {result['emails_sent']} emails"
+    )
+    return result
+
+
+SCHEDULED_ACTIONS: dict[str, Callable[[], dict]] = {
+    "recheck-documents": run_recheck_documents,
+    "check-freshness": run_check_freshness,
+}
+
+
+def run_scheduled(action: str) -> dict:
+    """Run a cron job; when it raises, tell the operator, then exit with 1.
+
+    Cron only keeps the output in /var/log/normaai-jobs.log, which nobody reads
+    unless something sends them there. With SENTRY_DSN set, every ERROR line of
+    the job becomes a Sentry event, the traceback of a failure included; with
+    OPS_ALERT_EMAIL (and RESEND_API_KEY) the failure is also emailed
+    (src/ops_alerts.py).
+    """
+    from src.observability import setup_sentry
+    from src.ops_alerts import failure_summary, notify_failure
+
+    settings = get_settings()
+    sentry_on = setup_sentry(settings)
+    try:
+        return SCHEDULED_ACTIONS[action]()
+    except Exception as e:
+        logger.exception(f"{action} failed")
+        notify_failure(
+            f"pipeline {action}",
+            failure_summary(e),
+            "See /var/log/normaai-jobs.log on the server for the traceback.",
+            sentry=not sentry_on,
+            settings=settings,
+        )
+        raise SystemExit(1) from e
+
+
 def main():
     # CLI entry point only: when imported by the API (data router, scheduler)
     # the application's own logging setup applies - a module-level basicConfig
@@ -737,7 +879,7 @@ def main():
     parser = argparse.ArgumentParser(description="NormaAI Ingestion Pipeline")
     parser.add_argument(
         "--action",
-        choices=["seed", "update", "stats"],
+        choices=["seed", "update", "stats", *SCHEDULED_ACTIONS],
         required=True,
         help="Pipeline action to run",
     )
@@ -750,7 +892,10 @@ def main():
         "--days-back",
         type=int,
         default=7,
-        help="Days to look back for updates (update only)",
+        help=(
+            "Ignored, kept so older command lines still run: update refreshes the "
+            "tracked acts, it no longer looks for recent legislation"
+        ),
     )
     parser.add_argument(
         "--acts",
@@ -758,9 +903,9 @@ def main():
         default=[],
         metavar="CELEX_OR_FRAMEWORK",
         help=(
-            "Restrict the seed to these acts: CELEX ids and/or framework names, "
-            "comma-separated or repeated (e.g. --acts AI_ACT --acts 32022L2464). "
-            "Default: every tracked act (seed only)"
+            "Restrict the seed or the update to these acts: CELEX ids and/or framework "
+            "names, comma-separated or repeated (e.g. --acts AI_ACT --acts 32022L2464). "
+            "Default: every tracked act"
         ),
     )
     parser.add_argument(
@@ -770,7 +915,7 @@ def main():
         metavar="CODE",
         help=(
             "Language(s) to download, comma-separated or repeated (e.g. --lang EN --lang IT). "
-            "Default: CORPUS_LANGUAGES (seed only)"
+            "Default: CORPUS_LANGUAGES (seed and update)"
         ),
     )
 
@@ -778,6 +923,12 @@ def main():
 
     def _split(values: list[str]) -> list[str]:
         return [item.strip() for value in values for item in value.split(",") if item.strip()]
+
+    if args.action in SCHEDULED_ACTIONS:
+        # Before IngestionPipeline(): these jobs need no embedding model.
+        result = run_scheduled(args.action)
+        print("\n" + json.dumps(result, indent=2, ensure_ascii=False))
+        return
 
     pipeline = IngestionPipeline()
 
@@ -789,7 +940,10 @@ def main():
                 languages=_split(args.lang) or None,
             )
         elif args.action == "update":
-            result = pipeline.update(days_back=args.days_back)
+            result = pipeline.update(
+                acts=_split(args.acts) or None,
+                languages=_split(args.lang) or None,
+            )
         elif args.action == "stats":
             result = pipeline.stats()
 

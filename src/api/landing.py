@@ -6,6 +6,8 @@ Extracted from main.py to reduce its size.
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from src.config import get_settings
+
 router = APIRouter(include_in_schema=False)
 
 LANDING_HTML = """<!DOCTYPE html>
@@ -111,8 +113,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="stat-row" style="margin-top:20px">
     <div class="stat"><div class="stat-n" id="s-chunks">&mdash;</div><div class="stat-l">Chunks Indexed</div></div>
-    <div class="stat"><div class="stat-n">7</div><div class="stat-l">EU Frameworks</div></div>
-    <div class="stat"><div class="stat-n">9</div><div class="stat-l">Core Regulations</div></div>
+    <div class="stat"><div class="stat-n">8</div><div class="stat-l">EU Frameworks</div></div>
+    <div class="stat"><div class="stat-n">18</div><div class="stat-l">Tracked Acts</div></div>
     <div class="stat"><div class="stat-n" id="s-uptime">&mdash;</div><div class="stat-l">System Status</div></div>
   </div>
 
@@ -127,6 +129,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         <div class="fw"><span class="fw-dot"></span><b>NIS2</b><small>Cybersecurity</small></div>
         <div class="fw"><span class="fw-dot"></span><b>Taxonomy</b><small>Green Finance</small></div>
         <div class="fw"><span class="fw-dot"></span><b>GDPR</b><small>Data Privacy</small></div>
+        <div class="fw"><span class="fw-dot"></span><b>CRA</b><small>Product Security</small></div>
       </div>
     </div>
 
@@ -239,7 +242,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 </html>"""
 
 
+# The links to the interactive docs, which production does not serve.
+_DOCS_LINKS = """    <div class="hdr-links">
+      <a href="/docs" class="btn-p">API Docs</a>
+      <a href="/redoc" class="btn-s">ReDoc</a>
+    </div>
+"""
+
+
 @router.get("/", response_class=HTMLResponse)
 async def landing_page():
-    """Serve the NormaAI landing page."""
-    return HTMLResponse(content=LANDING_HTML)
+    """Serve the NormaAI landing page (without the docs links in production)."""
+    if get_settings().api_docs_enabled:
+        return HTMLResponse(content=LANDING_HTML)
+    return HTMLResponse(content=LANDING_HTML.replace(_DOCS_LINKS, ""))

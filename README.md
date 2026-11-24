@@ -106,6 +106,7 @@ it): the interface and the report show the official passage in place.
 |---|---|---|
 | Document check, EU law (any act by CELEX, consolidated versions) | wired | `src/document_check/official.py`, `check.py` |
 | Document check, Italian state law (Normattiva, article by article) | wired | `src/document_check/normattiva.py` |
+| Document check, statements in a document's own words of AI Act rules the Digital Omnibus changed (four rules, IT and EN; confirmed on the text in force) | wired | `src/document_check/stale_facts.py` |
 | Regional laws, ministerial decrees, circulars, annexes of Italian acts | not built: listed as "fuori copertura" | `src/document_check/extract.py` |
 | Case law, authority guidance | not built | |
 | Lock file and re-check from the command line | wired | `scripts/check_document.py` |

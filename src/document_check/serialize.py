@@ -19,8 +19,10 @@ with no database and no network:
 
 A stored finding is the API finding. Besides the fields of the contract it has
 ``altered_quote``, ``provision.paragraphs``, ``before.version_id``,
-``before.as_of`` (the report needs them) and ``dependency``: the provision of
-``dependencies`` it relies on, as ``{"source", "act", "key"}``.
+``before.as_of`` (the report needs them), ``dependency``: the provision of
+``dependencies`` it relies on, as ``{"source", "act", "key"}``, and ``rule``:
+for a sentence that states a rule as it was before an amendment, the
+``stale_facts`` rule it matched ("R1"); null for a reference.
 """
 
 from __future__ import annotations
@@ -236,6 +238,7 @@ def _finding_json(finding: Finding, number: int, entry: dict[str, Any] | None) -
             if entry
             else None
         ),
+        "rule": finding.rule,
     }
 
 
@@ -581,6 +584,7 @@ def _finding_from_json(item: dict[str, Any], lang: str) -> Finding:
         shows_quotes=bool(quotes),
         altered_quote=item.get("altered_quote"),
         differences=[dict(d) for d in item.get("differences") or [] if isinstance(d, dict)],
+        rule=str(item["rule"]) if item.get("rule") else None,
         stored_url=item.get("url"),
         stored_act_name=str(act_json.get("name") or NO_ACT_NAME),
     )

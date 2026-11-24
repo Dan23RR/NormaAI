@@ -9,6 +9,8 @@ references checked are recorded in a lock file, so a later run says which
 documents to redo when a cited provision changes.
 
 - ``extract``: the references, acts and quotes in a document's text.
+- ``stale_facts``: sentences that state, in their own words, a rule an
+  amendment changed (the AI Act after the Digital Omnibus on AI).
 - ``official``: the official EU texts by version, from CELLAR, cached on disk.
 - ``normattiva``: Italian acts article by article, from the Normattiva open
   data API, cached on disk.

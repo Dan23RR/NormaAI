@@ -1805,7 +1805,7 @@
   },
   "impostazioni": {
     "title": "Impostazioni",
-    "description": "Il tuo account, la lingua dell’interfaccia, il tema e i tuoi dati.",
+    "description": "Il tuo account, i membri dell’organizzazione, la lingua dell’interfaccia, il tema e i tuoi dati.",
     "profile": {
       "title": "Profilo",
       "description": "L’account con cui sei entrato e la sua organizzazione.",
@@ -1819,6 +1819,54 @@
         "viewer": "Lettore"
       },
       "note": "Nome, email e organizzazione non si modificano ancora da qui: il server non ha un endpoint per aggiornarli. Per cambiarli scrivi a <mail>info@normaai.org</mail>."
+    },
+    "members": {
+      "title": "Membri",
+      "description": "Le persone della tua organizzazione che usano NormaAI, con il loro ruolo.",
+      "adminOnly": "Solo gli amministratori vedono e gestiscono i membri dell’organizzazione. Per invitare una persona o cambiare un ruolo, chiedi a un amministratore.",
+      "demoNote": "Nella demo i membri sono esempi: puoi cambiare i ruoli e rimuovere qualcuno, ma ricaricando la pagina torna tutto com’era. Il tuo account resta amministratore.",
+      "loading": "Caricamento dei membri",
+      "loadFailedTitle": "I membri non si sono caricati",
+      "unavailableTitle": "La gestione dei membri non è ancora attiva su questo server",
+      "empty": "Nessun membro da mostrare.",
+      "colPerson": "Nome e email",
+      "colRole": "Ruolo",
+      "colStatus": "Stato",
+      "colActions": "Azioni",
+      "you": "Tu",
+      "roleOf": "Ruolo di {name}",
+      "saving": "Salvataggio del ruolo",
+      "status": {
+        "active": "Attivo",
+        "unverified": "Email da confermare",
+        "inactive": "Disattivato"
+      },
+      "rolesTitle": "Che cosa fa ogni ruolo",
+      "rolesHelp": {
+        "admin": "Tutto quello che fa un membro; in più gestisce membri e inviti e può cancellare clienti e dati dell’organizzazione.",
+        "member": "Lavora su clienti, documenti e avvisi e fa domande nella pagina Chiedi.",
+        "viewer": "Consulta e fa domande, ma non modifica nulla."
+      },
+      "ownAccount": "Il tuo account non si rimuove da qui: per chiuderlo vedi «I tuoi dati» più sotto.",
+      "roleChangedTitle": "Ruolo cambiato",
+      "roleChangedDescription": "{name} ora ha il ruolo {role}.",
+      "roleFailedTitle": "Il ruolo di {name} non è cambiato",
+      "roleFailed": "Cambio di ruolo non riuscito. Riprova.",
+      "stepDownTitle": "Lasciare il ruolo di amministratore?",
+      "stepDownBody": "Con il ruolo {role} non potrai più gestire membri e inviti. Solo un altro amministratore potrà ridarti il ruolo di amministratore.",
+      "stepDownConfirm": "Cambia il mio ruolo",
+      "steppedDownTitle": "Il tuo ruolo ora è {role}",
+      "remove": "Rimuovi",
+      "removeLabel": "Rimuovi {name}",
+      "removeTitle": "Rimuovere {name}?",
+      "removeLost": "<b>Si perdono</b> l’account e le sue conversazioni nella pagina Chiedi, che poteva leggere solo questa persona.",
+      "removeKept": "<b>Restano</b> all’organizzazione clienti, controlli, report e inviti: il suo nome viene tolto da quelli che ha creato.",
+      "removeFinal": "Non si può annullare: per tornare in NormaAI servirà un nuovo invito.",
+      "removeConfirm": "Rimuovi dall’organizzazione",
+      "removeFailed": "Rimozione non riuscita. Riprova.",
+      "removedTitle": "Account rimosso",
+      "removedDescription": "{name} non fa più parte dell’organizzazione.",
+      "invitesTitle": "Inviti"
     },
     "language": {
       "title": "Lingua",
@@ -1992,7 +2040,7 @@
       "roleHelp": "Chi legge non modifica; chi amministra gestisce inviti e impostazioni.",
       "roles": {
         "member": "Membro",
-        "viewer": "Lettura",
+        "viewer": "Lettore",
         "admin": "Amministratore"
       }
     },
@@ -2682,6 +2730,7 @@
     "uploadDemo": "Nella demo con dati di esempio il caricamento dei documenti non è disponibile.",
     "reportDemo": "Nella demo con dati di esempio il PDF non viene generato.",
     "invitesUnavailable": "Il server in uso non ha ancora gli inviti (endpoint /api/v1/auth/invites non trovato).",
+    "membersUnavailable": "Il server in uso non ha ancora la gestione dei membri (endpoint /api/v1/auth/members non trovato).",
     "boundary": {
       "title": "Questa pagina ha smesso di funzionare",
       "body": "{message} Riprova; se succede di nuovo, scrivi a info@normaai.org con il nome della pagina.",

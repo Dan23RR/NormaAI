@@ -1179,6 +1179,11 @@ def _within(position: int, spans: list[tuple[int, int]]) -> bool:
     return i >= 0 and position < spans[i][1]
 
 
+def quote_spans(text: str) -> list[tuple[int, int]]:
+    """Where the quotes of ``text`` are («...», “...”, "..."), quotation marks included."""
+    return [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
+
+
 def split_references(text: str) -> tuple[list[Reference], list[Reference]]:
     """The references to a provision in ``text``, and those to the document's own articles.
 
@@ -1194,7 +1199,7 @@ def split_references(text: str) -> tuple[list[Reference], list[Reference]]:
     lines = _Lines(text)
     named = [(m.start, m.end) for m in mentions]
     refs = [r for r in _references(text) if not _within(r.start, named)]
-    quotes = [(q.start(), q.end()) for q in _QUOTE_RE.finditer(text)]
+    quotes = quote_spans(text)
     outside = [r for r in refs if not _within(r.start, quotes)]
     given = _link_quotes(text, outside, lines)
     refs = [r for r in refs if not _within(r.start, given)]

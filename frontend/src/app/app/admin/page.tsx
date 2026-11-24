@@ -22,8 +22,9 @@ function AdminSection({ id, title, description, children }: { id: string; title:
 
 /**
  * Administration: invitations and the state of the server. Members are
- * sent back to the start with a notice; there is no user list because the
- * backend has no endpoint that returns one.
+ * sent back to the start with a notice. The list of members, with their
+ * roles, lives in Settings (components/impostazioni/MembersSection.tsx),
+ * which shows these invitations too.
  */
 export default function AdminPage() {
   const t = useTranslations('admin')

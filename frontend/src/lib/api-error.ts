@@ -13,6 +13,7 @@ export type ApiErrorCode =
   | 'reportDemo'
   | 'unauthorized'
   | 'invitesUnavailable'
+  | 'membersUnavailable'
 
 export class ApiError extends Error {
   readonly code: ApiErrorCode

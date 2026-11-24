@@ -28,7 +28,7 @@ context (row-level security). Every change is in the audit log
 Failures the admin can act on come back as ``{"detail": "<Italian sentence>"}``.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
 
@@ -174,7 +174,7 @@ async def delete_letterhead(
 # ─── Logo ────────────────────────────────────────────────────────────
 
 
-async def _limited(request: Request, limit: int) -> AsyncIterator[bytes]:
+async def _limited(request: Request, limit: int) -> AsyncGenerator[bytes, None]:
     """The request body, refused as soon as it is longer than ``limit``."""
     received = 0
     async for chunk in request.stream():

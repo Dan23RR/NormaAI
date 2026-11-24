@@ -185,8 +185,7 @@ def normalize_logo(data: bytes) -> tuple[bytes, str]:
                 422, f"Il logo è troppo piccolo: servono almeno {LOGO_MIN_SIDE} pixel per lato."
             )
         try:
-            image.load()
-            encoded = _encode(image, fmt)
+            encoded = _encode(image, fmt)  # decodes the image: a broken file fails here
         except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
             raise _unreadable() from None
     return encoded, LOGO_TYPES[fmt]
@@ -216,7 +215,8 @@ def _encode(image: Image.Image, fmt: str) -> bytes:
 def logo_size(data: bytes) -> tuple[int, int]:
     """Width and height in pixels of a stored logo."""
     with Image.open(io.BytesIO(data), formats=tuple(LOGO_TYPES)) as image:
-        return image.size
+        width, height = image.size
+    return int(width), int(height)
 
 
 # ─── What a PDF reads ────────────────────────────────────────────────

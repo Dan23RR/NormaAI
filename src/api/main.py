@@ -15,6 +15,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from src.config import get_settings
 from src.observability import setup_logging
@@ -55,44 +56,53 @@ tags_metadata = [
         "description": "PDF report generation: gap analysis and executive summaries.",
     },
     {"name": "Conversations", "description": "Multi-turn Q&A conversation management."},
+    {
+        "name": "Documents",
+        "description": (
+            "Check the legal references of a document against the official texts, "
+            "keep the outcome and re-check it when a cited provision changes."
+        ),
+    },
 ]
 
 DESCRIPTION = """
-## EU Regulatory Intelligence Monitor
+## NormaAI API
 
-NormaAI monitors **7 EU regulatory frameworks** in real-time and provides AI-powered compliance intelligence:
+Checks legal references word for word against the official texts in force
+(EUR-Lex / CELLAR for EU law, Normattiva for Italian law) and answers questions
+on a corpus of EU acts with every citation verified.
 
-| Framework | Status |
-|-----------|--------|
-| **CSRD** - Corporate Sustainability Reporting | Active |
-| **CSDDD** - Corporate Sustainability Due Diligence | Active |
-| **AI Act** - Artificial Intelligence Regulation | Active |
-| **DORA** - Digital Operational Resilience | Active |
-| **NIS2** - Network & Information Security | Active |
-| **EU Taxonomy** - Sustainable Finance Classification | Active |
-| **GDPR** - General Data Protection | Active |
+### What it does
+- **Documents** - check the legal references of a document, keep the outcome and re-check it when a cited provision changes
+- **Q&A** - answers on the indexed EU acts; each citation is checked word for word against the retrieved official text, and the answer is an abstention when nothing is retrieved
+- **Gap analysis** - the requirements of a framework for a company profile: a checklist, not an assessment
+- **Monitor** - reads a regulatory change against a company profile
+- **Crawl** - staff only: refreshes the metadata of the tracked acts from EUR-Lex
 
-### Core capabilities
-- **Q&A** - Ask questions about EU regulations with cited answers
-- **Gap Analysis** - Compliance assessment with scoring per framework
-- **Monitor** - Impact analysis of regulatory changes on your company
-- **Crawl** - Real-time EUR-Lex data via SPARQL endpoint
+Frameworks of the Q&A corpus: CSRD, CSDDD, AI Act, DORA, NIS2, EU Taxonomy, GDPR, CRA.
 """
 
 # ─── App ──────────────────────────────────────────────────────────
+# The interactive docs and the OpenAPI schema describe every route of the API:
+# served in development and test, not in production (settings.api_docs_enabled).
+_docs = get_settings().api_docs_enabled
 app = FastAPI(
     title="NormaAI",
     description=DESCRIPTION,
     version="0.3.0",
     lifespan=lifespan,
     openapi_tags=tags_metadata,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
 )
 
 # ─── Rate Limiter ─────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+# Routes without a limit of their own get RATE_LIMIT_DEFAULT. Added before CORS,
+# so it runs inside it and a 429 still carries the CORS headers.
+app.add_middleware(SlowAPIMiddleware)
 
 # ─── CORS ─────────────────────────────────────────────────────────
 _cors_settings = get_settings()
@@ -199,6 +209,7 @@ _safe_include("src.api.routers.alerts")
 _safe_include("src.api.routers.reports")
 _safe_include("src.api.routers.clients")
 _safe_include("src.api.routers.conversations")
+_safe_include("src.api.routers.documents")
 _safe_include("src.api.routers.leads")
 # GDPR (CRITICAL: data-subject-rights endpoints are compliance-mandated)
 _safe_include("src.api.routers.gdpr", critical=True)

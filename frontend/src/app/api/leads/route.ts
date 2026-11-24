@@ -1,13 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { LOCALE_COOKIE, toLanguage } from '@/i18n/config'
+import {
+  CONSENT_TEXT_VERSION,
+  MAX_BODY_BYTES,
+  checkLead,
+  clientIp,
+  createRateLimiter,
+  honeypotFilled,
+  plainText,
+} from '@/lib/leads'
 
 /**
  * Serverless lead capture. Every public form (landing, /codex, the static
  * scope checkers) posts here, same-origin, so the funnel never depends on
- * the FastAPI backend being up. Leads are emailed through Resend.
+ * the FastAPI backend being up.
+ *
+ * The response carries the address of the Codex, which the forms show as a
+ * download button: nothing is ever emailed to the address typed in the form,
+ * so the route cannot be used to make the site write to anybody. The only
+ * email is the notification to the operator's own inbox, when configured.
+ *
+ * Consent (art. 130 Codice privacy): every form has an unticked box,
+ * `marketing_consent`. The route records the choice, and without it the
+ * person is never added to any follow-up: a Codex download keeps nothing
+ * that identifies them; a checker, which asks for a reply with the passages
+ * of law, reaches the operator marked "senza consenso", to be answered and
+ * no more.
  *
  * Env (Vercel → Project Settings → Environment Variables, server-side):
- *   RESEND_API_KEY      optional - enables email notification + delivery
- *   LEADS_NOTIFY_EMAIL  optional - founder inbox (default info@normaai.org)
+ *   RESEND_API_KEY      optional - enables the notification to the operator
+ *   LEADS_NOTIFY_EMAIL  optional - operator inbox (default info@normaai.org)
  *   RESEND_FROM_EMAIL   optional - verified sender (default info@normaai.org)
  *
  * Design rule: NEVER lose a lead. If Resend is missing or fails, we still
@@ -15,21 +37,12 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 
 const CODEX_PATH = '/codex-post-omnibus-2025-2029.pdf'
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-type LeadPayload = {
-  email?: unknown
-  org_name?: unknown
-  role?: unknown
-  source?: unknown
-  lead_ref?: unknown
-  contact_time?: unknown // honeypot - humans never fill it (autofill-safe name)
-  website?: unknown // legacy honeypot key (pages cached during a deploy still send it)
-}
-
-function clean(v: unknown, max = 200): string {
-  return typeof v === 'string' ? v.trim().slice(0, max) : ''
-}
+// Requests per client address in one hour, per warm instance of the function
+// (lib/leads.ts says why this is best effort). Enough for a person who tries
+// the two checkers and the Codex form a few times; the forms say "try again
+// in an hour" on a 429.
+const PER_IP = createRateLimiter({ limit: 10, windowMs: 60 * 60 * 1000 })
 
 async function sendResendEmail(opts: {
   apiKey: string
@@ -61,56 +74,100 @@ async function sendResendEmail(opts: {
 }
 
 export async function POST(req: NextRequest) {
-  let body: LeadPayload
+  // The landing form shows `message` and `detail` as they are, so they follow
+  // the interface language (the `normaai.locale` cookie, Italian by default).
+  // The two static checkers are Italian only and do not show them.
+  const english = toLanguage(req.cookies.get(LOCALE_COOKIE)?.value) === 'en'
+  const invalid = (detail: { it: string; en: string }, status = 422) =>
+    NextResponse.json({ detail: english ? detail.en : detail.it }, { status })
+  const INVALID_BODY = { it: 'Richiesta non valida.', en: 'Invalid request.' }
+
+  // Every request counts, the ones a bot fills in included.
+  const limit = PER_IP.hit(clientIp(req.headers))
+  if (!limit.allowed) {
+    return NextResponse.json(
+      {
+        detail: english
+          ? 'Too many recent requests from the same address. Try again in an hour.'
+          : 'Troppe richieste recenti dallo stesso indirizzo. Riprova tra un’ora.',
+      },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+    )
+  }
+
+  const tooLarge = { it: 'Richiesta troppo grande.', en: 'Request too large.' }
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) return invalid(tooLarge, 413)
+  let raw: string
   try {
-    body = (await req.json()) as LeadPayload
+    raw = await req.text()
   } catch {
-    return NextResponse.json({ detail: 'Invalid JSON body.' }, { status: 422 })
+    return invalid(INVALID_BODY)
+  }
+  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return invalid(tooLarge, 413)
+  let body: unknown
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return invalid(INVALID_BODY)
   }
 
   // Honeypot: pretend success so bots stop retrying, deliver nothing.
   // Logged first: a human whose browser autofilled the hidden field would
   // otherwise vanish without a trace ("NEVER lose a lead" applies here too).
-  // Read both the new autofill-safe key and the legacy one, so a page cached
-  // mid-deploy is still protected.
-  if (clean(body.contact_time) || clean(body.website)) {
+  if (body && typeof body === 'object' && !Array.isArray(body) && honeypotFilled(body as Record<string, unknown>)) {
+    const b = body as Record<string, unknown>
     console.log(
       JSON.stringify({
         event: 'lead_honeypot',
-        email: clean(body.email),
-        source: clean(body.source, 80),
-        lead_ref: clean(body.lead_ref, 80),
+        email: plainText(b.email, 254),
+        source: plainText(b.source, 80),
+        lead_ref: plainText(b.lead_ref, 80),
         ts: new Date().toISOString(),
       }),
     )
-    return NextResponse.json({ message: 'Richiesta registrata.' }, { status: 200 })
-  }
-
-  const email = clean(body.email)
-  const orgName = clean(body.org_name)
-  const role = clean(body.role, 80)
-  const leadRef = clean(body.lead_ref, 80)
-  const source = clean(body.source, 80) || 'codex_download'
-
-  if (!EMAIL_RE.test(email)) {
     return NextResponse.json(
-      { detail: 'Indirizzo email non valido.' },
-      { status: 422 },
+      { message: english ? 'Request recorded.' : 'Richiesta registrata.' },
+      { status: 200 },
     )
   }
 
-  const origin = req.nextUrl.origin
-  const downloadUrl = CODEX_PATH // relative: form resolves same-origin
+  const checked = checkLead(body)
+  if (!checked.ok) {
+    return checked.field === 'email'
+      ? invalid({ it: 'Indirizzo email non valido.', en: 'Invalid email address.' })
+      : invalid(INVALID_BODY)
+  }
+  const { email, orgName, role, source, leadRef, marketingConsent } = checked.lead
+  const downloadMessage = english
+    ? 'Request recorded. Download the Codex with the button below.'
+    : 'Richiesta registrata. Scarica il Codex con il pulsante qui sotto.'
 
-  // Always log - this is the persistence floor if email is unavailable.
+  if (email === null) {
+    // A Codex download without consent: counted, nothing else.
+    console.log(
+      JSON.stringify({ event: 'codex_download', source, marketing_consent: false, ts: new Date().toISOString() }),
+    )
+    return NextResponse.json(
+      {
+        message: english ? 'Download the Codex with the button below.' : 'Scarica il Codex con il pulsante qui sotto.',
+        download_url: CODEX_PATH,
+      },
+      { status: 200 },
+    )
+  }
+
+  // Always log - this is the persistence floor if email is unavailable, and
+  // the record of the consent: given or not, and to which wording.
   console.log(
     JSON.stringify({
       event: 'lead_captured',
       email,
-      org_name: orgName || null,
-      role: role || null,
-      lead_ref: leadRef || null,
+      org_name: orgName,
+      role,
+      lead_ref: leadRef,
       source,
+      marketing_consent: marketingConsent,
+      consent_text: marketingConsent ? CONSENT_TEXT_VERSION : null,
       ts: new Date().toISOString(),
     }),
   )
@@ -120,12 +177,15 @@ export async function POST(req: NextRequest) {
   const notifyTo = process.env.LEADS_NOTIFY_EMAIL || 'info@normaai.org'
 
   if (apiKey) {
-    // Founder notification - fire first, it's the one that matters.
+    // The one email: to the operator's inbox, never to the address in the
+    // form, which is only the reply-to. The source carries the checker's
+    // band and, for the AI Act, the situations ticked, so a reply can name
+    // the passages of law that concern them without asking again.
     await sendResendEmail({
       apiKey,
       from,
       to: [notifyTo],
-      subject: `[NormaAI lead${leadRef ? ` - ${leadRef}` : ''}] ${email}${orgName ? ` - ${orgName}` : ''}`,
+      subject: `[NormaAI lead${leadRef ? ` - ${leadRef}` : ''}${marketingConsent ? '' : ' - senza consenso'}] ${email}${orgName ? ` - ${orgName}` : ''}`,
       text: [
         'Nuovo lead dal sito (route serverless Vercel):',
         '',
@@ -134,80 +194,18 @@ export async function POST(req: NextRequest) {
         `Ruolo:   ${role || '-'}`,
         `LeadRef: ${leadRef || '- (traffico organico)'}`,
         `Source:  ${source}`,
+        marketingConsent
+          ? `Consenso: sì, a essere ricontattato su NormaAI (testo del ${CONSENT_TEXT_VERSION}).`
+          : 'Consenso: NO. Rispondi solo con i passaggi di legge richiesti, senza altri contatti commerciali.',
         '',
         'NB: se il backend non è ancora live, il lead NON è in Postgres',
         'e va importato quando il backend viene deployato.',
       ].join('\n'),
       replyTo: email,
     })
-
-    // Lead delivery email (best-effort; download link is already in the HTTP
-    // response, so a failure here costs nothing). Branched per funnel: an AI
-    // Act lead must NOT receive a CSRD-only first touchpoint - for a brand that
-    // sells regulatory precision, the first email has to match the check done.
-    const isAiAct = leadRef === 'scope-aiact'
-    await sendResendEmail({
-      apiKey,
-      from,
-      to: [email],
-      subject: isAiAct
-        ? 'Il tuo check AI Act (Art. 50) + Codex Post-Omnibus - NormaAI'
-        : 'Il tuo Codex Post-Omnibus 2025-2029 - NormaAI',
-      text: (isAiAct
-        ? [
-            "Grazie per l'interesse in NormaAI.",
-            '',
-            'Ho ricevuto il tuo check AI Act (Art. 50, Reg. UE 2024/1689): ti',
-            'scrivo io, personalmente, con la lettura del tuo caso - chi è il',
-            'destinatario di ogni obbligo, quali eccezioni valgono per voi e',
-            'cosa predisporre prima del 2 agosto 2026.',
-            '',
-            'Se vuoi anticipare, rispondi a questa email: 20 minuti di',
-            'confronto, senza impegno.',
-            '',
-            'In omaggio, come promesso, il Codex Post-Omnibus CSRD/CSDDD',
-            '(PDF, 17 pagine - il quadro sostenibilità post-Omnibus I):',
-            `${origin}${CODEX_PATH}`,
-            '',
-            'Daniel Culotta · NormaAI · info@normaai.org',
-            '',
-            '--',
-            'Ricevi questa email perché hai usato il check AI Act sul nostro sito.',
-            'Usiamo i tuoi dati solo per inviarti l\'analisi e ricontattarti su questo',
-            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
-            'rispondendo a questa email.',
-          ]
-        : [
-            "Grazie per l'interesse in NormaAI.",
-            '',
-            `Scarica il Codex Post-Omnibus 2025-2029 (PDF, 17 pagine):`,
-            `${origin}${CODEX_PATH}`,
-            '',
-            'Dentro trovi: soglie CSRD post-Omnibus (1.000+ dipendenti e €450M,',
-            'cumulativa), calendario CSDDD (trasposizione 26 luglio 2028,',
-            'prima compliance luglio 2029 - Dir. (UE) 2026/470), flowchart',
-            '"sono in scope?", e i 10 errori più comuni nelle prime disclosure.',
-            '',
-            'Domande su un caso concreto? Rispondi a questa email: 20 minuti,',
-            'senza impegno.',
-            '',
-            'Daniel Culotta · NormaAI · info@normaai.org',
-            '',
-            '--',
-            'Ricevi questa email perché hai richiesto il Codex dal nostro sito.',
-            'Usiamo i tuoi dati solo per inviarti il Codex e ricontattarti su questo',
-            'tema (legittimo interesse, GDPR Art. 6.1.f). Puoi opporti in ogni momento',
-            'rispondendo a questa email.',
-          ]
-      ).join('\n'),
-    })
   }
 
-  return NextResponse.json(
-    {
-      message: 'Richiesta registrata. Il download parte subito qui sotto.',
-      download_url: downloadUrl,
-    },
-    { status: 200 },
-  )
+  // The message says only what happened: the request is recorded and the
+  // response carries the link, which the form shows as a download button.
+  return NextResponse.json({ message: downloadMessage, download_url: CODEX_PATH }, { status: 200 })
 }

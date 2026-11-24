@@ -1,37 +1,32 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { CalendarClock, Copy, ExternalLink, Link2 } from 'lucide-react'
-import { Badge, FrameworkBadge } from '@/components/ui/Badge'
+import { CalendarClock, Copy, Link2 } from 'lucide-react'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { LawQuote } from '@/components/ui/LawQuote'
-import { formatDate } from '@/i18n/format'
 import { useTextContext } from '@/i18n/useTextContext'
-import { STATUS_TONE, frameworkTitle, inputSummary, statusLabel } from '@/lib/scope/text'
+import { STATUS_TONE, byRelevance, frameworkBadge, frameworkTitle, inputSummary, statusLabel } from '@/lib/scope/text'
 import type { ScopeAssessment, ScopeResult } from '@/lib/scope/types'
-import type { Source } from '@/lib/sources'
+import { FrameworkTag, SourceEntry } from './SourceCitation'
 
-/** A compact source line: act, article, CELEX and the link to the official text. */
-export function SourceLine({ source }: { source: Source }) {
-  const tu = useTranslations('ui')
+/** Up to this many sources the legal basis is open; a longer one opens on request. */
+const OPEN_SOURCES = 6
+
+function LegalBasis({ result }: { result: ScopeResult }) {
+  const t = useTranslations('ambito.results')
+  const verified = result.sources.filter((s) => s.status === 'verified').length
   return (
-    <li className="text-small leading-relaxed text-ink-2">
-      <span className="mr-1.5 tabular text-ink-3">[{source.index}]</span>
-      <span className="font-medium text-ink">{source.act}</span>
-      {source.article && <span>, {source.article}</span>}
-      {source.celex && <span className="ml-2 whitespace-nowrap tabular text-ink-3">{tu('celex', { celex: source.celex })}</span>}
-      {source.url && (
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-2 inline-flex items-center gap-1 whitespace-nowrap text-union hover:underline"
-        >
-          {source.origin ?? tu('text')}
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-        </a>
-      )}
-    </li>
+    <details className="group border-t border-rule pt-4" open={result.sources.length <= OPEN_SOURCES}>
+      <summary className="cursor-pointer rounded-sm font-sans text-small text-ink-2 marker:text-ink-3">
+        <span className="font-medium">{t('legalBasis')}</span>
+        <span className="ml-2 text-ink-3">{t('legalBasisSummary', { count: result.sources.length, verified })}</span>
+      </summary>
+      <ul className="mt-3 space-y-3">
+        {result.sources.map((s) => (
+          <SourceEntry key={s.id} source={s} />
+        ))}
+      </ul>
+    </details>
   )
 }
 
@@ -39,14 +34,10 @@ function ResultBlock({ result }: { result: ScopeResult }) {
   const t = useTranslations('ambito.results')
   const ctx = useTextContext()
   const muted = result.status === 'not_assessed'
-  const verifiedOn = formatDate(result.verifiedOn, ctx)
   return (
-    <section
-      aria-labelledby={`scope-result-${result.framework}`}
-      className="rounded-lg border border-rule bg-surface"
-    >
+    <section aria-labelledby={`scope-result-${result.framework}`} className="rounded-lg border border-rule bg-surface">
       <div className="flex flex-wrap items-center gap-2 border-b border-rule px-5 py-3">
-        <FrameworkBadge framework={result.framework} />
+        <FrameworkTag framework={result.framework} label={frameworkBadge(result.framework, ctx.t)} />
         <h2 id={`scope-result-${result.framework}`} className="font-sans text-body font-medium text-ink">
           {frameworkTitle(result.framework, ctx.t)}
         </h2>
@@ -59,8 +50,8 @@ function ResultBlock({ result }: { result: ScopeResult }) {
         <p className={muted ? 'text-body text-ink-2' : 'font-serif text-h4 text-ink'}>{result.headline}</p>
 
         {result.fromLabel && (
-          <p className="inline-flex items-center gap-2 text-small text-ink-2">
-            <CalendarClock className="h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
+          <p className="flex items-start gap-2 text-small text-ink-2">
+            <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
             {result.fromLabel}
           </p>
         )}
@@ -74,38 +65,21 @@ function ResultBlock({ result }: { result: ScopeResult }) {
         )}
 
         {result.obligations && result.obligations.length > 0 && (
-          <div className="space-y-3">
-            {result.obligations.map((o) => (
-              <article key={o.key} className="rounded-md border border-rule bg-surface-2 px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={o.who === 'provider' ? 'union' : 'neutral'}>{o.whoLabel}</Badge>
-                  <span className="text-small tabular text-ink-3">{o.article}</span>
-                </div>
-                <h3 className="mt-2 font-sans text-body font-medium text-ink">{o.title}</h3>
-                <p className="mt-1 text-small text-ink">{o.requirement}</p>
-                <p className="mt-1.5 text-small text-ink-2">{o.exception}</p>
-              </article>
-            ))}
-          </div>
-        )}
-
-        {result.passages.length > 0 && (
-          <div className="space-y-4">
-            {result.passages.map((p) => (
-              <LawQuote
-                key={p.quote}
-                quote={p.quote}
-                before={p.before}
-                after={p.after}
-                lang={p.lang}
-                act={p.act}
-                article={p.article}
-                celex={p.celex}
-                url={p.url}
-                verifiedAt={verifiedOn}
-                origin="EUR-Lex"
-              />
-            ))}
+          <div>
+            <h3 className="font-sans text-small font-medium text-ink-2">{t('duties')}</h3>
+            <div className="mt-2 space-y-3">
+              {result.obligations.map((o) => (
+                <article key={o.key} className="rounded-md border border-rule bg-surface-2 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={o.who === 'deployer' ? 'neutral' : 'union'}>{o.whoLabel}</Badge>
+                    <span className="text-small tabular text-ink-3">{o.article}</span>
+                  </div>
+                  <h4 className="mt-2 font-sans text-body font-medium text-ink">{o.title}</h4>
+                  <p className="mt-1 text-small text-ink">{o.requirement}</p>
+                  {o.exception && <p className="mt-1.5 text-small text-ink-2">{o.exception}</p>}
+                </article>
+              ))}
+            </div>
           </div>
         )}
 
@@ -120,15 +94,8 @@ function ResultBlock({ result }: { result: ScopeResult }) {
           </div>
         )}
 
-        <div className="border-t border-rule pt-4">
-          <h3 className="font-sans text-small font-medium text-ink-2">{t('legalBasis')}</h3>
-          <ul className="mt-1.5 space-y-1">
-            {result.sources.map((s) => (
-              <SourceLine key={s.id} source={s} />
-            ))}
-          </ul>
-          <p className="mt-2 text-caption text-ink-3">{t('verifiedNote', { date: verifiedOn })}</p>
-        </div>
+        <LegalBasis result={result} />
+        <p className="text-caption text-ink-3">{t('filterNote')}</p>
       </div>
     </section>
   )
@@ -161,7 +128,7 @@ export function ScopeResults({
           </Button>
         </div>
       </div>
-      {assessment.results.map((r) => (
+      {byRelevance(assessment.results).map((r) => (
         <ResultBlock key={r.framework} result={r} />
       ))}
     </div>

@@ -16,7 +16,11 @@ const LINKS = [
   { href: '/#codex', key: 'codex' },
 ] as const
 
-/** Shared header of the public pages. */
+/**
+ * Shared header of the public pages. Its one button opens the demo with
+ * sample data (/demo), the action a visitor can always take; "Accedi" stays
+ * for people who have an account.
+ */
 export function SiteHeader({ compact }: { compact?: boolean }) {
   const t = useTranslations('site.header')
   const [authed, setAuthed] = useState(false)
@@ -49,8 +53,8 @@ export function SiteHeader({ compact }: { compact?: boolean }) {
               <ButtonLink href="/login" variant="ghost" size="sm">
                 {t('signIn')}
               </ButtonLink>
-              <ButtonLink href="/#demo" size="sm">
-                {t('requestDemo')}
+              <ButtonLink href="/demo" size="sm">
+                {t('tryDemo')}
               </ButtonLink>
             </>
           )}
@@ -84,7 +88,7 @@ export function SiteHeader({ compact }: { compact?: boolean }) {
             <ButtonLink href="/app">{t('openApp')}</ButtonLink>
           ) : (
             <>
-              <ButtonLink href="/#demo">{t('requestDemo')}</ButtonLink>
+              <ButtonLink href="/demo">{t('tryDemo')}</ButtonLink>
               <ButtonLink href="/login" variant="secondary">
                 {t('signIn')}
               </ButtonLink>

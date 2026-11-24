@@ -25,6 +25,12 @@ function detailOf(body: unknown): string | undefined {
   return typeof detail === 'string' && detail.trim() ? detail : undefined
 }
 
+// The demo answers of Controlla carry whole provisions of law: they are
+// loaded only when the demo asks for a documents route, never for a signed-in
+// person and never for the other demo pages.
+const DOCUMENTS_API = '/api/v1/documents/'
+const demoDocuments = () => import('./mock-documents')
+
 // Validate API URL format at build time
 if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
   console.error('NEXT_PUBLIC_API_BASE_URL must start with http:// or https://')
@@ -41,6 +47,12 @@ class ApiClient {
 
   private async handleDemoGet<T>(path: string): Promise<T> {
     await mockDelay(300)
+
+    // Controlla: the checks, one check, the email preference (src/lib/mock-documents.ts).
+    if (path.startsWith(DOCUMENTS_API)) {
+      const documents = (await demoDocuments()).demoDocumentsRoute('GET', path)
+      if (documents.handled) return documents.value as T
+    }
 
     if (path === '/api/v1/auth/me') return DEMO_USER as T
     if (path === '/api/v1/stats') return DEMO_STATS as T
@@ -71,6 +83,16 @@ class ApiClient {
 
   private async handleDemoPost<T>(path: string, body: unknown, method?: string): Promise<T> {
     const data = body as Record<string, unknown>
+
+    // Controlla: a pasted text "checked" (the demo answers with its example and
+    // the page says so), a re-check, a deletion, the email preference.
+    if (path.startsWith(DOCUMENTS_API)) {
+      const documents = (await demoDocuments()).demoDocumentsRoute(method ?? 'POST', path, body)
+      if (documents.handled) {
+        await mockDelay(path.endsWith('/check') ? 1800 : 600)
+        return documents.value as T
+      }
+    }
 
     if (path === '/api/v1/qa') {
       await mockDelay(2000)
@@ -299,6 +321,63 @@ class ApiClient {
     return data
   }
 
+  // ─── Session end and password reset ─────────────────────
+
+  /**
+   * Ends the session on the server as well: the access token, the session it
+   * belongs to and the refresh token are revoked there. Best effort (offline or
+   * no backend: the caller still forgets the tokens). The tokens are read
+   * before the first await, so the caller may clear them right after calling.
+   */
+  async logout(): Promise<void> {
+    if (!API_CONFIGURED || isDemoMode()) return
+    const access = getAccessToken()
+    const refresh = getRefreshToken()
+    if (!access && !refresh) return
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (access) headers['Authorization'] = `Bearer ${access}`
+    try {
+      // Not `keepalive`: with the Authorization header the request needs a CORS
+      // preflight, which some browsers refuse for keepalive requests. Signing
+      // out navigates inside the app, so the request finishes anyway.
+      await fetch(`${this.baseUrl}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
+      })
+    } catch {
+      /* the tokens are forgotten here anyway */
+    }
+  }
+
+  // Both reach the backend even with a leftover demo flag, like login: a
+  // password is never sent to the demo client.
+
+  /** Asks for a password-reset link: same answer whether or not the address has an account. */
+  async requestPasswordReset(email: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/api/v1/auth/password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => {
+      throw new ApiError('network')
+    })
+    if (!res.ok) throw await this.failed(res)
+  }
+
+  /** Sets a new password with the token of the link; the server ends every other session. */
+  async resetPassword(token: string, password: string): Promise<{ email: string }> {
+    const res = await fetch(`${this.baseUrl}/api/v1/auth/password-reset/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    }).catch(() => {
+      throw new ApiError('network')
+    })
+    if (!res.ok) throw await this.failed(res)
+    return res.json()
+  }
+
   // ─── Typed helpers ──────────────────────────────────────
 
   get<T>(path: string) {
@@ -319,6 +398,13 @@ class ApiClient {
     })
   }
 
+  patch<T>(path: string, body: unknown) {
+    return this.fetch<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+  }
+
   del<T>(path: string) {
     return this.fetch<T>(path, { method: 'DELETE' })
   }
@@ -329,6 +415,15 @@ class ApiClient {
    */
   async upload<T>(path: string, formData: FormData): Promise<T> {
     if (isDemoMode()) {
+      // A document given to Controlla never leaves the browser in the demo: the
+      // answer is the example check, and the page says so before and after.
+      if (path.startsWith(DOCUMENTS_API)) {
+        const documents = (await demoDocuments()).demoDocumentsRoute('POST', path)
+        if (documents.handled) {
+          await mockDelay(1800)
+          return documents.value as T
+        }
+      }
       throw new ApiError('uploadDemo')
     }
 
@@ -371,6 +466,14 @@ class ApiClient {
    */
   async fetchBlob(path: string, options: RequestInit = {}): Promise<Response> {
     if (isDemoMode()) {
+      // The report of a demo check is built from the example data, as a page.
+      if (path.startsWith(DOCUMENTS_API)) {
+        const documents = (await demoDocuments()).demoDocumentsRoute(options.method ?? 'GET', path)
+        if (documents.handled && typeof documents.value === 'string') {
+          await mockDelay(300)
+          return new Response(documents.value, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+        }
+      }
       throw new ApiError('reportDemo')
     }
 

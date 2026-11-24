@@ -14,7 +14,7 @@ import logging
 import re
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from tenacity import (
     before_sleep_log,
     retry,
@@ -23,7 +23,8 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.agents.citation_verifier import base_celex
+from src.agents.citation_verifier import base_celex, principal_celex
+from src.crawler.eurlex import celex as celex_utils
 from src.resilience import ServiceUnavailableError, llm_circuit, require_circuit
 
 logger = logging.getLogger(__name__)
@@ -122,8 +123,88 @@ def message_text(message) -> str:
     return str(content)
 
 
+# ─── Token usage ──────────────────────────────────────────────────
+
+# Where a reply reports its tokens when LangChain's usage_metadata is missing:
+# (block in response_metadata, input key, output key) for Anthropic, the
+# OpenAI dialect (OpenRouter, Mistral) and Gemini.
+_USAGE_BLOCKS = (
+    ("usage", "input_tokens", "output_tokens"),
+    ("token_usage", "prompt_tokens", "completion_tokens"),
+    ("usage_metadata", "prompt_token_count", "candidates_token_count"),
+)
+
+
+def _count(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def token_counts(message: Any) -> tuple[int, int] | None:
+    """(input, output) tokens an LLM reply reports, or None when it reports none.
+
+    LangChain's ``usage_metadata`` first (every chat model of LangChain 0.3
+    fills it), else the provider's own block in ``response_metadata``.
+    """
+    usage = getattr(message, "usage_metadata", None)
+    if isinstance(usage, dict):
+        counts = (_count(usage.get("input_tokens")), _count(usage.get("output_tokens")))
+        if counts[0] is not None and counts[1] is not None:
+            return counts[0], counts[1]
+    metadata = getattr(message, "response_metadata", None)
+    if isinstance(metadata, dict):
+        for block_name, input_key, output_key in _USAGE_BLOCKS:
+            block = metadata.get(block_name)
+            if isinstance(block, dict):
+                counts = (_count(block.get(input_key)), _count(block.get(output_key)))
+                if counts[0] is not None and counts[1] is not None:
+                    return counts[0], counts[1]
+    return None
+
+
+def record_token_usage(message: Any) -> None:
+    """Log the tokens one LLM call used, with provider and model, and count them.
+
+    One ``llm_token_usage`` log line per reply: provider, configured model,
+    input and output tokens (``usage_reported`` False when the reply carries no
+    count), and ``served_model`` when the provider names another model. The
+    prompt and the answer are never logged. The Prometheus counter
+    ``normaai_llm_tokens_total`` is fed when prometheus_client is installed.
+    Never raises: accounting must not break an answer.
+    """
+    try:
+        from src.config import get_settings
+
+        settings = get_settings()
+        provider, model = settings.llm_provider, settings.active_model
+        extra: dict[str, Any] = {"provider": provider, "model": model}
+        metadata = getattr(message, "response_metadata", None)
+        if isinstance(metadata, dict):
+            served = metadata.get("model") or metadata.get("model_name")
+            if isinstance(served, str) and served and served != model:
+                extra["served_model"] = served
+        counts = token_counts(message)
+        if counts is None:
+            logger.info("llm_token_usage", extra={**extra, "usage_reported": False})
+            return
+        input_tokens, output_tokens = counts
+        logger.info(
+            "llm_token_usage",
+            extra={
+                **extra,
+                "usage_reported": True,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
+        )
+        from src.observability import record_llm_tokens
+
+        record_llm_tokens(provider, model, input_tokens, output_tokens)
+    except Exception:  # noqa: BLE001 - see docstring
+        logger.debug("llm_token_usage_not_recorded", exc_info=True)
+
+
 def get_llm(temperature: float | None = None):
-    """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter).
+    """Create LLM instance based on configured provider (Gemini/Anthropic/OpenRouter/Mistral).
 
     temperature: override the configured default. CRITICAL for the SNC trust
     layer - without a non-zero temperature the K stochastic samples are
@@ -162,6 +243,26 @@ def get_llm(temperature: float | None = None):
                 "HTTP-Referer": settings.normaai_public_url,
                 "X-Title": "NormaAI",
             },
+        )
+    elif settings.llm_provider == "mistral":
+        # Mistral's API speaks the OpenAI chat-completions dialect, so the client
+        # is the one OpenRouter uses: no dependency of its own. One difference
+        # matters: the output limit is `max_tokens` in Mistral's API reference,
+        # and ChatOpenAI sends its `max_tokens` argument as
+        # `max_completion_tokens`, which that reference does not list. The limit
+        # therefore travels in `extra_body`, which is merged into the request as
+        # it is. The request then carries only model, messages, temperature,
+        # max_tokens and stream.
+        from langchain_openai import ChatOpenAI
+        from pydantic import SecretStr
+
+        return ChatOpenAI(
+            model=settings.mistral_model_analysis,
+            temperature=temp,
+            timeout=settings.llm_timeout_seconds,
+            api_key=SecretStr(settings.mistral_api_key),
+            base_url=settings.mistral_base_url,
+            extra_body={"max_tokens": settings.llm_max_tokens},
         )
     else:
         from langchain_anthropic import ChatAnthropic
@@ -221,9 +322,11 @@ def _make_error_response(error_msg: str) -> dict:
 
 def _missing_key_response(settings) -> dict:
     """Error dict for a provider whose API key is not configured."""
-    key_name = {"gemini": "GOOGLE_API_KEY", "openrouter": "OPENROUTER_API_KEY"}.get(
-        settings.llm_provider, "ANTHROPIC_API_KEY"
-    )
+    key_name = {
+        "gemini": "GOOGLE_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "mistral": "MISTRAL_API_KEY",
+    }.get(settings.llm_provider, "ANTHROPIC_API_KEY")
     return {
         "error": f"{key_name} not configured. Add it to your .env file.",
         "error_code": "llm_not_configured",
@@ -232,11 +335,88 @@ def _missing_key_response(settings) -> dict:
     }
 
 
+# ─── A second attempt when the reply is not JSON ─────────────────
+# A reply with no JSON object in it reaches the last step of parse_json_response:
+# the answer in prose, with the citations written in its text. Those carry no
+# quoted passage, so the verifier can check none of them (golden v2 of 2026-11-03:
+# one answer in 101, 0 of 5 citations verified). Such a reply is asked for once
+# more as the JSON object; when the second reply is not JSON either, or the call
+# fails, the first one is kept as before.
+_JSON_RETRY_PROMPT = (
+    "Your reply was not the JSON object the instructions ask for. Reply again with "
+    "only that JSON object: the same answer and the same citations, each with the "
+    "passage it quotes."
+)
+
+
+def _missing_fields(result: Any, required: tuple[str, ...]) -> list[str]:
+    """The ``required`` fields that ``result`` lacks or leaves blank."""
+    if not isinstance(result, dict):
+        return list(required)
+    return [k for k in required if not (isinstance(result.get(k), str) and result[k].strip())]
+
+
+def _needs_json_retry(result: dict[str, Any], required: tuple[str, ...] = ()) -> bool:
+    """Whether the reply deserves a second attempt.
+
+    parse_json_response found no JSON object (its fallback to the text), or the
+    JSON object lacks a field the caller needs: on 2026-11-19 a Q&A reply of
+    2,495 tokens parsed to an object without "answer" and reached the user as
+    an empty answer with no sources.
+    """
+    if not isinstance(result, dict) or result.get("error") or result.get("error_code"):
+        return False
+    return "parse_warning" in result or bool(_missing_fields(result, required))
+
+
+def _json_retry_messages(system_prompt: str, user_message: str, reply: str) -> list[BaseMessage]:
+    return [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message),
+        AIMessage(content=reply),
+        HumanMessage(content=_JSON_RETRY_PROMPT),
+    ]
+
+
+def _after_json_retry(
+    first: dict[str, Any],
+    reply: str | None,
+    error: Exception | None = None,
+    required: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """The second reply when it is JSON with the required fields, else the first.
+
+    When neither reply has a required field (an empty answer), the result is an
+    error: an empty answer is never served, nor cached, as if it were one.
+    Logs the outcome.
+    """
+    second = parse_json_response(reply) if reply is not None else None
+    if second is None:
+        outcome = "error"
+    elif _needs_json_retry(second, required):
+        outcome = "prose" if "parse_warning" in second else "missing_fields"
+    else:
+        outcome = "json"
+    extra = {"outcome": outcome}
+    if error is not None:
+        extra["error"] = str(error)
+    logger.warning("llm_json_retry", extra=extra)
+    chosen = second if second is not None and outcome == "json" else first
+    missing = _missing_fields(chosen, required) if "parse_warning" not in chosen else []
+    if missing:
+        return _make_error_response(f"LLM reply without the field(s) {', '.join(missing)}")
+    return chosen
+
+
 # ─── Synchronous LLM Call (preserved for tests & scripts) ────────
 
 
-def call_llm(system_prompt: str, user_message: str) -> dict:
-    """Call LLM synchronously. Use acall_llm() in async FastAPI paths."""
+def call_llm(system_prompt: str, user_message: str, *, required: tuple[str, ...] = ()) -> dict:
+    """Call LLM synchronously. Use acall_llm() in async FastAPI paths.
+
+    ``required``: fields the JSON reply must carry as non-blank strings (the Q&A
+    needs "answer"); a reply without them gets the second attempt.
+    """
     from src.config import get_settings
 
     settings = get_settings()
@@ -261,7 +441,19 @@ def call_llm(system_prompt: str, user_message: str) -> dict:
         ]
         response = llm.invoke(messages)
         llm_circuit.record_success()
-        return parse_json_response(message_text(response))
+        record_token_usage(response)
+        content = message_text(response)
+        result = parse_json_response(content)
+        if _needs_json_retry(result, required):
+            try:
+                second_reply = llm.invoke(
+                    _json_retry_messages(system_prompt, user_message, content)
+                )
+            except Exception as retry_error:
+                return _after_json_retry(result, None, retry_error, required)
+            record_token_usage(second_reply)
+            return _after_json_retry(result, message_text(second_reply), required=required)
+        return result
 
     except Exception as e:
         llm_circuit.record_failure()
@@ -290,13 +482,18 @@ async def _ainvoke_llm_with_retry(
             HumanMessage(content=user_message),
         ]
         response = await llm.ainvoke(messages)
+        record_token_usage(response)
         return message_text(response)
     except Exception as e:
         raise _classify_error(e) from e
 
 
 async def acall_llm(
-    system_prompt: str, user_message: str, temperature: float | None = None
+    system_prompt: str,
+    user_message: str,
+    temperature: float | None = None,
+    *,
+    required: tuple[str, ...] = (),
 ) -> dict:
     """Call LLM asynchronously using native .ainvoke().
 
@@ -333,7 +530,19 @@ async def acall_llm(
                 system_prompt, user_message, temperature=temperature
             )
         llm_circuit.record_success()
-        return parse_json_response(content)
+        result = parse_json_response(content)
+        if _needs_json_retry(result, required):
+            # One call, no backoff retries: at most one more request per answer.
+            try:
+                async with get_llm_semaphore():
+                    second_reply = await get_llm(temperature=temperature).ainvoke(
+                        _json_retry_messages(system_prompt, user_message, content)
+                    )
+            except Exception as retry_error:
+                return _after_json_retry(result, None, retry_error, required)
+            record_token_usage(second_reply)
+            return _after_json_retry(result, message_text(second_reply), required=required)
+        return result
 
     except NonRetryableLLMError as e:
         llm_circuit.record_failure()
@@ -529,16 +738,35 @@ def extract_confidence(result: dict) -> float:
 _ACT_TITLE_MAX = 100
 
 
+def _citation_key(chunk: dict[str, Any], celex: str | None) -> str:
+    """What a source is cited as: its framework key, or its CELEX for another act.
+
+    A framework key names the principal act of its group (principal_celex):
+    [AI_ACT, Art. 50] is an article of the AI Act, in any consolidated
+    version. A passage of another act of the group (the Digital Omnibus on AI
+    32026R1744 under AI_ACT; the Accounting Directive 32013L0034, ESRS Set 1
+    and the Omnibus directives under CSRD) is cited by its CELEX,
+    [32026R1744, Art. 1]: under the key a jurist would read it as an article
+    of the principal act.
+    """
+    framework = str(chunk.get("framework") or "?")
+    principal = principal_celex(framework)
+    if principal and celex and celex_utils.parse_celex(celex) and celex != principal:
+        return celex
+    return framework
+
+
 def _chunk_label(chunk: dict) -> str:
     """Header of one source in the prompt: what the model must cite, and from where.
 
-    ``[FRAMEWORK, Art. N]`` is the citation marker the model copies; the base
-    CELEX, the act title and the language tell it which official text the
-    passage below comes from (quotes are verified against that text). An
-    article an amending act quotes (src/agents/quoted_articles.py) is labelled
-    as the amended act's article, ``[CELEX, Art. N]``, with the amending act
-    where its wording comes from; a consolidated article names the act that
-    amended it.
+    ``[FRAMEWORK, Art. N]`` is the citation marker the model copies, with the
+    CELEX instead of the framework key for an act other than the framework's
+    principal one (``_citation_key``); the base CELEX, the act title and the
+    language tell it which official text the passage below comes from (quotes
+    are verified against that text). An article an amending act quotes
+    (src/agents/quoted_articles.py) is labelled as the amended act's article,
+    ``[CELEX, Art. N]``, with the amending act where its wording comes from; a
+    consolidated article names the act that amended it.
     """
     celex = base_celex(chunk)
     if chunk.get("citation_celex"):
@@ -548,9 +776,8 @@ def _chunk_label(chunk: dict) -> str:
             f"as worded in CELEX {celex} {chunk.get('article')}, which amends it",
         ]
     else:
-        framework = chunk.get("framework") or "?"
         article = chunk.get("article") or chunk.get("article_number") or "?"
-        parts = [f"[{framework}, {article}]"]
+        parts = [f"[{_citation_key(chunk, celex)}, {article}]"]
         if celex:
             parts.append(f"CELEX {celex}")
         title = " ".join(str(chunk.get("act_title") or "").split())

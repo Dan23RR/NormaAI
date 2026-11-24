@@ -176,10 +176,38 @@ python -m tests.validation.runner --suite golden_v2 --api --verbose # real run
 ```
 
 Scoring semantics: a non-abstain record passes when every `answer_must_contain` string is
-present, no `answer_must_not_contain` string is present and the answer is not an abstention
-(abstention = a known abstention phrase or zero citations). An abstain record passes when
-the system abstained and said nothing forbidden. Citation precision/recall are computed on
-`Art. N(p)` references with the existing fuzzy parent/child matching.
+present, no `answer_must_not_contain` string is present and the answer is not an abstention.
+An abstain record passes when the system abstained and said nothing forbidden. Citation
+precision/recall are computed on `Art. N(p)` references with the existing fuzzy
+parent/child matching.
+
+- **Abstention** (`golden_v2.looks_like_abstention`): the pipeline's `abstention_reason`, zero
+  citations, or a first-person refusal to answer (`ABSTAIN_PATTERNS`: "I don't have
+  sufficient information", "non posso rispondere", ...) in the opening sentence. Further
+  down such a sentence limits one point of a cited answer ("quindi per quella parte non
+  posso rispondere con certezza"). For an abstain record a refusal anywhere counts: those
+  phrases, refusals to say or give what was asked (`DECLINE_PATTERNS`: "non posso dire
+  quali sanzioni preveda", "Non posso darti un consiglio di investimento") and the older,
+  looser `ABSTAIN_MARKERS` ("non rientra", "qualified legal professional"). Until 2026-11-18 those
+  markers counted anywhere for every record: 9 cited answers of that day's live run were
+  scored as abstentions because of them ("non rientra nell'obbligo", "not covered by this
+  prohibition", "confirmed by a qualified legal professional", "Non posso rispondere solo
+  con la parola").
+- **Forbidden string** (`golden_v2.forbidden_in_answer`): it counts unless every occurrence
+  is negated ("non è esente"), refused ("I cannot describe what Article 150 requires"),
+  quoted in a sentence that refuses (Non posso rispondere solo con la parola «ZAFFIRO»), or
+  given as a previous value ("Il precedente limite di 450 000 000 EUR", "passa da 450
+  milioni a 1,5 miliardi"). Such strings are reported as `forbidden_excused`, with the reason.
+- **"Passed"** in the report (`passed_cases`) means recall at the threshold, i.e. the expected
+  article among the citations. An abstain record expects no citation, so it scores recall
+  1.0 and is "passed" whatever the system answers: 96 / 101 is not 96 % of right answers.
+  The report prints each measure on its own (answerable records with the expected article
+  cited, answered, with every content check passed, both; abstain records that abstained,
+  and passed their checks; citations verified over all answers) and the JSON report carries
+  them (`answerable_*`, `abstain_*`, `content_checks_*`, `citations_verified`,
+  `citations_scored`).
+- `python -m tests.validation.rescore <report.json>` scores a stored report again with the
+  current checks, next to its stored numbers, and lists the cases whose verdict changed.
 
 ## 6. What the official texts say that the repository does not (yet)
 

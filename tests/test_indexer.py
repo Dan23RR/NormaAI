@@ -36,6 +36,8 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     IsEmptyCondition,
+    MatchAny,
+    MatchValue,
     Modifier,
     PointStruct,
     SparseVector,
@@ -586,6 +588,121 @@ class TestHybridSearch:
         f2 = mock_qp.call_args_list[1].kwargs["query_filter"]
         assert f1 is f2
         assert isinstance(f1, Filter)
+
+
+def _point(point_id, **payload):
+    return SimpleNamespace(id=point_id, score=0.5, payload={"text": point_id, **payload})
+
+
+def _field_matches(flt):
+    """(key, match) of every field condition inside a (possibly nested) Filter."""
+    return [(c.key, c.match) for c in _iter_conditions(flt) if isinstance(c, FieldCondition)]
+
+
+class TestNamedArticles:
+    """An article the query names is looked up and fused as a third ranking."""
+
+    def test_a_named_article_joins_the_fusion(self):
+        idx = make_indexer(MagicMock())
+        dense = [_point("a"), _point("b")]
+        sparse = [_point("b"), _point("c")]
+        named = [
+            _point("n1", article="Art. 19 bis", paragraph="1"),
+            _point("n2", article="Art. 19a", paragraph="2-4"),
+            _point("n3", article="Art. 19a", paragraph="5"),
+        ]
+        with patch.object(idx, "_query_points", side_effect=[dense, sparse, named]) as mock_qp:
+            results = idx.hybrid_search(
+                "Quali imprese, ai sensi dell'art. 19 bis della direttiva 2013/34/UE?", limit=10
+            )
+
+        lookup = mock_qp.call_args_list[2].kwargs
+        assert (
+            lookup["using"] == "dense"
+            and lookup["query"] == mock_qp.call_args_list[0].kwargs["query"]
+        )
+        conditions = _field_matches(lookup["query_filter"])
+        assert ("celex", MatchValue(value="32013L0034")) in conditions
+        assert ("article", MatchAny(any=["Art. 19a", "Art. 19 bis"])) in conditions
+        # The search filter applies to the lookup too (tenant, superseded, framework).
+        assert lookup["query_filter"].must[0] is mock_qp.call_args_list[0].kwargs["query_filter"]
+        # n1 weighs 2 / 61, above b (1 / 62 + 1 / 61); only the best two named chunks count.
+        assert [r["id"] for r in results] == ["n1", "b", "n2", "a", "c"]
+        # The per-retriever scores stay those of the two searches.
+        assert results[0]["dense_score"] is None and results[0]["sparse_score"] is None
+
+    def test_a_bare_article_number_needs_a_framework_filter(self):
+        idx = make_indexer(MagicMock())
+        with patch.object(idx, "_query_points", side_effect=[[], []]) as mock_qp:
+            idx.hybrid_search("Cosa prevede l'art. 5?", limit=10)
+        assert mock_qp.call_count == 2  # "art. 5" of which act? no lookup
+
+        with patch.object(idx, "_query_points", side_effect=[[], [], []]) as mock_qp:
+            idx.hybrid_search("Cosa prevede l'art. 5 del GDPR?", limit=10, framework_filter="GDPR")
+        lookup_filter = mock_qp.call_args_list[2].kwargs["query_filter"]
+        assert ("framework", MatchValue(value="GDPR")) in _field_matches(lookup_filter)
+        assert ("article", MatchAny(any=["Art. 5"])) in _field_matches(lookup_filter)
+
+    def test_the_chunks_holding_the_named_paragraph_come_first(self):
+        idx = make_indexer(MagicMock())
+        named = [
+            _point("p1", paragraph="1-5"),
+            _point("p3", paragraph="10-11"),
+            _point("p2", paragraph="6-9"),
+        ]
+        with patch.object(idx, "_query_points", side_effect=[[], [], named]):
+            results = idx.hybrid_search(
+                "Cosa contiene una DPIA ai sensi dell'art. 35, paragrafo 7, del GDPR?",
+                limit=10,
+                framework_filter="GDPR",
+            )
+        assert [r["id"] for r in results] == ["p2", "p1"]
+
+    def test_without_a_paragraph_the_article_opening_comes_first(self):
+        # The opening states the article's rule: one copy of it, then the best other chunk.
+        idx = make_indexer(MagicMock())
+        named = [
+            _point("p3-it", paragraph="3"),
+            _point("p1-en", paragraph="1"),
+            _point("p1-it", paragraph="1-2"),
+            _point("p5-it", paragraph="5"),
+        ]
+        with patch.object(idx, "_query_points", side_effect=[[], [], named]):
+            results = idx.hybrid_search(
+                "Quando si applica l'art. 29 bis della direttiva 2013/34/UE?", limit=10
+            )
+        assert [r["id"] for r in results] == ["p1-en", "p3-it"]
+
+    def test_without_paragraph_numbers_the_first_part_opens_the_article(self):
+        idx = make_indexer(MagicMock())
+        named = [_point("part2", part="2"), _point("part1", part="1"), _point("part3", part="3")]
+        with patch.object(idx, "_query_points", side_effect=[[], [], named]):
+            results = idx.hybrid_search(
+                "Cosa prevede l'art. 3 dell'AI Act?", limit=10, framework_filter="AI_ACT"
+            )
+        assert [r["id"] for r in results] == ["part1", "part2"]
+
+    def test_each_named_chunk_counts_once(self):
+        idx = make_indexer(MagicMock())
+        same = [_point("x", paragraph="1"), _point("y", paragraph="2")]
+        with patch.object(idx, "_query_points", side_effect=[[], [], same, same]):
+            results = idx.hybrid_search(
+                "art. 6 e art. 7 del GDPR", limit=10, framework_filter="GDPR"
+            )
+        assert [r["id"] for r in results] == ["x", "y"]
+
+    def test_a_failed_lookup_keeps_the_hybrid_ranking(self, caplog):
+        idx = make_indexer(MagicMock())
+        dense, sparse = [_point("a")], [_point("b")]
+        with (
+            patch.object(
+                idx, "_query_points", side_effect=[dense, sparse, RuntimeError("qdrant down")]
+            ),
+            caplog.at_level(logging.WARNING, logger="src.nlp.embedding.indexer"),
+        ):
+            results = idx.hybrid_search("art. 8 del regolamento (UE) 2020/852", limit=10)
+        assert [r["id"] for r in results] == ["a", "b"]
+        assert "named_article_lookup_failed" in caplog.text
 
 
 # --------------------------------------------------------------------------- #

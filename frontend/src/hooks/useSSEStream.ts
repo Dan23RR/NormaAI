@@ -25,6 +25,20 @@ export interface CitationEvent {
   /** The amending act whose text the passage was verified in, when the cited article is quoted by it. */
   amending_celex?: string;
   amending_article?: string;
+  /** Not verified, but close: the official wording the quote almost matched. */
+  near_quote?: string;
+  /** Where that wording is, e.g. "Art. 33". */
+  near_article?: string;
+  /** The words that differ between the quote and that wording. */
+  differences?: Array<{ quoted: string; official: string }>;
+  /** Not verified: the wording is in the official text, but in another act, article or paragraph. */
+  found_elsewhere?: boolean;
+  found_in?: 'act' | 'article' | 'paragraph';
+  found_celex?: string;
+  found_article?: string;
+  found_paragraph?: string;
+  found_quote?: string;
+  found_url?: string;
   grounded?: boolean;
 }
 
@@ -80,6 +94,13 @@ export interface ErrorEvent {
 /**
  * Done event with final statistics.
  */
+/** What wrote a Q&A answer (AI Act, Art. 50(2)): the system, provider and model. */
+export interface StreamGenerator {
+  system: string;
+  provider?: string | null;
+  model?: string | null;
+}
+
 export interface DoneStats {
   total_tokens: number;
   confidence_score: number;
@@ -93,6 +114,9 @@ export interface DoneStats {
   related_frameworks?: string[];
   abstention_reason?: string | null;
   corpus_as_of?: string | null;
+  /** Q&A: true when a language model wrote the answer text. */
+  ai_generated?: boolean;
+  generator?: StreamGenerator;
 }
 
 export interface DoneEvent {
@@ -108,6 +132,8 @@ export interface DoneEvent {
   related_frameworks?: string[];
   abstention_reason?: string | null;
   corpus_as_of?: string | null;
+  ai_generated?: boolean;
+  generator?: StreamGenerator;
 }
 
 /**
@@ -295,6 +321,8 @@ export function useSSEStream(options: UseSSEStreamOptions = {}) {
           related_frameworks: event.related_frameworks,
           abstention_reason: event.abstention_reason,
           corpus_as_of: event.corpus_as_of,
+          ai_generated: event.ai_generated,
+          generator: event.generator,
         };
         setStats(doneStats);
         onDone?.(doneStats);

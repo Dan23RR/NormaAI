@@ -1,0 +1,12 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:codice.civile:1942-03-16;262~art2043",
+  "retrieved": "2026-11-11"
+ },
+ "status": 404,
+ "body": {
+  "message": "atto non trovato",
+  "code": "404"
+ }
+}

@@ -103,6 +103,61 @@ class TestMemoryFallback:
         assert 1 <= seconds_until_utc_midnight() <= 86400
 
 
+class TestUnits:
+    """A request worth several units (a PDF report over several frameworks)."""
+
+    async def test_units_are_counted_and_refunded_in_memory(self, quota):
+        org = str(uuid.uuid4())
+        status = await quota.consume(org, limit=5, units=3)
+        assert status.allowed and status.used == 3 and status.remaining == 2
+        status = await quota.consume(org, limit=5, units=3)
+        assert not status.allowed and status.used == 6
+        await quota.refund(org, 3)
+        assert (await quota.usage(org, limit=5)).used == 3
+        await quota.refund(org, 10)  # never below zero
+        assert (await quota.usage(org, limit=5)).used == 0
+        await quota.refund(str(uuid.uuid4()), 2)  # an org never counted: nothing to do
+
+    async def test_units_and_refund_on_redis(self):
+        class _Pipe:
+            def __init__(self, store):
+                self.store, self.ops = store, []
+
+            def incrby(self, key, amount):
+                self.ops.append((key, amount))
+
+            def expire(self, key, ttl):
+                pass
+
+            async def execute(self):
+                key, amount = self.ops[0]
+                self.store[key] = self.store.get(key, 0) + amount
+                return [self.store[key], True]
+
+        class _Redis:
+            def __init__(self):
+                self.store = {}
+
+            def pipeline(self):
+                return _Pipe(self.store)
+
+            async def decrby(self, key, amount):
+                self.store[key] -= amount
+
+        q = DailyLLMQuota()
+        redis = _Redis()
+        await q.connect(redis)
+        org = str(uuid.uuid4())
+        status = await q.consume(org, limit=4, units=3)
+        assert status.used == 3
+        await q.refund(org, 3)
+        assert list(redis.store.values()) == [0]
+
+    async def test_unlimited_ignores_units(self, quota):
+        status = await quota.consume(str(uuid.uuid4()), limit=0, units=8)
+        assert status.allowed and status.unlimited
+
+
 # ──────────────────────────────────────────────────────────────────────────
 #  Unit: Redis path
 # ──────────────────────────────────────────────────────────────────────────

@@ -62,7 +62,7 @@ class TestTokenCreation:
         assert pair.access_token
         assert pair.refresh_token
         assert pair.token_type == "bearer"
-        assert pair.expires_in == 3600
+        assert pair.expires_in == 900  # ACCESS_TOKEN_TTL default: 15 minutes
 
     def test_expired_token_fails(self):
         token = create_access_token(

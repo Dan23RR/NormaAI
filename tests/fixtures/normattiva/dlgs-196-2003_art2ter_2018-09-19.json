@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2003;196~art2ter!vig=2021-10-08",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "DECRETO LEGISLATIVO 30 giugno 2003, n. 196",
+    "sottoTitolo": "Codice in materia di protezione dei dati personali <em><strong>((, recante disposizioni per l'adeguamento dell'ordinamento nazionale al regolamento (UE) n. 2016/679 del Parlamento europeo e del Consiglio, del 27 aprile 2016, relativo alla protezione delle persone fisiche con riguardo al trattamento dei dati personali, nonche' alla libera circolazione di tali dati e che abroga la direttiva 95/46/CE))</strong></em>.\r\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_2-ter\">Art. 2-ter</h2>\n        <div class=\"ins-akn\" eId=\"ins_1\">\n            <div class=\"article-heading-akn\">(( (Base giuridica per il trattamento di dati personali effettuato per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri). ))</div>\n        </div>\n        <div class=\"art-commi-div-akn\">\n            <div class=\"ins-akn\" eId=\"ins_2\">\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"art_text_in_comma\">((</span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"comma-num-akn\">1. </span><span class=\"art_text_in_comma\">La base giuridica prevista dall'articolo 6, paragrafo 3, lettera b), del regolamento &egrave; costituita esclusivamente da una norma di legge o, nei casi previsti dalla legge, di regolamento. \n                        <br>\n                        \n                    </span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"comma-num-akn\">2. </span><span class=\"art_text_in_comma\">La comunicazione fra titolari che effettuano trattamenti di dati personali, diversi da quelli ricompresi nelle particolari categorie di cui all'articolo 9 del Regolamento e di quelli relativi a condanne penali e reati di cui all'articolo 10 del Regolamento, per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri &egrave; ammessa se prevista ai sensi del comma 1. In mancanza di tale norma, la comunicazione &egrave; ammessa quando &egrave; comunque necessaria per lo svolgimento di compiti di interesse pubblico e lo svolgimento di funzioni istituzionali e pu&ograve; essere iniziata se &egrave; decorso il termine di quarantacinque giorni dalla relativa comunicazione al Garante, senza che lo stesso abbia adottato una diversa determinazione delle misure da adottarsi a garanzia degli interessati. \n                        <br>\n                        \n                    </span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"comma-num-akn\">3. </span><span class=\"art_text_in_comma\">La diffusione e la comunicazione di dati personali, trattati per l'esecuzione di un compito di interesse pubblico o connesso all'esercizio di pubblici poteri, a soggetti che intendono trattarli per altre finalit&agrave; sono ammesse unicamente se previste ai sensi del comma 1. \n                        <br>\n                        \n                    </span>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <div>\n                        <div class=\"pointedList-first-akn\">\n                            <span class=\"comma-num-akn\">4. </span>Si intende per: \n                            <br>\n                             \n                        </div>\n                        <div class=\"pointedList-rest-akn\">\n                            a) \"comunicazione\", il dare conoscenza dei dati personali a uno o pi&ugrave; soggetti determinati diversi dall'interessato, dal rappresentante del titolare nel territorio dell'Unione europea, dal responsabile o dal suo rappresentante nel territorio dell'Unione europea, dalle persone autorizzate, ai sensi dell'articolo 2-quaterdecies, al trattamento dei dati personali sotto l'autorit&agrave; diretta del titolare o del responsabile, in qualunque forma, anche mediante la loro messa a disposizione, consultazione o mediante interconnessione; \n                            <br>\n                            \n                        </div>\n                        <div class=\"pointedList-rest-akn\">b) \"diffusione\", il dare conoscenza dei dati personali a soggetti indeterminati, in qualunque forma, anche mediante la loro messa a disposizione o consultazione.</div>\n                    </div>\n                </div>\n                <div class=\"art-comma-div-akn\">\n                    <span class=\"art_text_in_comma\">))</span>\n                </div>\n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "DECRETO LEGISLATIVO",
+    "tipoProvvedimentoCodice": "PLL",
+    "annoProvvedimento": 2003,
+    "meseProvvedimento": 6,
+    "giornoProvvedimento": 30,
+    "numeroProvvedimento": 196,
+    "tipoSupplementoCode": "SO",
+    "numeroSupplemento": 123,
+    "annoGU": 2003,
+    "meseGU": 7,
+    "giornoGU": 29,
+    "numeroGU": 174,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20180919",
+    "articoloDataFineVigenza": "20211008",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

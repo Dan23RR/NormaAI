@@ -12,7 +12,19 @@ import structlog
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.observability import record_http_request, track_active_request
+
 logger = structlog.get_logger()
+
+
+def route_template(request: Request) -> str:
+    """The route a request matched (``/api/v1/documents/{check_id}``), for metric labels.
+
+    A path no route matches (scanners, typos) is "<unmatched>": one series for
+    all of them instead of one per path.
+    """
+    path = getattr(request.scope.get("route"), "path", None)
+    return path if isinstance(path, str) and path else "<unmatched>"
 
 
 # ─── Request Metrics ──────────────────────────────────────────────
@@ -118,19 +130,26 @@ def register_middleware(app: FastAPI) -> None:
 
     @app.middleware("http")
     async def add_timing_and_metrics_middleware(request: Request, call_next):
-        """Add X-Process-Time header and record metrics."""
+        """Add X-Process-Time header and record metrics (in memory and Prometheus)."""
         start = time.perf_counter()
         endpoint = f"{request.method} {request.url.path}"
+        track_active_request(1)
 
         try:
             response = await call_next(request)
             elapsed = time.perf_counter() - start
             is_error = response.status_code >= 400
             metrics.record(endpoint, elapsed, is_error=is_error)
+            record_http_request(
+                request.method, route_template(request), response.status_code, elapsed
+            )
             response.headers["X-Process-Time"] = f"{elapsed:.3f}s"
             return response
         except Exception as e:
             elapsed = time.perf_counter() - start
             metrics.record(endpoint, elapsed, is_error=True)
+            record_http_request(request.method, route_template(request), 500, elapsed)
             logger.error("middleware_error", endpoint=endpoint, error=str(e))
             raise
+        finally:
+            track_active_request(-1)

@@ -1,4 +1,11 @@
-"""Client management endpoints: CRUD for multi-tenant client entities."""
+"""Client management endpoints: CRUD for multi-tenant client entities.
+
+Access: reading, any signed-in user of the organisation; creating and editing,
+not the read-only ``viewer`` role (``require_editor``); deleting, which takes
+the client's checks, assessments and alerts with it, the ``admin`` role
+(``require_admin``). Both also need a verified email address when the
+deployment asks for one.
+"""
 
 import uuid
 from datetime import datetime
@@ -10,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.audit import AuditAction, audit_log, get_client_ip
-from src.auth.dependencies import CurrentUser, get_current_user
+from src.auth.dependencies import CurrentUser, get_current_user, require_admin, require_editor
 from src.db.engine import db_manager
 from src.db.models import Client
 
@@ -167,14 +174,14 @@ async def list_clients(
 async def create_client(
     request: Request,
     payload: ClientCreate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_editor),
 ):
     """
     **Create a new client for the authenticated user's organization.**
 
     The client is automatically assigned to the user's org_id from the JWT.
 
-    Requires authentication.
+    Requires authentication; not the read-only `viewer` role (403).
     """
     client = Client(
         org_id=user.org_id,
@@ -234,7 +241,7 @@ async def update_client(
     request: Request,
     client_id: uuid.UUID,
     payload: ClientUpdate,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_editor),
 ):
     """
     **Update an existing client.**
@@ -242,7 +249,7 @@ async def update_client(
     Only fields included in the request body are updated.
     The client must belong to the authenticated user's organization.
 
-    Requires authentication.
+    Requires authentication; not the read-only `viewer` role (403).
     """
     update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
@@ -284,16 +291,16 @@ async def update_client(
 async def delete_client(
     request: Request,
     client_id: uuid.UUID,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_admin),
 ):
     """
     **Delete a client.**
 
     Permanently removes the client and all associated data (assessments, alerts,
-    conversations) via the database CASCADE rules.
+    document checks) via the database CASCADE rules.
     The client must belong to the authenticated user's organization.
 
-    Requires authentication.
+    Requires authentication and the `admin` role (403 otherwise).
     """
     async with db_manager.session(org_id=str(user.org_id)) as session:
         client = await _get_client_or_404(session, client_id, user.org_id)

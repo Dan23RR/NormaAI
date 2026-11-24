@@ -6,6 +6,7 @@ main() runs with a fake indexer. No Qdrant, no model download.
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -46,6 +47,36 @@ def test_retrieved_articles_count_only_article_chunks():
     assert ev.retrieved_articles(results) == {"19a"}
 
 
+@pytest.mark.parametrize(
+    ("results", "found"),
+    [
+        ([{"article": "Art. 29a", "paragraph": "1"}], True),
+        ([{"article": "Art. 29 bis", "paragraph": "1-5"}], True),
+        ([{"article": "Art. 29a", "paragraph": "8"}], False),
+        # No paragraph numbers on the article's chunks: the article is enough.
+        ([{"article": "Art. 29a", "paragraph": None}], True),
+        (
+            [{"article": "Art. 29a", "paragraph": None}, {"article": "Art. 29a", "paragraph": "8"}],
+            False,
+        ),
+        ([{"article": "Recital 17", "paragraph": "1"}], False),
+        ([], False),
+    ],
+)
+def test_paragraph_found(results, found):
+    assert ev.paragraph_found({("29a", 1)}, results) is found
+
+
+def test_a_finding_without_a_paragraph_needs_the_article_only():
+    assert ev.paragraph_found({("3", None)}, [{"article": "Art. 3", "paragraph": "9-12"}])
+
+
+def test_expected_paragraphs():
+    findings = ["Art. 29a(1)", "Art. 3", "Art. 113(3)(b)", "Annex II"]
+    case = SimpleNamespace(expected_findings=[SimpleNamespace(article=a) for a in findings])
+    assert ev.expected_paragraphs(case) == {("29a", 1), ("3", None), ("113", 3)}
+
+
 def test_art50_rank_only_counts_the_ai_act():
     results = [{"article": "Art. 50", "celex": "32016R0679"}, {"article": "Art. 6"}, ART50_HIT]
     assert ev.art50_rank(results) == 2
@@ -62,7 +93,7 @@ def test_evaluate_scores_the_90_cases_that_expect_an_article():
     rows, art50 = ev.evaluate(cases, perfect)
     # 101 records minus the abstention / refusal ones (the 77-of-90 baseline).
     assert len(rows) == 90
-    assert all(row["hit"] for row in rows)
+    assert all(row["hit"] and row["paragraph_hit"] for row in rows)
     assert [entry["art50_rank"] for entry in art50] == [0, 0, 0, 0]
 
     rows, art50 = ev.evaluate(cases, lambda query: [])
@@ -72,9 +103,9 @@ def test_evaluate_scores_the_90_cases_that_expect_an_article():
 
 def test_summarise_keeps_the_report_keys():
     rows = [
-        {"id": "a", "framework": "GDPR", "expected": ["5"], "hit": True},
-        {"id": "b", "framework": "GDPR", "expected": ["6"], "hit": False},
-        {"id": "c", "framework": "DORA", "expected": ["28"], "hit": True},
+        {"id": "a", "framework": "GDPR", "expected": ["5"], "hit": True, "paragraph_hit": True},
+        {"id": "b", "framework": "GDPR", "expected": ["6"], "hit": False, "paragraph_hit": False},
+        {"id": "c", "framework": "DORA", "expected": ["28"], "hit": True, "paragraph_hit": False},
     ]
     summary = ev.summarise("x", rows, [])
     assert summary == {
@@ -85,6 +116,8 @@ def test_summarise_keeps_the_report_keys():
         "by_framework": {"DORA": "1/1", "GDPR": "1/2"},
         "art50_natural_language": [],
         "misses": ["b"],
+        "expected_paragraph_in_top15": 1,
+        "paragraph_misses": ["b", "c"],
     }
     assert ev.summarise("empty", [], [])["rate"] == 0.0
 

@@ -64,6 +64,14 @@ def test_parse_extracts_article_when_present():
 
 def test_parse_returns_none_for_invalid():
     assert URNValidator.parse("garbage") is None
+    assert URNValidator.parse("") is None
+
+
+def test_parse_keeps_a_year_only_date_and_a_dotted_type():
+    # From the tests of the old Normattiva client, removed with it.
+    comp = URNValidator.parse("urn:nir:stato:decreto.legislativo:2024;138")
+    assert comp is not None
+    assert (comp.tipo, comp.data, comp.numero) == ("decreto.legislativo", "2024", "138")
 
 
 def test_normalize_lowercases_and_expands_abbreviations():

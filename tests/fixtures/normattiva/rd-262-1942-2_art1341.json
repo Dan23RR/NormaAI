@@ -1,0 +1,38 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:regio.decreto:1942;262:2~art1341",
+  "retrieved": "2026-11-11"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "REGIO DECRETO 16 marzo 1942, n. 262",
+    "sottoTitolo": "Approvazione del testo del Codice civile. (042U0262) \r\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <span class=\"attachment-just-text\"><div style=\"text-align:center;\"> Art. 1341. \n            <br>\n             \n            <br>\n             (Condizioni generali di contratto). \n            <br>\n             \n            <br>\n             Le condizioni generali di contratto predisposte da uno dei contraenti sono efficaci nei confronti dell'altro, se al momento della conclusione del contratto questi le ha conosciute o avrebbe dovuto conoscerle usando l'ordinaria diligenza. \n            <br>\n             \n            <br>\n             In ogni caso non hanno effetto, se non sono specificamente approvate per iscritto, le condizioni che stabiliscono, a favore di colui che le ha predisposte, limitazioni di responsabilit&agrave;, facolt&agrave; di recedere dal contratto o di sospenderne l'esecuzione, ovvero sanciscono a carico dell'altro contraente decadenze, limitazioni alla facolt&agrave; di opporre eccezioni, restrizioni alla libert&agrave; contrattuale nei rapporti coi terzi, tacita proroga o rinnovazione del contratto, clausole compromissorie o deroghe alla competenza dell'autorit&agrave; giudiziaria. \n            <br>\n             \n            <br>\n            \n        </span>\n    </div><br>\n</div>",
+    "tipoProvvedimentoDescrizione": "REGIO DECRETO",
+    "tipoProvvedimentoCodice": "PRD",
+    "annoProvvedimento": 1942,
+    "meseProvvedimento": 3,
+    "giornoProvvedimento": 16,
+    "numeroProvvedimento": 262,
+    "tipoSupplementoCode": "NO",
+    "numeroSupplemento": 0,
+    "annoGU": 1942,
+    "meseGU": 4,
+    "giornoGU": 4,
+    "numeroGU": 79,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "19420419",
+    "articoloDataFineVigenza": "99999999",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

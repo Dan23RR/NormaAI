@@ -41,51 +41,42 @@ npx promptfoo eval -c tests/validation/promptfoo_config.yaml --filter-pattern "c
 
 ---
 
-### 2. File: `.github/workflows/validation.yml` (223 lines, 6.4 KB)
+### 2. File: `.github/workflows/validation.yml`
 
-**CI/CD Pipeline** - Multi-stage validation with thresholds.
+**Self-test of this harness on canned outputs.** It is not a measurement of NormaAI.
 
-**Workflow Triggers:**
-- **PR validation** (golden set) - Fast check on every pull request
-- **Full regression** (on merge to main, weekly schedule) - 500+ test cases
-- **Red team** (weekly) - Promptfoo adversarial suite
-- **Manual trigger** - Parameterized runs with suite/framework filters
+With `--demo` the runner builds each "answer" from the expected findings of the test case
+itself (`_generate_demo_output` in `runner.py`: a fixed share of them, and nothing else).
+No model, no retrieval and no API take part, so the figures of a run describe the
+harness, not the product. Measured results (golden v2 through the real API, run by hand)
+are in `docs/MODELS.md`.
 
-**Job Stages:**
+**Triggers:**
+- pull requests that touch `src/`, `prompts/` or `tests/`: the golden set;
+- weekly schedule: every suite, with the generated sanctions and synthetic cases;
+- manual run: `golden_set` or `all`.
+
+**What the one job does:**
 
 ```
-├─ golden-set [PR trigger]
-│  ├─ Setup Python 3.11
-│  ├─ Run Golden Set (demo mode)
-│  └─ Upload results (30-day retention)
-│
-├─ full-regression [main merge / schedule]
-│  ├─ Spin up: PostgreSQL 16 + Qdrant
-│  ├─ Generate test cases
-│  │  ├─ Sanctions harvester (enforcement data)
-│  │  ├─ Synthetic GDPR/DORA/NIS2 (levels 1-5)
-│  │  └─ Monte Carlo simulation (5000 iterations)
-│  ├─ Run full suite (demo mode)
-│  └─ Check thresholds:
-│     ├─ Recall ≥ 0.95
-│     ├─ Precision ≥ 0.80
-│     └─ F1 ≥ 0.87
-│
-└─ red-team [weekly schedule]
-   ├─ Setup Node.js 20 + Promptfoo
-   ├─ Run adversarial suite
-   └─ Upload results (90-day retention)
+harness-selftest
+  1. generates the extra cases (weekly and "all" only)
+  2. runs the harness on canned outputs: python -m tests.validation.runner --suite <suite> --demo
+  3. runs the risk report generator on demo inputs (weekly and "all" only)
+  4. checks what canned outputs can show:
+     - no case raised an error inside the harness
+     - the matcher counted no finding that was not expected (precision 1.000 by construction)
+     - no case lost more than half of its findings (a canned output holds at least half)
+  5. uploads the reports of the run (30 days)
 ```
 
-**Performance Thresholds:**
-- **Recall ≥ 0.95**: Must catch 95% of actual compliance gaps
-- **Precision ≥ 0.80**: Max 20% false positives
-- **F1 ≥ 0.87**: Balanced quality metric
+The recall, precision and F1 targets of the runner (0.95, 0.80, 0.87) are meant for runs
+against the real system (`--api` or direct mode), which no workflow performs. Until
+November 2026 the workflow compared them with the figures of the canned outputs, and the
+weekly run failed every Sunday for that reason alone.
 
-**Monte Carlo Integration:**
-- 5000 iterations per run
-- Simulates company variations (size, sector, jurisdiction)
-- Estimates confidence intervals for findings
+The adversarial suite of section 1 is not run by any workflow: it calls a backend on
+`localhost:8000` with an access token. Run it by hand against a running backend.
 
 ---
 
@@ -169,16 +160,8 @@ Runner (orchestrator)
 └─ monte_carlo.py (stochastic analysis)
 ```
 
-**CI/CD Flow:**
-```
-PR → golden-set (50 cases, 5 min) ✓
-  ↓
-merge → full-regression (500 cases, 30 min) ✓
-  ↓
-weekly → red-team (150 adversarial, 20 min) ✓
-  ↓
-Monte Carlo (5000 iterations, 60 min)
-```
+**In CI:** only the self-test of section 2 (canned outputs, no model). Runs against the
+real system are started by hand.
 
 ---
 

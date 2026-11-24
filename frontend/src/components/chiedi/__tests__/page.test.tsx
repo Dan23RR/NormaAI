@@ -229,4 +229,239 @@ describe('ChiediPage (demo mode)', () => {
     expect(screen.getByText('Cosa vuoi sapere?')).toBeInTheDocument()
     expect(sessionStorage.getItem('normaai_qa_messages')).toBeNull()
   })
+
+  it('asks a suggested question with one click', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+
+    const suggestions = within(screen.getByRole('list', { name: 'Esempi di domande' })).getAllByRole('button')
+    expect(suggestions).toHaveLength(3)
+    const question = suggestions[1].textContent as string
+    await user.click(suggestions[1])
+
+    // No second click on "Invia la domanda": the question is already on its way.
+    expect(mocks.post).toHaveBeenCalledTimes(1)
+    const [path, body] = mocks.post.mock.calls[0] as [string, { question: string; language: string }]
+    expect(path).toBe('/api/v1/qa')
+    expect(body.question).toBe(question)
+    expect(body.language).toBe('it')
+    expect(screen.getByLabelText('La tua domanda')).toHaveValue('')
+    expect(screen.getByText(question)).toBeInTheDocument()
+    await screen.findByText(/Sì\. L'articolo 50, paragrafo 1/)
+    expect(screen.queryByText('Cosa vuoi sapere?')).not.toBeInTheDocument()
+  })
+
+  it('asks an example question of an abstention with one click', async () => {
+    mocks.post
+      .mockResolvedValueOnce({
+        status: 'success',
+        data: {
+          answer: 'La demo copre alcuni scenari di esempio.',
+          citations: [],
+          confidence_score: 0,
+          requires_expert_review: false,
+          abstention_reason: 'demo_not_covered',
+          suggested_questions: ['Quali incidenti vanno notificati entro 24 ore secondo la NIS2?'],
+        },
+        metadata: {},
+      })
+      .mockResolvedValueOnce(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Quanto costa un caffè a Bruxelles?')
+    await user.keyboard('{Enter}')
+    await screen.findByText('NormaAI non risponde a questa domanda')
+
+    await user.click(screen.getByRole('button', { name: 'Quali incidenti vanno notificati entro 24 ore secondo la NIS2?' }))
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2))
+    const [, body] = mocks.post.mock.calls[1] as [string, { question: string }]
+    expect(body.question).toBe('Quali incidenti vanno notificati entro 24 ore secondo la NIS2?')
+    await screen.findByText(/Sì\. L'articolo 50, paragrafo 1/)
+  })
+
+  it('shows in the margin that a quote differs from the official text, and how', async () => {
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'La violazione va notificata entro 48 ore [1].',
+        citations: [
+          {
+            framework: 'GDPR',
+            reference: 'art. 33, par. 1',
+            quote_snippet: 'senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza',
+            celex: '32016R0679',
+            verified: false,
+            near_quote: 'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
+            near_article: 'Art. 33',
+            differences: [{ quoted: '48', official: '72' }],
+          },
+        ],
+        confidence_score: 0.4,
+        requires_expert_review: true,
+        related_frameworks: [],
+        caveats: [],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Entro quando va notificata una violazione dei dati?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/La violazione va notificata entro 48 ore/)
+
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2016/679 (GDPR)')).toBeInTheDocument()
+    expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
+    expect(within(margin).queryByText('Verificata')).not.toBeInTheDocument()
+
+    // It differs, this is how, and this is what the official text says.
+    expect(within(margin).getByText('Diversa dal testo ufficiale')).toBeInTheDocument()
+    expect(
+      within(margin).getByText(
+        'Nella risposta: «senza ingiustificato ritardo e, ove possibile, entro 48 ore dal momento in cui ne è venuto a conoscenza»',
+      ),
+    ).toBeInTheDocument()
+    expect(within(margin).getByText('Testo ufficiale, Art. 33')).toBeInTheDocument()
+    const note = within(margin).getByText('Diversa dal testo ufficiale').parentElement as HTMLElement
+    expect(within(note).getByRole('listitem')).toHaveTextContent('Nella risposta «48», nel testo ufficiale «72».')
+
+    // The highlighter marks the official words only, never the altered quote.
+    const marks = margin.querySelectorAll('mark')
+    expect(marks).toHaveLength(1)
+    expect(marks[0]).toHaveTextContent(/^72$/)
+    expect(marks[0].parentElement).toHaveTextContent(
+      'senza ingiustificato ritardo e, ove possibile, entro 72 ore dal momento in cui ne è venuto a conoscenza',
+    )
+  })
+
+  it('shows a quote found in another act as not verified, with where it really is', async () => {
+    const quote = 'garantiscono che gli output del sistema di IA siano marcati'
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Gli output vanno marcati [GDPR, Art. 6].',
+        citations: [
+          {
+            framework: 'GDPR',
+            reference: 'Art. 6',
+            quote_snippet: quote,
+            verified: false,
+            found_elsewhere: true,
+            found_in: 'act',
+            found_celex: '32024R1689',
+            found_article: 'Art. 50',
+            found_paragraph: '2',
+            found_quote: quote,
+            found_url: 'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+          },
+        ],
+        confidence_score: 0.6,
+        requires_expert_review: true,
+        related_frameworks: [],
+        caveats: [
+          'La citazione [GDPR, Art. 6] non è verificata: il testo citato si trova in un altro atto, Regolamento (UE) 2024/1689, Art. 50, par. 2.',
+        ],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Gli output di un sistema di IA vanno marcati?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/Gli output vanno marcati/)
+
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2016/679 (GDPR)')).toBeInTheDocument()
+    expect(within(margin).getByText('Da verificare')).toBeInTheDocument()
+    expect(within(margin).queryByText('Verificata')).not.toBeInTheDocument()
+    expect(
+      within(margin).getByText('Testo trovato in un altro atto: Regolamento (UE) 2024/1689 (AI Act), Art. 50, par. 2'),
+    ).toBeInTheDocument()
+    expect(within(margin).getByRole('link', { name: /Apri il testo ufficiale/ })).toHaveAttribute(
+      'href',
+      'https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32024R1689',
+    )
+    // The caveat names the mismatch under the answer too.
+    expect(screen.getByText(/La citazione \[GDPR, Art. 6\] non è verificata/)).toBeInTheDocument()
+  })
+
+  it('labels an answer the backend marks as AI-generated (AI Act, Art. 50(2))', async () => {
+    mocks.post.mockResolvedValue({
+      ...ANSWER,
+      data: {
+        ...ANSWER.data,
+        ai_generated: true,
+        generator: { system: 'NormaAI Chiedi', provider: 'anthropic', model: 'claude-haiku-5-5' },
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    const label = await screen.findByText('Testo generato con un sistema di IA')
+    expect(label).toHaveAttribute('title', 'Modello: claude-haiku-5-5')
+  })
+
+  it('offers follow-ups only on frameworks it knows, not on act titles the model lists', async () => {
+    mocks.post.mockResolvedValue({
+      ...ANSWER,
+      data: {
+        ...ANSWER.data,
+        related_frameworks: ['GDPR', "Regolamento (UE) 2018/1139 (sicurezza dell'aviazione civile)"],
+      },
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/obbliga chi fornisce un chatbot/)
+    expect(screen.getByRole('button', { name: /Chiedi di GDPR/ })).toBeInTheDocument()
+    expect(screen.queryByText(/AVIAZIONE/)).not.toBeInTheDocument()
+  })
+
+  it('does not label an answer the backend does not mark', async () => {
+    mocks.post.mockResolvedValue(ANSWER)
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Un chatbot deve dire che è una IA?')
+    await user.keyboard('{Enter}')
+    await screen.findByText(/obbliga chi fornisce un chatbot/)
+    expect(screen.queryByText('Testo generato con un sistema di IA')).not.toBeInTheDocument()
+  })
+
+  it('names an act cited by its CELEX, in the answer and in the margin', async () => {
+    mocks.post.mockResolvedValue({
+      status: 'success',
+      data: {
+        answer: 'Il regolamento modifica il calendario [32026R1744, Art. 1].',
+        citations: [
+          {
+            framework: '32026R1744',
+            reference: 'Art. 1',
+            quote_snippet: 'Il regolamento (UE) 2024/1689 è così modificato',
+            verified: true,
+            celex: '32026R1744',
+            article: 'Art. 1',
+            official_quote: 'Il regolamento (UE) 2024/1689 è così modificato',
+          },
+        ],
+        confidence_score: 0.9,
+        requires_expert_review: false,
+        related_frameworks: [],
+        caveats: [],
+      },
+      metadata: {},
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('La tua domanda'), 'Cosa cambia il regolamento 2026/1744?')
+    await user.keyboard('{Enter}')
+    // The marker reads the act's name, not "[32026R1744, Art. 1]", and still leads to its source.
+    const marker = await screen.findByRole('button', { name: 'Vai alla fonte 1' })
+    expect(marker).toHaveTextContent('[Regolamento (UE) 2026/1744, Art. 1]')
+    const margin = screen.getByRole('complementary', { name: 'Fonti e profilo' })
+    expect(within(margin).getByText('Regolamento (UE) 2026/1744')).toBeInTheDocument()
+    expect(within(margin).getByText('Verificata')).toBeInTheDocument()
+  })
 })

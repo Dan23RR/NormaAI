@@ -1,0 +1,12 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:decreto.legislativo:2003;196~art2ter@originale",
+  "retrieved": "2026-11-11"
+ },
+ "status": 404,
+ "body": {
+  "message": "Nessun articolo trovato",
+  "code": null
+ }
+}

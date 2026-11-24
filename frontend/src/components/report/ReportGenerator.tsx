@@ -3,12 +3,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { FileDown, FileText } from 'lucide-react'
-import { Badge, Button, ButtonLink, Checkbox, Field, Select, frameworkLabel } from '@/components/ui'
+import { Button, ButtonLink, Checkbox, Field, Select, frameworkLabel } from '@/components/ui'
 import { useErrorText } from '@/i18n/errors'
 import type { Client, GapAnalysisResponse } from '@/lib/types'
 import { FRAMEWORK_KEYS, isFrameworkKey, type FrameworkKey } from '@/components/clienti/clients-api'
 import { clientToProfile } from '@/components/clienti/ComplianceTab'
-import { STATUS_SUMMARY_KEYS, complianceAssessment, confidenceAssessment, statusMeta } from '@/components/clienti/compliance'
+import { RequirementsChecklist, checklistCounts } from '@/components/clienti/RequirementsChecklist'
 import { formatIsoDateTime } from '@/components/clienti/format'
 import {
   REPORT_TYPES,
@@ -116,7 +116,6 @@ export function ReportGenerator({
     try {
       if (demoMode) {
         const analyses = await runDemoAnalyses(selected, profile)
-        const avg = analyses.reduce((sum, a) => sum + (a.overall_score ?? 0), 0) / analyses.length
         const item: ReportHistoryItem = {
           id: `demo-${Date.now()}`,
           report_type: type,
@@ -124,7 +123,8 @@ export function ReportGenerator({
           frameworks: type === 'executive_summary' ? selected : null,
           company_name: client.name,
           generated_at: at,
-          overall_score: avg,
+          // No score: the analysis had no document of the client to rest on.
+          overall_score: null,
         }
         saveDemoReport(item)
         setOutcome({ kind: 'demo', analyses, at })
@@ -285,45 +285,22 @@ export function ReportGenerator({
               {t('generator.previewMeta', { date: formatIsoDateTime(outcome.at) ?? '' })}
             </p>
           </div>
+          <p className="max-w-prose text-body text-ink-2">{t('generator.previewExplain')}</p>
           {outcome.analyses.map((analysis, i) => {
-            const overall = complianceAssessment(analysis.overall_score ?? 0, tRoot)
-            const confidence = confidenceAssessment(analysis.confidence_score ?? 0, tRoot)
-            const summary = (analysis.status_summary ?? {}) as Record<string, number | undefined>
+            const requirements = analysis.requirements ?? []
+            const counts = checklistCounts(requirements)
+            const titleId = `report-preview-${analysis.framework}-${i}`
             return (
-              <article key={`${analysis.framework}-${i}`} className="rounded-lg border border-rule bg-surface p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h4 className="text-h4">{frameworkLabel(analysis.framework, tRoot)}</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={overall.tone} title={overall.sublabel}>
-                      {overall.label}
-                    </Badge>
-                    <Badge tone={confidence.tone} title={confidence.sublabel}>
-                      {confidence.label}
-                    </Badge>
-                  </div>
+              <article key={`${analysis.framework}-${i}`} className="space-y-3" aria-labelledby={titleId}>
+                <div>
+                  <h4 id={titleId} className="text-h4">
+                    {frameworkLabel(analysis.framework, tRoot)}
+                  </h4>
+                  <p className="mt-1 text-small text-ink-2">
+                    {tRoot('clienti.compliance.counts', { toVerify: counts.toVerify, notApplicable: counts.notApplicable })}
+                  </p>
                 </div>
-                <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                  {STATUS_SUMMARY_KEYS.map(({ key, status }) => {
-                    const count = summary[key]
-                    if (typeof count !== 'number') return null
-                    const meta = statusMeta(status, tRoot)
-                    return (
-                      <div key={key} className="flex items-center gap-2">
-                        <dt>
-                          <Badge tone={meta.tone}>{meta.label}</Badge>
-                        </dt>
-                        <dd className="text-body font-medium tabular">{count}</dd>
-                      </div>
-                    )
-                  })}
-                </dl>
-                {analysis.top_recommendations?.length > 0 && (
-                  <ol className="mt-4 max-w-prose list-decimal space-y-1 pl-5 text-body text-ink">
-                    {analysis.top_recommendations.slice(0, 3).map((rec, j) => (
-                      <li key={j}>{rec}</li>
-                    ))}
-                  </ol>
-                )}
+                {requirements.length > 0 && <RequirementsChecklist requirements={requirements} labelledBy={titleId} />}
               </article>
             )
           })}

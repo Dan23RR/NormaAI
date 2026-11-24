@@ -27,6 +27,8 @@ import json
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 import src.agents.graph as graph_mod
 from src.agents.graph import (
     _ERROR_RESPONSE,
@@ -700,6 +702,27 @@ class TestLanguagePropagation:
             graph_mod.run_qa("q")
         assert seen["language"] == ""
 
+    @pytest.mark.parametrize("language, name", [("en", "English"), ("it", "Italian")])
+    async def test_arun_qa_asks_the_model_for_the_request_language(self, language, name):
+        # The REAL async graph and Q&A node: the request language reaches the
+        # system prompt the model receives, whatever the question's language.
+        from src.agents import nodes as nodes_mod
+
+        chunk = {"id": "c1", "framework": "GDPR", "article": "Art. 33", "text": "72 hours."}
+        llm = AsyncMock(return_value={"answer": "A", "citations": [], "confidence_score": 0.9})
+        prev_async = graph_mod._async_graph_instance
+        with (
+            patch.object(graph_mod, "retrieve_node", lambda state: {"retrieved_chunks": [chunk]}),
+            patch.object(nodes_mod, "acall_llm", llm),
+        ):
+            graph_mod._async_graph_instance = None
+            try:
+                await graph_mod.arun_qa("Entro quando si notifica?", language=language)
+            finally:
+                graph_mod._async_graph_instance = prev_async
+        system_prompt, _ = llm.await_args_list[0].args
+        assert f"every explanation in {name}" in system_prompt
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Retrieval failure: the knowledge base is down -> honest 503 payload, no LLM call
@@ -804,6 +827,57 @@ class TestCitationVerificationEndToEnd:
         assert (out["verified_citations"], out["citations_total"]) == (1, 2)
         # One citation is verified: the answer is not flagged by the policy.
         assert out["caveats"] == []
+
+
+class TestRelevanceThresholdEndToEnd:
+    """The REAL async graph with QA_MIN_DENSE_SCORE set: retrieval and the model replaced."""
+
+    @staticmethod
+    async def _ask(best, threshold):
+        from src.agents import nodes as nodes_mod
+        from src.config import get_settings
+
+        chunk = {
+            "id": "pt-vat",
+            "framework": "TAXONOMY",
+            "article": "Art. 8",
+            "text": "Article 8 ...",
+            "dense_score": best,
+        }
+        llm = AsyncMock(return_value={"answer": "A", "citations": [], "confidence_score": 0.9})
+        settings = get_settings().model_copy(update={"qa_min_dense_score": threshold})
+        prev_async = graph_mod._async_graph_instance
+        with (
+            patch.object(
+                graph_mod,
+                "retrieve_node",
+                lambda state: {
+                    "retrieved_chunks": [chunk],
+                    "retrieval_best_dense_score": best,
+                },
+            ),
+            patch.object(nodes_mod, "acall_llm", llm),
+            patch("src.config.get_settings", return_value=settings),
+        ):
+            graph_mod._async_graph_instance = None
+            try:
+                out = await graph_mod.arun_qa("Qual è l'aliquota IVA ordinaria?", language="it")
+            finally:
+                graph_mod._async_graph_instance = prev_async
+        return out, llm
+
+    async def test_a_question_far_from_every_passage_abstains(self):
+        out, llm = await self._ask(best=0.61, threshold=0.8)
+        llm.assert_not_awaited()
+        assert out["abstention_reason"] == "low_relevance"
+        assert out["best_dense_score"] == 0.61
+        assert out["requires_expert_review"] is True
+
+    async def test_a_close_passage_is_answered_and_reports_its_score(self):
+        out, llm = await self._ask(best=0.87, threshold=0.8)
+        llm.assert_awaited_once()
+        assert "abstention_reason" not in out
+        assert out["best_dense_score"] == 0.87
 
 
 # ─────────────────────────────────────────────────────────────────────────────

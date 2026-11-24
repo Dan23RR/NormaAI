@@ -1,0 +1,39 @@
+{
+ "_source": {
+  "endpoint": "POST https://api.normattiva.it/t/normattiva.api/bff-opendata/v1/api/v1/atto/dettaglio-atto-urn",
+  "urn": "urn:nir:stato:legge:1970-05-20;300~art18",
+  "retrieved": "2026-11-11",
+  "trimmed": "first comma kept; of the update notes, those that report a ruling of unconstitutionality"
+ },
+ "status": 200,
+ "body": {
+  "code": null,
+  "message": null,
+  "data": {
+   "atto": {
+    "titolo": "LEGGE 20 maggio 1970, n. 300",
+    "sottoTitolo": "Norme  sulla  tutela  della liberta' e dignita' dei lavoratori, della\nliberta' sindacale e dell'attivita' sindacale, nei luoghi di lavoro e\nnorme sul collocamento.\n",
+    "articoloHtml": "<div class=\"bodyTesto\">\n        <h2 class=\"preamble-title-akn\"></h2>\n        <h2 class=\"preamble-end-akn\"></h2>\n        <h2 class=\"article-num-akn\" id=\"art_18\">Art. 18</h2>\n        <div class=\"article-heading-akn\"> Tutela del lavoratore in caso di licenziamento illegittimo</div>\n        <span class=\"art-just-text-akn\">\n            <br>\n             \n            <br>\n             Il giudice, con la sentenza con la quale dichiara la nullit&agrave; del licenziamento perch&egrave; discriminatorio ai sensi dell'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:1990-05-11;108~art3\" target=\"_blank\">articolo 3 della legge 11 maggio 1990, n. 108</a>, ovvero intimato in concomitanza col matrimonio ai sensi dell'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2006-04-11;198~art35\" target=\"_blank\">articolo 35 del codice delle pari opportunit&agrave; tra uomo e donna</a>, di cui al <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2006-04-11;198\" target=\"_blank\">decreto legislativo 11 aprile 2006, n. 198</a>, o in violazione dei divieti di licenziamento di cui all'articolo 54, commi 1, 6, 7 e 9, del testo unico delle disposizioni legislative in materia di tutela e sostegno della maternit&agrave; e della paternit&agrave;, di cui al <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2001-03-26;151\" target=\"_blank\">decreto legislativo 26 marzo 2001, n. 151</a>, e successive modificazioni, ovvero perch&egrave; riconducibile ad altri casi di nullit&agrave; previsti dalla legge o determinato da un motivo illecito determinante ai sensi dell'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:codice.civile:1942-03-16;262~art1345\" target=\"_blank\">articolo 1345 del codice civile</a>, ordina al datore di lavoro, imprenditore o non imprenditore, la reintegrazione del lavoratore nel posto di lavoro, indipendentemente dal motivo formalmente addotto e quale che sia il numero dei dipendenti occupati dal datore di lavoro. La presente disposizione si applica anche ai dirigenti. A seguito dell'ordine di reintegrazione, il rapporto di lavoro si intende risolto quando il lavoratore non abbia ripreso servizio entro trenta giorni dall'invito del datore di lavoro, salvo il caso in cui abbia richiesto l'indennit&agrave; di cui al terzo comma del presente articolo.Il regime di cui al presente articolo si applica anche al licenziamento dichiarato inefficace perch&egrave; intimato in forma orale. \n            <br>\n             Il giudice, con la sentenza di cui al primo comma, condanna altres&igrave; il datore di lavoro al risarcimento del danno subito dal lavoratore per il licenziamento di cui sia stata accertata la nullit&agrave;, stabilendo a tal fine un'indennit&agrave; commisurata all'ultima retribuzione globale di fatto maturata dal giorno del licenziamento sino a quello dell'effettiva reintegrazione, dedotto quanto percepito, nel periodo di estromissione, per lo svolgimento di altre attivit&agrave; lavorative. In ogni caso la misura del risarcimento non potr&agrave; essere inferiore a cinque mensilit&agrave; della retribuzione globale di fatto. Il datore di lavoro &egrave; condannato inoltre, per il medesimo periodo, al versamento dei contributi previdenziali e assistenziali. \n            <br>\n        </span>\n        <div class=\"art_aggiornamento-akn\">\n            <div class=\"art_aggiornamento_separator-akn\">---------------</div>\n            <div class=\"art_aggiornamento_title-akn\">AGGIORNAMENTO (28)</div>\n            <div class=\"art_aggiornamento_testo-akn\">\n                <br>\n                 La Corte Costituzionale, con sentenza 24 febbraio - 1 aprile 2021, n. 59 (in G.U. 1&ordf; s.s. 07/04/2021, n. 14), ha dichiarato \"l'illegittimit&agrave; costituzionale dell'art. 18, settimo comma, secondo periodo, della <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:1970-05-20;300\" target=\"_blank\">legge 20 maggio 1970, n. 300</a> (Norme sulla tutela della libert&agrave; e dignit&agrave; dei lavoratori, della libert&agrave; sindacale e dell'attivit&agrave; sindacale, nei luoghi di lavoro e norme sul collocamento), come modificato dall'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2012-06-28;92~art1-com42-letb\" target=\"_blank\">art. 1, comma 42, lettera b), della legge 28 giugno 2012, n. 92</a> (Disposizioni in materia di riforma del mercato del lavoro in una prospettiva di crescita), nella parte in cui prevede che il giudice, quando accerti la manifesta insussistenza del fatto posto a base del licenziamento per giustificato motivo oggettivo, &laquo;pu&ograve; altres&igrave; applicare&raquo; - invece che &laquo;applica altres&igrave;&raquo; - la disciplina di cui al medesimo art. 18, quarto comma\". \n            </div>\n        </div>\n        <div class=\"art_aggiornamento-akn\">\n            <div class=\"art_aggiornamento_separator-akn\">---------------</div>\n            <div class=\"art_aggiornamento_title-akn\">AGGIORNAMENTO (30)</div>\n            <div class=\"art_aggiornamento_testo-akn\">\n                <br>\n                 La Corte Costituzionale, con sentenza 7 aprile - 19 maggio 2022, n. 125 (in G.U. 1&ordf; s.s. 25/05/2022, n. 21), ha dichiarato \"l'illegittimit&agrave; costituzionale dell'art. 18, settimo comma, secondo periodo, della <a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:1970-05-20;300\" target=\"_blank\">legge 20 maggio 1970, n. 300</a> (Norme sulla tutela della libert&agrave; e dignit&agrave; dei lavoratori, della libert&agrave; sindacale e dell'attivit&agrave; sindacale nei luoghi di lavoro e norme sul collocamento), come modificato dall'<a href=\"http://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:legge:2012-06-28;92~art1-com42-letb\" target=\"_blank\">art. 1, comma 42, lettera b), della legge 28 giugno 2012, n. 92</a> (Disposizioni in materia di riforma del mercato del lavoro in una prospettiva di crescita), limitatamente alla parola &laquo;manifesta&raquo;\". \n            </div>\n        </div>\n    </div>",
+    "tipoProvvedimentoDescrizione": "LEGGE",
+    "tipoProvvedimentoCodice": "PLE",
+    "annoProvvedimento": 1970,
+    "meseProvvedimento": 5,
+    "giornoProvvedimento": 20,
+    "numeroProvvedimento": 300,
+    "tipoSupplementoCode": "NO",
+    "numeroSupplemento": 0,
+    "annoGU": 1970,
+    "meseGU": 5,
+    "giornoGU": 27,
+    "numeroGU": 131,
+    "dataPubblicazioneInGazzetta": null,
+    "articoloDataInizioVigenza": "20220526",
+    "articoloDataFineVigenza": "99999999",
+    "testoInVigore": null
+   },
+   "lista": null,
+   "message": "ricerca effettuata con successo"
+  },
+  "success": true
+ }
+}

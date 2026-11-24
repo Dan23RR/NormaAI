@@ -7,16 +7,34 @@ Generates professional compliance reports using fpdf2:
 - Corporate branding, requirement tables, risk matrices, recommendations
 
 Output: PDF bytes ready for HTTP streaming or file storage.
+
+Every report is the output of the gap-analysis agent, a language model: it is
+marked as AI-generated (AI Act art. 50(2)) in a machine-readable way, in the
+document information (Subject, Keywords ``AIGenerated: true``, Author, Creator)
+and in the XMP metadata (``normaai:AIGenerated``, the generating system and
+model, and the IPTC digital source type), and on every page with the line
+``AI_NOTICE_IT``.
 """
 
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape as _xml_escape
 
 from fpdf import FPDF
 
 logger = logging.getLogger(__name__)
+
+# ---- AI-generated content marking (AI Act art. 50(2)) ---------------------
+AI_NOTICE_IT = "Contenuto generato con un sistema di IA (NormaAI): verificare sulle fonti ufficiali"
+AI_GENERATING_SYSTEM = "NormaAI"
+# IPTC NewsCodes digital source type: media that combines content made by a
+# trained generative model with other content (here, the report template).
+_IPTC_DIGITAL_SOURCE_TYPE = (
+    "http://cv.iptc.org/newscodes/digitalsourcetype/compositeWithTrainedAlgorithmicMedia"
+)
+_NORMAAI_XMP_NS = "https://normaai.org/ns/ai-content/1.0/"
 
 # ---- Fonts ----------------------------------------------------------------
 # fpdf2's core fonts (Helvetica) only cover Latin-1: "€", typographic quotes
@@ -91,6 +109,16 @@ _STATUS_LABELS = {
 }
 
 
+def _generating_model() -> str:
+    """The language model the deployment answers with ("" when unknown)."""
+    try:
+        from src.config import get_settings
+
+        return str(get_settings().active_model or "")
+    except Exception:  # noqa: BLE001 - metadata must never fail a report
+        return ""
+
+
 class _NormaPDF(FPDF):
     """Thin FPDF subclass: Unicode font, consistent page footer.
 
@@ -107,12 +135,13 @@ class _NormaPDF(FPDF):
             "It does not constitute legal advice. Consult qualified professionals "
             "before making compliance decisions."
         )
-        # Append the corpus as-of date when configured, so the reader knows how
-        # current the underlying law is (the corpus is frozen between re-seeds).
+        # Append the corpus date, so the reader knows how current the underlying
+        # law is: the one recorded in the collection, else CORPUS_AS_OF.
         try:
+            from src.api.app_state import corpus_as_of
             from src.config import get_settings
 
-            as_of = getattr(get_settings(), "corpus_as_of", "")
+            as_of = corpus_as_of(getattr(get_settings(), "corpus_as_of", ""))
             if as_of:
                 self._disclaimer += (
                     f" Regulatory corpus as of {as_of}; verify the primary source for changes."
@@ -156,12 +185,57 @@ class _NormaPDF(FPDF):
         return super().multi_cell(w, h, self.safe_text(text), *args, **kwargs)
 
     def footer(self):
-        self.set_y(-20)
+        self.set_y(-24)
+        self.set_font(self.report_font, "B", 7)
+        self.set_text_color(*_TEXT_DARK)
+        self.cell(0, 4, AI_NOTICE_IT, align="C", new_x="LMARGIN", new_y="NEXT")
         self.set_font(self.report_font, "I", 7)
         self.set_text_color(*_TEXT_MUTED)
         self.cell(0, 4, self._disclaimer, align="C", new_x="LMARGIN", new_y="NEXT")
         self.set_font(self.report_font, "", 8)
         self.cell(0, 4, f"Page {self.page_no()}/{{nb}}", align="C")
+
+    def mark_ai_generated(self, title: str, model: str = "") -> None:
+        """Machine-readable marking of AI-generated content (AI Act art. 50(2)).
+
+        Document information: Title, Author and Creator (the generating system),
+        Subject (``AI_NOTICE_IT``) and Keywords ``AIGenerated: true``. XMP: the
+        same, plus ``normaai:AIGenerated``, ``normaai:GeneratingSystem``,
+        ``normaai:Model`` and the IPTC ``DigitalSourceType`` of generative content.
+        """
+        created = datetime.now(UTC).replace(microsecond=0)
+        keywords = f"AIGenerated: true; GeneratingSystem: {AI_GENERATING_SYSTEM}"
+        if model:
+            keywords += f"; Model: {model}"
+        self.set_title(title)
+        self.set_author(AI_GENERATING_SYSTEM)
+        self.set_creator(f"{AI_GENERATING_SYSTEM} (AI system)")
+        self.set_subject(AI_NOTICE_IT)
+        self.set_keywords(keywords)
+        self.set_creation_date(created)
+        self.set_xmp_metadata(
+            f"""<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:xmp="http://ns.adobe.com/xap/1.0/"
+    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"
+    xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/"
+    xmlns:normaai="{_NORMAAI_XMP_NS}">
+   <dc:title><rdf:Alt><rdf:li xml:lang="x-default">{_xml_escape(title)}</rdf:li></rdf:Alt></dc:title>
+   <dc:creator><rdf:Seq><rdf:li>{AI_GENERATING_SYSTEM}</rdf:li></rdf:Seq></dc:creator>
+   <dc:description><rdf:Alt><rdf:li xml:lang="x-default">{_xml_escape(AI_NOTICE_IT)}</rdf:li></rdf:Alt></dc:description>
+   <xmp:CreatorTool>{AI_GENERATING_SYSTEM}</xmp:CreatorTool>
+   <xmp:CreateDate>{created.isoformat()}</xmp:CreateDate>
+   <pdf:Keywords>{_xml_escape(keywords)}</pdf:Keywords>
+   <Iptc4xmpExt:DigitalSourceType>{_IPTC_DIGITAL_SOURCE_TYPE}</Iptc4xmpExt:DigitalSourceType>
+   <normaai:AIGenerated>true</normaai:AIGenerated>
+   <normaai:GeneratingSystem>{AI_GENERATING_SYSTEM}</normaai:GeneratingSystem>
+   <normaai:Model>{_xml_escape(model)}</normaai:Model>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>"""
+        )
 
 
 class ComplianceReportGenerator:
@@ -191,6 +265,7 @@ class ComplianceReportGenerator:
         """
         pdf = self._create_pdf()
         now = datetime.now(UTC)
+        pdf.mark_ai_generated(f"{framework} Compliance Gap Analysis", _generating_model())
 
         # --- Page 1: Title & Executive Summary ---
         pdf.add_page()
@@ -285,6 +360,7 @@ class ComplianceReportGenerator:
         """
         pdf = self._create_pdf()
         now = datetime.now(UTC)
+        pdf.mark_ai_generated("Executive Compliance Summary", _generating_model())
 
         pdf.add_page()
         self._add_header(

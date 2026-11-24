@@ -173,9 +173,10 @@ def _build_graph(*, use_async_nodes: bool = False):
         """
         try:
             config = CoVeConfig(enabled=True)
-            # Pull shared clients from app_state: indexer (evidence search) and
-            # normattiva_client (Italian-law URN validation). Without the latter,
-            # URN validation is silently skipped - wire it so the claim holds.
+            # Pull shared clients from app_state: the indexer (evidence search)
+            # and normattiva_client, which stays None since the old Normattiva
+            # client was removed: CoVe then skips Italian URN citations
+            # (src/api/lifespan.py; the document check reads Italian law).
             indexer = None
             normattiva_client = None
             try:

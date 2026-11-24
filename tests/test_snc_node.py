@@ -36,6 +36,20 @@ from src.agents.snc_node import (
     snc_route_to_next,
 )
 
+# An answer whose one citation is verified in the evidence below: neither the
+# grounding guard nor the citation policy flags it (an answer that cites nothing
+# is flagged for review), so the SNC verdict alone sets the review flag.
+_PASSAGE = (
+    "Articolo 33\n"
+    "Il titolare del trattamento notifica la violazione all'autorità di controllo competente."
+)
+_CITED = {
+    "framework": "GDPR",
+    "reference": "Art. 33",
+    "quote_snippet": "Il titolare del trattamento notifica la violazione",
+}
+_CHUNK = {"framework": "GDPR", "article": "Art. 33", "text": _PASSAGE}
+
 
 def _make_decision(action="ADMIT_HIGH", trust=0.9):
     """Build a deterministic SNCDecision for node-level tests."""
@@ -131,6 +145,19 @@ class TestBuildUserMessage:
         msg = _build_user_message({"query": "Q", "company_profile": None, "retrieved_chunks": None})
         assert "Company profile:" not in msg
         assert "Regulatory context:" not in msg
+
+    def test_qa_resamples_get_the_request_language(self):
+        # The resample system prompt is the raw template, without the language
+        # instruction the agent node fills in: the user message carries it.
+        msg = _build_user_message({"query": "Quando?", "task_type": "qa", "language": "en"})
+        assert "Answer language: Write the answer" in msg
+        assert "every explanation in English" in msg
+
+    def test_no_language_line_without_a_language_or_outside_qa(self):
+        assert "Answer language" not in _build_user_message({"query": "Q", "task_type": "qa"})
+        assert "Answer language" not in _build_user_message(
+            {"query": "CSRD", "task_type": "gap_analysis", "language": "en"}
+        )
 
 
 # ─── _build_system_prompt_for_resample ────────────────────────────────
@@ -254,7 +281,10 @@ class TestAsyncNodeShortCircuits:
 class TestAsyncNodeHappyPath:
     async def test_writes_decision_into_state(self):
         cfg = SNCConfig(enabled=True)
-        decision = _make_decision(action="ADMIT_MID", trust=0.7)
+        decision = replace(
+            _make_decision(action="ADMIT_MID", trust=0.7),
+            modal_answer={"answer": "modal answer", "citations": [_CITED]},
+        )
         mocked_gov = AsyncMock(return_value=decision)
 
         with (
@@ -263,7 +293,10 @@ class TestAsyncNodeHappyPath:
             patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
             patch.object(snc_node, "snc_governance", mocked_gov),
         ):
-            state = {"result_json": json.dumps({"answer": "draft", "confidence_score": 0.7})}
+            state = {
+                "result_json": json.dumps({"answer": "draft", "confidence_score": 0.7}),
+                "retrieved_chunks": [_CHUNK],
+            }
             out = await async_snc_governance_node(state)
 
         assert out["snc_action"] == "ADMIT_MID"
@@ -281,6 +314,56 @@ class TestAsyncNodeHappyPath:
         assert out["snc_decision"]["action"] == "ADMIT_MID"
         assert out["snc_decision"]["n_clusters"] == 1
         mocked_gov.assert_awaited_once()
+
+    @pytest.mark.parametrize("reason", ["low_relevance", "no_sources"])
+    async def test_an_abstention_before_the_model_is_not_resampled(self, reason):
+        # The Q&A abstained without asking the model (no passage, or none close
+        # enough): resampling would ask it anyway and replace the abstention.
+        cfg = SNCConfig(enabled=True)
+        mocked_gov = AsyncMock(return_value=_make_decision())
+        draft = {"answer": "Non posso rispondere", "abstention_reason": reason}
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
+            patch.object(snc_node, "snc_governance", mocked_gov),
+        ):
+            state = {"result_json": json.dumps(draft)}
+            out = await async_snc_governance_node(state)
+        mocked_gov.assert_not_awaited()
+        assert json.loads(out["result_json"]) == draft
+
+    async def test_an_abstention_after_the_model_is_still_resampled(self):
+        # The strict citation policy abstains on what the model wrote: as before,
+        # the resamples run.
+        cfg = SNCConfig(enabled=True)
+        mocked_gov = AsyncMock(return_value=_make_decision(action="ADMIT_MID", trust=0.7))
+        draft = {"answer": "x", "abstention_reason": "unverified_citations"}
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
+            patch.object(snc_node, "snc_governance", mocked_gov),
+        ):
+            await async_snc_governance_node({"result_json": json.dumps(draft)})
+        mocked_gov.assert_awaited_once()
+
+    async def test_the_served_sample_keeps_the_retrieval_score(self):
+        cfg = SNCConfig(enabled=True)
+        mocked_gov = AsyncMock(return_value=_make_decision(action="ADMIT_MID", trust=0.7))
+        with (
+            patch.object(snc_node, "_config_from_settings", return_value=cfg),
+            patch.object(snc_node, "_build_system_prompt_for_resample", return_value="SYS"),
+            patch.object(snc_node, "_build_user_message", return_value="USER MSG"),
+            patch.object(snc_node, "snc_governance", mocked_gov),
+        ):
+            state = {
+                "result_json": json.dumps(
+                    {"answer": "draft", "confidence_score": 0.7, "best_dense_score": 0.8712}
+                )
+            }
+            out = await async_snc_governance_node(state)
+        assert json.loads(out["result_json"])["best_dense_score"] == 0.8712
 
     async def test_abstain_sets_requires_expert_review(self):
         cfg = SNCConfig(enabled=True)
@@ -961,7 +1044,8 @@ class TestBestDenseScore:
 
 class TestRetrievalSupportGate:
     def _admit_high_no_citations(self):
-        # No citations -> the grounding guard is a no-op, isolating the gate.
+        # One citation verified in the evidence: neither the grounding guard nor
+        # the citation policy flags it, isolating the gate.
         return SNCDecision(
             action="ADMIT_HIGH",
             trust=0.9,
@@ -969,8 +1053,8 @@ class TestRetrievalSupportGate:
             sigma_calib=0.0,
             t_comp=0.6,
             n_clusters=1,
-            modal_answer={"answer": "risposta", "citations": []},
-            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": []}],
+            modal_answer={"answer": "risposta", "citations": [_CITED]},
+            samples=[{"answer": "risposta", "confidence_score": 0.9, "citations": [_CITED]}],
         )
 
     async def _run(self, cfg, chunks):
@@ -986,7 +1070,7 @@ class TestRetrievalSupportGate:
                 "result_json": json.dumps(
                     {"answer": "d", "confidence_score": 0.9, "citations": []}
                 ),
-                "retrieved_chunks": chunks,
+                "retrieved_chunks": [{**c, "text": _PASSAGE, "article": "Art. 33"} for c in chunks],
             }
             return await async_snc_governance_node(state)
 

@@ -48,6 +48,7 @@ const NAMESPACES = [
   'login',
   'app',
   'chiedi',
+  'controlla',
   'ambito',
   'monitoraggio',
   'clienti',

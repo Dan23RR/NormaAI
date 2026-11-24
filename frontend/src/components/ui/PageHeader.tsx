@@ -22,7 +22,8 @@ export function PageHeader({
           <h1 className="text-h2 md:text-h1">{title}</h1>
           {description && <p className="mt-2 text-body text-ink-2">{description}</p>}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {/* May shrink to the width of the page, so that its buttons wrap on a phone. */}
+        {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {meta && <div className="mt-3 text-caption text-ink-3">{meta}</div>}
     </header>

@@ -2,9 +2,9 @@ name: CodeQL SAST
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'integration/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**']
   schedule:
     - cron: '30 3 * * 1'  # weekly Monday 03:30 UTC
 
@@ -23,7 +23,7 @@ jobs:
       matrix:
         language: [python, javascript-typescript]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:

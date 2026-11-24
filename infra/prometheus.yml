@@ -8,7 +8,12 @@ rule_files:
 scrape_configs:
   - job_name: 'normaai'
     metrics_path: '/api/v1/metrics/prometheus'
-    bearer_token: '${PROMETHEUS_BEARER_TOKEN}'
+    # Prometheus does not expand environment variables in this file: the token
+    # (PROMETHEUS_BEARER_TOKEN of .env, the one the app checks) reaches it as
+    # the compose secret prometheus_bearer_token (docker-compose.yml).
+    authorization:
+      type: Bearer
+      credentials_file: /run/secrets/prometheus_bearer_token
     static_configs:
       - targets: ['app:8000']
         labels:

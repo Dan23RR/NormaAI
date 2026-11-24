@@ -8,7 +8,8 @@ Covers:
   joins it (invite role), the redemption UPDATE is conditional (race-safe) and
   runs BEFORE the user row is created, a lost race -> 403
 - POST/GET /api/v1/auth/invites: admin-only, own-org by default, staff-only
-  for other organizations / org-less invites, validation, listing scope
+  (users.is_staff on a verified email) for other organizations / org-less
+  invites, validation, listing scope
 - the invite helpers (code hashing, status) and the 008 migration metadata
 
 Pattern notes
@@ -227,13 +228,23 @@ def mode(app_objects):
 
 
 @pytest.fixture
-def staff_settings():
-    """Make STAFF_EMAIL staff for the duration of the test."""
-    from src.config import get_settings
+def staff_settings(monkeypatch):
+    """Make the account behind a STAFF_EMAIL token staff (users.is_staff, verified email).
 
-    patched = get_settings().model_copy(update={"staff_emails": [STAFF_EMAIL]})
-    with patch("src.auth.dependencies.get_settings", return_value=patched):
-        yield patched
+    Staff is a database flag read by the account check of get_current_user; the
+    email claim only tells this stand-in which token is the staff one.
+    """
+    from dataclasses import replace
+
+    from src.auth import dependencies
+
+    async def _resolve(payload):
+        account = dependencies.account_from_claims(payload)
+        if payload.email == STAFF_EMAIL:
+            return replace(account, is_staff=True, email_verified=True)
+        return account
+
+    monkeypatch.setattr(dependencies, "resolve_account", _resolve)
 
 
 def _headers(role="admin", email=None, org_id=None, user_id=None):

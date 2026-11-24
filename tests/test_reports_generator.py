@@ -555,3 +555,63 @@ class TestStatusCountingLogic:
         assert out_large.startswith(PDF_MAGIC)
         assert out_small.startswith(PDF_MAGIC)
         assert len(out_large) > len(out_small)
+
+
+# ---------------------------------------------------------------------------
+# AI-generated content marking (AI Act art. 50(2))
+# ---------------------------------------------------------------------------
+
+
+class TestAiGeneratedMarking:
+    """Every report says, to machines and to people, that an AI system made it."""
+
+    def _reports(self):
+        gen = ComplianceReportGenerator()
+        gap = _gap_data_full()
+        return {
+            "gap": gen.generate_gap_report("Acme Srl", "CSRD", gap, _company_profile()),
+            "summary": gen.generate_executive_summary(
+                "Acme Srl", [gap, dict(gap, framework="DORA")]
+            ),
+        }
+
+    def test_document_information_says_ai_generated(self):
+        pypdf = pytest.importorskip("pypdf")
+        from src.reports.generator import AI_NOTICE_IT
+
+        for kind, out in self._reports().items():
+            info = pypdf.PdfReader(io.BytesIO(out)).metadata
+            assert "AIGenerated: true" in info["/Keywords"], kind
+            assert "GeneratingSystem: NormaAI" in info["/Keywords"], kind
+            assert info["/Subject"] == AI_NOTICE_IT, kind
+            assert info["/Author"] == "NormaAI", kind
+            assert "NormaAI" in info["/Creator"], kind
+            assert info["/Title"], kind
+
+    def test_xmp_metadata_carries_the_custom_and_the_iptc_keys(self):
+        pypdf = pytest.importorskip("pypdf")
+        for kind, out in self._reports().items():
+            reader = pypdf.PdfReader(io.BytesIO(out))
+            assert reader.xmp_metadata is not None, kind
+            assert b"<normaai:AIGenerated>true</normaai:AIGenerated>" in out, kind
+            assert b"<normaai:GeneratingSystem>NormaAI</normaai:GeneratingSystem>" in out, kind
+            assert b"digitalsourcetype/compositeWithTrainedAlgorithmicMedia" in out, kind
+            assert b"<normaai:Model>" in out, kind
+
+    def test_the_model_is_named_and_escaped(self):
+        with patch("src.reports.generator._generating_model", return_value="m<odel>&1"):
+            out = ComplianceReportGenerator().generate_gap_report("Acme", "GDPR", _gap_data_full())
+        assert b"<normaai:Model>m&lt;odel&gt;&amp;1</normaai:Model>" in out
+
+    def test_every_page_shows_the_notice(self):
+        pypdf = pytest.importorskip("pypdf")
+        from src.reports.generator import AI_NOTICE_IT
+
+        gen = ComplianceReportGenerator()
+        gap = _gap_data_full()
+        gap["requirements"] = gap["requirements"] * 12  # several pages
+        out = gen.generate_gap_report("Acme Srl", "CSRD", gap)
+        pages = pypdf.PdfReader(io.BytesIO(out)).pages
+        assert len(pages) > 1
+        for page in pages:
+            assert AI_NOTICE_IT in page.extract_text()

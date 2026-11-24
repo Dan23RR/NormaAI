@@ -200,16 +200,25 @@ def setup_sentry(settings: Settings | None = None) -> bool:
         return False
 
     environment = getattr(settings, "app_env", "development")
+    # The git SHA of the image (APP_VERSION, GET /health "version"), so an error
+    # names the build that raised it; the package version outside a build.
+    build = getattr(settings, "app_version", "")
+    release = build if isinstance(build, str) and build and build != "dev" else APP_VERSION
     sentry_sdk.init(
         dsn=dsn,
         environment=environment,
-        release=f"normaai@{APP_VERSION}",
+        release=f"normaai@{release}",
         traces_sample_rate=0.1,
         profiles_sample_rate=0.1,
         send_default_pii=False,
+        # Questions, company profiles and uploaded documents travel in request
+        # bodies and sit in local variables: neither is sent to Sentry. An event
+        # carries the error, the stack and the route.
+        max_request_body_size="never",
+        include_local_variables=False,
         integrations=[StarletteIntegration(), FastApiIntegration()],
     )
-    logger.info("sentry_initialized", extra={"environment": environment})
+    logger.info("sentry_initialized", extra={"environment": environment, "release": release})
     return True
 
 
@@ -279,7 +288,7 @@ if _metrics_available:
     LLM_TOKENS = Counter(
         "normaai_llm_tokens_total",
         "Total LLM tokens consumed",
-        ["provider", "direction"],  # direction: input/output
+        ["provider", "model", "direction"],  # direction: input/output
     )
 
     QDRANT_QUERY_LATENCY = Histogram(
@@ -295,6 +304,14 @@ if _metrics_available:
         "normaai_circuit_breaker_state",
         "Circuit breaker state (0=closed, 1=half_open, 2=open)",
         ["service"],
+    )
+
+    # Every call a circuit breaker of src/resilience.py records (llm, qdrant,
+    # redis, local_llm): the rate of failures behind the alert LLMErrorRateHigh.
+    CIRCUIT_OUTCOMES = Counter(
+        "normaai_circuit_outcomes_total",
+        "Calls recorded by a circuit breaker, by outcome",
+        ["service", "outcome"],  # outcome: success / failure
     )
 
     ACTIVE_REQUESTS = Gauge("normaai_active_requests", "Currently processing requests")
@@ -366,6 +383,47 @@ def get_metrics_response():
     return generate_latest(), CONTENT_TYPE_LATEST
 
 
+def record_http_request(method: str, endpoint: str, status_code: int, seconds: float) -> None:
+    """Count one HTTP request and its latency, by method, route and status.
+
+    ``endpoint`` is the route template (``/api/v1/documents/{check_id}``), never
+    the raw path: one series per route, whatever ids or probes arrive. Called by
+    the timing middleware (src/api/middleware.py). Each uvicorn worker keeps its
+    own counters, and a scrape reads the worker that answers it.
+    """
+    if not _metrics_available:
+        return
+    REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code=str(status_code)).inc()
+    REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(seconds)
+
+
+def track_active_request(delta: int) -> None:
+    """Add 1 when a request starts and -1 when it ends (normaai_active_requests)."""
+    if _metrics_available:
+        ACTIVE_REQUESTS.inc(delta)
+
+
+# Values of normaai_circuit_breaker_state, as its help text says.
+CIRCUIT_STATE_VALUES = {"closed": 0, "half_open": 1, "open": 2}
+
+
+def record_circuit(service: str, state: str, outcome: str | None = None) -> None:
+    """Publish a circuit breaker's state and, when given, the outcome of a call.
+
+    ``state`` is the value of src.resilience.CircuitState (closed, half_open,
+    open); ``outcome`` is ``success`` or ``failure``. Never raises: metrics must
+    not break the call they describe.
+    """
+    if not _metrics_available:
+        return
+    try:
+        CIRCUIT_STATE.labels(service=service).set(CIRCUIT_STATE_VALUES.get(state, 0))
+        if outcome:
+            CIRCUIT_OUTCOMES.labels(service=service, outcome=outcome).inc()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("circuit_metric_failed", extra={"service": service, "error": str(e)})
+
+
 @contextmanager
 def track_llm_call(provider: str, model: str):
     """Context manager to track LLM call metrics."""
@@ -383,8 +441,12 @@ def track_llm_call(provider: str, model: str):
             LLM_CALL_LATENCY.labels(provider=provider, model=model).observe(elapsed)
 
 
-def record_llm_tokens(provider: str, input_tokens: int, output_tokens: int) -> None:
-    """Record LLM token usage for cost tracking."""
+def record_llm_tokens(provider: str, model: str, input_tokens: int, output_tokens: int) -> None:
+    """Record the tokens of one LLM call for cost tracking (src.agents.llm.record_token_usage).
+
+    A no-op without prometheus_client: the call's ``llm_token_usage`` log line
+    carries the same numbers.
+    """
     if _metrics_available:
-        LLM_TOKENS.labels(provider=provider, direction="input").inc(input_tokens)
-        LLM_TOKENS.labels(provider=provider, direction="output").inc(output_tokens)
+        LLM_TOKENS.labels(provider=provider, model=model, direction="input").inc(input_tokens)
+        LLM_TOKENS.labels(provider=provider, model=model, direction="output").inc(output_tokens)

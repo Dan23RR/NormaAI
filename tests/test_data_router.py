@@ -1,8 +1,8 @@
 """Tests for the data router (src/api/routers/data.py).
 
 Covers the three endpoints exposed under /api/v1:
-- POST /api/v1/crawl           (auth-required, EUR-Lex crawl)
-- POST /api/v1/documents/upload (auth-required, requires Qdrant, NLP pipeline)
+- POST /api/v1/crawl           (staff only, EUR-Lex crawl)
+- POST /api/v1/documents/upload (closed: 410 Gone for everyone, nothing read or stored)
 - GET  /api/v1/processors       (public, OCR engine status)
 
 Focus areas (per task brief):
@@ -54,18 +54,25 @@ STAFF_EMAIL = "ops@normaai.org"
 
 
 @pytest.fixture
-def staff_headers(test_user_id, test_org_id):
-    """Admin token whose ``email`` claim is in settings.staff_emails.
+def staff_headers(test_user_id, test_org_id, monkeypatch):
+    """Admin token of an account that the database says is staff, with a verified email.
 
-    /crawl re-indexes the shared corpus and is gated by ``require_staff``; the
-    staff list is read from settings at request time, so patch it for the test.
+    /crawl re-indexes the shared corpus and is gated by ``require_staff``, which
+    reads users.is_staff through the account check of get_current_user.
     """
-    from src.config import get_settings
+    from dataclasses import replace
 
-    staff_settings = get_settings().model_copy(update={"staff_emails": [STAFF_EMAIL]})
+    from src.auth import dependencies
+
+    async def _staff_account(payload):
+        account = dependencies.account_from_claims(payload)
+        if payload.sub == str(test_user_id):
+            return replace(account, is_staff=True, email_verified=True)
+        return account
+
+    monkeypatch.setattr(dependencies, "resolve_account", _staff_account)
     token = create_access_token(test_user_id, test_org_id, "admin", email=STAFF_EMAIL)
-    with patch("src.auth.dependencies.get_settings", return_value=staff_settings):
-        yield {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
@@ -167,9 +174,9 @@ class TestCrawlEndpoint:
         assert response.json()["detail"] == "Operazione riservata al personale NormaAI."
         mock_client.check_for_new_amendments.assert_not_called()
 
-    def test_crawl_staff_email_not_in_allowlist_is_403(self, client, test_user_id, test_org_id):
-        """An email claim alone is not enough: it must be in settings.staff_emails."""
-        token = create_access_token(test_user_id, test_org_id, "admin", email="someone@acme.com")
+    def test_crawl_staff_email_claim_alone_is_403(self, client, test_user_id, test_org_id):
+        """A staff address in the token's email claim is not enough: staff is a DB flag."""
+        token = create_access_token(test_user_id, test_org_id, "admin", email=STAFF_EMAIL)
         response = client.post(
             "/api/v1/crawl", json={}, headers={"Authorization": f"Bearer {token}"}
         )
@@ -244,127 +251,37 @@ class TestCrawlEndpoint:
 
 
 # ------------------------------------------------------------------ #
-#  POST /api/v1/documents/upload  (auth-required + Qdrant)            #
+#  POST /api/v1/documents/upload  (closed: 410 Gone)                  #
 # ------------------------------------------------------------------ #
 
 
 class TestUploadEndpoint:
-    def test_upload_requires_auth(self, client):
-        """No token -> 401 (auth dependency runs even with a valid multipart body)."""
-        response = client.post(
-            "/api/v1/documents/upload",
-            files={"file": ("doc.pdf", b"%PDF-1.4 data", "application/pdf")},
-        )
-        assert response.status_code == 401
+    """The legacy upload indexed a document for good; it is closed for everyone."""
 
-    def test_upload_missing_file_is_422(self, client, auth_headers):
-        """The file field is required (File(...)); omitting it is a validation error."""
-        response = client.post("/api/v1/documents/upload", headers=auth_headers)
-        assert response.status_code == 422
-
-    def test_upload_happy_path(self, client, auth_headers):
-        """Valid PDF -> pipeline mocked -> 200 with chunk count echoed back."""
+    @pytest.mark.parametrize("with_token", [True, False])
+    def test_upload_is_gone_and_points_to_the_check(self, client, auth_headers, with_token):
         mock_pipeline = MagicMock()
-        mock_pipeline.process_document.return_value = {"chunks_indexed": 7}
         with patch("src.pipeline.IngestionPipeline", return_value=mock_pipeline):
             response = client.post(
                 "/api/v1/documents/upload",
                 files={"file": ("report.pdf", b"%PDF-1.4 hello world", "application/pdf")},
-                headers=auth_headers,
+                headers=auth_headers if with_token else {},
             )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert data["data"]["filename"] == "report.pdf"
-        assert data["data"]["chunks_indexed"] == 7
-        assert data["data"]["size_bytes"] == len(b"%PDF-1.4 hello world")
+        assert response.status_code == 410
+        detail = response.json()["detail"]
+        assert "/api/v1/documents/check" in detail
+        assert "non viene conservato" in detail
+        # Nothing is read, extracted or indexed.
+        mock_pipeline.process_document.assert_not_called()
 
-    def test_upload_passes_org_id_to_pipeline(self, client, auth_headers, test_org_id):
-        """SEC-01: the upload must be tenant-scoped via org_id to process_document."""
-        mock_pipeline = MagicMock()
-        mock_pipeline.process_document.return_value = {"chunks_indexed": 1}
-        with patch("src.pipeline.IngestionPipeline", return_value=mock_pipeline):
-            response = client.post(
-                "/api/v1/documents/upload",
-                files={"file": ("x.pdf", b"%PDF data", "application/pdf")},
-                headers=auth_headers,
-            )
-        assert response.status_code == 200
-        _, kwargs = mock_pipeline.process_document.call_args
-        assert kwargs["org_id"] == str(test_org_id)
+    def test_upload_without_a_file_is_gone_too(self, client, auth_headers):
+        response = client.post("/api/v1/documents/upload", headers=auth_headers)
+        assert response.status_code == 410
 
-    def test_upload_with_framework_query_param(self, client, auth_headers):
-        """A valid framework enum is forwarded to the pipeline and echoed back."""
-        mock_pipeline = MagicMock()
-        mock_pipeline.process_document.return_value = {"chunks_indexed": 3}
-        with patch("src.pipeline.IngestionPipeline", return_value=mock_pipeline):
-            response = client.post(
-                "/api/v1/documents/upload?framework=CSRD",
-                files={"file": ("c.pdf", b"%PDF data", "application/pdf")},
-                headers=auth_headers,
-            )
-        assert response.status_code == 200
-        assert response.json()["data"]["framework"] == "CSRD"
-        _, kwargs = mock_pipeline.process_document.call_args
-        assert kwargs["framework"] == "CSRD"
-
-    def test_upload_invalid_framework_query_param_is_422(self, client, auth_headers):
-        """An unknown framework value fails FastAPI enum validation (422)."""
-        response = client.post(
-            "/api/v1/documents/upload?framework=NOT_A_FRAMEWORK",
-            files={"file": ("c.pdf", b"%PDF data", "application/pdf")},
-            headers=auth_headers,
-        )
-        assert response.status_code == 422
-
-    def test_upload_unsupported_extension_is_400(self, client, auth_headers):
-        """A .exe upload is rejected by the allowed-extensions check (400)."""
-        response = client.post(
-            "/api/v1/documents/upload",
-            files={"file": ("malware.exe", b"MZ\x90\x00", "application/octet-stream")},
-            headers=auth_headers,
-        )
-        assert response.status_code == 400
-        assert "Unsupported file type" in response.json()["detail"]
-
-    def test_upload_empty_file_is_400(self, client, auth_headers):
-        """Zero-byte content is rejected before the pipeline runs (400)."""
-        response = client.post(
-            "/api/v1/documents/upload",
-            files={"file": ("empty.pdf", b"", "application/pdf")},
-            headers=auth_headers,
-        )
-        assert response.status_code == 400
-        assert "Empty file" in response.json()["detail"]
-
-    def test_upload_pipeline_failure_returns_500(self, client, auth_headers):
-        """A pipeline exception is caught and sanitized into a 500."""
-        mock_pipeline = MagicMock()
-        mock_pipeline.process_document.side_effect = RuntimeError("OCR exploded")
-        with patch("src.pipeline.IngestionPipeline", return_value=mock_pipeline):
-            response = client.post(
-                "/api/v1/documents/upload",
-                files={"file": ("r.pdf", b"%PDF data", "application/pdf")},
-                headers=auth_headers,
-            )
-        assert response.status_code == 500
-        assert "logs" in response.json()["detail"].lower()
-
-    def test_upload_returns_503_when_qdrant_down(self, client, auth_headers):
-        """The _require_qdrant guard must 503 before any file processing."""
-        from src.api.main import app_state
-
-        original = app_state.qdrant_available
-        try:
-            app_state.qdrant_available = False
-            response = client.post(
-                "/api/v1/documents/upload",
-                files={"file": ("r.pdf", b"%PDF data", "application/pdf")},
-                headers=auth_headers,
-            )
-            assert response.status_code == 503
-        finally:
-            app_state.qdrant_available = original
+    def test_upload_is_marked_deprecated_in_the_schema(self, client):
+        operation = client.get("/openapi.json").json()["paths"]["/api/v1/documents/upload"]["post"]
+        assert operation["deprecated"] is True
+        assert "410" in operation["responses"]
 
 
 # ------------------------------------------------------------------ #

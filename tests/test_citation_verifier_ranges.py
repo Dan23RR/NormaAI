@@ -1,4 +1,4 @@
-"""Two right citations the live golden run of 2026-11-24 left unverified.
+"""Three right citations the live golden run of 2026-11-24 left unverified.
 
 - A range of paragraphs ("Art. 9(2)-(3)", "Art. 14(9)-(10)") was read as its
   first paragraph only: a quote of the second was "found in another paragraph".
@@ -6,11 +6,20 @@
   ([32024L1760, Art. 37] for the text Directive (EU) 2026/470 puts in the
   CSDDD); cited as the amending act's own article ([32026L0470, Art. 4]), where
   the wording stands too, it was "found in another act".
+- The article written into the framework field ("32026L0470, Art. 4") made a
+  framework key no act has, so the right quote matched nothing.
 """
 
 from __future__ import annotations
 
-from src.agents.citation_verifier import annotate_citations, cited_paragraphs, verify_citation
+import pytest
+
+from src.agents.citation_verifier import (
+    annotate_citations,
+    cited_paragraphs,
+    normalize_framework,
+    verify_citation,
+)
 
 ART_9 = (
     "Articolo 9\n"
@@ -109,3 +118,33 @@ def test_another_article_of_the_amending_act_is_not_verified() -> None:
     )
     assert cited["verified"] is False
     assert cited["found_elsewhere"] is True
+
+
+@pytest.mark.parametrize(
+    "written, key",
+    [
+        ("32026L0470, Art. 4", "32026L0470"),
+        ("32025L0794, Art. 2", "32025L0794"),
+        ("CELEX 32024R1689, art. 50(2)", "32024R1689"),
+        ("AI Act art. 50", "AI_ACT"),
+        ("AI Act, Recital 40", "AI_ACT"),
+        ("CRA - Annex I", "CRA"),
+        ("NIS2; Article 21", "NIS2"),
+        ("Direttiva CSDDD, articolo 37", "CSDDD"),
+        # Not a unit after an act: left as before.
+        ("EU Artificial Intelligence Act", "AI_ACT"),
+        ("Art. 4", "ART_4"),
+        ("Annex I", "ANNEX_I"),
+    ],
+)
+def test_a_unit_written_after_the_act_is_dropped(written: str, key: str) -> None:
+    assert normalize_framework(written) == key
+
+
+def test_the_article_in_the_framework_field_still_verifies() -> None:
+    cited = _one(
+        {"framework": "32026L0470, Art. 4", "reference": "Art. 4", "quote_snippet": QUOTE_37},
+        QUOTED_CHUNK,
+    )
+    assert cited["verified"] is True
+    assert not cited["found_elsewhere"]

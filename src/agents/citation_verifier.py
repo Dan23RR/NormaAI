@@ -471,6 +471,11 @@ def article_label(key: str | None) -> str | None:
 
 
 _CELEX_PREFIX_RE = re.compile(r"(?i)celex\s*:?\s*(\S+)$")
+# An act followed by the unit it cites: "32026L0470, Art. 4", "AI Act art. 50(2)".
+_TRAILING_UNIT_RE = re.compile(
+    r"(?i)^(?P<act>.*?\S)[\s,;:\-\N{EN DASH}]+"
+    r"(?:art(?:icle|icolo|\.)?|recital|considerando|annex|allegato)\s*(?:\d|[IVXLC]+\b)"
+)
 
 
 def normalize_framework(name: Any) -> str:
@@ -479,10 +484,17 @@ def normalize_framework(name: Any) -> str:
     A CELEX number is mapped to its base act (``02024R1689-20260727`` ->
     ``32024R1689``); an unknown name is returned in the same upper-case,
     underscore-joined form, so it still matches a chunk with the same key.
+    An article, recital or annex written after the act is dropped
+    (``"32026L0470, Art. 4"`` -> ``"32026L0470"``): the citation names its
+    unit in its own field.
     """
     raw = str(name or "").strip()
     if not raw:
         return ""
+    # The model sometimes writes the cited article into the framework.
+    trailing = _TRAILING_UNIT_RE.match(raw)
+    if trailing:
+        raw = trailing.group("act")
     # The model sometimes copies the label's "CELEX 32024R2847" as the framework.
     prefixed = _CELEX_PREFIX_RE.match(raw)
     if prefixed and celex_utils.parse_celex(prefixed.group(1).upper()) is not None:

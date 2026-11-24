@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { DataSection } from '@/components/impostazioni/DataSection'
 import { DemoSection } from '@/components/impostazioni/DemoSection'
 import { LanguageSection } from '@/components/impostazioni/LanguageSection'
+import { MembersSection } from '@/components/impostazioni/MembersSection'
 import { ProfileSection } from '@/components/impostazioni/ProfileSection'
 import { ThemeSection } from '@/components/impostazioni/ThemeSection'
 
@@ -18,6 +19,7 @@ export default function ImpostazioniPage() {
     <div>
       <PageHeader title={t('title')} description={t('description')} />
       <ProfileSection user={user} />
+      <MembersSection user={user} demoMode={demoMode} />
       <LanguageSection />
       <ThemeSection />
       <DataSection user={user} demoMode={demoMode} />

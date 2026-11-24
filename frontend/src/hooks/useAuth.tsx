@@ -14,6 +14,8 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, orgName: string, inviteCode?: string) => Promise<void>
   loginDemo: () => void
   logout: () => void
+  /** Reads the account again after a change to it, such as a new role. */
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -52,6 +54,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser()
   }, [fetchUser])
 
+  // Unlike the first read, a failure here keeps the session as it is: the
+  // next page load reads the account again.
+  const refreshUser = useCallback(async () => {
+    if (isDemoMode() || !getAccessToken()) return
+    try {
+      setUser(await api.get<User>('/api/v1/auth/me'))
+    } catch {
+      /* keep the account read before */
+    }
+  }, [])
+
   // A real sign-in always leaves demo mode first: the demo flag must never
   // route real credentials to the mock client.
   const login = async (email: string, password: string) => {
@@ -86,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, demoMode, login, register, loginDemo, logout }}>
+    <AuthContext.Provider value={{ user, loading, demoMode, login, register, loginDemo, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

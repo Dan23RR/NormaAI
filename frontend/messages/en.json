@@ -1801,7 +1801,7 @@
   },
   "impostazioni": {
     "title": "Settings",
-    "description": "Your account, the interface language, the theme and your data.",
+    "description": "Your account, the organisation’s members, the interface language, the theme and your data.",
     "profile": {
       "title": "Profile",
       "description": "The account you signed in with and its organisation.",
@@ -1815,6 +1815,54 @@
         "viewer": "Viewer"
       },
       "note": "Name, email and organisation cannot be changed from here yet: the server has no endpoint to update them. To change them, write to <mail>info@normaai.org</mail>."
+    },
+    "members": {
+      "title": "Members",
+      "description": "The people in your organisation who use NormaAI, with their role.",
+      "adminOnly": "Only administrators see and manage the organisation’s members. To invite someone or change a role, ask an administrator.",
+      "demoNote": "In the demo the members are examples: you can change roles and remove someone, but reloading the page brings everything back. Your account stays an administrator.",
+      "loading": "Loading the members",
+      "loadFailedTitle": "The members did not load",
+      "unavailableTitle": "Member management is not active on this server yet",
+      "empty": "No members to show.",
+      "colPerson": "Name and email",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "you": "You",
+      "roleOf": "Role of {name}",
+      "saving": "Saving the role",
+      "status": {
+        "active": "Active",
+        "unverified": "Email not confirmed",
+        "inactive": "Deactivated"
+      },
+      "rolesTitle": "What each role does",
+      "rolesHelp": {
+        "admin": "Everything a member does; on top of that, manages members and invitations and can delete clients and the organisation’s data.",
+        "member": "Works on clients, documents and alerts and asks questions on the Ask page.",
+        "viewer": "Reads and asks questions, but changes nothing."
+      },
+      "ownAccount": "Your own account is not removed from here: to close it, see the Your data section below.",
+      "roleChangedTitle": "Role changed",
+      "roleChangedDescription": "{name} now has the {role} role.",
+      "roleFailedTitle": "The role of {name} did not change",
+      "roleFailed": "Role change failed. Try again.",
+      "stepDownTitle": "Give up the administrator role?",
+      "stepDownBody": "With the {role} role you can no longer manage members and invitations. Only another administrator can give you the administrator role back.",
+      "stepDownConfirm": "Change my role",
+      "steppedDownTitle": "Your role is now {role}",
+      "remove": "Remove",
+      "removeLabel": "Remove {name}",
+      "removeTitle": "Remove {name}?",
+      "removeLost": "<b>Deleted:</b> the account and this person’s conversations on the Ask page, which nobody else could read.",
+      "removeKept": "<b>Kept</b> by the organisation: clients, checks, reports and invitations, with this person’s name taken off the ones they created.",
+      "removeFinal": "This cannot be undone: to come back, this person will need a new invitation.",
+      "removeConfirm": "Remove from the organisation",
+      "removeFailed": "Removal failed. Try again.",
+      "removedTitle": "Account removed",
+      "removedDescription": "{name} is no longer part of the organisation.",
+      "invitesTitle": "Invitations"
     },
     "language": {
       "title": "Language",
@@ -1932,7 +1980,7 @@
       "roles": {
         "member": "Member",
         "viewer": "Viewer",
-        "admin": "Admin"
+        "admin": "Administrator"
       }
     },
     "system": {
@@ -2621,6 +2669,7 @@
     "uploadDemo": "Document upload is not available in the demo with sample data.",
     "reportDemo": "The PDF is not generated in the demo with sample data.",
     "invitesUnavailable": "This server does not have invitations yet (endpoint /api/v1/auth/invites not found).",
+    "membersUnavailable": "This server does not have member management yet (endpoint /api/v1/auth/members not found).",
     "boundary": {
       "title": "This page has stopped working",
       "body": "{message} Try again; if it happens again, write to info@normaai.org with the name of the page.",

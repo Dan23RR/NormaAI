@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useTranslations } from 'next-intl'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 /**
  * Modal built on the native <dialog>: focus trap, Escape and the inert
- * background come from the platform. Click on the backdrop closes it.
+ * background come from the platform. Click on the backdrop closes it. The
+ * title id is unique, so a page with several dialogs names each one right.
  */
 export function Dialog({
   open,
@@ -28,6 +29,7 @@ export function Dialog({
 }) {
   const t = useTranslations('ui')
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
 
   useEffect(() => {
     const el = ref.current
@@ -48,7 +50,7 @@ export function Dialog({
       onClick={(e) => {
         if (e.target === ref.current) onClose()
       }}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
       className={cn(
         'w-[calc(100%-2rem)] rounded-xl border border-rule bg-surface p-0 text-ink shadow-pop backdrop:bg-[#0C1B33]/50',
         width,
@@ -56,7 +58,7 @@ export function Dialog({
     >
       <div className="flex items-start justify-between gap-4 px-6 pt-6">
         <div>
-          <h2 id="dialog-title" className="text-h3">
+          <h2 id={titleId} className="text-h3">
             {title}
           </h2>
           {description && <p className="mt-1 text-small text-ink-2">{description}</p>}

@@ -3,24 +3,26 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, FileText, Info, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, FileText, Info, RefreshCw, Trash2 } from 'lucide-react'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { useToast } from '@/components/ui/Toast'
 import { fetchClient } from '@/components/clienti/clients-api'
+import { downloadBlob } from '@/components/report/report-api'
 import { useAuth } from '@/hooks/useAuth'
+import { useErrorText } from '@/i18n/errors'
 import { useDateFormat } from '@/i18n/useDateFormat'
 import { CheckFacts, DependenciesList, ReviewNotice, type ClientLink } from './CheckMargin'
 import { DeleteCheckDialog } from './DeleteCheckDialog'
-import { fetchCheck, recallCheck, recheck } from './documents-api'
+import { fetchCheck, fetchReportPdf, recallCheck, recheck } from './documents-api'
 import { describeFailure, isMissingCheck, type Failure } from './errors'
 import { FailureMessage } from './FailureMessage'
 import { FindingCard, FindingRow } from './FindingItem'
 import { GroupSummary, groupAnchor } from './GroupSummary'
 import { totalFindings } from './labels'
-import { ReportDialog } from './ReportDialog'
+import { ReportDialog, reportFilename } from './ReportDialog'
 import { GROUPS, dependencyOf, findingsOf, type DocumentCheck, type FindingGroup } from './types'
 
 type LoadState =
@@ -49,6 +51,7 @@ export function CheckDetailPage() {
   const router = useRouter()
   const { demoMode } = useAuth()
   const { toast } = useToast()
+  const errorText = useErrorText()
   const formatDate = useDateFormat()
   const id = typeof params?.id === 'string' ? decodeURIComponent(params.id) : ''
 
@@ -58,6 +61,7 @@ export function CheckDetailPage() {
   const [recheckFailure, setRecheckFailure] = useState<Failure | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -184,6 +188,18 @@ export function CheckDetailPage() {
     }
   }
 
+  /** The report as a PDF with the letterhead of the practice, saved as "<document>.controllo.pdf". */
+  const downloadPdf = async () => {
+    setDownloadingPdf(true)
+    try {
+      downloadBlob(await fetchReportPdf(check.id), reportFilename(check.filename, t('report.fileSuffix'), 'pdf'))
+    } catch (err) {
+      toast({ kind: 'bad', title: t('detail.pdfFailedTitle'), description: errorText(err) })
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   return (
     <div>
       <div className="mb-4">{back}</div>
@@ -203,6 +219,15 @@ export function CheckDetailPage() {
             </Button>
             <Button variant="secondary" onClick={() => setReportOpen(true)} iconLeft={<FileText className="h-4 w-4" aria-hidden="true" />}>
               {t('detail.report')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={downloadPdf}
+              loading={downloadingPdf}
+              title={t('detail.pdfHelp')}
+              iconLeft={<Download className="h-4 w-4" aria-hidden="true" />}
+            >
+              {downloadingPdf ? t('detail.pdfPreparing') : t('detail.pdf')}
             </Button>
             <Button variant="danger" onClick={() => setDeleting(true)} iconLeft={<Trash2 className="h-4 w-4" aria-hidden="true" />}>
               {t('detail.delete')}

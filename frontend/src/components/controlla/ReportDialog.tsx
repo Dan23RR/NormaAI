@@ -22,10 +22,10 @@ export function withLinksInNewTab(html: string): string {
   return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (head) => head + base) : base + html
 }
 
-/** "Policy uso IA.pdf" -> "Policy uso IA.controllo.html": the name of the downloaded report. */
-export function reportFilename(filename: string, suffix: string): string {
+/** "Policy uso IA.pdf" -> "Policy uso IA.controllo.html" (or ".pdf"): the name of the downloaded report. */
+export function reportFilename(filename: string, suffix: string, extension: 'html' | 'pdf' = 'html'): string {
   const stem = filename.replace(/\.[A-Za-z0-9]{1,5}$/, '').replace(/[\\/:*?"<>|]+/g, '_').trim() || 'report'
-  return `${stem}.${suffix}.html`
+  return `${stem}.${suffix}.${extension}`
 }
 
 /**

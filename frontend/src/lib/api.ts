@@ -410,10 +410,10 @@ class ApiClient {
   }
 
   /**
-   * Upload a file via FormData with full auth handling.
+   * Upload a file via FormData with full auth handling (POST, or PUT to replace one).
    * Does NOT set Content-Type (browser sets it with multipart boundary).
    */
-  async upload<T>(path: string, formData: FormData): Promise<T> {
+  async upload<T>(path: string, formData: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
     if (isDemoMode()) {
       // A document given to Controlla never leaves the browser in the demo: the
       // answer is the example check, and the page says so before and after.
@@ -435,7 +435,7 @@ class ApiClient {
     let res: Response
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
-        method: 'POST',
+        method,
         headers,
         body: formData,
       })
@@ -447,7 +447,7 @@ class ApiClient {
       const refreshed = await this.refreshAccessToken()
       if (refreshed) {
         headers['Authorization'] = `Bearer ${getAccessToken()}`
-        const retry = await fetch(`${this.baseUrl}${path}`, { method: 'POST', headers, body: formData })
+        const retry = await fetch(`${this.baseUrl}${path}`, { method, headers, body: formData })
         if (retry.ok) return retry.json()
       }
       clearTokens()

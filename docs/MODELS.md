@@ -330,6 +330,72 @@ before each:
   default. `QA_MIN_DENSE_SCORE` stays off; on those questions the model already abstains
   without citations, and the answer carries the caveat for answers that cite nothing.
 
+### 2.6 Measured: Claude Haiku 5.5 and Claude Sonnet 5.5, 2026-11-24
+
+Golden v2 through the API on `main` at `41257b0` (PR #37 and #40 merged), with
+multilingual-e5-large, `RERANKER_SEARCH_DEPTH=45` and no reranker, as in §2.5. The three
+runs used the same containers and corpus, Redis was emptied before each, and
+`ANTHROPIC_MODEL` is the only setting that changed. The third run is Haiku again with the
+first commit of PR #42 (`3b2ed8c`: ranges of paragraphs, the amending act's own article).
+The verifier only marks the citations
+(`_apply_citation_verification` in `src/agents/nodes.py`), so it changes no answer: what
+differs from the first run is the model's variation.
+
+| Run | "Passed" | Answerable: article cited | Answerable: content checks passed | **Answerable: both** | Abstention questions | Verified citations, all answers | Second attempts | Mean time | Tokens in / out | Cost of the run |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Haiku 5.5, `main` | 100 / 101 | 89 / 90 | 86 / 90 | **86 / 90** | 11 / 11 | 425 / 432 (98.4 %) | 9 | 17.0 s | 1,251,291 / 336,162 | $0.29 |
+| Sonnet 5.5, `main` | 100 / 101 | 89 / 90 | 85 / 90 | **85 / 90** | 11 / 11 | **573 / 573 (100 %)** | 3 | 15.8 s | 1,181,475 / 244,366 | $4.81 |
+| Haiku 5.5, `3b2ed8c` | 97 / 101 | 86 / 90 | 86 / 90 | **84 / 90** | 11 / 11 | 455 / 463 (98.3 %) | 4 | 14.4 s | 1,192,032 / 331,131 | $0.28 |
+
+- **Cost**, at the list prices read on 2026-11-24 on the pricing page of the Claude API
+  (platform.claude.com): Haiku 5.5 costs $0.10 per million input tokens and $0.50 per
+  million output tokens for prompts up to 100,000 tokens, Sonnet 5.5 $2 and $10. The
+  largest prompt of these runs was 15,310 tokens, and no prompt caching was used. A
+  question costs about $0.003 with Haiku and $0.048 with Sonnet: 16 times more. The
+  tokens come from the `llm_token_usage` lines of the API log.
+- **What Sonnet changes.** All 573 of its citations are verified word for word. It is the
+  first run that meets the 99.5 % of the gate of month 1 (§2.3) under the stricter verifier
+  of 2026-11-19 (§2.5). It cites more (573 citations against 432), and it is not slower:
+  its replies needed the second attempt of §2.3 three times, Haiku's nine. What the
+  answers say does not change: 85 and 86 / 90 on both counts are within the spread of §2.5.
+- **On `main`, both models fail the same four questions**:
+  - dora-028-001: the expected article is not retrieved (§3.1).
+  - aiact-003-004: the answer says it does not have definition 63 of Art. 3 (§2.3).
+  - aiact-113-003: the answer gives the general date of application, which its record
+    forbids (§2.4).
+  - csddd-002-001: the answer gives the old thresholds as the old values of a change
+    ("sale da 450 000 000 a 1 500 000 000 EUR", "quella di 1.000 dipendenti a 5.000"). The
+    checker does not read these two forms as a change: the fault is the checker's, not
+    the answer's.
+
+  Sonnet also fails aiact-113-002: it gives 2 August 2026 as the general date of
+  application, which is right, but the record forbids that date, to catch it being given
+  for the provision asked about. The three questions Haiku loses in the third run are the
+  three of 2026-11-09 (§2.3): aiact-113-005 and csddd-037-001 cite the amending act in place
+  of the amended article, and inj-005 cites paragraph 3 of Art. 19a in place of paragraph 1.
+- **Haiku's unverified citations, checked again.** They were re-checked against the
+  passages of the cited act with the verifier of PR #42, whose second commit also reads a
+  framework written with its article ("32026L0470, Art. 4" is act 32026L0470).
+  - First run, 7 unverified. 4 of them were right and are now verified: two ranges of
+    paragraphs (DORA RTS Art. 9(2)-(3), CRA Art. 14(9)-(10)) and two frameworks written
+    with their article ("32026L0470, Art. 4", "32025L0794, Art. 2"). The other 3 are the
+    model's mistakes: a word changed in two quotes ("a tale" for "alla", "annuale" for
+    "d'esercizio") and two sentences joined without marking the sentence left out. With
+    these rules the run would score 429 / 432 (99.3 %).
+  - Third run, 8 unverified. 1 of them is a framework written with its article. The
+    other 7 are not quotes of the text:
+    - a title or a heading in place of a quote (3);
+    - words changed (1);
+    - list letters "b)" and "c)" dropped (1);
+    - parts of the article in reverse order (2).
+
+    With these rules the run would score 456 / 463 (98.5 %).
+
+  A quote that drops a list's letters stays unverified. Forgiving those letters is a
+  choice still open.
+- **Which model to use** is a product decision: the cost per question against the share of
+  verified citations. `ANTHROPIC_MODEL` switches the model, and no other setting changes.
+
 ## 3. Sparse vectors
 
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
@@ -519,8 +585,8 @@ model, set by the variable in brackets.
 | Model | Status | Licence (to re-check) | Source | Checked | Measured |
 |---|---|---|---|---|---|
 | `gemini-3.6-flash` | **default** (`LLM_PROVIDER=gemini`, `GEMINI_MODEL`) | provider terms | Google Gemini API | 2026-10-26 code | — |
-| `claude-haiku-5-5` | measured; default for `LLM_PROVIDER=anthropic` (`ANTHROPIC_MODEL`) since 2026-11-18, and the choice of `.env.example` and the bootstrap | provider terms | Anthropic API | 2026-10-24 | 84 / 101, recall 0.83, 99.6 % verified (§1) |
-| `claude-sonnet-5-5` | the previous default for `LLM_PROVIDER=anthropic` | provider terms | Anthropic API | 2026-10-26 code | not measured |
+| `claude-haiku-5-5` | measured; default for `LLM_PROVIDER=anthropic` (`ANTHROPIC_MODEL`) since 2026-11-18, and the choice of `.env.example` and the bootstrap | provider terms; $0.10 / $0.50 per million input / output tokens up to 100,000 tokens of prompt | Anthropic API | 2026-11-24 pricing page | 84 / 101, recall 0.83, 99.6 % verified (§1); 86 / 90 answerable questions right on both counts, 98.4 % verified, $0.29 per run (§2.6) |
+| `claude-sonnet-5-5` | measured; the previous default for `LLM_PROVIDER=anthropic` | provider terms; $2 / $10 per million input / output tokens | Anthropic API | 2026-11-24 pricing page | 85 / 90 answerable questions right on both counts, 100 % verified, $4.81 per run (§2.6) |
 | `nvidia/nemotron-3-super-120b-a12b:free` | default for `LLM_PROVIDER=openrouter` (`OPENROUTER_MODEL_ANALYSIS`) | provider terms | OpenRouter | 2026-10-26 code | — |
 | `qwen3.5:4b` | local router, off by default (`LOCAL_LLM_ENABLED`, `LOCAL_LLM_MODEL`) | to check | Ollama | 2026-10-26 code | — |
 | `mistral-small-2603` (Mistral Small 4) | default for `LLM_PROVIDER=mistral` (`MISTRAL_MODEL`); code ready, **not measured, never called with a real key** (§5.1) | provider terms for the API; open weights under Apache-2.0 | Mistral API (La Plateforme), [model card](https://docs.mistral.ai/models/mistral-small-4-0-26-03) | 2026-11-11 code, Mistral documentation | not measured |
@@ -631,3 +697,4 @@ with `LLM_PROVIDER=mistral`, the result in a row of the table above, and the sam
 | 2026-11-11 | Provider `mistral` added: Mistral Small 4 on Mistral's EU regional endpoint, through the OpenAI-compatible client; not measured, not the default (§5.1) |
 | 2026-11-18 | Golden v2 live on the candidate branch with the word-for-word verifier of 2026-11-11: 98 / 101, citations verified 98.4 %; each measure reported on its own and every run re-scored, "96 / 101" of 2026-11-09 is 81 / 90 answerable questions right on both counts (§2.4) |
 | 2026-11-19 | Golden v2 live on the pre-launch branch, three runs: 86, 77 and 85 / 90 answerable questions right on both counts; citations verified 97.6, 99.0 and 99.3 % with the stricter verifier (the 99.79 % of 2026-11-09 was measured with the old rules); a reply without an answer gets a second attempt; relevance threshold measured and left off (§2.5) |
+| 2026-11-24 | Golden v2 live on `main` with Claude Haiku 5.5 and Claude Sonnet 5.5: 86 and 85 / 90 answerable questions right on both counts, citations verified 98.4 and 100 %, $0.29 and $4.81 per run; four of Haiku's seven unverified citations were right and are verified since PR #42 (§2.6) |

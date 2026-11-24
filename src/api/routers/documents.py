@@ -15,14 +15,17 @@ Routes, all under ``/api/v1/documents``:
   with the texts in force. A provision changed since the check sets
   ``needs_review`` and writes one alert for the document.
 - ``GET /checks/{id}/report``: the report as an HTML page.
+- ``GET /checks/{id}/report.pdf``: the same report as a PDF, headed with the
+  organisation's letterhead (``src/api/routers/letterhead.py``), NormaAI only
+  in small at the foot of the pages (``src/document_check/pdf.py``).
 - ``GET /preferences``, ``PATCH /preferences``: ``{"email_digest": bool}``, the
   email "documenti da rivedere" of the scheduled surveillance, per user.
 - ``GET|POST /unsubscribe?token=``: turns that email off from the link in it,
   without a login (signed token; POST is the one-click form of RFC 8058).
 
-Access. Reading: any signed-in user of the organisation. Checking, re-checking
-and deleting: not the ``viewer`` role, and a verified email address when the
-deployment asks for one. Every query filters on the caller's ``org_id`` and
+Access. Reading, the two reports included: any signed-in user of the
+organisation. Checking, re-checking and deleting: not the ``viewer`` role, and
+a verified email address when the deployment asks for one. Every query filters on the caller's ``org_id`` and
 runs in a session with the tenant context (row-level security).
 
 Limits. The check calls no language model, so it does not count against the LLM
@@ -32,12 +35,14 @@ can act on come back as ``{"detail": "<Italian sentence>"}`` with the status of
 ``src.document_check.service.DocumentCheckError``.
 """
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+from urllib.parse import quote
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -53,10 +58,14 @@ from src.auth.dependencies import READ_ONLY_DETAIL as READ_ONLY_DETAIL  # still 
 from src.auth.dependencies import CurrentUser, get_current_user, require_editor
 from src.config import get_settings
 from src.db.engine import db_manager
+from src.db.models import DocumentCheck as CheckRow
 from src.db.models import User
 from src.document_check import serialize, service
+from src.document_check.check import DocumentCheck
+from src.document_check.pdf import pdf_filename, render_pdf
 from src.document_check.report import render_html
 from src.document_check.service import DocumentCheckError
+from src.reports import letterhead
 
 logger = structlog.get_logger()
 
@@ -396,6 +405,17 @@ async def get_check(
         return service.check_object(*loaded)
 
 
+def _report_check(row: CheckRow, body: dict[str, Any]) -> DocumentCheck:
+    """The stored check as the two reports read it."""
+    return serialize.check_from_json(
+        body["findings"],
+        document=row.filename,
+        checked_on=(body["checked_at"] or "")[:10],
+        document_date=body["document_date"],
+        lang=row.lang,
+    )
+
+
 @router.get("/checks/{check_id}/report", response_class=HTMLResponse)
 @limiter.limit("30/minute")
 async def get_check_report(
@@ -410,14 +430,7 @@ async def get_check_report(
             raise _http(service.check_not_found())
         row, _ = loaded
         body = service.check_object(*loaded)
-    checked_on = (body["checked_at"] or "")[:10]
-    check = serialize.check_from_json(
-        body["findings"],
-        document=row.filename,
-        checked_on=checked_on,
-        document_date=body["document_date"],
-        lang=row.lang,
-    )
+    check = _report_check(row, body)
     return HTMLResponse(
         render_html(check),
         headers={
@@ -427,6 +440,66 @@ async def get_check_report(
                 "form-action 'none'; frame-ancestors 'none'"
             ),
             "Cache-Control": "private, no-store",
+        },
+    )
+
+
+def _attachment(filename: str) -> str:
+    """``Content-Disposition`` of a download: an ASCII name, and the real one (RFC 6266)."""
+    fallback = filename.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    fallback = fallback.replace('"', "_").replace("\\", "_")
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename, safe='')}"
+
+
+@router.get("/checks/{check_id}/report.pdf")
+@limiter.limit("20/minute")
+async def get_check_report_pdf(
+    request: Request,
+    check_id: uuid.UUID,
+    user: CurrentUser = Depends(get_current_user),
+) -> Response:
+    """
+    **The report of a check as a PDF headed with your organisation's letterhead (Italian).**
+
+    The same content as the HTML report, with the letterhead an admin sets in
+    `/api/v1/organization/letterhead` on the first page (the organisation's name
+    when there is none) and NormaAI only in small at the foot of the pages. No
+    language model is involved, so there is no AI quota to spend.
+    """
+    async with db_manager.session(org_id=str(user.org_id)) as session:
+        loaded = await service.load_check(session, user.org_id, check_id)
+        if loaded is None:
+            raise _http(service.check_not_found())
+        row, _ = loaded
+        body = service.check_object(*loaded)
+        heading = await letterhead.load(session, user.org_id)
+    check = _report_check(row, body)
+    rechecked_on = (body.get("rechecked_at") or "")[:10] or None
+    try:
+        pdf = await asyncio.to_thread(render_pdf, check, heading, rechecked_on=rechecked_on)
+    except Exception as e:  # noqa: BLE001
+        # Never the message: it may quote the document.
+        logger.error(
+            "document_report_pdf_failed", check_id=str(check_id), error_type=type(e).__name__
+        )
+        raise HTTPException(status_code=500, detail=INTERNAL_ERROR_DETAIL) from None
+
+    audit_log(
+        AuditAction.DATA_EXPORT,
+        user_id=str(user.user_id),
+        org_id=str(user.org_id),
+        ip_address=get_client_ip(request),
+        resource=f"/api/v1/documents/checks/{check_id}/report.pdf",
+        detail=f"document check report as PDF ({len(pdf)} bytes)",
+        extra={"check_id": str(check_id)},
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": _attachment(pdf_filename(row.filename)),
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
         },
     )
 

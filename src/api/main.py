@@ -63,6 +63,10 @@ tags_metadata = [
             "keep the outcome and re-check it when a cited provision changes."
         ),
     },
+    {
+        "name": "Organization",
+        "description": "The letterhead that heads the organisation's PDFs: texts and logo.",
+    },
 ]
 
 DESCRIPTION = """
@@ -210,6 +214,7 @@ _safe_include("src.api.routers.reports")
 _safe_include("src.api.routers.clients")
 _safe_include("src.api.routers.conversations")
 _safe_include("src.api.routers.documents")
+_safe_include("src.api.routers.letterhead")
 _safe_include("src.api.routers.leads")
 # GDPR (CRITICAL: data-subject-rights endpoints are compliance-mandated)
 _safe_include("src.api.routers.gdpr", critical=True)

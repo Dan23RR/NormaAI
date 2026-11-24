@@ -120,6 +120,7 @@ def test_every_orm_table_has_a_migration(m, m007):
     from src.db.models import Base
 
     known = set(m007.TABLES) | {"invites"} | set(m.TABLES)
+    known |= set(_load("011_org_letterheads.py").TABLES)
     assert set(Base.metadata.tables) == known
 
 

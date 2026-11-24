@@ -25,6 +25,7 @@ import {
  * - DELETE /checks/{id}                -> 204
  * - POST   /checks/{id}/recheck        -> the check after its provisions were compared again
  * - GET    /checks/{id}/report         -> the report, as an HTML page
+ * - GET    /checks/{id}/report.pdf     -> the report, as a PDF with the organisation's letterhead
  * - GET, PATCH /preferences            -> {email_digest}
  *
  * The file is read in memory and not stored. In the demo the api client
@@ -252,6 +253,16 @@ export async function deleteCheck(id: string): Promise<void> {
 export async function fetchReportHtml(id: string): Promise<string> {
   const response = await api.fetchBlob(`${checkPath(id)}/report`)
   return response.text()
+}
+
+/**
+ * The same report as a PDF, headed with the letterhead of the organisation
+ * (set by its admins in the settings). The demo has no PDF: the api client
+ * says so with the `reportDemo` error.
+ */
+export async function fetchReportPdf(id: string): Promise<Blob> {
+  const response = await api.fetchBlob(`${checkPath(id)}/report.pdf`)
+  return response.blob()
 }
 
 export async function fetchPreferences(): Promise<DocumentPreferences> {

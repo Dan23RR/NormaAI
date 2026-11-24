@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -509,6 +510,39 @@ class DocumentDependency(Base):
         Index("ix_document_dependencies_provision", "source", "act", "key"),
         Index("ix_document_dependencies_check_id", "check_id"),
         Index("ix_document_dependencies_org_id", "org_id"),
+    )
+
+
+class OrgLetterhead(Base):
+    """The letterhead of an organisation: what heads the PDFs it hands to its clients.
+
+    One row per organisation, the primary key is ``org_id``; without a row the
+    PDFs carry the organisation's name only. ``logo`` is a PNG or a JPEG that
+    ``src/reports/letterhead.py`` has already checked and encoded again (no
+    metadata, at most ``LOGO_MAX_SIDE`` pixels a side); ``logo_type`` is its
+    media type. Only the organisation's admins write it.
+
+    Tenant-scoped: row-level security on ``org_id``, like ``clients``.
+    """
+
+    __tablename__ = "org_letterheads"
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    address: Mapped[str | None] = mapped_column(String(300))
+    contact: Mapped[str | None] = mapped_column(String(200))
+    footer_note: Mapped[str | None] = mapped_column(String(300))
+    logo: Mapped[bytes | None] = mapped_column(LargeBinary)
+    logo_type: Mapped[str | None] = mapped_column(String(20))
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
 
 

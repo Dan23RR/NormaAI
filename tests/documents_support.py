@@ -36,6 +36,7 @@ from src.db.models import (
     DocumentCheck,
     DocumentDependency,
     Organization,
+    OrgLetterhead,
     Regulation,
     SystemState,
     User,
@@ -292,6 +293,7 @@ TABLES = [
         DocumentCheck,
         DocumentDependency,
         SystemState,
+        OrgLetterhead,
     )
 ]
 

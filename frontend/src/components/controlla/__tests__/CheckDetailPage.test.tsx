@@ -307,6 +307,35 @@ describe('CheckDetailPage', () => {
     expect(await within(dialog).findByTitle(/Report del controllo di/)).toBeInTheDocument()
   })
 
+  it('downloads the report as a PDF with the letterhead, named after the document', async () => {
+    const user = userEvent.setup()
+    const pdf = new Blob(['%PDF-1.4 carta intestata'], { type: 'application/pdf' })
+    mocks.fetchBlob.mockResolvedValue(new Response(pdf, { headers: { 'Content-Type': 'application/pdf' } }))
+    renderPage()
+    const button = await screen.findByRole('button', { name: 'Scarica il PDF' })
+    expect(button).toHaveAttribute('title', 'Il report in PDF con la carta intestata dello studio, da girare al cliente.')
+    await user.click(button)
+
+    await waitFor(() => expect(mocks.download).toHaveBeenCalledTimes(1))
+    expect(mocks.fetchBlob).toHaveBeenCalledWith('/api/v1/documents/checks/demo-doc-gdpr/report.pdf')
+    const [blob, filename] = mocks.download.mock.calls[0] as [Blob, string]
+    expect(filename).toBe('Procedura violazioni dati personali.controllo.pdf')
+    expect(await blob.text()).toBe('%PDF-1.4 carta intestata')
+    expect(screen.getByRole('button', { name: 'Scarica il PDF' })).toBeEnabled()
+  })
+
+  it('says why the PDF did not come, in the demo too', async () => {
+    const user = userEvent.setup()
+    mocks.fetchBlob.mockRejectedValueOnce(new ApiError('reportDemo')).mockRejectedValueOnce(failed(500, 'Errore interno durante il controllo. Riprova più tardi.'))
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Scarica il PDF' }))
+    expect(await screen.findByText('Il PDF non è stato scaricato')).toBeInTheDocument()
+    expect(screen.getByText('Nella demo con dati di esempio il PDF non viene generato.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Scarica il PDF' }))
+    expect(await screen.findByText('Errore interno durante il controllo. Riprova più tardi.')).toBeInTheDocument()
+    expect(mocks.download).not.toHaveBeenCalled()
+  })
+
   it('says when the check does not exist, and when it could not be loaded', async () => {
     const user = userEvent.setup()
     const missing = renderPage('nope')
@@ -390,5 +419,6 @@ describe('the report helpers', () => {
     expect(reportFilename('Policy uso IA.pdf', 'controllo')).toBe('Policy uso IA.controllo.html')
     expect(reportFilename('nota: bozza?.docx', 'check')).toBe('nota_ bozza_.check.html')
     expect(reportFilename('', 'controllo')).toBe('report.controllo.html')
+    expect(reportFilename('Policy uso IA.pdf', 'controllo', 'pdf')).toBe('Policy uso IA.controllo.pdf')
   })
 })

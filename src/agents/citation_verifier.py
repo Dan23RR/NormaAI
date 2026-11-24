@@ -471,6 +471,11 @@ def article_label(key: str | None) -> str | None:
 
 
 _CELEX_PREFIX_RE = re.compile(r"(?i)celex\s*:?\s*(\S+)$")
+# An act followed by the unit it cites: "32026L0470, Art. 4", "AI Act art. 50(2)".
+_TRAILING_UNIT_RE = re.compile(
+    r"(?i)^(?P<act>.*?\S)[\s,;:\-\N{EN DASH}]+"
+    r"(?:art(?:icle|icolo|\.)?|recital|considerando|annex|allegato)\s*(?:\d|[IVXLC]+\b)"
+)
 
 
 def normalize_framework(name: Any) -> str:
@@ -479,10 +484,17 @@ def normalize_framework(name: Any) -> str:
     A CELEX number is mapped to its base act (``02024R1689-20260727`` ->
     ``32024R1689``); an unknown name is returned in the same upper-case,
     underscore-joined form, so it still matches a chunk with the same key.
+    An article, recital or annex written after the act is dropped
+    (``"32026L0470, Art. 4"`` -> ``"32026L0470"``): the citation names its
+    unit in its own field.
     """
     raw = str(name or "").strip()
     if not raw:
         return ""
+    # The model sometimes writes the cited article into the framework.
+    trailing = _TRAILING_UNIT_RE.match(raw)
+    if trailing:
+        raw = trailing.group("act")
     # The model sometimes copies the label's "CELEX 32024R2847" as the framework.
     prefixed = _CELEX_PREFIX_RE.match(raw)
     if prefixed and celex_utils.parse_celex(prefixed.group(1).upper()) is not None:
@@ -610,6 +622,10 @@ class _Chunk:
     celex: str | None
     # Normalized positions where a point or a paragraph starts (_point_starts).
     points: frozenset[int] | None = None
+    # For an article an amending act quotes (case B of quoted_articles): the
+    # amending act and its own article, where the wording stands too.
+    source_celex: str | None = None
+    source_article_key: str | None = None
 
 
 def _prepare(chunks: Any) -> list[_Chunk]:
@@ -637,6 +653,8 @@ def _prepare(chunks: Any) -> list[_Chunk]:
                 frameworks=frozenset(k for k in (normalize_framework(n) for n in names) if k),
                 article_key=parse_article(data["citation_article"] if quoted else article),
                 celex=str(data["citation_celex"]) if quoted else base_celex(data),
+                source_celex=base_celex(data) if quoted else None,
+                source_article_key=parse_article(article) if quoted else None,
             )
         )
     return prepared
@@ -1151,6 +1169,30 @@ def parse_paragraph(reference: Any) -> str | None:
     return p.group(1) if p else None
 
 
+# A range of paragraphs after the first one: "(2)-(3)", "(9) - (10)", "par. 2-3".
+_PARAGRAPH_TO_RE = re.compile(r"\s*[-\N{EN DASH}]\s*\(?(\d{1,3})\)?")
+
+
+def cited_paragraphs(reference: Any) -> str | None:
+    """The paragraph, or range of paragraphs, an article reference names, or None.
+
+    ``"Art. 50(2)"`` gives ``"2"``, ``"Art. 9(2)-(3)"`` and ``"art. 9, par. 2-3"``
+    give ``"2-3"`` (the form _paragraph_range reads). A quote cited with a range
+    may stand in any paragraph of it.
+    """
+    first = parse_paragraph(reference)
+    if first is None:
+        return None
+    text = str(reference or "").strip()
+    m = _ARTICLE_RE.search(text) or _BARE_NUMBER_RE.match(text)
+    rest = text[m.end() :] if m is not None else ""
+    p = re.match(r"\s*\((\d{1,3})\)", rest) or _PARAGRAPH_REF_RE.match(rest)
+    to = _PARAGRAPH_TO_RE.match(rest, p.end()) if p is not None else None
+    if to is not None and int(to.group(1)) > int(first):
+        return f"{first}-{to.group(1)}"
+    return first
+
+
 def _paragraph_range(value: Any) -> tuple[int, int] | None:
     """``"2"`` -> (2, 2), ``"3-4"`` -> (3, 4); None when the paragraph is not known."""
     m = re.fullmatch(r"\s*(\d{1,3})\s*(?:-\s*(\d{1,3})\s*)?", str(value or ""))
@@ -1161,9 +1203,9 @@ def _paragraph_range(value: Any) -> tuple[int, int] | None:
 
 
 def _covers(value: Any, paragraph: str) -> bool:
-    """True unless ``value`` is a known paragraph (or range) that excludes ``paragraph``."""
-    span = _paragraph_range(value)
-    return span is None or span[0] <= int(paragraph) <= span[1]
+    """True unless ``value`` and ``paragraph`` are known paragraphs (or ranges) that do not meet."""
+    span, wanted = _paragraph_range(value), _paragraph_range(paragraph)
+    return span is None or wanted is None or (span[0] <= wanted[1] and wanted[0] <= span[1])
 
 
 def _paragraph_window(chunk: _Chunk, paragraph: str) -> tuple[int, int] | None:
@@ -1184,10 +1226,12 @@ def _paragraph_window(chunk: _Chunk, paragraph: str) -> tuple[int, int] | None:
     own = chunk.data.get("paragraph")
     if not lines:
         return whole if _covers(own, paragraph) else None
-    for index, (number, start) in enumerate(lines):
-        if number == paragraph:
-            end = lines[index + 1][1] if index + 1 < len(lines) else len(chunk.norm)
-            return (start, end)
+    # The numbered lines of the cited paragraph (or of each paragraph of a range).
+    inside = [i for i, (number, _start) in enumerate(lines) if _covers(number, paragraph)]
+    if inside:
+        last = inside[-1]
+        end = lines[last + 1][1] if last + 1 < len(lines) else len(chunk.norm)
+        return (lines[inside[0]][1], end)
     if lines[0][1] > 0 and _paragraph_range(own) is not None and _covers(own, paragraph):
         return (0, lines[0][1])
     return None
@@ -1287,11 +1331,17 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
     framework = normalize_framework(citation.get("framework"))
     reference = _reference_of(citation)
     article = parse_article(reference)
-    paragraph = parse_paragraph(reference)
+    paragraph = cited_paragraphs(reference)
     levels: list[tuple[str, list[_Chunk]]] = []
     if framework:
+        # An article an amending act quotes is labelled as the amended act's
+        # article; cited as the amending act's own article, the wording is there too.
         of_framework = [
-            c for c in chunks if framework in c.frameworks or (c.celex and framework == c.celex)
+            c
+            for c in chunks
+            if framework in c.frameworks
+            or (c.celex and framework == c.celex)
+            or (c.source_celex and framework == c.source_celex)
         ]
         if article:
             # A framework key names its principal act: the article of another act
@@ -1303,7 +1353,11 @@ def _verify(citation: Any, chunks: list[_Chunk]) -> VerificationResult:
                     [
                         c
                         for c in of_framework
-                        if same_article(c.article_key, article) and _of_act(c, principal)
+                        if (same_article(c.article_key, article) and _of_act(c, principal))
+                        or (
+                            c.source_celex == framework
+                            and same_article(c.source_article_key, article)
+                        )
                     ],
                 )
             )
@@ -1394,9 +1448,13 @@ def _found_in(citation: dict[str, Any], outcome: VerificationResult) -> str | No
         return None
     reference = _reference_of(citation)
     if outcome.level == LEVEL_ARTICLE:
-        cited = parse_paragraph(reference)
+        if outcome.amending_celex and framework == outcome.amending_celex:
+            # Cited as the amending act's own article, where the wording stands:
+            # its paragraphs are not those of the article it replaces.
+            return None
+        cited = _paragraph_range(cited_paragraphs(reference))
         found = _paragraph_range(outcome.paragraph)
-        if cited and found and not found[0] <= int(cited) <= found[1]:
+        if cited and found and not (found[0] <= cited[1] and cited[0] <= found[1]):
             return FOUND_IN_PARAGRAPH
         return None
     cited_act = framework if _is_celex(framework) else principal_celex(framework)

@@ -90,6 +90,10 @@ jobs:
   test-backend:
     name: Backend Tests
     runs-on: ubuntu-latest
+    # The job takes 8-18 minutes. On 2026-11-24 a run passed every test, then
+    # its process did not exit; without a limit it would have waited the six
+    # hours GitHub allows, and a new push did not cancel it.
+    timeout-minutes: 40
     services:
       postgres:
         image: postgres:16-alpine

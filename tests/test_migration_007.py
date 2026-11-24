@@ -203,6 +203,7 @@ def test_spec_mirrors_the_orm_metadata(m):
         "document_checks",  # 009_document_checks
         "document_dependencies",
         "system_state",
+        "org_letterheads",  # 011_org_letterheads
     }
     later_columns = {
         ("users", "email_verified"),  # 008_invites

@@ -49,14 +49,14 @@ def test_revision_chain(m):
     assert len(m.revision) <= 32  # alembic_version.version_num is VARCHAR(32)
 
 
-def test_it_is_the_head():
-    revisions, parents = set(), set()
-    for path in VERSIONS.glob("[0-9][0-9][0-9]_*.py"):
-        module = _load(path.name)
-        revisions.add(module.revision)
-        if module.down_revision:
-            parents.add(module.down_revision)
-    assert revisions - parents == {"010_account_security"}
+def test_exactly_one_revision_builds_on_it():
+    """The chain stays linear: one migration, and only one, revises 010."""
+    children = [
+        module.revision
+        for module in (_load(path.name) for path in VERSIONS.glob("[0-9][0-9][0-9]_*.py"))
+        if module.down_revision == "010_account_security"
+    ]
+    assert len(children) == 1
 
 
 def test_added_columns_mirror_the_orm_metadata(m, m007):

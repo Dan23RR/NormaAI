@@ -23,10 +23,16 @@ outcome. The export gives every check with its findings and, for each provision
 it depends on, everything but the official text of the law, which is public
 and identified by act, version and fingerprint.
 
+The letterhead (``org_letterheads``) describes the organisation itself, like
+its name: the export gives it, the logo in base64, and the erasure keeps it
+with the Organization record. An admin removes it from the settings
+(``DELETE /api/v1/organization/letterhead``).
+
 Ironic-but-true: a GDPR product MUST be able to do this. It previously could not.
 """
 
 import asyncio
+import base64
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -48,6 +54,7 @@ from src.db.models import (
     Conversation,
     DocumentCheck,
     DocumentDependency,
+    OrgLetterhead,
     User,
 )
 
@@ -100,6 +107,14 @@ def _dependency_to_dict(obj: DocumentDependency) -> dict:
     out.pop("official_text", None)
     if isinstance(out.get("change"), dict):
         out["change"] = {k: v for k, v in out["change"].items() if k != "text"}
+    return out
+
+
+def _letterhead_to_dict(obj: OrgLetterhead) -> dict:
+    """The letterhead, its logo in base64 (JSON has no bytes)."""
+    out = _row_to_dict(obj)
+    logo = out.pop("logo", None)
+    out["logo_base64"] = base64.b64encode(logo).decode("ascii") if logo else None
     return out
 
 
@@ -190,6 +205,15 @@ async def export_org_data(
             if own_alerts is not None
             else []
         )
+        letterheads = (
+            (
+                await session.execute(
+                    select(OrgLetterhead).where(OrgLetterhead.org_id == user.org_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     audit_log(
         AuditAction.DATA_EXPORT,
@@ -213,6 +237,7 @@ async def export_org_data(
         "alerts": [_row_to_dict(a) for a in alerts],
         "document_checks": [_row_to_dict(c) for c in document_checks],
         "document_dependencies": [_dependency_to_dict(d) for d in document_dependencies],
+        "letterhead": _letterhead_to_dict(letterheads[0]) if letterheads else None,
     }
 
 

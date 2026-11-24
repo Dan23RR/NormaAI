@@ -12,7 +12,7 @@ from pathlib import Path
 ROUTERS_DIR = Path(__file__).parent.parent / "src" / "api" / "routers"
 
 # Routers that must enforce RLS (tenant-scoped data)
-TENANT_ROUTERS = ["clients.py", "alerts.py", "conversations.py", "reports.py"]
+TENANT_ROUTERS = ["clients.py", "alerts.py", "conversations.py", "reports.py", "letterhead.py"]
 
 # Routers where db_manager.session() WITHOUT org_id is acceptable
 # (auth endpoints, system endpoints that span organizations)
